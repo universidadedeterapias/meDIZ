@@ -1,0 +1,93 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?             // campo obrigatório pro adapter
+  image         String?               // campo obrigatório pro adapter
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  chatSessions  ChatSession[]
+  Message       Message[]
+  Account       Account[]
+  Session       Session[]
+}
+
+
+model ChatSession {
+  id        String   @id @default(uuid())   // Usando UUID como ID
+  userId    String   // UUID do usuário
+  startedAt DateTime @default(now())         // Data e hora de início da sessão
+  endedAt   DateTime?                        // Data e hora de término da sessão (se aplicável)
+  context   Json?                             // Contexto ou histórico da sessão (opcional)
+  createdAt DateTime @default(now())         // Data e hora de criação
+  updatedAt DateTime @updatedAt              // Data e hora de última atualização
+
+  user      User    @relation(fields: [userId], references: [id]) // Relacionamento com o usuário
+  messages  Message[]                         // Relacionamento com as mensagens
+}
+
+model Message {
+  id             String   @id @default(uuid())  // Usando UUID como ID
+  chatSessionId  String   // UUID da sessão de chat relacionada
+  userId         String   // UUID do usuário que enviou a mensagem
+  messageType    String   // Tipo de mensagem (ex: 'user' ou 'assistant')
+  content        String   // Conteúdo da mensagem
+  timestamp      DateTime @default(now())      // Data e hora da mensagem
+  createdAt      DateTime @default(now())      // Data e hora de criação
+  updatedAt      DateTime @updatedAt           // Data e hora de última atualização
+
+  chatSession    ChatSession @relation(fields: [chatSessionId], references: [id]) // Relacionamento com a sessão de chat
+  user           User        @relation(fields: [userId], references: [id])         // Relacionamento com o usuário
+}
+
+model Account {
+  id                 String   @id @default(uuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  
+  access_token       String?  
+  expires_at         Int?     
+  token_type         String?  
+  scope              String?  
+  id_token           String?  
+  session_state      String?  
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
