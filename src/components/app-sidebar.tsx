@@ -17,6 +17,7 @@ import {
   SidebarRail
 } from '@/components/ui/sidebar'
 import Image from 'next/image'
+import { useEffect, useState } from 'react'
 import { NavHistory } from './nav-history'
 import { NavOptions } from './nav-options'
 
@@ -55,6 +56,19 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const [history, setHistory] = useState<unknown[]>([])
+
+  console.log(history)
+
+  useEffect(() => {
+    const fetchSessions = async () => {
+      const res = await fetch('/api/chat/sessions')
+      const data = await res.json()
+      setHistory(data)
+    }
+
+    fetchSessions()
+  }, [])
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>

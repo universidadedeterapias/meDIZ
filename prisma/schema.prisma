@@ -22,37 +22,21 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   chatSessions  ChatSession[]
-  Message       Message[]
   Account       Account[]
   Session       Session[]
 }
 
 
 model ChatSession {
-  id        String   @id @default(uuid())   // Usando UUID como ID
-  userId    String   // UUID do usuário
-  startedAt DateTime @default(now())         // Data e hora de início da sessão
-  endedAt   DateTime?                        // Data e hora de término da sessão (se aplicável)
-  context   Json?                             // Contexto ou histórico da sessão (opcional)
-  createdAt DateTime @default(now())         // Data e hora de criação
-  updatedAt DateTime @updatedAt              // Data e hora de última atualização
+  id        String   @id @default(uuid())
+  userId    String
+  threadId  String?   @unique
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user      User    @relation(fields: [userId], references: [id]) // Relacionamento com o usuário
-  messages  Message[]                         // Relacionamento com as mensagens
-}
-
-model Message {
-  id             String   @id @default(uuid())  // Usando UUID como ID
-  chatSessionId  String   // UUID da sessão de chat relacionada
-  userId         String   // UUID do usuário que enviou a mensagem
-  messageType    String   // Tipo de mensagem (ex: 'user' ou 'assistant')
-  content        String   // Conteúdo da mensagem
-  timestamp      DateTime @default(now())      // Data e hora da mensagem
-  createdAt      DateTime @default(now())      // Data e hora de criação
-  updatedAt      DateTime @updatedAt           // Data e hora de última atualização
-
-  chatSession    ChatSession @relation(fields: [chatSessionId], references: [id]) // Relacionamento com a sessão de chat
-  user           User        @relation(fields: [userId], references: [id])         // Relacionamento com o usuário
+  user User @relation(fields: [userId], references: [id])
 }
 
 model Account {
