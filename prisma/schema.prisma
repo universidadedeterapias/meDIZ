@@ -1,12 +1,13 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// prisma/schema.prisma
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
-generator client {
+ generator client {
   provider = "prisma-client-js"
-}
+  // força o client pra uma pasta estável
+  output   = "node_modules/@prisma/client"
+  // optional: especifique binaryTargets se você precisar de alvos específicos
+  // binaryTargets = ["native", "windows"]
+ }
+
 
 datasource db {
   provider = "postgresql"
@@ -14,23 +15,26 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
+  id            String        @id @default(uuid())
   name          String?
-  email         String    @unique
-  emailVerified DateTime?             // campo obrigatório pro adapter
-  image         String?               // campo obrigatório pro adapter
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  chatSessions  ChatSession[]
-  Account       Account[]
-  Session       Session[]
-}
+  email         String        @unique
+  emailVerified DateTime?     // obrigatório para o adapter
+  image         String?       // obrigatório para o adapter
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
+  // suas sessions de chat
+  chatSessions  ChatSession[]
+
+  // relações usadas pelo Auth.js
+  accounts      Account[]     // armazena tokens OAuth, etc
+  sessions      Session[]     // armazena sessionTokens JWT ou DB
+}
 
 model ChatSession {
   id        String   @id @default(uuid())
   userId    String
-  threadId  String?   @unique
+  threadId  String?  @unique
   startedAt DateTime @default(now())
   endedAt   DateTime?
   createdAt DateTime @default(now())
@@ -40,20 +44,20 @@ model ChatSession {
 }
 
 model Account {
-  id                 String   @id @default(uuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?  
-  access_token       String?  
-  expires_at         Int?     
-  token_type         String?  
-  scope              String?  
-  id_token           String?  
-  session_state      String?  
+  id                String   @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -64,7 +68,7 @@ model Session {
   userId       String
   expires      DateTime
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -74,4 +78,3 @@ model VerificationToken {
 
   @@unique([identifier, token])
 }
-

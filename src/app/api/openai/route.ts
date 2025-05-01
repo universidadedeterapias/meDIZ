@@ -14,6 +14,7 @@ import {
 import { NextResponse } from 'next/server'
 
 const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID!
+// console.log(ASSISTANT_ID)
 
 export async function POST(req: Request) {
   const session = await auth()

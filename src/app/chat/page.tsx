@@ -11,7 +11,7 @@ import {
 import { Search } from 'lucide-react'
 import Image from 'next/image'
 import { useState } from 'react'
-import ReactMarkdown from 'react-markdown'
+import { Result } from './result'
 
 export default function Page() {
   const [input, setInput] = useState('')
@@ -32,10 +32,10 @@ export default function Page() {
           'Content-Type': 'application/json'
         }
       })
-
       const data = await res.json()
-      if (data.responses) {
-        setResponses(data.responses)
+      if (data.responses?.length) {
+        const last = data.responses[0]
+        setResponses([last])
       }
     } catch (err) {
       console.error('Erro ao enviar mensagem:', err)
@@ -82,14 +82,9 @@ export default function Page() {
             </div>
 
             {responses.length > 0 && (
-              <div className="bg-muted p-6 rounded-md mt-6 space-y-4">
-                {responses.map((resp, idx) => (
-                  <div
-                    key={idx}
-                    className="prose prose-sm max-w-none text-muted-foreground"
-                  >
-                    <ReactMarkdown>{resp}</ReactMarkdown>
-                  </div>
+              <div className="mt-6">
+                {responses.map((md, idx) => (
+                  <Result key={idx} markdown={md} />
                 ))}
               </div>
             )}
