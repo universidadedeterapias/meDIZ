@@ -2,10 +2,6 @@
 
  generator client {
   provider = "prisma-client-js"
-  // força o client pra uma pasta estável
-  output   = "node_modules/@prisma/client"
-  // optional: especifique binaryTargets se você precisar de alvos específicos
-  // binaryTargets = ["native", "windows"]
  }
 
 
@@ -32,13 +28,14 @@ model User {
 }
 
 model ChatSession {
-  id        String   @id @default(uuid())
-  userId    String
-  threadId  String?  @unique
-  startedAt DateTime @default(now())
-  endedAt   DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  userId      String
+  threadId    String?  @unique
+  isFavorite  Boolean  @default(false)
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id])
 }

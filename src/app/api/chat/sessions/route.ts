@@ -9,10 +9,11 @@ export async function GET() {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
 
-  const sessions = await prisma.chatSession.findMany({
+  const chats = await prisma.chatSession.findMany({
     where: { userId: session.user.id },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, threadId: true, createdAt: true }
   })
 
-  return NextResponse.json(sessions)
+  return NextResponse.json(chats)
 }

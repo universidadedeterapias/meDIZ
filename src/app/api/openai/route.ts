@@ -7,38 +7,33 @@ import {
   runAssistant,
   waitForRunCompletion
 } from '@/lib/assistant'
-import {
-  attachThreadToSession,
-  getOrCreateChatSession
-} from '@/lib/chatService'
+import { createChatSessionWithThread } from '@/lib/chatService'
 import { NextResponse } from 'next/server'
 
 const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID!
-// console.log(ASSISTANT_ID)
 
 export async function POST(req: Request) {
   const session = await auth()
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
-
-  const { message } = await req.json()
   const userId = session.user.id
+  const { message } = await req.json()
 
   try {
-    const chatSession = await getOrCreateChatSession(userId)
+    // 1) cria um thread novo
+    const threadId = await createThread()
 
-    let threadId = chatSession.threadId
-    if (!threadId) {
-      threadId = await createThread()
-      await attachThreadToSession(chatSession.id, threadId)
-    }
+    // 2) cria a sessão vinculando o thread
+    await createChatSessionWithThread(userId, threadId)
 
+    // 3) adiciona mensagem e dispara o assistant
     await addMessageToThread(threadId, message)
     const runId = await runAssistant(threadId, ASSISTANT_ID)
     await waitForRunCompletion(threadId, runId)
-    const responses = await getMessages(threadId)
 
+    // 4) retorna o resultado
+    const responses = await getMessages(threadId)
     return NextResponse.json({ responses, threadId })
   } catch (err) {
     console.error(err)

@@ -1,15 +1,28 @@
+// lib/chatService.ts
+
 import { prisma } from './prisma'
 
-export async function getOrCreateChatSession(userId: string) {
-  const existing = await prisma.chatSession.findFirst({
-    where: { userId, endedAt: null }
-  })
-
-  if (existing) return existing
-
+/**
+ * Cria uma nova sessão de chat, já vinculando o threadId.
+ */
+export async function createChatSessionWithThread(
+  userId: string,
+  threadId: string
+) {
   return prisma.chatSession.create({
-    data: { userId }
+    data: {
+      userId,
+      threadId // grava o novo threadId
+      // endedAt fica null por padrão
+    }
   })
+}
+
+/**
+ * (Opcional) Se você ainda quiser lógica separada:
+ */
+export async function createChatSession(userId: string) {
+  return prisma.chatSession.create({ data: { userId } })
 }
 
 export async function attachThreadToSession(

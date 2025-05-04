@@ -26,7 +26,7 @@ import ReactMarkdown from 'react-markdown'
 
 export function Result({ markdown }: { markdown: string }) {
   const data = React.useMemo(() => parseResponse(markdown), [markdown])
-  console.log(data)
+  // console.log(data)
 
   return (
     <Card className="w-full mb-6">

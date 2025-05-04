@@ -2,6 +2,11 @@
 import { OpenAIMessage } from '@/types/openaiMessage'
 import { openaiRequest } from './openai'
 
+type ThreadMessages = {
+  assistant: string[]
+  user: string[]
+}
+
 export async function createThread() {
   const res = await openaiRequest<{ id: string }>('threads', { method: 'POST' })
   return res.id
@@ -35,12 +40,36 @@ export async function waitForRunCompletion(threadId: string, runId: string) {
   }
 }
 
-export async function getMessages(threadId: string) {
+export async function getMessages(threadId: string): Promise<ThreadMessages> {
+  const res = await openaiRequest<{ data: OpenAIMessage[] }>(
+    `threads/${threadId}/messages`,
+    { method: 'GET' }
+  )
+
+  return res.data.reduce<ThreadMessages>(
+    (acc, msg) => {
+      // extrai texto com fallback vazio
+      const text = msg.content?.[0]?.text?.value ?? ''
+
+      if (msg.role === 'assistant') {
+        acc.assistant.push(text)
+      } else if (msg.role === 'user') {
+        acc.user.push(text)
+      }
+      return acc
+    },
+    { assistant: [], user: [] }
+  )
+}
+
+export async function getUserMessages(threadId: string) {
   const res = await openaiRequest<{ data: OpenAIMessage[] }>(
     `threads/${threadId}/messages`,
     {
       method: 'GET'
     }
   )
-  return res.data.map(m => m.content?.[0]?.text?.value ?? '')
+  return res.data
+    .filter(m => m.role === 'user')
+    .map(m => m.content?.[0]?.text?.value ?? '')
 }
