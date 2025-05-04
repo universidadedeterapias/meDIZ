@@ -6,8 +6,10 @@ import {
   AccordionTrigger
 } from '@/components/ui/accordion'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import parseResponse from '@/lib/parseResponse'
+import { Heart, Share2 } from 'lucide-react'
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
 
@@ -30,24 +32,45 @@ export function Result({ markdown }: { markdown: string }) {
 
   return (
     <Card className="w-full mb-6">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-xl">{data.scientific}</CardTitle>
-        <p className="text-sm italic text-muted-foreground">{data.popular}</p>
-        <Badge variant="outline">{data.system}</Badge>
+      <CardHeader className="space-y-4">
+        <div className="flex items-center gap-2">
+          <span className="block w-1 h-4 bg-primary rounded" />
+          <span className="uppercase text-sm font-semibold text-primary">
+            Nome científico
+          </span>
+        </div>
+        <CardTitle className="text-2xl font-bold text-foreground">
+          {data.scientific}
+        </CardTitle>
+        <div className="w-full py-4 text-center text-2xl font-bold text-primary bg-indigo-50 rounded-2xl">
+          {data.popular}
+        </div>
+        <Badge
+          variant="outline"
+          className="mt-2 w-fit text-primary bg-indigo-50 border-none p-2 rounded-full"
+        >
+          {data.system}
+        </Badge>
       </CardHeader>
 
       <CardContent className="space-y-6">
-        <section>
-          <h3 className="font-semibold text-primary uppercase mb-2">
-            Contexto Geral
-          </h3>
+        <section className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="block w-1 h-4 bg-primary rounded" />
+            <span className="uppercase text-sm font-semibold text-primary">
+              Contexto Geral
+            </span>
+          </div>
           <p className="text-sm leading-relaxed">{data.contexto}</p>
         </section>
 
-        <section>
-          <h3 className="font-semibold text-primary uppercase mb-2">
-            Sentido Biológico
-          </h3>
+        <section className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="block w-1 h-4 bg-primary rounded" />
+            <span className="uppercase text-sm font-semibold text-primary">
+              Sentido biológico
+            </span>
+          </div>
           <p className="text-sm leading-relaxed">{data.sentido}</p>
         </section>
 
@@ -63,6 +86,14 @@ export function Result({ markdown }: { markdown: string }) {
             </AccordionItem>
           ))}
         </Accordion>
+        <div className="w-full flex flex-row items-center justify-between gap-2">
+          <Button className="w-full py-6 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors">
+            <Share2 /> Compartilhar
+          </Button>
+          <Button className="w-full py-6 bg-rose-100 text-red-600 hover:bg-rose-200 transition-colors">
+            <Heart /> Favoritar
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )

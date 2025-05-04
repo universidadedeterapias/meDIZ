@@ -8,8 +8,7 @@ import {
   SidebarTrigger
 } from '@/components/ui/sidebar'
 import { Separator } from '@radix-ui/react-separator'
-import { Search } from 'lucide-react'
-import Image from 'next/image'
+import { Search, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Result } from './result'
 
@@ -103,49 +102,70 @@ export default function Page() {
         selectedThread={selectedThread}
         onSelectSession={setSelectedThread}
       />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1 z-50" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-          </div>
+
+      {/* wrapper full-height */}
+      <SidebarInset className="flex flex-col h-screen">
+        {/* header sempre visível */}
+        <header className="sticky top-0 z-10 flex items-center h-16 bg-white px-4 shadow-sm">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mx-2 h-6" />
+          {/* opcional: logo menor ou título */}
         </header>
-        <div className="flex flex-1 gap-4 p-4 -mt-32 align-middle h-svh justify-center">
-          <div className="w-full flex flex-col align-middle justify-center gap-6 max-w-4xl">
-            <div className="flex justify-center align-middle">
-              <Image
-                src={'/imgs/logo.svg'}
-                alt="logo da mediz"
-                width={250}
-                height={150}
-              />
-            </div>
-            <p className="text-2xl text-center">Como posso ajudar?</p>
-            <div className="flex align-middle justify-center">
-              <div className="w-full flex flex-row gap-1">
-                <Input
-                  type="search"
-                  placeholder="Digite o que procura..."
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                  disabled={loading}
-                />
-                <Button onClick={handleSendMessage} disabled={loading}>
-                  {loading ? '...' : <Search />}
-                </Button>
+
+        {/* bloco de logo + frase + busca (fixo logo e input) */}
+        <div className="flex flex-col items-center gap-4 py-6 px-4">
+          <p className="text-indigo-600 font-bold text-3xl">
+            me<span className="uppercase">diz</span>
+            <span className="text-yellow-400">!</span>
+          </p>
+          <div className="w-full max-w-4xl flex gap-2">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="w-4 h-4 text-gray-400" />
               </div>
+              <Input
+                type="search"
+                placeholder="Digite o que procura..."
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+                disabled={loading}
+                className="pl-10 pr-10 py-6 border-2 border-gray-300 
+    focus:border-indigo-600 focus:outline-none 
+    transition-colors"
+              />
+              {input && (
+                <button
+                  type="button"
+                  onClick={() => setInput('')}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
             </div>
 
-            {responses.length > 0 && (
-              <div className="mt-6">
-                {responses.map((md, idx) => (
-                  <Result key={idx} markdown={md} />
-                ))}
-              </div>
-            )}
+            {/* botão externo de busca */}
+            <Button
+              onClick={handleSendMessage}
+              disabled={loading}
+              className="py-6 border-2 border-primary"
+            >
+              {loading ? '...' : <Search />}
+            </Button>
           </div>
         </div>
+
+        {/* área de respostas – scroll somente aqui */}
+        <main className="flex-1 overflow-y-auto px-4 pb-6">
+          {responses.length > 0 && (
+            <div className="max-w-4xl mx-auto space-y-4">
+              {responses.map((md, idx) => (
+                <Result key={idx} markdown={md} />
+              ))}
+            </div>
+          )}
+        </main>
       </SidebarInset>
     </SidebarProvider>
   )
