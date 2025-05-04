@@ -26,7 +26,6 @@ export default function Page() {
 
   const [history, setHistory] = useState<ChatSession[]>([])
   const [selectedThread, setSelectedThread] = useState<string | null>(null)
-
   // 1) busca histórico + firstUserMessage ao montar
   useEffect(() => {
     async function loadHistory() {
@@ -106,7 +105,7 @@ export default function Page() {
       {/* wrapper full-height */}
       <SidebarInset className="flex flex-col h-screen">
         {/* header sempre visível */}
-        <header className="sticky top-0 z-10 flex items-center h-16 bg-white px-4 shadow-sm">
+        <header className="sticky top-0 z-10 flex items-center h-16 bg-primary px-4 shadow-sm">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mx-2 h-6" />
           {/* opcional: logo menor ou título */}
@@ -125,7 +124,7 @@ export default function Page() {
               </div>
               <Input
                 type="search"
-                placeholder="Digite o que procura..."
+                placeholder="Ex.: Dor de cabeça"
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSendMessage()}

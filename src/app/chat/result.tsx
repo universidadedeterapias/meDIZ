@@ -1,4 +1,5 @@
 'use client'
+
 import {
   Accordion,
   AccordionContent,
@@ -9,26 +10,36 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import parseResponse from '@/lib/parseResponse'
-import { Heart, Share2 } from 'lucide-react'
+import {
+  ArrowRightLeft,
+  Brain,
+  ChartLine,
+  Dna,
+  Heart,
+  Lightbulb,
+  Share2,
+  TriangleAlert,
+  Workflow
+} from 'lucide-react'
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
 
-// interface Section {
-//   title: string
-//   body: string
-// }
-// interface Parsed {
-//   scientific: string
-//   popular: string
-//   system: string
-//   contexto: string
-//   sentido: string
-//   others: Section[]
-// }
+// Mapa de string → componente, mantém tudo num lugar
+const ICON_MAP: Record<
+  string,
+  React.ComponentType<React.SVGProps<SVGSVGElement>>
+> = {
+  dna: Dna,
+  'triangle-alert': TriangleAlert,
+  lightbulb: Lightbulb,
+  brain: Brain,
+  workflow: Workflow,
+  'arrow-right-left': ArrowRightLeft,
+  'chart-line': ChartLine
+}
 
 export function Result({ markdown }: { markdown: string }) {
   const data = React.useMemo(() => parseResponse(markdown), [markdown])
-  // console.log(data)
 
   return (
     <Card className="w-full mb-6">
@@ -54,6 +65,7 @@ export function Result({ markdown }: { markdown: string }) {
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {/* Contexto Geral */}
         <section className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="block w-1 h-4 bg-primary rounded" />
@@ -61,9 +73,12 @@ export function Result({ markdown }: { markdown: string }) {
               Contexto Geral
             </span>
           </div>
-          <p className="text-sm leading-relaxed">{data.contexto}</p>
+          <p className="text-sm leading-relaxed text-justify">
+            {data.contexto}
+          </p>
         </section>
 
+        {/* Sentido Biológico */}
         <section className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="block w-1 h-4 bg-primary rounded" />
@@ -71,22 +86,39 @@ export function Result({ markdown }: { markdown: string }) {
               Sentido biológico
             </span>
           </div>
-          <p className="text-sm leading-relaxed">{data.sentido}</p>
+          <p className="text-sm leading-relaxed text-justify">{data.sentido}</p>
         </section>
 
-        <Accordion type="single" collapsible className="space-y-2">
-          {data.others.map(sec => (
-            <AccordionItem key={sec.title} value={sec.title}>
-              <AccordionTrigger className="font-medium">
-                {sec.title}
-              </AccordionTrigger>
-              <AccordionContent className="prose prose-sm max-w-none">
-                <ReactMarkdown>{sec.body}</ReactMarkdown>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
+        {/* Accordion dinâmico com ícones */}
+        <Accordion type="single" collapsible className="space-y-2 rounded-md">
+          {data.others.map(sec => {
+            // Pega o component do icon, se existir
+            const Icon = sec.icon ? ICON_MAP[sec.icon] : null
+
+            return (
+              <AccordionItem
+                key={sec.title}
+                value={sec.title}
+                className="border rounded-md border-zinc-200"
+              >
+                <AccordionTrigger className="flex items-center gap-2 font-medium bg-zinc-50 rounded-md px-2 hover:no-underline">
+                  <div className="flex flex-row gap-1 justify-start items-center flex-1 capitalize">
+                    {Icon && (
+                      <Icon className="h-4 w-4 flex-shrink-0 text-primary" />
+                    )}
+                    {sec.title.toLowerCase()}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="prose prose-sm max-w-none p-3 text-justify">
+                  <ReactMarkdown>{sec.body}</ReactMarkdown>
+                </AccordionContent>
+              </AccordionItem>
+            )
+          })}
         </Accordion>
-        <div className="w-full flex flex-row items-center justify-between gap-2">
+
+        {/* Ações */}
+        <div className="w-full flex items-center justify-between gap-2">
           <Button className="w-full py-6 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors">
             <Share2 /> Compartilhar
           </Button>
