@@ -1,5 +1,6 @@
 'use client'
 import { AppSidebar } from '@/components/app-sidebar'
+import { ModeToggle } from '@/components/mode-toggle'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -108,7 +109,9 @@ export default function Page() {
         <header className="sticky top-0 z-10 flex items-center h-16 bg-primary px-4 shadow-sm">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mx-2 h-6" />
-          {/* opcional: logo menor ou título */}
+          <div className="w-full flex justify-end">
+            <ModeToggle />
+          </div>
         </header>
 
         {/* bloco de logo + frase + busca (fixo logo e input) */}
