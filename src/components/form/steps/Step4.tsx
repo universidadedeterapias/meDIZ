@@ -19,7 +19,7 @@ export default function Step4() {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(handleFinalSubmit)}
-        className="space-y-4 max-w-md mx-auto mt-8"
+        className="space-y-4 w-full mx-auto mt-8"
       >
         {/* Descrição */}
         <FormField

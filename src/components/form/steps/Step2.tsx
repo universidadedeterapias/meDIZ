@@ -34,7 +34,7 @@ export default function Step2() {
           e.preventDefault()
           handleStep2Submit()
         }}
-        className="space-y-4 max-w-md mx-auto mt-8"
+        className="space-y-4 w-full mx-auto mt-8"
       >
         {/* Idade */}
         <FormField

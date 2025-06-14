@@ -33,7 +33,7 @@ export default function Step3() {
           e.preventDefault()
           handleStep3Submit()
         }}
-        className="space-y-4 max-w-md mx-auto mt-8"
+        className="space-y-4 w-full mx-auto mt-8"
       >
         {/* Uso do App */}
         <FormField
