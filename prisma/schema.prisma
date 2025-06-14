@@ -10,6 +10,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AppUsage {
+  PERSONAL
+  PROFESSIONAL
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  NON_BINARY
+  PREFER_NOT_TO_SAY
+}
+
 model User {
   id            String        @id @default(uuid())
   name          String?
@@ -18,6 +30,14 @@ model User {
   image         String?       // obrigatório para o adapter
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+
+  fullName      String?
+  whatsapp      String?
+  age           Int?
+  gender        Gender?
+  profession    String?
+  appUsage      AppUsage?
+  description   String?       @db.Text
 
   // suas sessions de chat
   chatSessions  ChatSession[]
