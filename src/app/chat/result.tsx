@@ -1,5 +1,6 @@
 'use client'
 
+import { ShareInsightDialog } from '@/components/Share'
 import {
   Accordion,
   AccordionContent,
@@ -17,11 +18,10 @@ import {
   Dna,
   Heart,
   Lightbulb,
-  Share2,
   TriangleAlert,
   Workflow
 } from 'lucide-react'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 
 // Mapa de string → componente, mantém tudo num lugar
@@ -40,6 +40,11 @@ const ICON_MAP: Record<
 
 export function Result({ markdown }: { markdown: string }) {
   const data = React.useMemo(() => parseResponse(markdown), [markdown])
+  const [baseUrl, setBaseUrl] = useState('')
+  useEffect(() => {
+    // só roda no client
+    setBaseUrl(window.location.origin)
+  }, [])
 
   return (
     <Card className="w-full mb-6">
@@ -119,12 +124,15 @@ export function Result({ markdown }: { markdown: string }) {
 
         {/* Ações */}
         <div className="w-full flex items-center justify-between gap-2">
-          <Button className="w-full py-6 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors">
-            <Share2 /> Compartilhar
-          </Button>
-          <Button className="w-full py-6 bg-rose-100 text-red-600 hover:bg-rose-200 transition-colors">
+          <Button className="w-full py-6 bg-rose-100 text-red-600 hover:bg-rose-200 transition-colors hidden">
             <Heart /> Favoritar
           </Button>
+          <ShareInsightDialog
+            title={`${data.popular} – Sentido biológico`}
+            url={baseUrl}
+            text={data.sentido}
+            triggerClassName="w-full py-6 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors flex items-center justify-center gap-2"
+          />
         </div>
       </CardContent>
     </Card>

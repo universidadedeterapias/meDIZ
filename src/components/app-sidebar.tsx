@@ -6,7 +6,6 @@ import {
   SidebarHeader,
   SidebarRail
 } from '@/components/ui/sidebar'
-import { NavHistory } from './nav-history'
 
 type Props = {
   history: {
@@ -20,9 +19,9 @@ type Props = {
 }
 
 export function AppSidebar({
-  history,
-  selectedThread,
-  onSelectSession,
+  // history,
+  // selectedThread,
+  // onSelectSession,
   ...props
 }: Props) {
   return (
@@ -30,11 +29,11 @@ export function AppSidebar({
       <SidebarHeader>{/* logo */}</SidebarHeader>
       <SidebarContent>
         {/* <NavOptions /> */}
-        <NavHistory
+        {/* <NavHistory
           items={history}
           selectedThread={selectedThread}
           onSelect={onSelectSession}
-        />
+        /> */}
       </SidebarContent>
       <SidebarFooter>{/* <NavUser /> */}</SidebarFooter>
       <SidebarRail />
