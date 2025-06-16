@@ -5,15 +5,58 @@ import { createContext, useContext, useState } from 'react'
 import { useForm, UseFormReturn } from 'react-hook-form'
 import { z } from 'zod'
 
-const formSchema = z.object({
-  fullName: z.string().min(1, 'Nome obrigatório'),
-  whatsapp: z.string().min(1, 'WhatsApp obrigatório'),
-  age: z.coerce.number().min(1, 'Idade obrigatória'),
-  gender: z.enum(['MALE', 'FEMALE', 'NON_BINARY', 'PREFER_NOT_TO_SAY']),
-  profession: z.string().min(1, 'Profissão obrigatória'),
-  appUsage: z.enum(['PERSONAL', 'PROFESSIONAL']),
-  description: z.string().min(1, 'Descrição obrigatória')
-})
+const formSchema = z
+  .object({
+    fullName: z.string().min(1, 'Nome obrigatório'),
+    whatsapp: z.string().min(1, 'WhatsApp obrigatório'),
+    age: z.coerce.number().min(1, 'Idade obrigatória'),
+    gender: z.enum(['MALE', 'FEMALE', 'NON_BINARY', 'PREFER_NOT_TO_SAY']),
+    profession: z.string().min(1, 'Profissão obrigatória'),
+    appUsage: z.enum(['PERSONAL', 'PROFESSIONAL']),
+    description: z.string().min(1, 'Descrição obrigatória'),
+
+    // Campos adicionais - Opcionais por padrão
+    educationOrSpecialty: z.string().optional(),
+    yearsOfExperience: z.string().optional(),
+    clientsPerWeek: z.string().optional(),
+    averageSessionPrice: z.string().optional()
+  })
+  .superRefine((data, ctx) => {
+    // Se appUsage for PROFESSIONAL, validar os campos adicionais
+    if (data.appUsage === 'PROFESSIONAL') {
+      if (!data.educationOrSpecialty) {
+        ctx.addIssue({
+          path: ['educationOrSpecialty'],
+          code: 'custom',
+          message: 'Formação ou Especialidade obrigatória'
+        })
+      }
+
+      if (data.yearsOfExperience == null) {
+        ctx.addIssue({
+          path: ['yearsOfExperience'],
+          code: 'custom',
+          message: 'Tempo de atuação obrigatório'
+        })
+      }
+
+      if (data.clientsPerWeek == null) {
+        ctx.addIssue({
+          path: ['clientsPerWeek'],
+          code: 'custom',
+          message: 'Número de clientes por semana obrigatório'
+        })
+      }
+
+      if (data.averageSessionPrice == null) {
+        ctx.addIssue({
+          path: ['averageSessionPrice'],
+          code: 'custom',
+          message: 'Valor médio por atendimento obrigatório'
+        })
+      }
+    }
+  })
 
 export type UserFormData = z.infer<typeof formSchema>
 
@@ -39,7 +82,11 @@ export function UserFormProvider({ children }: { children: React.ReactNode }) {
       gender: 'MALE',
       profession: '',
       appUsage: 'PERSONAL',
-      description: ''
+      description: '',
+      educationOrSpecialty: '',
+      yearsOfExperience: '',
+      clientsPerWeek: '',
+      averageSessionPrice: ''
     }
   })
 
@@ -50,13 +97,18 @@ export function UserFormProvider({ children }: { children: React.ReactNode }) {
     const isValid = await form.trigger()
     if (!isValid) return
 
-    await fetch('/api/form', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form.getValues())
-    })
+    try {
+      await fetch('/api/user/form', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form.getValues())
+      })
 
-    // Aqui você pode redirecionar ou mostrar sucesso
+      nextStep() // 👈 Vai para o Step 5 (Success)
+    } catch (error) {
+      console.error('Erro ao salvar formulário:', error)
+      // Se quiser, pode adicionar um estado de erro aqui
+    }
   }
 
   return (

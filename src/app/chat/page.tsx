@@ -1,4 +1,5 @@
 'use client'
+
 import { AppSidebar } from '@/components/app-sidebar'
 import { ModeToggle } from '@/components/mode-toggle'
 import { Button } from '@/components/ui/button'
@@ -10,6 +11,7 @@ import {
 } from '@/components/ui/sidebar'
 import { Separator } from '@radix-ui/react-separator'
 import { Search, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Result } from './result'
 
@@ -21,80 +23,153 @@ type ChatSession = {
 }
 
 export default function Page() {
+  const router = useRouter()
+
+  // 0) States
+  const [checkingProfile, setCheckingProfile] = useState(true)
   const [input, setInput] = useState('')
   const [responses, setResponses] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
-
   const [history, setHistory] = useState<ChatSession[]>([])
   const [selectedThread, setSelectedThread] = useState<string | null>(null)
-  // 1) busca histórico + firstUserMessage ao montar
+
+  // 1) Validação de perfil
   useEffect(() => {
+    let cancelled = false
+
+    async function checkUserProfile() {
+      try {
+        const res = await fetch('/api/user')
+        if (!res.ok) {
+          router.replace('/form')
+          return
+        }
+        const user = await res.json()
+        const missing =
+          !user.fullName ||
+          !user.age ||
+          !user.gender ||
+          !user.profession ||
+          !user.appUsage ||
+          !user.description
+
+        if (missing) {
+          router.replace('/form')
+        } else if (!cancelled) {
+          setCheckingProfile(false)
+        }
+      } catch {
+        router.replace('/form')
+      }
+    }
+
+    checkUserProfile()
+    return () => {
+      cancelled = true
+    }
+  }, [router])
+
+  // 2) Histórico de sessões (só após perfil validado)
+  useEffect(() => {
+    if (checkingProfile) return
+    let cancelled = false
+
     async function loadHistory() {
-      // pega sessões básicas
-      const sessions: Omit<ChatSession, 'firstUserMessage'>[] = await fetch(
-        '/api/chat/sessions'
-      ).then(r => r.json())
+      try {
+        const sessions: Omit<ChatSession, 'firstUserMessage'>[] = await fetch(
+          '/api/chat/sessions'
+        ).then(r => r.json())
 
-      // paraleliza busca da primeira mensagem de cada thread
-      const withFirst = await Promise.all(
-        sessions.map(async s => {
-          const resp = await fetch(
-            `/api/openai/messages/user-messages?threadId=${s.threadId}`
-          )
-          const { firstUserMessage } = await resp.json()
-          return { ...s, firstUserMessage }
-        })
-      )
+        const withFirst = await Promise.all(
+          sessions.map(async s => {
+            const resp = await fetch(
+              `/api/openai/messages/user-messages?threadId=${s.threadId}`
+            )
+            const { firstUserMessage } = await resp.json()
+            return { ...s, firstUserMessage }
+          })
+        )
 
-      setHistory(withFirst)
+        if (!cancelled) setHistory(withFirst)
+      } catch (err) {
+        console.error(err)
+      }
     }
 
     loadHistory()
-  }, [])
+    return () => {
+      cancelled = true
+    }
+  }, [checkingProfile])
 
-  // 2) carrega mensagens quando seleciona um histórico
+  // 3) Carregar respostas de uma thread selecionada
   useEffect(() => {
-    if (!selectedThread) return
+    if (checkingProfile || !selectedThread) return
+    let cancelled = false
     setLoading(true)
+
     fetch(`/api/openai/messages?threadId=${selectedThread}`)
       .then(r => r.json())
       .then(data => {
-        setResponses(data.responses.assistant || [])
+        if (!cancelled) setResponses(data.responses.assistant || [])
       })
-      .finally(() => setLoading(false))
-  }, [selectedThread])
+      .catch(console.error)
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
 
-  // 3) nova pesquisa sempre cria thread + sessão, igual antes
+    return () => {
+      cancelled = true
+    }
+  }, [checkingProfile, selectedThread])
+
+  // 4) Enviar nova mensagem
   const handleSendMessage = async () => {
     if (!input.trim()) return
     setLoading(true)
     setResponses([])
 
-    const res = await fetch('/api/openai', {
-      method: 'POST',
-      body: JSON.stringify({ message: input }),
-      headers: { 'Content-Type': 'application/json' }
-    })
-    const data = await res.json()
-    console.log(data)
-    if (data.threadId) {
-      setSelectedThread(data.threadId)
-      // recarrega histórico pra incluir a sessão recém-criada
-      setHistory(prev => [
-        {
-          id: data.threadId,
-          threadId: data.threadId,
-          createdAt: new Date().toISOString(),
-          firstUserMessage: input.trim()
-        },
-        ...prev
-      ])
+    try {
+      const res = await fetch('/api/openai', {
+        method: 'POST',
+        body: JSON.stringify({ message: input.trim() }),
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const data = await res.json()
+
+      if (data.threadId) {
+        setSelectedThread(data.threadId)
+        setHistory(prev => [
+          {
+            id: data.threadId,
+            threadId: data.threadId,
+            createdAt: new Date().toISOString(),
+            firstUserMessage: input.trim()
+          },
+          ...prev
+        ])
+      }
+      if (data.responses?.length) {
+        setResponses([data.responses.assistant[0]])
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setInput('')
+      setLoading(false)
     }
-    if (data.responses?.length) setResponses([data.responses.assistant[0]])
-    setInput('') // limpa campo
-    setLoading(false)
   }
 
+  // 5) Loading inicial do perfil
+  if (checkingProfile) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-zinc-500">Carregando perfil...</p>
+      </div>
+    )
+  }
+
+  // 6) JSX do chat
   return (
     <SidebarProvider>
       <AppSidebar
@@ -103,9 +178,8 @@ export default function Page() {
         onSelectSession={setSelectedThread}
       />
 
-      {/* wrapper full-height */}
       <SidebarInset className="flex flex-col h-screen">
-        {/* header sempre visível */}
+        {/* Header */}
         <header className="sticky top-0 z-10 flex items-center h-16 bg-primary px-4 shadow-sm">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mx-2 h-6" />
@@ -114,7 +188,7 @@ export default function Page() {
           </div>
         </header>
 
-        {/* bloco de logo + frase + busca (fixo logo e input) */}
+        {/* Logo + Busca */}
         <div className="flex flex-col items-center gap-4 py-6 px-4">
           <p className="text-indigo-600 font-bold text-3xl">
             me<span className="uppercase">diz</span>
@@ -133,8 +207,8 @@ export default function Page() {
                 onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
                 disabled={loading}
                 className="pl-10 pr-10 py-6 border-2 border-gray-300 
-    focus:border-indigo-600 focus:outline-none 
-    transition-colors"
+                  focus:border-indigo-600 focus:outline-none 
+                  transition-colors"
               />
               {input && (
                 <button
@@ -146,8 +220,6 @@ export default function Page() {
                 </button>
               )}
             </div>
-
-            {/* botão externo de busca */}
             <Button
               onClick={handleSendMessage}
               disabled={loading}
@@ -158,7 +230,7 @@ export default function Page() {
           </div>
         </div>
 
-        {/* área de respostas – scroll somente aqui */}
+        {/* Respostas */}
         <main className="flex-1 overflow-y-auto px-4 pb-6">
           {responses.length > 0 && (
             <div className="max-w-4xl mx-auto space-y-4">

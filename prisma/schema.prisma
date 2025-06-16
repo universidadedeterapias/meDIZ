@@ -39,6 +39,12 @@ model User {
   appUsage      AppUsage?
   description   String?       @db.Text
 
+  // campos para appusage=professional
+  educationOrSpecialty String?
+  yearsOfExperience    String?
+  clientsPerWeek       String?
+  averageSessionPrice  String?
+
   // suas sessions de chat
   chatSessions  ChatSession[]
 

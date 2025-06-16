@@ -18,10 +18,13 @@ export async function POST(request: Request) {
       gender,
       profession,
       appUsage,
-      description
+      description,
+      educationOrSpecialty,
+      yearsOfExperience,
+      clientsPerWeek,
+      averageSessionPrice
     } = body
 
-    // Atualiza o usuário com as informações recebidas
     await prisma.user.update({
       where: { id: session.user.id },
       data: {
@@ -31,7 +34,11 @@ export async function POST(request: Request) {
         gender,
         profession,
         appUsage,
-        description
+        description,
+        educationOrSpecialty,
+        yearsOfExperience,
+        clientsPerWeek,
+        averageSessionPrice
       }
     })
 
