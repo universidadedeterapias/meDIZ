@@ -33,7 +33,6 @@ export default function FormPage() {
 
 function FormStepsRenderer() {
   const { step } = useUserForm()
-  console.log(step)
 
   switch (step) {
     case 1:

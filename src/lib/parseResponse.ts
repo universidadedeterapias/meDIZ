@@ -1,14 +1,11 @@
-function escapeRegex(str: string) {
-  return str.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
-}
-
-type OtherItem = {
-  title: string
-  body: string
-  icon: string | null
-}
-
 export default function parseResponse(md: string) {
+  // escapa caracteres especiais para uso em RegExp
+  function escapeRegex(str: string) {
+    return str.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
+  }
+
+  type OtherItem = { title: string; body: string; icon: string | null }
+
   // cabeçalhos que você quer no others
   const sectionTitles = [
     'SÍMBOLOS BIOLÓGICOS',
@@ -20,10 +17,10 @@ export default function parseResponse(md: string) {
     'FASES DA DOENÇA',
     'DOENÇAS CORRELACIONADAS',
     'CHAVE TERAPÊUTICA [RE]SENTIR',
-    'FONTE'
+    'FONTE',
+    'PERGUNTAS REFLEXIVAS'
   ] as const
 
-  // mapa de ícones por título (use uppercase exato, sem acentos ou com acentos conforme seu sectionTitles)
   const sectionIconMap: Record<(typeof sectionTitles)[number], string> = {
     'SÍMBOLOS BIOLÓGICOS': 'dna',
     'CONFLITO EMOCIONAL SUBJACENTE': 'triangle-alert',
@@ -32,28 +29,43 @@ export default function parseResponse(md: string) {
     'IMPACTO TRANSGERACIONAL': 'workflow',
     LATERALIDADE: 'arrow-right-left',
     'FASES DA DOENÇA': 'chart-line',
-    // estes não foram mapeados, podem ficar null ou ícone padrão
-    'DOENÇAS CORRELACIONADAS': '',
-    'CHAVE TERAPÊUTICA [RE]SENTIR': 'null as any',
-    FONTE: 'null as any'
+    'DOENÇAS CORRELACIONADAS': '', // ou null / ícone padrão
+    'CHAVE TERAPÊUTICA [RE]SENTIR': '',
+    FONTE: '',
+    'PERGUNTAS REFLEXIVAS': 'question-mark-circle'
   }
 
-  const defaultIcon: string | null = null // ou 'default-icon'
+  const defaultIcon: string | null = null
 
-  // campos fixos
+  // ——— FIXOS ———
+
+  // captura "Nome técnico da condição" ou "Nome Técnico"
   const scientific =
-    md.match(/NOME CIENTÍFICO:\s*\*{2}(.+?)\*{2}/i)?.[1].trim() || ''
-  const popular = md.match(/NOME POPULAR\s*_([^_]+)_/i)?.[1].trim() || ''
-  const system = md.match(/SISTEMA\s*\n([^\n]+)/i)?.[1].trim() || ''
-  const contexto =
-    md.match(/\*\*CONTEXTO GERAL:\*\*\s*([\s\S]*?)(?=\*\*|$)/i)?.[1].trim() ||
-    ''
-  const sentido =
     md
-      .match(/\*\*SENTIDO BIOLÓGICO:\*\*\s*([\s\S]*?)(?=\*\*|$)/i)?.[1]
+      .match(
+        /\*\*(?:Nome técnico da condição|Nome Técnico):\*\*\s*([^\n]+)/i
+      )?.[1]
       .trim() || ''
 
-  // agora extrai só os outros, com ícone
+  // captura "Nome Popular"
+  const popular =
+    md.match(/\*\*Nome Popular:\*\*\s*([^\n]+)/i)?.[1].trim() || ''
+
+  // captura "Sistema X" em negrito, sem colon
+  const system = md.match(/\*\*Sistema\s*([^\*]+)\*\*/i)?.[1].trim() || ''
+
+  // captura Contexto Geral, até o próximo ** ou fim
+  const contexto =
+    md.match(/\*\*Contexto Geral:\*\*\s*([\s\S]*?)(?=\*\*|$)/i)?.[1].trim() ||
+    ''
+
+  // captura Sentido Biológico, até o próximo ** ou fim
+  const sentido =
+    md
+      .match(/\*\*Sentido Biológico:\*\*\s*([\s\S]*?)(?=\*\*|$)/i)?.[1]
+      .trim() || ''
+
+  // ——— OUTROS ———
   const others: OtherItem[] = []
 
   sectionTitles.forEach((title, i) => {
@@ -62,16 +74,18 @@ export default function parseResponse(md: string) {
       ? new RegExp(
           `\\*\\*${escapeRegex(
             title
-          )}\\*\\*:?\\s*([\\s\\S]*?)(?=\\*\\*${escapeRegex(next)}\\*\\*)`,
+          )}:?\\*\\*\\s*([\\s\\S]*?)(?=\\*\\*${escapeRegex(next)}:?\\*\\*)`,
           'i'
         )
-      : new RegExp(`\\*\\*${escapeRegex(title)}\\*\\*:?\\s*([\\s\\S]*?)$`, 'i')
+      : new RegExp(`\\*\\*${escapeRegex(title)}:?\\*\\*\\s*([\\s\\S]*?)$`, 'i')
 
     const m = md.match(pattern)
     if (m) {
-      const body = m[1].trim()
-      const icon = sectionIconMap[title] ?? defaultIcon
-      others.push({ title, body, icon })
+      others.push({
+        title,
+        body: m[1].trim(),
+        icon: sectionIconMap[title] ?? defaultIcon
+      })
     }
   })
 

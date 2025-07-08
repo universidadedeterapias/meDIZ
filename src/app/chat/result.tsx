@@ -40,6 +40,7 @@ const ICON_MAP: Record<
 
 export function Result({ markdown }: { markdown: string }) {
   const data = React.useMemo(() => parseResponse(markdown), [markdown])
+  console.log(data)
   const [baseUrl, setBaseUrl] = useState('')
   useEffect(() => {
     // só roda no client
