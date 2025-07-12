@@ -20,6 +20,7 @@ import {
   SidebarTrigger
 } from '@/components/ui/sidebar'
 import { FirstName } from '@/lib/utils'
+import { User } from '@/types/User'
 import { Result } from './result'
 
 // Tipo exato que vem da sua API
@@ -35,16 +36,6 @@ type RawUser = {
 }
 
 // Tipo que vamos usar internamente, sempre com name/fullName definidos
-type User = {
-  image: string
-  name: string
-  fullName: string
-  age: number
-  gender: string
-  profession: string
-  appUsage: string
-  description: string
-}
 
 export default function Page() {
   const router = useRouter()

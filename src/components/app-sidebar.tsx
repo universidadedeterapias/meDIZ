@@ -1,5 +1,4 @@
 // components/app-sidebar.tsx
-import { User } from '@/app/chat/page'
 import {
   Sidebar,
   SidebarContent,
@@ -9,6 +8,7 @@ import {
 } from '@/components/ui/sidebar'
 import { sidebarOptions } from '@/lib/sidebarOptions'
 import { FirstName, SurName } from '@/lib/utils'
+import { User } from '@/types/User'
 import Image from 'next/image'
 import { NavOptions } from './nav-options'
 
