@@ -27,6 +27,7 @@ model User {
   name          String?
   email         String        @unique
   emailVerified DateTime?     // obrigatório para o adapter
+  passwordHash  String?
   image         String?       // obrigatório para o adapter
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt

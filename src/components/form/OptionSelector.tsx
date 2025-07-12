@@ -14,7 +14,7 @@ export default function OptionSelector({
   onChange
 }: OptionSelectorProps) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2 justify-center pt-2">
       {options.map(option => {
         const isSelected = option.value === value
 
