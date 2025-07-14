@@ -205,7 +205,7 @@ export default function Page() {
                   Olá, {FirstName(user.name)}!
                 </h2>
               </div>
-              <Bell className="mr-2" strokeWidth={1} />
+              <Bell className="mr-2" />
             </div>
           </header>
 
@@ -242,7 +242,7 @@ export default function Page() {
 
           {/* Links externos se houver resposta */}
           {responses.length > 0 && (
-            <section className="w-full bg-zinc-100 pb-4">
+            <section className="w-full px-6 bg-zinc-100 pb-4">
               <ExternalLinks />
             </section>
           )}

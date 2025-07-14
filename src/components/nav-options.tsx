@@ -43,7 +43,6 @@ export function NavOptions({ options }: NavOptionsProps) {
                 <item.icon
                   style={{ width: '24px', height: '24px' }}
                   className="text-zinc-800"
-                  strokeWidth={1}
                 />
                 <span className="group-data-[collapsed=true]:hidden text-lg">
                   {item.name}
@@ -59,7 +58,7 @@ export function NavOptions({ options }: NavOptionsProps) {
               onClick={handleLogout}
               className="text-zinc-800 font-normal flex items-center justify-start gap-4 group-data-[collapsed=true]:hidden text-lg"
             >
-              <LogOut style={{ width: 24, height: 24 }} />
+              <LogOut style={{ width: '24px', height: '24px' }} />
               Sair
             </Button>
           </SidebarMenuButton>

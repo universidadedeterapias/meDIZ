@@ -46,12 +46,12 @@ export default function Step2() {
             control={form.control}
             name="age"
             render={({ field }) => (
-              <FormItem className="w-full">
+              <FormItem className="w-full p">
                 <FormLabel className="text-base">
                   Idade: {field.value} anos
                 </FormLabel>
                 <FormControl>
-                  <>
+                  <div className="w-full px-6 pt-4">
                     <Slider
                       min={18}
                       max={80}
@@ -63,7 +63,7 @@ export default function Step2() {
                       <span>18</span>
                       <span>80</span>
                     </div>
-                  </>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
