@@ -6,13 +6,13 @@ export default function parseResponse(md: string) {
 
   type OtherItem = { title: string; body: string; icon: string | null }
 
-  // ——— CABEÇALHO ———
-  const headerMatch = md.match(
-    /^\*(.+?)\*\s*\r?\n([^\r\n]+)\s*\r?\nSistema\s+(.+)$/m
-  )
-  const scientific = headerMatch?.[1].trim() || ''
-  const popular = headerMatch?.[2].trim() || ''
-  const system = headerMatch?.[3].trim() || ''
+  // ——— CAMPOS ESPECÍFICOS ———
+  const scientific =
+    md.match(/\*\*Nome científico\*\*\s*\r?\n\s*([^\r\n]+)/i)?.[1].trim() || ''
+  const popular =
+    md.match(/\*\*\Nome Popular\*\*\s*\r?\n\s*([^\r\n]+)/i)?.[1].trim() || ''
+  const system =
+    md.match(/\*\*\Sistema\*\*\s*\r?\n\s*([^\r\n]+)/i)?.[1].trim() || ''
 
   // ——— CONTEXTO GERAL e SENTIDO BIOLÓGICO ———
   const contextoGeral =

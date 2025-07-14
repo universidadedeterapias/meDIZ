@@ -19,6 +19,8 @@ export async function openaiRequest<T>(
   })
 
   if (!res.ok) {
+    const err = await res.json()
+    console.error('OpenAI API error details:', err)
     throw new Error(`OpenAI API error: ${res.statusText}`)
   }
 
