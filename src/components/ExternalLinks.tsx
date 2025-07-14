@@ -12,7 +12,7 @@ export function ExternalLinks() {
   const links = [
     {
       icon: Headphones,
-      label: 'Áudio Terapia',
+      label: 'Audioterapia',
       href: 'https://universidadedeterapias.com.br/thank-you-audiotherapy'
     },
     {
