@@ -19,6 +19,7 @@ import {
   SidebarProvider,
   SidebarTrigger
 } from '@/components/ui/sidebar'
+import UpSell from '@/components/upsell'
 import { FirstName } from '@/lib/utils'
 import { User } from '@/types/User'
 import { Result } from './result'
@@ -47,6 +48,7 @@ export default function Page() {
   const [responses, setResponses] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedThread, setSelectedThread] = useState<string | null>(null)
+  const [limitReached, setLimitReached] = useState(false)
 
   // 1) Confira perfil e normalize o nome
   useEffect(() => {
@@ -135,6 +137,15 @@ export default function Page() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: input.trim() })
       })
+
+      if (res.status === 403) {
+        const data = await res.json()
+        if (data.limitReached) {
+          setLimitReached(true)
+          return
+        }
+      }
+
       const data = await res.json()
 
       if (data.threadId) {
@@ -167,6 +178,10 @@ export default function Page() {
         <p className="text-zinc-100 text-lg font-bold">Bem-vindo!</p>
       </div>
     )
+  }
+
+  if (limitReached) {
+    return <UpSell />
   }
 
   // Layout principal do chat

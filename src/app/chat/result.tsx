@@ -80,7 +80,7 @@ export function Result({ markdown }: { markdown: string }) {
             </span>
           </div>
           <p className="text-sm leading-relaxed text-justify">
-            {data.contexto}
+            {data.contextoGeral}
           </p>
         </section>
 
@@ -92,7 +92,9 @@ export function Result({ markdown }: { markdown: string }) {
               Sentido biológico
             </span>
           </div>
-          <p className="text-sm leading-relaxed text-justify">{data.sentido}</p>
+          <p className="text-sm leading-relaxed text-justify">
+            {data.sentidoBiologico}
+          </p>
         </section>
 
         {/* Accordion dinâmico com ícones */}
@@ -131,7 +133,7 @@ export function Result({ markdown }: { markdown: string }) {
           <ShareInsightDialog
             title={`${data.popular} – Sentido biológico`}
             url={baseUrl}
-            text={data.sentido}
+            text={data.sentidoBiologico}
             triggerClassName="w-full py-6 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors flex items-center justify-center gap-2"
           />
         </div>

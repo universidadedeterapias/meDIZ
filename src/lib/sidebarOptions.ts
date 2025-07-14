@@ -15,7 +15,7 @@ export const sidebarOptions = [
   },
   {
     name: 'Termos e Politicas',
-    url: '/termos-e-politicas',
+    url: 'https://universidadedeterapias.com.br/termos-de-uso',
     icon: FileText
   }
 ] as const

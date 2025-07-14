@@ -119,11 +119,17 @@ export function LoginForm({
           {/* Termos */}
           <p className="text-center text-xs text-zinc-500 mt-4">
             Ao clicar em qualquer opção, você concorda com nossos{' '}
-            <a href="#" className="underline text-indigo-600">
+            <a
+              href="https://universidadedeterapias.com.br/termos-de-uso"
+              className="underline text-indigo-600"
+            >
               Termos de Serviço
             </a>{' '}
             e{' '}
-            <a href="#" className="underline text-indigo-600">
+            <a
+              href="https://universidadedeterapias.com.br/politica-de-privacidade"
+              className="underline text-indigo-600"
+            >
               Política de Privacidade
             </a>
             .

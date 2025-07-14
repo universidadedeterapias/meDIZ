@@ -6,88 +6,83 @@ export default function parseResponse(md: string) {
 
   type OtherItem = { title: string; body: string; icon: string | null }
 
-  // cabeçalhos que você quer no others
+  // ——— CABEÇALHO ———
+  const headerMatch = md.match(
+    /^\*(.+?)\*\s*\r?\n([^\r\n]+)\s*\r?\nSistema\s+(.+)$/m
+  )
+  const scientific = headerMatch?.[1].trim() || ''
+  const popular = headerMatch?.[2].trim() || ''
+  const system = headerMatch?.[3].trim() || ''
+
+  // ——— CONTEXTO GERAL e SENTIDO BIOLÓGICO ———
+  const contextoGeral =
+    md
+      .match(/\*\*Contexto Geral\*\*\s*([\s\S]*?)(?=\r?\n\*\*|$)/i)?.[1]
+      .trim() || ''
+
+  const sentidoBiologico =
+    md
+      .match(/\*\*Sentido Biológico\*\*\s*([\s\S]*?)(?=\r?\n\*\*|$)/i)?.[1]
+      .trim() || ''
+
+  // ——— DEMAIS SEÇÕES ———
   const sectionTitles = [
     'SÍMBOLOS BIOLÓGICOS',
     'CONFLITO EMOCIONAL SUBJACENTE',
     'EXPERIÊNCIAS COMUNS',
     'PADRÕES DE COMPORTAMENTO',
-    'IMPACTO TRANSGERACIONAL',
     'LATERALIDADE',
     'FASES DA DOENÇA',
-    'DOENÇAS CORRELACIONADAS',
-    'CHAVE TERAPÊUTICA [RE]SENTIR',
-    'FONTE',
-    'PERGUNTAS REFLEXIVAS'
+    'IMPACTO TRANSGERACIONAL',
+    'CORRELAÇÃO COM OUTRAS DOENÇAS',
+    'PERGUNTAS REFLEXIVAS',
+    'CHAVE TERAPÊUTICA \\[RE\\]SENTIR',
+    'NOTA LEGAL'
   ] as const
 
-  const sectionIconMap: Record<(typeof sectionTitles)[number], string> = {
-    'SÍMBOLOS BIOLÓGICOS': 'dna',
+  const sectionIconMap: Record<string, string> = {
     'CONFLITO EMOCIONAL SUBJACENTE': 'triangle-alert',
+    'SÍMBOLOS BIOLÓGICOS': 'dna',
     'EXPERIÊNCIAS COMUNS': 'lightbulb',
     'PADRÕES DE COMPORTAMENTO': 'brain',
-    'IMPACTO TRANSGERACIONAL': 'workflow',
     LATERALIDADE: 'arrow-right-left',
     'FASES DA DOENÇA': 'chart-line',
-    'DOENÇAS CORRELACIONADAS': '', // ou null / ícone padrão
-    'CHAVE TERAPÊUTICA [RE]SENTIR': '',
-    FONTE: '',
-    'PERGUNTAS REFLEXIVAS': 'question-mark-circle'
+    'IMPACTO TRANSGERACIONAL': 'workflow',
+    'CORRELAÇÃO COM OUTRAS DOENÇAS': 'link',
+    'PERGUNTAS REFLEXIVAS': 'question-mark-circle',
+    'CHAVE TERAPÊUTICA [RE]SENTIR': 'heart-pulse',
+    'NOTA LEGAL': 'document'
   }
 
-  const defaultIcon: string | null = null
-
-  // ——— FIXOS ———
-
-  // captura "Nome técnico da condição" ou "Nome Técnico"
-  const scientific =
-    md
-      .match(
-        /\*\*(?:Nome técnico da condição|Nome Técnico):\*\*\s*([^\n]+)/i
-      )?.[1]
-      .trim() || ''
-
-  // captura "Nome Popular"
-  const popular =
-    md.match(/\*\*Nome Popular:\*\*\s*([^\n]+)/i)?.[1].trim() || ''
-
-  // captura "Sistema X" em negrito, sem colon
-  const system = md.match(/\*\*Sistema\s*([^\*]+)\*\*/i)?.[1].trim() || ''
-
-  // captura Contexto Geral, até o próximo ** ou fim
-  const contexto =
-    md.match(/\*\*Contexto Geral:\*\*\s*([\s\S]*?)(?=\*\*|$)/i)?.[1].trim() ||
-    ''
-
-  // captura Sentido Biológico, até o próximo ** ou fim
-  const sentido =
-    md
-      .match(/\*\*Sentido Biológico:\*\*\s*([\s\S]*?)(?=\*\*|$)/i)?.[1]
-      .trim() || ''
-
-  // ——— OUTROS ———
   const others: OtherItem[] = []
-
-  sectionTitles.forEach((title, i) => {
-    const next = sectionTitles[i + 1]
-    const pattern = next
-      ? new RegExp(
-          `\\*\\*${escapeRegex(
-            title
-          )}:?\\*\\*\\s*([\\s\\S]*?)(?=\\*\\*${escapeRegex(next)}:?\\*\\*)`,
-          'i'
-        )
-      : new RegExp(`\\*\\*${escapeRegex(title)}:?\\*\\*\\s*([\\s\\S]*?)$`, 'i')
-
+  sectionTitles.forEach((rawTitle, i) => {
+    // remove escapes da chave terapêutica
+    const cleanRaw = rawTitle.replace(/\\\[|\\\]/g, '')
+    const titleEsc = escapeRegex(cleanRaw)
+    const nextRaw = sectionTitles[i + 1]?.replace(/\\\[|\\\]/g, '')
+    const lookahead = nextRaw
+      ? `(?=\\*\\*${escapeRegex(nextRaw)}\\*\\*)`
+      : `(?=$)`
+    const pattern = new RegExp(
+      `\\*\\*${titleEsc}\\*\\*\\s*([\\s\\S]*?)${lookahead}`,
+      'i'
+    )
     const m = md.match(pattern)
     if (m) {
       others.push({
-        title,
+        title: cleanRaw,
         body: m[1].trim(),
-        icon: sectionIconMap[title] ?? defaultIcon
+        icon: sectionIconMap[cleanRaw] || null
       })
     }
   })
 
-  return { scientific, popular, system, contexto, sentido, others }
+  return {
+    scientific,
+    popular,
+    system,
+    contextoGeral,
+    sentidoBiologico,
+    others
+  }
 }
