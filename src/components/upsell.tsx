@@ -68,8 +68,8 @@ export default function UpSell() {
 
         {/* 3. Garantia */}
         <section className="space-y-2 bg-emerald-50 border border-emerald-400 rounded-lg text-center px-4 py-6">
-          <span className="text-3xl">
-            <ShieldAlert />
+          <span className="w-full flex items-center justify-center text-emerald-900">
+            <ShieldAlert style={{ width: '32px', height: '32px' }} />
           </span>
           <h3 className="text-xl font-semibold text-emerald-900">
             100% Sem Risco
@@ -219,8 +219,8 @@ export default function UpSell() {
           <p className="text-blue-800">
             <h3 className="font-semibold">Cancelamento super fácil</h3>
             <p>
-              Basta acessar <strong>Minha Conta</strong> no app e clicar em
-              <strong>Cancelar</strong>.
+              Basta acessar <strong className="underline">Minha Conta</strong>{' '}
+              no app e clicar em <strong>Cancelar</strong>.
             </p>
             <p>Sem burocracias, sem ligações.</p>
           </p>
