@@ -50,24 +50,32 @@ export function Result({ markdown }: { markdown: string }) {
   return (
     <Card className="w-full mb-6">
       <CardHeader className="space-y-4">
-        <div className="flex items-center gap-2">
-          <span className="block w-1 h-4 bg-primary rounded" />
-          <span className="uppercase text-sm font-semibold text-primary">
-            Nome científico
-          </span>
-        </div>
-        <CardTitle className="text-2xl font-bold text-foreground">
-          {data.scientific}
-        </CardTitle>
-        <div className="w-full py-4 text-center text-2xl font-bold text-primary bg-indigo-50 rounded-2xl">
-          {data.popular}
-        </div>
-        <Badge
-          variant="outline"
-          className="mt-2 w-fit text-primary bg-indigo-50 border-none p-2 rounded-full"
-        >
-          {data.system}
-        </Badge>
+        {data.scientific && (
+          <>
+            <div className="flex items-center gap-2">
+              <span className="block w-1 h-4 bg-primary rounded" />
+              <span className="uppercase text-sm font-semibold text-primary">
+                Nome científico
+              </span>
+            </div>
+            <CardTitle className="text-2xl font-bold text-foreground">
+              {data.scientific}
+            </CardTitle>
+          </>
+        )}
+        {data.popular && (
+          <div className="w-full py-4 text-center text-2xl font-bold text-primary bg-indigo-50 rounded-2xl">
+            {data.popular}
+          </div>
+        )}
+        {data.system && (
+          <Badge
+            variant="outline"
+            className="mt-2 w-fit text-primary bg-indigo-50 border-none p-2 rounded-full"
+          >
+            {data.system}
+          </Badge>
+        )}
       </CardHeader>
 
       <CardContent className="space-y-6">

@@ -22,6 +22,7 @@ import {
 import UpSell from '@/components/upsell'
 import { FirstName } from '@/lib/utils'
 import { User } from '@/types/User'
+import Image from 'next/image'
 import { Result } from './result'
 
 // Tipo exato que vem da sua API
@@ -199,11 +200,20 @@ export default function Page() {
           {/* Header */}
           <header className="w-full sticky top-0 z-10 flex items-center h-16 bg-zinc-50 p-4 shadow-sm">
             <div className="w-full flex items-center justify-between">
-              <div className="flex items-center">
+              <div className="flex items-center gap-2">
                 <SidebarTrigger className="-ml-1" />
-                <h2 className="ml-2 scroll-m-20 text-xl font-semibold tracking-tight text-indigo-600">
-                  Olá, {FirstName(user.name)}!
-                </h2>
+                <div className="flex flex-row items-center">
+                  <Image
+                    src={user.image}
+                    alt="User"
+                    width={32}
+                    height={32}
+                    className="rounded-full border-2 border-indigo-600"
+                  />
+                  <h2 className="ml-2 scroll-m-20 text-xl font-semibold tracking-tight text-indigo-600">
+                    Olá, {FirstName(user.name)}!
+                  </h2>
+                </div>
               </div>
               <Bell className="mr-2" />
             </div>
