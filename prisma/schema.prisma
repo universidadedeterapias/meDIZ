@@ -22,6 +22,13 @@ enum Gender {
   PREFER_NOT_TO_SAY
 }
 
+enum PlanInterval {
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
 model User {
   id            String        @id @default(uuid())
   name          String?
@@ -107,14 +114,21 @@ model VerificationToken {
 }
 
 model Plan {
-  id             String         @id @default(uuid())
-  name           String
-  stripePriceId  String         @unique  
-  monthlyLimit   Int?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id               String           @id @default(uuid())
+  name             String
+  stripePriceId    String           @unique
+  stripeProductId  String?          // opcional, se quiser referência ao Product
+  amount           Int?              // valor em centavos (unit_amount)
+  currency         String?           // 'brl', 'usd', …
+  interval         PlanInterval?     // enum: DAY, WEEK, MONTH, YEAR
+  intervalCount    Int?              // quantas unidades do intervalo (ex: 3 meses)
+  trialPeriodDays  Int?             // se usar trial direto no Price
+  active           Boolean          @default(true)  // para ocultar planos inativos
+  monthlyLimit     Int?             // seu uso atual de limite de consultas
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
-  subscriptions  Subscription[]
+  subscriptions    Subscription[]
 }
 
 model Subscription {

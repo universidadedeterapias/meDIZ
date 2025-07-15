@@ -9,13 +9,31 @@ import {
 import { useState } from 'react'
 import { Button } from './ui/button'
 
+const FREE_MONTHLY_PLAN_ID = '3f376de0-8947-4715-8c00-8abeb7a09580'
+const FREE_ANNUAL_PLAN_ID = 'd2cc5cc1-8f69-4466-ba58-4a29eb94db2b'
+
 export default function UpSell() {
   const [selectedPlan, setSelectedPlan] = useState<'mensal' | 'anual'>('anual')
 
-  const handleExperimentar = () => {
-    // aqui você envia `selectedPlan` para a sua API ou lógica de checkout
-    console.log('Usuário escolheu:', selectedPlan)
+  const handleExperimentar = async () => {
+    if (!selectedPlan) {
+      alert('Selecione um plano')
+      return
+    }
+    // escolhe o ID certo baseado no estado
+    const planId =
+      selectedPlan === 'anual' ? FREE_ANNUAL_PLAN_ID : FREE_MONTHLY_PLAN_ID
+
+    const res = await fetch('/api/stripe/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planId })
+    })
+    const { url, error } = await res.json()
+    if (error) return alert(error)
+    window.location.assign(url)
   }
+
   return (
     <div className="min-h-screen bg-zinc-100">
       {/* Header */}
