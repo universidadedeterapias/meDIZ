@@ -33,24 +33,37 @@ export function NavOptions({ options }: NavOptionsProps) {
   return (
     <SidebarGroup className="group">
       <SidebarMenu className="gap-1 pt-4">
-        {options.map(item => (
-          <SidebarMenuItem key={item.name}>
-            <SidebarMenuButton asChild className="px-4 py-6">
-              <a
-                href={item.url}
-                className="flex items-center gap-4 text-zinc-800"
-              >
-                <item.icon
-                  style={{ width: '24px', height: '24px' }}
-                  className="text-zinc-800"
-                />
-                <span className="group-data-[collapsed=true]:hidden text-lg">
-                  {item.name}
-                </span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        ))}
+        {options.map((item, idx) => {
+          // abertura em nova aba para todos exceto o primeiro (idx=0) e o último
+          const isExternal = idx !== 0 && idx !== options.length - 1
+
+          return (
+            <SidebarMenuItem key={item.name}>
+              <SidebarMenuButton asChild className="px-4 py-6">
+                <a
+                  href={item.url}
+                  className="flex items-center gap-4 text-zinc-800"
+                  {...(isExternal
+                    ? {
+                        target: '_blank',
+                        rel: 'noopener noreferrer'
+                      }
+                    : {})}
+                >
+                  <item.icon
+                    style={{ width: '24px', height: '24px' }}
+                    className="text-zinc-800"
+                  />
+                  <span className="group-data-[collapsed=true]:hidden text-lg">
+                    {item.name}
+                  </span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )
+        })}
+
+        {/* item de logout permanece como está, sem target="_blank" */}
         <SidebarMenuItem>
           <SidebarMenuButton asChild className="px-4 py-6">
             <Button

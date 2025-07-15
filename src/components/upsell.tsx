@@ -12,7 +12,11 @@ import { Button } from './ui/button'
 const FREE_MONTHLY_PLAN_ID = '3f376de0-8947-4715-8c00-8abeb7a09580'
 const FREE_ANNUAL_PLAN_ID = 'd2cc5cc1-8f69-4466-ba58-4a29eb94db2b'
 
-export default function UpSell() {
+interface UpSellProps {
+  isPlus?: boolean
+}
+
+export default function UpSell({ isPlus }: UpSellProps) {
   const [selectedPlan, setSelectedPlan] = useState<'mensal' | 'anual'>('anual')
 
   const handleExperimentar = async () => {
@@ -53,27 +57,33 @@ export default function UpSell() {
       {/* Main */}
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-8">
         {/* 1. Tip Box */}
-        <div className="flex flex-col items-center text-center bg-yellow-50 border border-yellow-400 p-4 rounded-lg shadow-sm">
-          <span className="text-3xl">💡</span>
-          <div>
-            <h3 className="font-semibold text-lg text-yellow-900">
-              Você já usou sua consulta gratuita de hoje
-            </h3>
-            <p className="text-sm text-yellow-800">
-              O plano gratuito permite uma consulta por dia.
-            </p>
-            <p className="text-sm text-yellow-800">
-              Que tal experimentar o plano completo?
-            </p>
+        {!isPlus && (
+          <div className="flex flex-col items-center text-center bg-yellow-50 border border-yellow-400 p-4 rounded-lg shadow-sm">
+            <span className="text-3xl">💡</span>
+            <div>
+              <h3 className="font-semibold text-lg text-yellow-900">
+                Você já usou
+                <br />
+                as 3 consultas
+                <br />
+                gratuitas do dia!
+              </h3>
+              <p className="text-sm text-yellow-800">
+                O plano gratuito permite três consulta ao dia.
+              </p>
+              <p className="text-sm text-yellow-800">
+                <strong>Que tal experimentar o plano completo?</strong>
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* 2. Oferta principal */}
         <section className="space-y-2 bg-zinc-50 shadow-md rounded-lg px-4 py-6 text-center">
           <h2 className="text-2xl font-bold text-gray-800">
             Experimente o <span className="text-primary">meDIZ!</span>
             <br />
-            Completo por 30 dias,
+            Gratuito por 30 dias,
             <br />
             sem compromisso
           </h2>
@@ -89,12 +99,13 @@ export default function UpSell() {
           <span className="w-full flex items-center justify-center text-emerald-900">
             <ShieldAlert style={{ width: '32px', height: '32px' }} />
           </span>
-          <h3 className="text-xl font-semibold text-emerald-900">
-            100% Sem Risco
-          </h3>
+          <h3 className="text-xl font-semibold text-emerald-900">Sem Risco!</h3>
           <p className="text-emerald-700">
-            <strong>Use por 30 dias gratuitamente</strong>. Se não gostar,
-            cancele com 1 clique antes do vencimento. Simples assim!
+            <strong>Use por 30 dias gratuitamente</strong>.
+            <p>
+              Se não gostar, cancele com 1 clique antes do vencimento.
+              <p>Simples assim!</p>
+            </p>
           </p>
         </section>
 
@@ -247,7 +258,7 @@ export default function UpSell() {
         {/* 7. Chamada para ação */}
         <div>
           <Button
-            className="w-full py-6 text-lg capitalize"
+            className="w-full py-10 text-lg capitalize"
             onClick={handleExperimentar}
           >
             {`🎁 Experimente Grátis - Plano ${selectedPlan}`}

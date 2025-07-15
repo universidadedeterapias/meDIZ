@@ -10,7 +10,7 @@ export const sidebarOptions = [
   },
   {
     name: 'Suporte (WhatsApp)',
-    url: 'https://wa.me/5511999999999',
+    url: 'https://wa.me/5555997230707?text=Ol%C3%A1!%0AEstou%20no%20app%20_me_*DIZ!*%20e%20preciso%20de%20ajuda',
     icon: FaWhatsapp
   },
   {
