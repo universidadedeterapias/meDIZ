@@ -7,82 +7,95 @@ export default function parseResponse(md: string) {
   type OtherItem = { title: string; body: string; icon: string | null }
 
   // ——— CAMPOS ESPECÍFICOS ———
-  const scientific =
-    md.match(/\*\*Nome científico\*\*\s*\r?\n\s*([^\r\n]+)/i)?.[1].trim() || ''
-  const popular =
-    md.match(/\*\*\Nome Popular\*\*\s*\r?\n\s*([^\r\n]+)/i)?.[1].trim() || ''
-  const system =
-    md.match(/\*\*\Sistema\*\*\s*\r?\n\s*([^\r\n]+)/i)?.[1].trim() || ''
+  // 1) Nome do Sistema: primeira linha em negrito
+  const system = md.match(/^\*\*(.+?)\*\*/m)?.[1].trim() || ''
 
-  // ——— CONTEXTO GERAL e SENTIDO BIOLÓGICO ———
+  // 2) Nome Científico
+  const scientific =
+    md
+      .match(/\*\*Nome Científico:\*\*\s*([\s\S]*?)(?=\r?\n\*\*|$)/i)?.[1]
+      .trim() || ''
+
+  // 3) Nome Popular
+  const popular =
+    md
+      .match(/\*\*Nome Popular:\*\*\s*([\s\S]*?)(?=\r?\n\*\*|$)/i)?.[1]
+      .trim() || ''
+
+  // 4) Contexto Geral
   const contextoGeral =
     md
-      .match(/\*\*Contexto Geral\*\*\s*([\s\S]*?)(?=\r?\n\*\*|$)/i)?.[1]
+      .match(/\*\*Contexto Geral:\*\*\s*([\s\S]*?)(?=\r?\n\*\*|$)/i)?.[1]
       .trim() || ''
 
-  const sentidoBiologico =
+  // 5) Impacto Biológico
+  const impactoBiologico =
     md
-      .match(/\*\*Sentido Biológico\*\*\s*([\s\S]*?)(?=\r?\n\*\*|$)/i)?.[1]
+      .match(/\*\*Impacto Biológico:\*\*\s*([\s\S]*?)(?=\r?\n\*\*|$)/i)?.[1]
       .trim() || ''
 
-  // ——— DEMAIS SEÇÕES ———
+  // ——— DEMais SEÇÕES ———
+  // Ajuste os títulos exatamente como aparecem no MD de entrada:
   const sectionTitles = [
-    'SÍMBOLOS BIOLÓGICOS',
-    'CONFLITO EMOCIONAL SUBJACENTE',
-    'EXPERIÊNCIAS COMUNS',
-    'PADRÕES DE COMPORTAMENTO',
-    'LATERALIDADE',
-    'FASES DA DOENÇA',
-    'IMPACTO TRANSGERACIONAL',
-    'CORRELAÇÃO COM OUTRAS DOENÇAS',
-    'PERGUNTAS REFLEXIVAS',
-    'CHAVE TERAPÊUTICA \\[RE\\]SENTIR',
-    'NOTA LEGAL'
+    'Símbolos Biológicos',
+    'Conflito Emocional Subjacente',
+    'Experiências comuns',
+    'Padrões de comportamento',
+    'Impacto Transgeracional',
+    'Lateralidade',
+    'Fases da doença',
+    'Possíveis doenças correlacionadas',
+    'Perguntas Reflexivas',
+    'Chave Terapêutica do \\[RE\\]Sentir'
   ] as const
 
   const sectionIconMap: Record<string, string> = {
-    'CONFLITO EMOCIONAL SUBJACENTE': 'triangle-alert',
-    'SÍMBOLOS BIOLÓGICOS': 'dna',
-    'EXPERIÊNCIAS COMUNS': 'lightbulb',
-    'PADRÕES DE COMPORTAMENTO': 'brain',
-    LATERALIDADE: 'arrow-right-left',
-    'FASES DA DOENÇA': 'chart-line',
-    'IMPACTO TRANSGERACIONAL': 'workflow',
-    'CORRELAÇÃO COM OUTRAS DOENÇAS': 'link',
-    'PERGUNTAS REFLEXIVAS': 'question-mark-circle',
-    'CHAVE TERAPÊUTICA [RE]SENTIR': 'heart-pulse',
-    'NOTA LEGAL': 'document'
+    'Símbolos Biológicos': 'dna',
+    'Conflito Emocional Subjacente': 'triangle-alert',
+    'Experiências comuns': 'lightbulb',
+    'Padrões de comportamento': 'brain',
+    'Impacto Transgeracional': 'workflow',
+    Lateralidade: 'arrow-right-left',
+    'Fases da doença': 'chart-line',
+    'Possíveis doenças correlacionadas': 'link',
+    'Perguntas Reflexivas': 'question-mark-circle',
+    'Chave Terapêutica do [RE]Sentir': 'heart-pulse'
   }
 
   const others: OtherItem[] = []
+
   sectionTitles.forEach((rawTitle, i) => {
-    // remove escapes da chave terapêutica
-    const cleanRaw = rawTitle.replace(/\\\[|\\\]/g, '')
-    const titleEsc = escapeRegex(cleanRaw)
-    const nextRaw = sectionTitles[i + 1]?.replace(/\\\[|\\\]/g, '')
-    const lookahead = nextRaw
-      ? `(?=\\*\\*${escapeRegex(nextRaw)}\\*\\*)`
-      : `(?=$)`
+    // remove escape dos colchetes para regex
+    const cleanTitle = rawTitle.replace(/\\\[|\\\]/g, '')
+    const titleEsc = escapeRegex(cleanTitle)
+    const lookaheadRaw = sectionTitles[i + 1]?.replace(/\\\[|\\\]/g, '')
+    const lookaheadEsc = lookaheadRaw ? escapeRegex(lookaheadRaw) : null
+
+    // Permitir ou não o ":" após o título
     const pattern = new RegExp(
-      `\\*\\*${titleEsc}\\*\\*\\s*([\\s\\S]*?)${lookahead}`,
+      `\\*\\*${titleEsc}(?::)?\\*\\*\\s*([\\s\\S]*?)` +
+        (lookaheadEsc
+          ? `(?=\\r?\\n\\*\\*${lookaheadEsc}(?::)?\\*\\*)`
+          : `(?=$)`),
       'i'
     )
+
     const m = md.match(pattern)
     if (m) {
       others.push({
-        title: cleanRaw,
+        title: cleanTitle,
         body: m[1].trim(),
-        icon: sectionIconMap[cleanRaw] || null
+        icon: sectionIconMap[cleanTitle] || null
       })
     }
   })
 
   return {
+    system,
     scientific,
     popular,
-    system,
     contextoGeral,
-    sentidoBiologico,
+    impactoBiologico,
     others
   }
 }

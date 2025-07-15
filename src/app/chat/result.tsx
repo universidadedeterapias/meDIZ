@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 // Mapa de string → componente, mantém tudo num lugar
 const ICON_MAP: Record<
@@ -40,8 +41,8 @@ const ICON_MAP: Record<
 
 export function Result({ markdown }: { markdown: string }) {
   const data = React.useMemo(() => parseResponse(markdown), [markdown])
-  console.log(data)
   const [baseUrl, setBaseUrl] = useState('')
+
   useEffect(() => {
     // só roda no client
     setBaseUrl(window.location.origin)
@@ -87,28 +88,31 @@ export function Result({ markdown }: { markdown: string }) {
               Contexto Geral
             </span>
           </div>
-          <p className="text-sm leading-relaxed text-justify">
-            {data.contextoGeral}
-          </p>
+          <div className="prose prose-sm max-w-none text-justify">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {data.contextoGeral}
+            </ReactMarkdown>
+          </div>
         </section>
 
-        {/* Sentido Biológico */}
+        {/* Impacto biológico */}
         <section className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="block w-1 h-4 bg-primary rounded" />
             <span className="uppercase text-sm font-semibold text-primary">
-              Sentido biológico
+              Impacto biológico
             </span>
           </div>
-          <p className="text-sm leading-relaxed text-justify">
-            {data.sentidoBiologico}
-          </p>
+          <div className="prose prose-sm max-w-none text-justify font-normal">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {data.impactoBiologico}
+            </ReactMarkdown>
+          </div>
         </section>
 
         {/* Accordion dinâmico com ícones */}
         <Accordion type="single" collapsible className="space-y-2 rounded-md">
           {data.others.map(sec => {
-            // Pega o component do icon, se existir
             const Icon = sec.icon ? ICON_MAP[sec.icon] : null
 
             return (
@@ -126,7 +130,9 @@ export function Result({ markdown }: { markdown: string }) {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="prose prose-sm max-w-none p-3 text-justify">
-                  <ReactMarkdown>{sec.body}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {sec.body}
+                  </ReactMarkdown>
                 </AccordionContent>
               </AccordionItem>
             )
@@ -139,9 +145,9 @@ export function Result({ markdown }: { markdown: string }) {
             <Heart /> Favoritar
           </Button>
           <ShareInsightDialog
-            title={`${data.popular} – Sentido biológico`}
+            title={`${data.popular} – Impacto biológico`}
             url={baseUrl}
-            text={data.sentidoBiologico}
+            text={data.impactoBiologico}
             triggerClassName="w-full py-6 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors flex items-center justify-center gap-2"
           />
         </div>
