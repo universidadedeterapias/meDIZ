@@ -35,7 +35,6 @@ export default function parseResponse(md: string) {
       .trim() || ''
 
   // ——— DEMais SEÇÕES ———
-  // Ajuste os títulos exatamente como aparecem no MD de entrada:
   const sectionTitles = [
     'Símbolos Biológicos',
     'Conflito Emocional Subjacente',
@@ -46,7 +45,7 @@ export default function parseResponse(md: string) {
     'Fases da doença',
     'Possíveis doenças correlacionadas',
     'Perguntas Reflexivas',
-    'Chave Terapêutica do \\[RE\\]Sentir'
+    'Chave Terapêutica do [RE]Sentir'
   ] as const
 
   const sectionIconMap: Record<string, string> = {
@@ -57,27 +56,31 @@ export default function parseResponse(md: string) {
     'Impacto Transgeracional': 'workflow',
     Lateralidade: 'arrow-right-left',
     'Fases da doença': 'chart-line',
-    'Possíveis doenças correlacionadas': 'link',
-    'Perguntas Reflexivas': 'question-mark-circle',
+    'Possíveis doenças correlacionadas': 'activity',
+    'Perguntas Reflexivas': 'circle-question-mark',
     'Chave Terapêutica do [RE]Sentir': 'heart-pulse'
   }
 
   const others: OtherItem[] = []
 
   sectionTitles.forEach((rawTitle, i) => {
-    // remove escape dos colchetes para regex
-    const cleanTitle = rawTitle.replace(/\\\[|\\\]/g, '')
+    const cleanTitle = rawTitle
     const titleEsc = escapeRegex(cleanTitle)
-    const lookaheadRaw = sectionTitles[i + 1]?.replace(/\\\[|\\\]/g, '')
+    const lookaheadRaw = sectionTitles[i + 1]
     const lookaheadEsc = lookaheadRaw ? escapeRegex(lookaheadRaw) : null
 
-    // Permitir ou não o ":" após o título
+    // Regex multilinha que captura:
+    //  - **Título** ou **Título:** ou **Título**: ou **Título:**
+    // e termina antes do próximo **Próxima Seção** (também suportando ambos formatos de duas pontuações)
     const pattern = new RegExp(
-      `\\*\\*${titleEsc}(?::)?\\*\\*\\s*([\\s\\S]*?)` +
-        (lookaheadEsc
-          ? `(?=\\r?\\n\\*\\*${lookaheadEsc}(?::)?\\*\\*)`
-          : `(?=$)`),
-      'i'
+      [
+        `^\\*\\*${titleEsc}(?::)?\\*\\*:?`, // cabeçalho com colon opcional dentro e fora do bold
+        `\\s*([\\s\\S]*?)`, // corpo (lazy)
+        lookaheadEsc
+          ? `(?=^\\*\\*${lookaheadEsc}(?::)?\\*\\*:?)` // lookahead para próximo cabeçalho
+          : `(?=$)` // ou fim da string
+      ].join(''),
+      'mi'
     )
 
     const m = md.match(pattern)

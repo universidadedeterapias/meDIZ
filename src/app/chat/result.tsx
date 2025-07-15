@@ -12,12 +12,15 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import parseResponse from '@/lib/parseResponse'
 import {
+  Activity,
   ArrowRightLeft,
   Brain,
   ChartLine,
   Dna,
   Heart,
+  HeartPulse,
   Lightbulb,
+  MessageCircleQuestion,
   TriangleAlert,
   Workflow
 } from 'lucide-react'
@@ -36,12 +39,16 @@ const ICON_MAP: Record<
   brain: Brain,
   workflow: Workflow,
   'arrow-right-left': ArrowRightLeft,
-  'chart-line': ChartLine
+  'chart-line': ChartLine,
+  activity: Activity,
+  'heart-pulse': HeartPulse,
+  'circle-question-mark': MessageCircleQuestion
 }
 
 export function Result({ markdown }: { markdown: string }) {
   const data = React.useMemo(() => parseResponse(markdown), [markdown])
   const [baseUrl, setBaseUrl] = useState('')
+  console.log(data)
 
   useEffect(() => {
     // só roda no client
@@ -129,8 +136,15 @@ export function Result({ markdown }: { markdown: string }) {
                     {sec.title.toLowerCase()}
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className="prose prose-sm max-w-none p-3 text-justify">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                <AccordionContent className="prose prose-sm max-w-none p-3 text-left">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      ul: ({ ...props }) => (
+                        <ul className="list-disc list-inside ml-4" {...props} />
+                      )
+                    }}
+                  >
                     {sec.body}
                   </ReactMarkdown>
                 </AccordionContent>
