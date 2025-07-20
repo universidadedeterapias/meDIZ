@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator'
 import { useUser } from '@/contexts/user'
 import { formatDate } from '@/lib/utils'
 import { ArrowLeft, Edit3 } from 'lucide-react'
+import MyAccountSkeleton from './skeleton'
 
 type Subscription = {
   isPremium: boolean
@@ -43,13 +44,8 @@ export default function MyAccountPage() {
     )
   }, [])
 
-  if (user === null) {
-    return <p className="p-4 text-center animate-pulse">Carregando perfil…</p>
-  }
-  if (subscription === null) {
-    return (
-      <p className="p-4 text-center animate-pulse">Carregando assinatura…</p>
-    )
+  if (!user || subscription === null) {
+    return <MyAccountSkeleton />
   }
 
   const handleEditProfile = () => router.push('/account/edit')
