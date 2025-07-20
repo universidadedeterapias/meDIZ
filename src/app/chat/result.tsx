@@ -13,9 +13,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import parseResponse from '@/lib/parseResponse'
 import {
   Activity,
+  AlertTriangle,
   ArrowRightLeft,
   Brain,
   ChartLine,
+  Clock,
   Dna,
   Heart,
   HeartPulse,
@@ -170,9 +172,26 @@ export function Result({ markdown, elapsedMs }: ResultProps) {
             triggerClassName="w-full py-6 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors flex items-center justify-center gap-2"
           />
         </div>
-        <p className="text-sm text-gray-500 text-right">
-          Tempo de resposta: {(elapsedMs / 1000).toFixed(2)}s
-        </p>
+        {/* FOOTER */}
+        <div className="mt-6 space-y-2">
+          {/* Tempo de resposta */}
+          <div className="flex items-center text-sm text-gray-500">
+            <Clock className="w-4 h-4 mr-1 flex-shrink-0" />
+            <span>
+              Tempo de resposta:{' '}
+              <strong>{(elapsedMs / 1000).toFixed(2)}s</strong>
+            </span>
+          </div>
+
+          {/* Aviso */}
+          <div className="flex items-start gap-2 p-3 bg-yellow-50 text-yellow-800 rounded-md text-xs">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span>
+              O <strong>meDIZ!</strong> pode cometer erros. Sempre verifique as
+              informações antes de tomar decisões críticas.
+            </span>
+          </div>
+        </div>
       </CardContent>
     </Card>
   )
