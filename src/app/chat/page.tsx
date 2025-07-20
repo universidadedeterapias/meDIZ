@@ -30,6 +30,7 @@ type RawUser = {
   image: string
   name?: string
   fullName?: string
+  email?: string
   age?: number
   gender?: string
   profession?: string
@@ -87,6 +88,7 @@ export default function Page() {
             // garantimos que ambos existam para os componentes que usam name/fullName
             name: display,
             fullName: display,
+            email: raw.email!,
             age: raw.age!,
             gender: raw.gender!,
             profession: raw.profession!,
@@ -195,7 +197,6 @@ export default function Page() {
   return (
     <SidebarProvider>
       <AppSidebar
-        user={user}
         history={[]} // implemente seu histórico se quiser
         selectedThread={selectedThread}
         onSelectSession={setSelectedThread}

@@ -6,6 +6,7 @@ import {
   SidebarHeader,
   SidebarRail
 } from '@/components/ui/sidebar'
+import { useUser } from '@/contexts/user'
 import { sidebarOptions } from '@/lib/sidebarOptions'
 import { FirstName, SurName } from '@/lib/utils'
 import { User } from '@/types/User'
@@ -24,19 +25,24 @@ type Props = {
   user: User
 }
 
-export function AppSidebar({
-  // history,
-  // selectedThread,
-  // onSelectSession,
-  user,
-  ...props
-}: Props) {
+export function AppSidebar(props: Omit<Props, 'user'>) {
+  const { user } = useUser()
+  if (!user) {
+    return (
+      <Sidebar collapsible="icon" {...props}>
+        <SidebarHeader className="border-b-2">
+          <div className="p-4">Carregando...</div>
+        </SidebarHeader>
+        <SidebarContent>{/* ou um spinner */}</SidebarContent>
+      </Sidebar>
+    )
+  }
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader className="border-b-2">
         <div className="p-4 flex flex-row items-center gap-6">
           <Image
-            src={user.image}
+            src={user.image!}
             alt="User"
             width={64}
             height={64}
@@ -44,7 +50,7 @@ export function AppSidebar({
           />
           <div className="flex-1">
             <h4 className="scroll-m-20 text-xl font-normal tracking-tight">
-              {FirstName(user.name) + ' ' + SurName(user.name)}
+              {FirstName(user.name!) + ' ' + SurName(user.name!)}
             </h4>
             <a href="/myAccount" className="text-primary">
               Minha conta
