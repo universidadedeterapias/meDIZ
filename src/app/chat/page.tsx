@@ -50,6 +50,7 @@ export default function Page() {
   const [loading, setLoading] = useState(false)
   const [selectedThread, setSelectedThread] = useState<string | null>(null)
   const [limitReached, setLimitReached] = useState(false)
+  const [elapsedMs, setElapsedMs] = useState<number | null>(null)
 
   // 1) Confira perfil e normalize o nome
   useEffect(() => {
@@ -131,6 +132,9 @@ export default function Page() {
     if (!input.trim()) return
     setLoading(true)
     setResponses([])
+    setElapsedMs(null)
+
+    const t0 = performance.now()
 
     try {
       const res = await fetch('/api/openai', {
@@ -155,6 +159,8 @@ export default function Page() {
       if (data.responses?.assistant?.length) {
         setResponses([data.responses.assistant[0]])
       }
+      const t1 = performance.now()
+      setElapsedMs(t1 - t0)
     } catch (err) {
       console.error(err)
     } finally {
@@ -287,7 +293,7 @@ export default function Page() {
             ) : (
               <div className="max-w-4xl mx-auto space-y-4">
                 {responses.map((md, idx) => (
-                  <Result key={idx} markdown={md} />
+                  <Result key={idx} markdown={md} elapsedMs={elapsedMs ?? 0} />
                 ))}
               </div>
             )}

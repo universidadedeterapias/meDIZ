@@ -45,7 +45,12 @@ const ICON_MAP: Record<
   'circle-question-mark': MessageCircleQuestion
 }
 
-export function Result({ markdown }: { markdown: string }) {
+type ResultProps = {
+  markdown: string
+  elapsedMs: number
+}
+
+export function Result({ markdown, elapsedMs }: ResultProps) {
   const data = React.useMemo(() => parseResponse(markdown), [markdown])
   const [baseUrl, setBaseUrl] = useState('')
   console.log(data)
@@ -165,6 +170,9 @@ export function Result({ markdown }: { markdown: string }) {
             triggerClassName="w-full py-6 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors flex items-center justify-center gap-2"
           />
         </div>
+        <p className="text-sm text-gray-500 text-right">
+          Tempo de resposta: {(elapsedMs / 1000).toFixed(2)}s
+        </p>
       </CardContent>
     </Card>
   )
