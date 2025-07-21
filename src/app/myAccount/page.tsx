@@ -1,11 +1,6 @@
 // src/app/myAccount/page.tsx
 'use client'
 
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { FaWhatsapp } from 'react-icons/fa'
-
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -15,18 +10,32 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { useUser } from '@/contexts/user'
+import { formatPhone } from '@/lib/formatPhone'
 import { formatDate } from '@/lib/utils'
 import { ArrowLeft } from 'lucide-react'
+import { signOut } from 'next-auth/react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { FaWhatsapp } from 'react-icons/fa'
 import MyAccountSkeleton from './skeleton'
 
-type Subscription = {
-  isPremium: boolean
-  renewalDate: string
+type SubscriptionAPI = {
+  status: 'active' | 'trialing' | 'cancel_at_period_end' | 'canceled'
+  currentPeriodEnd: string | null
 }
 
 type FormValues = {
@@ -37,9 +46,12 @@ type FormValues = {
 
 export default function MyAccountPage() {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { user, setUser } = useUser()
+
   const [editing, setEditing] = useState(false)
-  const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const [subscription, setSubscription] = useState<SubscriptionAPI | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
 
   const {
     register,
@@ -53,6 +65,7 @@ export default function MyAccountPage() {
       whatsapp: user?.whatsapp ?? ''
     }
   })
+
   useEffect(() => {
     if (editing && user) {
       reset({
@@ -64,16 +77,17 @@ export default function MyAccountPage() {
   }, [editing, reset, user])
 
   useEffect(() => {
-    // substitua pelo fetch real
-    setTimeout(
-      () =>
-        setSubscription({
-          isPremium: true,
-          renewalDate: '2025-08-15'
-        }),
-      500
-    )
-  }, [])
+    if (!user?.id) return
+    fetch('/api/stripe/subscription')
+      .then(res => {
+        if (!res.ok) throw new Error('Erro ao carregar assinatura')
+        return res.json() as Promise<SubscriptionAPI>
+      })
+      .then(setSubscription)
+      .catch(() =>
+        setSubscription({ status: 'canceled', currentPeriodEnd: null })
+      )
+  }, [user?.id])
 
   const onSubmit = async (data: FormValues) => {
     try {
@@ -84,17 +98,18 @@ export default function MyAccountPage() {
       })
       if (!res.ok) throw new Error('Falha ao salvar')
       const updated = await res.json()
-      if (!user?.id) return
-      setUser({
-        ...user,
-        id: user?.id,
-        fullName: updated.fullName,
-        email: updated.email,
-        whatsapp: updated.whatsapp
-      })
+      setUser(u =>
+        u
+          ? {
+              ...u,
+              fullName: updated.fullName,
+              email: updated.email,
+              whatsapp: updated.whatsapp
+            }
+          : u
+      )
       setEditing(false)
-    } catch (err) {
-      console.error(err)
+    } catch {
       alert('Não foi possível salvar as mudanças.')
     }
   }
@@ -103,9 +118,60 @@ export default function MyAccountPage() {
     return <MyAccountSkeleton />
   }
 
-  const handleCancelSubscription = () => alert('Cancelamento iniciado')
-  const handleLogout = () => router.push('/login')
+  const { status, currentPeriodEnd } = subscription
+  const isActive =
+    status.toLocaleLowerCase() === 'active' ||
+    status.toLocaleLowerCase() === 'trialing'
+  const isCancelling = status.toLocaleLowerCase() === 'cancel_at_period_end'
+  const renewDate = currentPeriodEnd
 
+  const handleMenuSelect = (action: 'view' | 'change') => {
+    if (action === 'view') setIsDialogOpen(true)
+    else fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const res = await fetch('/api/user/avatar', {
+        method: 'POST',
+        body: formData
+      })
+      if (!res.ok) throw new Error('Upload falhou')
+      const { image } = await res.json()
+      setUser(u => (u ? { ...u, image } : u))
+    } catch {
+      alert('Erro ao enviar a imagem')
+    }
+  }
+
+  const handleCancelSubscription = async () => {
+    if (!isActive || isCancelling) return
+    const msg = renewDate
+      ? `Cancelar ao fim do ciclo (até ${formatDate(renewDate)})?`
+      : 'Cancelar sua assinatura?'
+    if (!confirm(msg)) return
+
+    const res = await fetch('/api/stripe/subscription/cancel', {
+      method: 'PATCH'
+    })
+    if (!res.ok) {
+      alert('Falha ao agendar cancelamento.')
+      return
+    }
+    alert('Cancelamento agendado!')
+    setSubscription(s => (s ? { ...s, status: 'cancel_at_period_end' } : s))
+  }
+
+  const handleLogout = async () => {
+    await signOut({ redirect: false })
+    router.push('/login')
+  }
   return (
     <>
       <header className="w-full sticky top-0 z-10 bg-white shadow-sm">
@@ -117,56 +183,93 @@ export default function MyAccountPage() {
             me<span className="uppercase">diz</span>
             <span className="text-yellow-400">!</span>
           </p>
-          <div>{/* Espaço à direita */}</div>
+          <div />
         </div>
       </header>
+
       <div className="max-w-3xl mx-auto p-4 space-y-6">
-        {/* Voltar para Home */}
-        <div className="flex flex-col gap-4 px-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Idioma</span>
-            <select className="border p-1 rounded text-sm">
-              <option value="pt-BR">🇧🇷 Português (BR)</option>
-              <option value="en-US">🇺🇸 English (US)</option>
-            </select>
-          </div>
+        {/* Idioma */}
+        <div className="flex items-center justify-between px-4">
+          <span className="text-sm">Idioma</span>
+          <select className="border p-1 rounded text-sm">
+            <option value="pt-BR">🇧🇷 Português (BR)</option>
+            <option value="en-US">🇺🇸 English (US)</option>
+          </select>
         </div>
+
         {/* Perfil */}
         <Card className="shadow-sm">
           <CardHeader className="flex items-center gap-4 p-4">
-            <Avatar className="w-14 h-14">
-              <AvatarImage src={user.image!} alt="Foto de perfil" />
-              <AvatarFallback>{user.fullName![0]}</AvatarFallback>
-            </Avatar>
-            <div className="text-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Avatar className="w-14 h-14 cursor-pointer">
+                  <AvatarImage src={user.image!} alt="Foto de perfil" />
+                  <AvatarFallback>{user.fullName![0]}</AvatarFallback>
+                </Avatar>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onSelect={() => handleMenuSelect('view')}>
+                  Ver imagem
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleMenuSelect('change')}>
+                  Alterar imagem
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={handleFileChange}
+            />
+            <div className="flex-1 text-center">
               <h1 className="text-lg font-medium">{user.fullName}</h1>
               <p className="text-sm text-gray-500">{user.email}</p>
             </div>
           </CardHeader>
         </Card>
 
-        {/* Assinatura */}
-        {subscription.isPremium && (
+        {/* Cartão de Assinatura / Oferta */}
+        {isActive ? (
           <Card className="border-yellow-400 bg-yellow-50 shadow-sm text-sm border-l-4">
             <CardHeader className="space-y-1">
               <CardTitle className="text-yellow-800">
                 🌟 Assinatura Premium
               </CardTitle>
               <CardDescription className="text-yellow-700/80">
-                Renovação em {formatDate(subscription.renewalDate)}
+                {isCancelling
+                  ? `Cancelamento agendado para ${formatDate(renewDate!)}`
+                  : `Renovação em ${formatDate(renewDate!)}`}
               </CardDescription>
             </CardHeader>
-            {/* <CardContent>
-              <p className="text-gray-700">
-                Obrigado por ser Premium! Tenha acesso total aos recursos.
-              </p>
-            </CardContent> */}
+          </Card>
+        ) : (
+          <Card className="border-l-8 border-yellow-400 bg-gradient-to-r from-yellow-100 to-yellow-50 shadow-lg ">
+            <CardHeader className="space-y-2">
+              <CardTitle className="text-xl font-semibold text-yellow-800">
+                🔑 Assinatura Premium
+              </CardTitle>
+              <CardDescription className="text-yellow-700">
+                Desbloqueie todos os recursos Premium e eleve sua experiência!
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <Button
+                asChild
+                variant="secondary"
+                size="lg"
+                className="w-full tracking-wide bg-yellow-400 text-yellow-900"
+              >
+                <Link href="/assinatura-plus">Assine Agora 🚀</Link>
+              </Button>
+            </CardContent>
           </Card>
         )}
 
         <Separator />
 
-        {/* Informações do Usuário */}
+        {/* Dados do Usuário */}
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row justify-between items-center p-4">
             <CardTitle className="text-sm font-medium">Seus dados</CardTitle>
@@ -196,7 +299,9 @@ export default function MyAccountPage() {
               <Label className="text-xs">Nome</Label>
               {editing ? (
                 <Input
-                  {...register('fullName', { required: 'Nome é obrigatório' })}
+                  {...register('fullName', {
+                    required: 'Nome é obrigatório'
+                  })}
                   className="mt-1 text-sm"
                 />
               ) : (
@@ -235,16 +340,24 @@ export default function MyAccountPage() {
             {/* Whatsapp */}
             <div>
               <Label className="text-xs">Whatsapp</Label>
+
               {editing ? (
                 <Input
                   {...register('whatsapp', {
                     required: 'Whatsapp é obrigatório'
                   })}
                   className="mt-1 text-sm"
+                  // formata enquanto digita:
+                  onInput={e => {
+                    const target = e.target as HTMLInputElement
+                    target.value = formatPhone(target.value)
+                  }}
                 />
               ) : (
-                <p className="text-sm">{user.whatsapp}</p>
+                // exibe já formatado
+                <p className="text-sm">{formatPhone(user.whatsapp!)}</p>
               )}
+
               {errors.whatsapp && (
                 <p className="text-xs text-red-500">
                   {errors.whatsapp.message}
@@ -252,7 +365,7 @@ export default function MyAccountPage() {
               )}
             </div>
 
-            {/* Botão Salvar */}
+            {/* Salvar */}
             {editing && (
               <div className="flex justify-end">
                 <Button
@@ -268,7 +381,11 @@ export default function MyAccountPage() {
         </Card>
 
         {/* Planos & Preços */}
-        <Card className="shadow-sm">
+        <Card
+          className={`shadow-sm ${
+            !isActive ? 'opacity-50 pointer-events-none' : ''
+          }`}
+        >
           <CardHeader className="flex flex-row justify-between items-center">
             <CardTitle className="text-sm font-medium">
               Planos &amp; Preços
@@ -276,35 +393,39 @@ export default function MyAccountPage() {
           </CardHeader>
           <Separator />
           <CardContent className="p-4 space-y-4">
-            <div className="flex justify-between text-sm">
-              <span>Data de Renovação:</span>
-              <span className="font-bold">
-                {formatDate(subscription.renewalDate)}
-              </span>
-            </div>
+            {isActive && (
+              <div className="flex justify-between text-sm">
+                <span>Data de Renovação:</span>
+                <span className="font-bold">{formatDate(renewDate!)}</span>
+              </div>
+            )}
+
             <div className="flex flex-col gap-3">
               <Button
+                asChild
                 variant="outline"
                 size="sm"
-                asChild
-                className="transition-colors"
+                className="w-full"
+                disabled={!isActive}
               >
                 <Link href="/account/payments-history">
                   Ver Histórico de Pagamentos
                 </Link>
               </Button>
               <Button
-                variant="destructive"
+                variant="outline"
                 size="sm"
-                className="transition-colors"
                 onClick={handleCancelSubscription}
+                disabled={!isActive || isCancelling}
+                className="w-full text-red-700"
               >
-                Cancelar Assinatura
+                {isCancelling ? 'Cancelamento Agendado' : 'Cancelar Assinatura'}
               </Button>
             </div>
           </CardContent>
         </Card>
-        {/* Consulte um especialista */}
+
+        {/* Consultar especialista */}
         <Button
           asChild
           className="w-full"
@@ -318,12 +439,13 @@ export default function MyAccountPage() {
         >
           <span>💬 Falar com especialista</span>
         </Button>
+
         <Separator />
 
-        {/* Suporte */}
+        {/* Suporte WhatsApp */}
         <Button
           size="sm"
-          className="w-full  bg-green-500 text-white hover:bg-green-600"
+          className="w-full bg-green-500 text-white hover:bg-green-600"
           onClick={() => window.open('https://wa.me/+5555997230707', '_blank')}
         >
           <FaWhatsapp />
@@ -339,6 +461,21 @@ export default function MyAccountPage() {
           Sair
         </Button>
       </div>
+
+      {/* Dialog de visualização do avatar */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="p-0 bg-black bg-opacity-75 m-0">
+          <div className="relative w-screen h-screen">
+            <Image
+              src={user.image!}
+              alt="Avatar full"
+              fill
+              sizes="100vw"
+              style={{ objectFit: 'contain' }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

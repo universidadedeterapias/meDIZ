@@ -11,6 +11,7 @@ import { Footer } from '@/components/Footer'
 import OptionSelector from '@/components/form/OptionSelector'
 import { LoadingPlaceholder } from '@/components/LoadingPlaceholder'
 import Spinner from '@/components/Spinner'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,7 +23,6 @@ import {
 import UpSell from '@/components/upsell'
 import { FirstName } from '@/lib/utils'
 import { User } from '@/types/User'
-import Image from 'next/image'
 import { Result } from './result'
 
 // Tipo exato que vem da sua API
@@ -210,13 +210,12 @@ export default function Page() {
               <div className="flex items-center gap-2">
                 <SidebarTrigger className="-ml-1" />
                 <div className="flex flex-row items-center">
-                  <Image
-                    src={user.image}
-                    alt="User"
-                    width={32}
-                    height={32}
-                    className="rounded-full border-2 border-indigo-600"
-                  />
+                  <Avatar className="w-8 h-8 border-2 border-indigo-600">
+                    <AvatarImage src={user.image} alt="User" />
+                    <AvatarFallback>
+                      {FirstName(user.name).charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
                   <h2 className="ml-2 scroll-m-20 text-xl font-semibold tracking-tight text-indigo-600">
                     Olá, {FirstName(user.name)}!
                   </h2>

@@ -2,18 +2,16 @@ import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
-// Desativa o parser padrão pra conseguir ler o raw body
+// Desativa o bodyParser padrão para ler o raw body
 export const config = { api: { bodyParser: false } }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  // sem apiVersion aqui, ou use a versão suportada pelo seu SDK
-})
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
-// Helper para coletar o raw body
+// Helper para coletar o raw body como Buffer
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function buffer(readable: any) {
-  const chunks = []
+  const chunks: Buffer[] = []
   for await (const chunk of readable) {
     chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk)
   }
@@ -21,10 +19,11 @@ async function buffer(readable: any) {
 }
 
 export async function POST(req: NextRequest) {
+  // 1) Verifica assinatura do Stripe
   const buf = await buffer(req.body)
   const sig = req.headers.get('stripe-signature')!
-
   let event: Stripe.Event
+
   try {
     event = stripe.webhooks.constructEvent(buf, sig, webhookSecret)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -33,18 +32,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const obj = event.data.object as any
-
   try {
     switch (event.type) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription
-        // Pega o primeiro item da assinatura
         const item = sub.items.data[0] as Stripe.SubscriptionItem
 
-        // 1) Busca o usuário pelo stripeCustomerId
+        // 1a) Busca o usuário pelo stripeCustomerId
         const customerId = sub.customer as string
         const user = await prisma.user.findUnique({
           where: { stripeCustomerId: customerId }
@@ -54,11 +49,9 @@ export async function POST(req: NextRequest) {
           break
         }
 
-        // 2) Busca o plan pelo stripePriceId usado na assinatura
-        //    Note que `item.price` pode ser string ou objeto, dependendo de expand
+        // 1b) Busca o plano pelo stripePriceId
         const priceId =
           typeof item.price === 'string' ? item.price : item.price.id
-
         const plan = await prisma.plan.findUnique({
           where: { stripePriceId: priceId }
         })
@@ -67,19 +60,25 @@ export async function POST(req: NextRequest) {
           break
         }
 
-        // 3) Agora você já tem `user.id` e `plan.id`, faz o upsert
+        // 2) Determina o status a gravar
+        //    Se o Stripe indicar cancel_at_period_end, usamos nosso status customizado
+        const newStatus = sub.cancel_at_period_end
+          ? 'cancel_at_period_end'
+          : sub.status
+
+        // 3) Upsert na subscription
         await prisma.subscription.upsert({
           where: { stripeSubscriptionId: sub.id },
           create: {
             userId: user.id,
             planId: plan.id,
             stripeSubscriptionId: sub.id,
-            status: sub.status,
+            status: newStatus,
             currentPeriodStart: new Date(item.current_period_start * 1000),
             currentPeriodEnd: new Date(item.current_period_end * 1000)
           },
           update: {
-            status: sub.status,
+            status: newStatus,
             currentPeriodStart: new Date(item.current_period_start * 1000),
             currentPeriodEnd: new Date(item.current_period_end * 1000)
           }
@@ -88,28 +87,21 @@ export async function POST(req: NextRequest) {
       }
 
       case 'customer.subscription.deleted': {
-        const sub = obj as Stripe.Subscription
+        const sub = event.data.object as Stripe.Subscription
+        // Quando a assinatura for efetivamente removida, Stripe já coloca status 'canceled'
         await prisma.subscription.update({
           where: { stripeSubscriptionId: sub.id },
-          data: { status: 'canceled' }
+          data: { status: sub.status }
         })
         break
       }
 
-      // case 'invoice.payment_succeeded': {
-      //   const invoice = obj as Stripe.Invoice
-      //   // opcional: estenda lógica para liberar acesso, enviar e-mail, etc.
-      //   break
-      // }
-
-      // case 'invoice.payment_failed': {
-      //   const invoice = obj as Stripe.Invoice
-      //   // opcional: marque como past_due ou notifique usuário
-      //   break
-      // }
+      // Você pode estender com outros eventos, ex:
+      // case 'invoice.payment_succeeded': { ... }
+      // case 'invoice.payment_failed':  { ... }
 
       default:
-        // console.log(`Unhandled event type ${event.type}`)
+        // Eventos que você não quer tratar explicitamente
         break
     }
 

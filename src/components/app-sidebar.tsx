@@ -10,8 +10,8 @@ import { useUser } from '@/contexts/user'
 import { sidebarOptions } from '@/lib/sidebarOptions'
 import { FirstName, SurName } from '@/lib/utils'
 import { User } from '@/types/User'
-import Image from 'next/image'
 import { NavOptions } from './nav-options'
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 
 type Props = {
   history: {
@@ -41,13 +41,10 @@ export function AppSidebar(props: Omit<Props, 'user'>) {
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader className="border-b-2">
         <div className="p-4 flex flex-row items-center gap-6">
-          <Image
-            src={user.image!}
-            alt="User"
-            width={64}
-            height={64}
-            className="rounded-full border-2 border-indigo-600"
-          />
+          <Avatar className="w-16 h-16 border-2 border-indigo-600">
+            <AvatarImage src={user.image!} alt="User" />
+            <AvatarFallback>{FirstName(user.name!).charAt(0)}</AvatarFallback>
+          </Avatar>
           <div className="flex-1">
             <h4 className="scroll-m-20 text-xl font-normal tracking-tight">
               {FirstName(user.name!) + ' ' + SurName(user.name!)}

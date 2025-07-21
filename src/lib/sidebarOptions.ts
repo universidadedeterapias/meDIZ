@@ -1,12 +1,12 @@
 // src/lib/sidebarOptions.ts
-import { CreditCard, FileText } from 'lucide-react'
+import { FileText, Star } from 'lucide-react'
 import { FaWhatsapp } from 'react-icons/fa'
 
 export const sidebarOptions = [
   {
     name: 'Assinatura Plus',
     url: '/assinatura-plus',
-    icon: CreditCard
+    icon: Star
   },
   {
     name: 'Suporte (WhatsApp)',
