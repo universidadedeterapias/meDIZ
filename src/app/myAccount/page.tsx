@@ -15,11 +15,13 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { useUser } from '@/contexts/user'
 import { formatDate } from '@/lib/utils'
-import { ArrowLeft, Edit3 } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
+import { useForm } from 'react-hook-form'
 import MyAccountSkeleton from './skeleton'
 
 type Subscription = {
@@ -27,11 +29,40 @@ type Subscription = {
   renewalDate: string
 }
 
+type FormValues = {
+  fullName: string
+  email: string
+  whatsapp: string
+}
+
 export default function MyAccountPage() {
   const router = useRouter()
-  const { user } = useUser()
-
+  const { user, setUser } = useUser()
+  const [editing, setEditing] = useState(false)
   const [subscription, setSubscription] = useState<Subscription | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting, errors }
+  } = useForm<FormValues>({
+    defaultValues: {
+      fullName: user?.fullName ?? '',
+      email: user?.email ?? '',
+      whatsapp: user?.whatsapp ?? ''
+    }
+  })
+  useEffect(() => {
+    if (editing && user) {
+      reset({
+        fullName: user.fullName!,
+        email: user.email,
+        whatsapp: user.whatsapp!
+      })
+    }
+  }, [editing, reset, user])
+
   useEffect(() => {
     // substitua pelo fetch real
     setTimeout(
@@ -44,11 +75,34 @@ export default function MyAccountPage() {
     )
   }, [])
 
+  const onSubmit = async (data: FormValues) => {
+    try {
+      const res = await fetch('/api/user', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      if (!res.ok) throw new Error('Falha ao salvar')
+      const updated = await res.json()
+      if (!user?.id) return
+      setUser({
+        ...user,
+        id: user?.id,
+        fullName: updated.fullName,
+        email: updated.email,
+        whatsapp: updated.whatsapp
+      })
+      setEditing(false)
+    } catch (err) {
+      console.error(err)
+      alert('Não foi possível salvar as mudanças.')
+    }
+  }
+
   if (!user || subscription === null) {
     return <MyAccountSkeleton />
   }
 
-  const handleEditProfile = () => router.push('/account/edit')
   const handleCancelSubscription = () => alert('Cancelamento iniciado')
   const handleLogout = () => router.push('/login')
 
@@ -116,29 +170,100 @@ export default function MyAccountPage() {
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row justify-between items-center p-4">
             <CardTitle className="text-sm font-medium">Seus dados</CardTitle>
-            <Button size="sm" variant="outline" onClick={handleEditProfile}>
-              <Edit3 />
-              Editar
-            </Button>
+            {!editing ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setEditing(true)}
+              >
+                Editar
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setEditing(false)}
+                disabled={isSubmitting}
+              >
+                Cancelar
+              </Button>
+            )}
           </CardHeader>
           <Separator />
-          <CardContent className="p-4 space-y-2">
+          <CardContent className="p-4 space-y-4">
+            {/* Nome */}
             <div>
               <Label className="text-xs">Nome</Label>
-              <p className="text-sm">{user.fullName}</p>
+              {editing ? (
+                <Input
+                  {...register('fullName', { required: 'Nome é obrigatório' })}
+                  className="mt-1 text-sm"
+                />
+              ) : (
+                <p className="text-sm">{user.fullName}</p>
+              )}
+              {errors.fullName && (
+                <p className="text-xs text-red-500">
+                  {errors.fullName.message}
+                </p>
+              )}
             </div>
+
+            {/* E-mail */}
             <div>
               <Label className="text-xs">E-mail</Label>
-              <p className="text-sm">{user.email}</p>
+              {editing ? (
+                <Input
+                  type="email"
+                  {...register('email', {
+                    required: 'E-mail é obrigatório',
+                    pattern: {
+                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                      message: 'E-mail inválido'
+                    }
+                  })}
+                  className="mt-1 text-sm"
+                />
+              ) : (
+                <p className="text-sm">{user.email}</p>
+              )}
+              {errors.email && (
+                <p className="text-xs text-red-500">{errors.email.message}</p>
+              )}
             </div>
+
+            {/* Whatsapp */}
             <div>
               <Label className="text-xs">Whatsapp</Label>
-              <p className="text-sm">{user.whatsapp}</p>
+              {editing ? (
+                <Input
+                  {...register('whatsapp', {
+                    required: 'Whatsapp é obrigatório'
+                  })}
+                  className="mt-1 text-sm"
+                />
+              ) : (
+                <p className="text-sm">{user.whatsapp}</p>
+              )}
+              {errors.whatsapp && (
+                <p className="text-xs text-red-500">
+                  {errors.whatsapp.message}
+                </p>
+              )}
             </div>
-            <div>
-              <Label className="text-xs">ID</Label>
-              <p className="text-sm">{user.id}</p>
-            </div>
+
+            {/* Botão Salvar */}
+            {editing && (
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={handleSubmit(onSubmit)}
+                  disabled={isSubmitting}
+                >
+                  Salvar
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -49,3 +49,51 @@ export async function GET() {
     )
   }
 }
+
+export async function PATCH(request: Request) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  }
+
+  const body = await request.json()
+  const {
+    fullName,
+    email,
+    whatsapp
+  }: { fullName?: string; email?: string; whatsapp?: string } = body
+
+  // Validação básica: todos obrigatórios
+  if (!fullName || !email || !whatsapp) {
+    return NextResponse.json(
+      { error: 'fullName, email e whatsapp são obrigatórios' },
+      { status: 400 }
+    )
+  }
+
+  try {
+    const updated = await prisma.user.update({
+      where: { id: session.user.id },
+      data: {
+        fullName,
+        email,
+        whatsapp
+      }
+    })
+
+    // Retorna o objeto completo que você precisar no client
+    return NextResponse.json({
+      id: updated.id,
+      fullName: updated.fullName,
+      email: updated.email,
+      whatsapp: updated.whatsapp,
+      image: updated.image
+    })
+  } catch (error) {
+    console.error('Erro ao atualizar usuário:', error)
+    return NextResponse.json(
+      { error: 'Não foi possível atualizar o usuário' },
+      { status: 500 }
+    )
+  }
+}
