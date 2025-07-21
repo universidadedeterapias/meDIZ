@@ -5,14 +5,15 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function FirstName(name: string) {
-  const FirstName = name.split(' ')[0]
-  return FirstName
+export function FirstName(name?: string | null): string {
+  if (!name) return ''
+  return name.trim().split(/\s+/)[0] || ''
 }
 
-export function SurName(name: string) {
-  const SurName = name.split(' ')[1]
-  return SurName
+export function SurName(name?: string | null): string {
+  if (!name) return ''
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  return parts.length > 1 ? parts[parts.length - 1] : ''
 }
 
 export function formatDate(input: Date | string | number): string {

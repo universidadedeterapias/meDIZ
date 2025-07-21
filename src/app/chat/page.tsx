@@ -21,6 +21,7 @@ import {
   SidebarTrigger
 } from '@/components/ui/sidebar'
 import UpSell from '@/components/upsell'
+import { useUser } from '@/contexts/user'
 import { FirstName } from '@/lib/utils'
 import { User } from '@/types/User'
 import { Result } from './result'
@@ -42,6 +43,7 @@ type RawUser = {
 
 export default function Page() {
   const router = useRouter()
+  const { user: userContext } = useUser()
 
   // Estados principais
   const [user, setUser] = useState<User | null>(null)
@@ -211,7 +213,10 @@ export default function Page() {
                 <SidebarTrigger className="-ml-1" />
                 <div className="flex flex-row items-center">
                   <Avatar className="w-8 h-8 border-2 border-indigo-600">
-                    <AvatarImage src={user.image} alt="User" />
+                    <AvatarImage
+                      src={userContext?.image ?? undefined}
+                      alt="User"
+                    />
                     <AvatarFallback>
                       {FirstName(user.name).charAt(0)}
                     </AvatarFallback>

@@ -3,21 +3,21 @@ import { PrismaClient } from '@prisma/client'
 import { compare } from 'bcryptjs'
 import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import Google from 'next-auth/providers/google'
+import GoogleProvider from 'next-auth/providers/google'
 
 const prisma = new PrismaClient()
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
-    Google({
+    GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!
     }),
     CredentialsProvider({
-      name: 'E-mail e Senha',
+      name: 'E‑mail e Senha',
       credentials: {
-        email: { label: 'E-mail', type: 'email' },
+        email: { label: 'E‑mail', type: 'email' },
         password: { label: 'Senha', type: 'password' }
       },
       async authorize(credentials) {
@@ -27,7 +27,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         }
         if (!email || !password) return null
         const user = await prisma.user.findUnique({ where: { email } })
-        if (!user || !user.passwordHash) return null
+        if (!user?.passwordHash) return null
         const isValid = await compare(password, user.passwordHash)
         if (!isValid) return null
         return { id: user.id, name: user.name!, email: user.email }
@@ -36,10 +36,45 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   ],
   secret: process.env.NEXTAUTH_SECRET,
   session: { strategy: 'jwt' },
-  jwt: {
-    maxAge: 365 * 24 * 60 * 60
-  },
+  jwt: { maxAge: 365 * 24 * 60 * 60 },
   callbacks: {
+    // **1**: Antes de tudo, tenta linkar conta Google existente
+    async signIn({ user, account, profile }) {
+      if (account?.provider === 'google' && profile?.email) {
+        // procura usuário com mesmo e‑mail
+        const existing = await prisma.user.findUnique({
+          where: { email: profile.email }
+        })
+        if (existing && existing.id !== user.id) {
+          const sessionState =
+            typeof account.session_state === 'string'
+              ? account.session_state
+              : undefined
+          // vincula o provider Google a esse usuário já existente
+          await prisma.account.create({
+            data: {
+              userId: existing.id,
+              type: account.type,
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+              refresh_token: account.refresh_token,
+              access_token: account.access_token,
+              expires_at: account.expires_at!,
+              token_type: account.token_type,
+              scope: account.scope,
+              id_token: account.id_token,
+              session_state: sessionState
+            }
+          })
+          // devolve true pra autorizar o login
+          return true
+        }
+      }
+      // em todos os outros casos, segue normalmente
+      return true
+    },
+
+    // **2**: mantém seus callbacks atuais
     async jwt({ token, user }) {
       if (user) token.id = user.id
       return token
@@ -48,5 +83,9 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       session.user.id = token.id as string
       return session
     }
+  },
+  // opcional: redireciona erros pra uma página customizada
+  pages: {
+    error: '/auth/error' // vai receber ?error=OAuthAccountNotLinked
   }
 })
