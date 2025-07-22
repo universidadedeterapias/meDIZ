@@ -55,7 +55,6 @@ type ResultProps = {
 export function Result({ markdown, elapsedMs }: ResultProps) {
   const data = React.useMemo(() => parseResponse(markdown), [markdown])
   const [baseUrl, setBaseUrl] = useState('')
-  console.log(data)
 
   useEffect(() => {
     // só roda no client

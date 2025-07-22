@@ -34,7 +34,6 @@ type AppSidebarProps = {
  */
 export function AppSidebar({}: AppSidebarProps) {
   const { user } = useUser()
-  console.log(user)
   // Loading inicial
   if (!user) {
     return (
