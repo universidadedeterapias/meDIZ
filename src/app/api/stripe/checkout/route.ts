@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     mode: 'subscription',
     customer: customerId,
     line_items: [{ price: plan.stripePriceId, quantity: 1 }],
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/sucesso?session_id={CHECKOUT_SESSION_ID}`,
+    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/cancelado`,
     metadata: { userId: dbUser.id, planId: plan.id }
   })
