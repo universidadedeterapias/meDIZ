@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 const Sucesso = () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [session, setSession] = useState<string | null>(null)
   const router = useRouter()
 
