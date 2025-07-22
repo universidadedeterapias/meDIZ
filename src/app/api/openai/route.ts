@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   const hasActiveSubscription = await prisma.subscription.findFirst({
     where: {
       userId,
-      status: 'ACTIVE',
+      status: 'active',
       currentPeriodEnd: { gte: new Date() }
     }
   })
