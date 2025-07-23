@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     customer: customerId,
     line_items: [{ price: plan.stripePriceId, quantity: 1 }],
     success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/cancelado`,
+    cancel_url: `https://universidadedeterapias.com.br/aproveite`,
     metadata: { userId: dbUser.id, planId: plan.id }
   })
 
