@@ -56,13 +56,13 @@ export function AppSidebar({}: AppSidebarProps) {
           <Avatar className="w-16 h-16 border-2 border-indigo-600">
             <AvatarImage src={user.image ? user.image : ''} alt="User avatar" />
             <AvatarFallback>
-              {FirstName(user.name ? user.name : user.fullName).charAt(0)}
+              {FirstName(user.fullName ? user.fullName : user.name).charAt(0)}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <h4 className="scroll-m-20 text-xl font-normal tracking-tight">
-              {FirstName(user.name ? user.name : user.fullName)}{' '}
-              {SurName(user.name ? user.name : user.fullName)}
+              {FirstName(user.fullName ? user.fullName : user.name)}{' '}
+              {SurName(user.fullName ? user.fullName : user.name)}
             </h4>
             <a href="/myAccount" className="text-primary">
               Minha conta
