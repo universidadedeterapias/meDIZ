@@ -1,12 +1,10 @@
+// app/components/UpSell.tsx
 'use client'
-import {
-  ArrowLeft,
-  Calendar,
-  Check,
-  DollarSign,
-  ShieldAlert
-} from 'lucide-react'
-import { useState } from 'react'
+import logo from '@/app/assets/iconemeDIZ512x512.png'
+import { ArrowLeft, Calendar, Check, DollarSign, Menu } from 'lucide-react'
+import Image from 'next/image'
+import { useRef, useState } from 'react'
+import { TypingText } from './TypingText'
 import { Button } from './ui/button'
 
 const FREE_MONTHLY_PLAN_ID = '3f376de0-8947-4715-8c00-8abeb7a09580'
@@ -19,12 +17,15 @@ interface UpSellProps {
 export default function UpSell({ isPlus }: UpSellProps) {
   const [selectedPlan, setSelectedPlan] = useState<'mensal' | 'anual'>('anual')
 
+  const finalCtaRef = useRef<HTMLElement>(null)
+
+  const handlePlanSelect = (plan: 'mensal' | 'anual') => {
+    setSelectedPlan(plan)
+    // rola suavemente até o botão de “Clique e Assine!”
+    finalCtaRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
   const handleExperimentar = async () => {
-    if (!selectedPlan) {
-      alert('Selecione um plano')
-      return
-    }
-    // escolhe o ID certo baseado no estado
     const planId =
       selectedPlan === 'anual' ? FREE_ANNUAL_PLAN_ID : FREE_MONTHLY_PLAN_ID
 
@@ -38,8 +39,15 @@ export default function UpSell({ isPlus }: UpSellProps) {
     window.location.assign(url)
   }
 
+  const scrollToPlans = () => {
+    const el = document.getElementById('select_plan')
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-zinc-100">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="w-full sticky top-0 z-10 bg-white shadow-sm">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -54,216 +62,227 @@ export default function UpSell({ isPlus }: UpSellProps) {
         </div>
       </header>
 
-      {/* Main */}
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-8">
         {/* 1. Tip Box */}
         {!isPlus && (
-          <div className="flex flex-col items-center text-center bg-yellow-50 border border-yellow-400 p-4 rounded-lg shadow-sm">
-            <span className="text-3xl">💡</span>
-            <div>
-              <h3 className="font-semibold text-lg text-yellow-900">
-                Você já usou
-                <br />
-                as 3 consultas
-                <br />
-                gratuitas do dia!
-              </h3>
-              <p className="text-sm text-yellow-800">
-                O plano gratuito permite três consulta ao dia.
-              </p>
-              <p className="text-sm text-yellow-800">
-                <strong>Que tal experimentar o plano completo?</strong>
-              </p>
+          <section className="bg-white border border-gray-200 rounded-xl p-6 text-center shadow">
+            <div className="w-full flex flex-row items-center justify-center">
+              <Image src={logo} alt={''} width={60} height={60} />
             </div>
-          </div>
+            <TypingText
+              text="Suas pesquisas gratuitas acabaram por hoje!"
+              speed={60}
+              className="text-xl text-gray-800 font-semibold"
+            />
+            <p className="text-sm text-gray-600 mt-2">
+              O <strong>plano gratuito</strong> oferece somente 3 pesquisas ao
+              dia.
+            </p>
+          </section>
         )}
 
-        {/* 2. Oferta principal */}
-        <section className="space-y-2 bg-zinc-50 shadow-md rounded-lg px-4 py-6 text-center">
-          <h2 className="text-2xl font-bold text-gray-800">
-            Experimente o <span className="text-primary">meDIZ!</span>
-            <br />
-            Gratuito por 30 dias,
-            <br />
-            sem compromisso
-          </h2>
-          <p className="text-gray-700 leading-relaxed">
-            Tenha acesso ilimitado a todas as consultas e recursos
-            profissionais. Ideal para terapeutas que querem mais segurança e
-            agilidade no atendimento.
-          </p>
-        </section>
-
-        {/* 3. Garantia */}
-        <section className="space-y-2 bg-emerald-50 border border-emerald-400 rounded-lg text-center px-4 py-6">
-          <span className="w-full flex items-center justify-center text-emerald-900">
-            <ShieldAlert style={{ width: '32px', height: '32px' }} />
-          </span>
-          <h3 className="text-xl font-semibold text-emerald-900">Sem Risco!</h3>
-          <p className="text-emerald-700">
-            <strong>Use por 30 dias gratuitamente</strong>.
-            <p>
-              Se não gostar, cancele com 1 clique antes do vencimento.
-              <p>Simples assim!</p>
+        {/* 2. Oferta Especial */}
+        <section className="text-center space-y-2">
+          {!isPlus && (
+            <>
+              <p className="text-lg text-gray-700">
+                Mas, temos uma condição especial para você:
+              </p>
+              <div className="text-4xl">😁</div>
+            </>
+          )}
+          <div className="bg-gray-900 text-white rounded-xl p-6 shadow-lg">
+            <p className="text-lg">
+              Experimente o{' '}
+              <span className="font-bold bg-primary p-1 rounded">
+                Plano Profissional
+              </span>
             </p>
-          </p>
+            <p className="mt-2">
+              e aproveite <strong>30 dias gratuitos</strong> sem cobrança
+              imediata.
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              (Atenção: esta promoção encerra em algumas horas.)
+            </p>
+          </div>
         </section>
 
-        {/* 4. Como funciona */}
-        <section className="bg-zinc-50 shadow-md rounded-lg px-4 py-6 space-y-4">
-          <h3 className="text-xl font-semibold text-gray-800 text-center">
-            Como funciona (muito simples):
+        {/* 3. Funcionalidades */}
+        <section className="px-4 space-y-2">
+          {[
+            'Consultas Ilimitadas',
+            'Respostas Avançadas',
+            'Funcionalidades Exclusivas',
+            'Suporte Humano'
+          ].map(texto => (
+            <div key={texto} className="flex items-center">
+              <span className="bg-green-500 text-white p-2 rounded-full">
+                <Check className="w-4 h-4" />
+              </span>
+              <span className="ml-3 text-gray-800">{texto}</span>
+            </div>
+          ))}
+        </section>
+
+        {/* 4. Chamada para Ação */}
+        <section className="px-4">
+          <Button
+            className="w-full py-4 text-lg font-semibold rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 text-white animate-bounce"
+            onClick={scrollToPlans}
+          >
+            Quero Assinar Agora!
+          </Button>
+        </section>
+
+        {/* 5. Como Funciona */}
+        <section className="bg-white rounded-xl shadow p-6 space-y-4">
+          <h3 className="text-xl font-semibold text-center text-gray-800">
+            Como Funciona:
           </h3>
-
-          <ol className="mt-4 space-y-3 text-left">
-            <li className="flex items-center bg-zinc-100 rounded-lg p-4 border-l-4 border-primary">
-              <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-primary text-white font-semibold mr-3">
-                1
-              </span>
-              <span className="text-gray-700">
-                Clique em &quot;Experimentar Grátis&quot; abaixo
-              </span>
-            </li>
-
-            <li className="flex items-center bg-zinc-100 rounded-lg p-4 border-l-4 border-primary">
-              <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-primary text-white font-semibold mr-3">
-                2
-              </span>
-              <span className="text-gray-700">
-                Use todos os recursos por 30 dias
-              </span>
-            </li>
-
-            <li className="flex items-center bg-zinc-100 rounded-lg p-4 border-l-4 border-primary">
-              <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-primary text-white font-semibold mr-3">
-                3
-              </span>
-              <span className="text-gray-700">
-                Se gostar, continue. Se não, cancele facilmente
-              </span>
-            </li>
+          <ol className="space-y-3">
+            {[
+              'Clique em "Assinar"',
+              'Seu acesso ao Plano Profissional é desbloqueado imediatamente.',
+              'Nenhuma cobrança será feita hoje.',
+              'Você tem 30 dias gratuitos para decidir.',
+              'Se gostar continue e quando quiser, cancele!'
+            ].map((step, i) => (
+              <li key={i} className="flex items-start">
+                <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-primary text-white rounded-full mr-3 font-semibold">
+                  {i + 1}
+                </span>
+                <span className="text-gray-700">{step}</span>
+              </li>
+            ))}
           </ol>
         </section>
 
-        {/* 5. Planos */}
-        {/* Seção de planos */}
-        <section className="bg-white shadow-md rounded-lg p-4 space-y-4">
-          <h3 className="text-xl font-semibold text-gray-800 text-center">
+        {/* 6. Como Cancelar */}
+        <section className="bg-white rounded-xl shadow p-6 space-y-4">
+          <h3 className="text-lg font-semibold text-gray-800">
+            Como Cancelar:
+          </h3>
+          <ol className="space-y-2">
+            <li className="flex items-center">
+              <Menu className="w-5 h-5 text-gray-600 mr-2" />
+              <span>Clique em &quot;Menu&quot;</span>
+            </li>
+            <li className="flex items-center">
+              <span className="flex-shrink-0 w-5 h-5 text-gray-600 mr-2">
+                2.
+              </span>
+              <span>
+                Acesse <strong>Minha Conta</strong>
+              </span>
+            </li>
+            <li className="flex items-center">
+              <span className="flex-shrink-0 w-5 h-5 text-gray-600 mr-2">
+                3.
+              </span>
+              <span>
+                Clique em <strong>Cancelar Assinatura</strong>
+              </span>
+            </li>
+          </ol>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <p className="text-green-800 text-sm">
+              É fácil assinar e mais fácil ainda cancelar quando não quiser
+              mais!
+            </p>
+          </div>
+        </section>
+
+        {/* 7. Escolha seu Plano */}
+        <section
+          className="bg-white rounded-xl shadow p-6 space-y-4"
+          id="select_plan"
+        >
+          <h3 className="text-xl font-semibold text-center text-gray-800">
             Escolha seu plano:
           </h3>
-
-          <div className="space-y-3">
-            {/* Plano Mensal */}
+          <div className="space-y-4">
             <button
               type="button"
-              onClick={() => setSelectedPlan('mensal')}
+              onClick={() => handlePlanSelect('mensal')}
               className={`
-              relative w-full flex items-start p-4 rounded-lg border 
-              ${
-                selectedPlan === 'mensal' ? 'border-primary' : 'border-gray-200'
-              } 
-              bg-white focus:outline-none
-            `}
+                w-full flex items-start p-4 rounded-lg border
+                ${
+                  selectedPlan === 'mensal'
+                    ? 'border-primary'
+                    : 'border-gray-200'
+                }
+              `}
             >
               <Calendar
                 className={`w-6 h-6 mr-3 ${
                   selectedPlan === 'mensal' ? 'text-primary' : 'text-gray-400'
                 }`}
               />
-              <div className="text-left">
-                <h4 className="text-lg font-semibold mb-1">Plano Mensal</h4>
-                <p
-                  className={`text-2xl font-bold mb-1 ${
-                    selectedPlan === 'mensal' ? 'text-primary' : 'text-gray-800'
-                  }`}
-                >
-                  R$ 39,90/mês
-                </p>
+              <div>
+                <h4 className="font-semibold">Plano Mensal</h4>
+                <p className="text-lg font-bold">R$ 39,90/mês</p>
                 <p className="text-sm text-gray-500">
                   Flexibilidade total para cancelar
                 </p>
               </div>
             </button>
 
-            {/* Plano Anual */}
             <button
               type="button"
-              onClick={() => setSelectedPlan('anual')}
+              onClick={() => handlePlanSelect('anual')}
               className={`
-              relative w-full flex items-start p-4 rounded-lg border 
-              ${
-                selectedPlan === 'anual' ? 'border-primary' : 'border-gray-200'
-              } 
-              bg-white focus:outline-none
-            `}
+                relative w-full flex items-start p-4 rounded-lg border
+                ${
+                  selectedPlan === 'anual'
+                    ? 'border-primary'
+                    : 'border-gray-200'
+                }
+              `}
             >
-              {/* Badge */}
               <span className="absolute top-2 right-2 bg-green-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
-                MAIS ECONÔMICO
+                MAIS ECONÔMICO
               </span>
-
               <DollarSign
                 className={`w-6 h-6 mr-3 ${
                   selectedPlan === 'anual' ? 'text-primary' : 'text-gray-400'
                 }`}
               />
-              <div className="text-left">
-                <h4 className="text-lg font-semibold mb-1">Plano Anual</h4>
-                <p
-                  className={`text-2xl font-bold mb-1 ${
-                    selectedPlan === 'anual' ? 'text-primary' : 'text-gray-800'
-                  }`}
-                >
-                  R$ 29,90/mês
-                </p>
+              <div>
+                <h4 className="font-semibold">Plano Anual</h4>
+                <p className="text-lg font-bold">R$ 29,90/mês</p>
                 <p className="text-sm text-gray-500">
-                  Economia de R$ 120 por ano
+                  Economia de R$ 120 por ano
                 </p>
               </div>
             </button>
           </div>
         </section>
-        <section className="space-y-3">
-          {[
-            'Consultas ilimitadas durante o atendimento',
-            'Respostas mais detalhadas e precisas',
-            'Maior confiança em casos complexos',
-            'Atendimento mais ágil e eficiente'
-          ].map(feat => (
-            <div
-              key={feat}
-              className="flex items-center bg-white border border-gray-200 rounded-lg shadow-sm p-4"
-            >
-              <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-green-500 text-white rounded mr-3">
-                <Check className="w-4 h-4" />
-              </span>
-              <span className="text-gray-800">{feat}</span>
-            </div>
-          ))}
-        </section>
 
-        {/* Box de Cancelamento */}
-        <section className="flex flex-col items-center text-center bg-blue-50 border border-blue-300 rounded-lg p-4">
-          <span className="text-3xl">🔄</span>
-          <p className="text-blue-800">
-            <h3 className="font-semibold">Cancelamento super fácil</h3>
-            <p>
-              Basta acessar <strong className="underline">Minha Conta</strong>{' '}
-              no app e clicar em <strong>Cancelar</strong>.
-            </p>
-            <p>Sem burocracias, sem ligações.</p>
-          </p>
-        </section>
-
-        {/* 7. Chamada para ação */}
-        <div>
+        {/* 8. CTA Final e Rodapé */}
+        <section className="space-y-4" ref={finalCtaRef}>
           <Button
-            className="w-full py-10 text-lg capitalize"
+            className="w-full py-4 text-lg font-semibold rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 text-white"
             onClick={handleExperimentar}
           >
-            {`🎁 Experimente Grátis - Plano ${selectedPlan}`}
+            Clique e Assine!
           </Button>
-        </div>
+
+          <div className="text-center text-sm text-gray-600 space-y-2">
+            <div className="inline-block bg-green-100 text-green-800 px-2 py-1 rounded">
+              100% Pagamento Seguro
+            </div>
+            {/* Aqui você pode adicionar as logos de Visa, Mastercard etc */}
+          </div>
+        </section>
+
+        <section className="bg-gray-900 text-white rounded-xl p-6 text-center">
+          <p>
+            Assine Agora o{' '}
+            <span className="font-bold text-primary">Plano Profissional</span>
+          </p>
+          <p className="mt-2 text-sm">Você não será cobrado hoje!</p>
+        </section>
       </main>
     </div>
   )
