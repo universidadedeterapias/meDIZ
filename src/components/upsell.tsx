@@ -35,7 +35,11 @@ export default function UpSell({ isPlus }: UpSellProps) {
       body: JSON.stringify({ planId })
     })
     const { url, error } = await res.json()
-    if (error) return alert(error)
+    if (error) {
+      alert('Para assinar é preciso realizar login!')
+      window.location.assign('/login')
+      return
+    }
     window.location.assign(url)
   }
 
