@@ -16,7 +16,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'meDIZ!',
-  description: 'Aplicativo meDIZ!'
+  description: 'Aplicativo meDIZ!',
+  icons: {
+    icon: 'https://mediz.app/imgs/logo192.png',
+    apple: 'https://mediz.app/imgs/logo512.png'
+  }
 }
 
 export default function RootLayout({
