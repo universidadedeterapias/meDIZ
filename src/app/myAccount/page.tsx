@@ -425,7 +425,7 @@ export default function MyAccountPage() {
           </CardContent>
         </Card>
 
-        {/* Consultar especialista */}
+        {/* Consultar especialista
         <Button
           asChild
           className="w-full"
@@ -438,7 +438,7 @@ export default function MyAccountPage() {
           }
         >
           <span>💬 Falar com especialista</span>
-        </Button>
+        </Button> */}
 
         <Separator />
 
