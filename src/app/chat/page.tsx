@@ -20,7 +20,6 @@ import {
   SidebarProvider,
   SidebarTrigger
 } from '@/components/ui/sidebar'
-import UpSell from '@/components/upsell'
 import { useUser } from '@/contexts/user'
 import { FirstName } from '@/lib/utils'
 import { User } from '@/types/User'
@@ -192,7 +191,7 @@ export default function Page() {
   }
 
   if (limitReached) {
-    return <UpSell />
+    window.location.href = 'https://go.hotmart.com/N101121884P'
   }
 
   // Layout principal do chat

@@ -5,7 +5,7 @@ import { FaWhatsapp } from 'react-icons/fa'
 export const sidebarOptions = [
   {
     name: 'Assinatura Plus',
-    url: '/assinatura-plus',
+    url: 'https://go.hotmart.com/N101121884P',
     icon: Star
   },
   {
