@@ -112,11 +112,84 @@ export async function POST(req: Request) {
         `Olá, ${user.fullName ?? user.name ?? ''}! ` +
         `Recebemos sua solicitação para redefinir a senha.`
 
-      // Z-API
-      const zapiUrl = `${process.env.ZAPI_BASE_URL}/instances/${process.env.ZAPI_INSTANCE_ID}/token/${process.env.ZAPI_TOKEN}/send-text`
+      // Z-API endpoints
+      const zapiSendText = `${process.env.ZAPI_BASE_URL}/instances/${process.env.ZAPI_INSTANCE_ID}/token/${process.env.ZAPI_TOKEN}/send-text`
+      const zapiSendMessageLink = `${process.env.ZAPI_BASE_URL}/instances/${process.env.ZAPI_INSTANCE_ID}/token/${process.env.ZAPI_TOKEN}/send-message-link`
 
+      // 1) Tenta enviar usando o endpoint send-message-link (um único payload com botão/link)
+      let sentLink = false
       try {
-        const zResGreeting = await fetch(zapiUrl, {
+        const linkPayload = {
+          phone,
+          // assumimos que o Z-API aceita essas chaves: title, url e description/message
+          title: 'Redefinir senha',
+          url: resetUrl,
+          description: greeting
+        }
+
+        const zResLink = await fetch(zapiSendMessageLink, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Client-Token': process.env.ZAPI_CLIENT_TOKEN || ''
+          },
+          body: JSON.stringify(linkPayload)
+        })
+
+        if (zResLink.ok) {
+          sentLink = true
+        } else {
+          const text = await zResLink.text().catch(() => '<no-body>')
+          console.error(
+            'reset-password-whatsapp: send-message-link returned error',
+            { status: zResLink.status, body: text }
+          )
+        }
+      } catch (e) {
+        console.error(
+          'reset-password-whatsapp: send-message-link fetch error',
+          e
+        )
+      }
+
+      // 2) Fallback: se send-message-link não funcionou, envia o link como texto via send-text
+      if (!sentLink) {
+        try {
+          const zResFallback = await fetch(zapiSendText, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Client-Token': process.env.ZAPI_CLIENT_TOKEN || ''
+            },
+            body: JSON.stringify({ phone, message: resetUrl })
+          })
+
+          if (!zResFallback.ok) {
+            const text = await zResFallback.text().catch(() => '<no-body>')
+            console.error(
+              'reset-password-whatsapp: fallback send-text returned error',
+              { status: zResFallback.status, body: text }
+            )
+            return NextResponse.json(
+              { error: 'Failed to send WhatsApp link' },
+              { status: 502 }
+            )
+          }
+        } catch (e) {
+          console.error(
+            'reset-password-whatsapp: fallback send-text fetch error',
+            e
+          )
+          return NextResponse.json(
+            { error: 'Failed to send WhatsApp link' },
+            { status: 502 }
+          )
+        }
+      }
+
+      // 3) Envia em seguida a mensagem de saudação (non-fatal) — se quiser evitar, pode ser removida
+      try {
+        const zResGreeting = await fetch(zapiSendText, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -129,57 +202,15 @@ export async function POST(req: Request) {
           const text = await zResGreeting.text().catch(() => '<no-body>')
           console.error(
             'reset-password-whatsapp: z-api returned error when sending greeting',
-            {
-              status: zResGreeting.status,
-              body: text
-            }
+            { status: zResGreeting.status, body: text }
           )
-          // não falhar o endpoint por conta da mensagem de saudação — apenas logamos
         }
       } catch (e) {
         console.error(
           'reset-password-whatsapp: Z-API fetch error when sending greeting',
           e
         )
-        // non-fatal
       }
-      // 1) Envia primeiro a mensagem contendo apenas o link (obrigatório)
-      try {
-        const zResLink = await fetch(zapiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Client-Token': process.env.ZAPI_CLIENT_TOKEN || ''
-          },
-          body: JSON.stringify({ phone, message: resetUrl })
-        })
-
-        if (!zResLink.ok) {
-          const text = await zResLink.text().catch(() => '<no-body>')
-          console.error(
-            'reset-password-whatsapp: z-api returned error when sending link',
-            {
-              status: zResLink.status,
-              body: text
-            }
-          )
-          return NextResponse.json(
-            { error: 'Failed to send WhatsApp link' },
-            { status: 502 }
-          )
-        }
-      } catch (e) {
-        console.error(
-          'reset-password-whatsapp: Z-API fetch error when sending link',
-          e
-        )
-        return NextResponse.json(
-          { error: 'Failed to send WhatsApp link' },
-          { status: 502 }
-        )
-      }
-
-      // 2) Envia em seguida a mensagem de saudação (non-fatal)
 
       maskedPhone = maskTail(user.whatsapp)
     }
