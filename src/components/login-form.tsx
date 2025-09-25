@@ -3,6 +3,13 @@
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { signIn } from 'next-auth/react'
@@ -21,6 +28,11 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
+  // estados do envio via WhatsApp
+  const [sending, setSending] = useState(false)
+  const [openModal, setOpenModal] = useState(false)
+  const [maskedPhone, setMaskedPhone] = useState<string | null>(null)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -31,12 +43,33 @@ export function LoginForm({
       password,
       redirect: false
     })
-
     setIsLoading(false)
-    if (res?.error) {
-      setError('E-mail ou senha inválidos.')
-    } else {
-      router.push('/chat')
+
+    if (res?.error) setError('E-mail ou senha inválidos.')
+    else router.push('/chat')
+  }
+
+  const handleForgotByWhatsapp = async () => {
+    if (!email) {
+      setError('Informe seu e-mail para enviarmos o link pelo WhatsApp.')
+      return
+    }
+    try {
+      setSending(true)
+      setError(null)
+      const res = await fetch('/api/request-reset-whatsapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+      const data = await res.json().catch(() => ({}))
+      setMaskedPhone(data?.maskedPhone ?? null)
+      setOpenModal(true)
+    } catch (e) {
+      setMaskedPhone(null)
+      setOpenModal(true)
+    } finally {
+      setSending(false)
     }
   }
 
@@ -56,7 +89,6 @@ export function LoginForm({
         </CardHeader>
 
         <CardContent className="space-y-6">
-          {/* Form de e-mail e senha */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <Input
               name="email"
@@ -80,6 +112,16 @@ export function LoginForm({
             </Button>
           </form>
 
+          {/* Link/ação: Esqueci minha senha (WhatsApp) */}
+          <button
+            type="button"
+            onClick={handleForgotByWhatsapp}
+            className="w-full text-sm text-indigo-600 underline hover:text-indigo-500 text-left pl-2"
+            disabled={sending}
+          >
+            {sending ? 'Enviando via WhatsApp…' : 'Esqueci minha senha'}
+          </button>
+
           {/* Divider “ou” */}
           <div className="flex items-center">
             <hr className="flex-grow border-zinc-300" />
@@ -98,14 +140,12 @@ export function LoginForm({
             Continuar com Google
           </Button>
 
-          {/* Entrar como convidado */}
           <Link href="/chat?guest=1">
             <Button variant="link" className="w-full mt-4">
               Entrar como convidado
             </Button>
           </Link>
 
-          {/* Cadastre-se */}
           <p className="text-center text-sm text-zinc-600">
             Ainda não tem conta?{' '}
             <Link
@@ -116,7 +156,6 @@ export function LoginForm({
             </Link>
           </p>
 
-          {/* Termos */}
           <p className="text-center text-xs text-zinc-500 mt-4">
             Ao clicar em qualquer opção, você concorda com nossos{' '}
             <a
@@ -136,6 +175,31 @@ export function LoginForm({
           </p>
         </CardContent>
       </Card>
+
+      {/* Modal de confirmação */}
+      <Dialog open={openModal} onOpenChange={setOpenModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confira seu WhatsApp</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-zinc-700">
+            {maskedPhone ? (
+              <>
+                Enviamos um link de redefinição para o número com final{' '}
+                <b>{maskedPhone}</b>.
+              </>
+            ) : (
+              <>
+                Se existir uma conta com esse e-mail, enviaremos um link de
+                redefinição via WhatsApp.
+              </>
+            )}
+          </p>
+          <DialogFooter>
+            <Button onClick={() => setOpenModal(false)}>Ok</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
