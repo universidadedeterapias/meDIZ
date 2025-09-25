@@ -13,7 +13,7 @@ function onlyDigits(s: string) {
 }
 
 function toBrazilE164(whats: string) {
-  let d = onlyDigits(whats)
+  const d = onlyDigits(whats)
   // se já começa com 55 e tem 12~13 dígitos (com DDD + 9), mantém
   if (d.startsWith('55')) return d
   // se tem 10~11 dígitos (ex: 11 + 9XXXX...), prefixa 55
@@ -30,6 +30,7 @@ function maskTail(whats: string) {
 export async function POST(req: Request) {
   try {
     // validação básica do body e tipo
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let body: any
     try {
       body = await req.json()
@@ -114,7 +115,10 @@ export async function POST(req: Request) {
       try {
         const zRes = await fetch(zapiUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Client-Token': process.env.ZAPI_CLIENT_TOKEN || ''
+          },
           body: JSON.stringify({ phone, message })
         })
 
@@ -141,6 +145,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true, maskedPhone })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     // em modo DEBUG (variável de ambiente) retornamos a stack para diagnóstico local, caso contrário logamos e retornamos 500 genérico
     console.error('reset-password-whatsapp: unexpected error', e)
