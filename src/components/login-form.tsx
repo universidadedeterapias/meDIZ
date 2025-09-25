@@ -65,6 +65,7 @@ export function LoginForm({
       const data = await res.json().catch(() => ({}))
       setMaskedPhone(data?.maskedPhone ?? null)
       setOpenModal(true)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       setMaskedPhone(null)
       setOpenModal(true)

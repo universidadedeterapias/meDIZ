@@ -68,11 +68,12 @@ export default function ResetPage() {
         setMsg('Senha alterada com sucesso! Redirecionando para o login…')
         setTimeout(() => router.push('/login'), 1500)
       } else {
-        const data = await res.json().catch(() => ({} as any))
+        const data = await res.json().catch(() => ({}))
         setErr(
           data?.error ?? 'Não foi possível redefinir a senha. Tente novamente.'
         )
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       setErr('Falha de rede ao enviar sua solicitação.')
     } finally {
