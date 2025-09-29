@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // directUrl = env("DIRECT_DATABASE_URL")
 }
 
 enum AppUsage {
@@ -27,6 +28,13 @@ enum PlanInterval {
   WEEK
   MONTH
   YEAR
+}
+
+enum StatusVerificacao {
+  ENVIADA
+  PROCESSADO
+  ERRO
+  PENDENTE
 }
 
 model User {
@@ -55,6 +63,14 @@ model User {
   
   stripeCustomerId     String?        @unique
   
+  // CAMPOS para workflows n8n
+  mensagem_enviada         String?        // Pode ser texto ou timestamp
+  status_verificacao       StatusVerificacao?
+  mensagem_grupo_essencia  String?        // Timestamp ou texto da mensagem enviada para grupo essência
+  
+  // CAMPO para idioma/localização
+  preferredLanguage        String?        // ex: 'pt-BR', 'en-US', 'es-ES'
+  
   // assinaturas
   subscriptions      Subscription[]
   chatSessions       ChatSession[]
@@ -62,6 +78,12 @@ model User {
   // relações usadas pelo Auth.js
   accounts      Account[]     // armazena tokens OAuth, etc
   sessions      Session[]     // armazena sessionTokens JWT ou DB
+
+  @@index([mensagem_enviada])
+  @@index([status_verificacao])
+  @@index([mensagem_grupo_essencia])
+  @@index([preferredLanguage])
+  @@index([createdAt])
 }
 
 model ChatSession {
@@ -144,4 +166,18 @@ model Subscription {
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   plan   Plan   @relation(fields: [planId], references: [id])
+}
+
+// TABELA para o workflow n8n
+model LogExecucao {
+  id                           String   @id @default(uuid())
+  data_execucao               DateTime @default(now())
+  total_clientes_processados  Int      @default(0)
+  total_compras_encontradas   Int      @default(0)
+  total_mensagens_enviadas    Int      @default(0)
+  status                      String   @default("iniciado") // iniciado, em_progresso, concluido, erro
+  created_at                  DateTime @default(now())
+
+  @@index([data_execucao])
+  @@map("log_execucoes")
 }
