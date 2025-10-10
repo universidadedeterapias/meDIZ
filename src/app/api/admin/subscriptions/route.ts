@@ -80,11 +80,12 @@ export async function POST(req: Request) {
 
     const subscription = await prisma.subscription.create({
       data: {
-        userId,
-        planId,
+        stripeSubscriptionId: `sub_admin_${Date.now()}`,
         status,
         currentPeriodStart: new Date(currentPeriodStart),
-        currentPeriodEnd: new Date(currentPeriodEnd)
+        currentPeriodEnd: new Date(currentPeriodEnd),
+        user: { connect: { id: userId } },
+        plan: { connect: { id: planId } }
       },
       include: {
         plan: {
