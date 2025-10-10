@@ -1,11 +1,9 @@
 import { PrismaAdapter } from '@auth/prisma-adapter'
-import { PrismaClient } from '@prisma/client'
 import { compare } from 'bcryptjs'
 import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -35,8 +33,29 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     })
   ],
   secret: process.env.NEXTAUTH_SECRET,
-  session: { strategy: 'jwt' },
-  jwt: { maxAge: 365 * 24 * 60 * 60 },
+  session: { 
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 dias
+    updateAge: 24 * 60 * 60, // Atualizar a cada 24 horas
+  },
+  jwt: { 
+    maxAge: 30 * 24 * 60 * 60, // 30 dias
+  },
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production'
+        ? '__Secure-authjs.session-token'
+        : 'authjs.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        // NÃO definir domain em dev; em prod só se precisar compartilhar entre subdomínios
+        // domain: process.env.NODE_ENV === 'production' ? '.mediz.com' : undefined,
+      },
+    },
+  },
   callbacks: {
     // **1**: Antes de tudo, tenta linkar conta Google existente
     async signIn({ user, account, profile }) {

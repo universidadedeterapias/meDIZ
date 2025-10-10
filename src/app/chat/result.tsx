@@ -1,5 +1,7 @@
 'use client'
 
+import BlurredContent, { BlurredAccordionContent } from '@/components/BlurredContent'
+import { ClientOnly } from '@/components/ClientOnly'
 import { ShareInsightDialog } from '@/components/Share'
 import {
   Accordion,
@@ -11,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import parseResponse from '@/lib/parseResponse'
+import { UserPeriod } from '@/lib/userPeriod'
 import {
   Activity,
   AlertTriangle,
@@ -50,15 +53,29 @@ const ICON_MAP: Record<
 type ResultProps = {
   markdown: string
   elapsedMs: number
+  userPeriod?: UserPeriod
+  fullVisualization?: boolean
+  onSubscribe?: () => void
 }
 
-export function Result({ markdown, elapsedMs }: ResultProps) {
+export function Result({ 
+  markdown, 
+  elapsedMs, 
+  userPeriod = 'first-week',
+  fullVisualization = true,
+  onSubscribe = () => window.location.href = 'https://go.hotmart.com/N101121884P'
+}: ResultProps) {
   const data = React.useMemo(() => parseResponse(markdown), [markdown])
   const [baseUrl, setBaseUrl] = useState('')
+  
+  // Determina se deve mostrar o conteúdo completo ou parcial
+  const showFullContent = fullVisualization
 
   useEffect(() => {
     // só roda no client
-    setBaseUrl(window.location.origin)
+    if (typeof window !== 'undefined') {
+      setBaseUrl(window.location.origin)
+    }
   }, [])
 
   return (
@@ -125,8 +142,17 @@ export function Result({ markdown, elapsedMs }: ResultProps) {
 
         {/* Accordion dinâmico com ícones */}
         <Accordion type="single" collapsible className="space-y-2 rounded-md">
-          {data.others.map(sec => {
+          {data.others.map((sec, index) => {
             const Icon = sec.icon ? ICON_MAP[sec.icon] : null
+            
+            // Verifica se este é o acordeão "Símbolos Biológicos" ou posterior
+            // e se devemos aplicar o efeito de blur
+            const isRestrictedSection = sec.title.toLowerCase().includes('símbolos') || 
+                                       sec.title.toLowerCase().includes('conflito emocional') ||
+                                       sec.icon === 'dna' || 
+                                       sec.icon === 'triangle-alert' ||
+                                       index >= 1  // Aplica restrição a partir do índice 1 (Conflito Emocional Subjacente)
+            const shouldBlur = !showFullContent && isRestrictedSection
 
             return (
               <AccordionItem
@@ -143,16 +169,31 @@ export function Result({ markdown, elapsedMs }: ResultProps) {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="prose prose-sm max-w-none p-3 text-left">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      ul: ({ ...props }) => (
-                        <ul className="list-disc list-inside ml-4" {...props} />
-                      )
-                    }}
-                  >
-                    {sec.body}
-                  </ReactMarkdown>
+                  {shouldBlur ? (
+                    <BlurredAccordionContent onSubscribe={onSubscribe}>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          ul: ({ ...props }) => (
+                            <ul className="list-disc list-inside ml-4" {...props} />
+                          )
+                        }}
+                      >
+                        {sec.body}
+                      </ReactMarkdown>
+                    </BlurredAccordionContent>
+                  ) : (
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        ul: ({ ...props }) => (
+                          <ul className="list-disc list-inside ml-4" {...props} />
+                        )
+                      }}
+                    >
+                      {sec.body}
+                    </ReactMarkdown>
+                  )}
                 </AccordionContent>
               </AccordionItem>
             )
@@ -160,17 +201,19 @@ export function Result({ markdown, elapsedMs }: ResultProps) {
         </Accordion>
 
         {/* Ações */}
-        <div className="w-full flex items-center justify-between gap-2">
-          <Button className="w-full py-6 bg-rose-100 text-red-600 hover:bg-rose-200 transition-colors hidden">
-            <Heart /> Favoritar
-          </Button>
-          <ShareInsightDialog
-            title={`${data.popular} – Impacto biológico`}
-            url={baseUrl}
-            text={data.impactoBiologico}
-            triggerClassName="w-full py-6 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors flex items-center justify-center gap-2"
-          />
-        </div>
+        <ClientOnly>
+          <div className="w-full flex items-center justify-between gap-2">
+            <Button className="w-full py-6 bg-rose-100 text-red-600 hover:bg-rose-200 transition-colors hidden">
+              <Heart /> Favoritar
+            </Button>
+            <ShareInsightDialog
+              title={`${data.popular} – Impacto biológico`}
+              url={baseUrl}
+              text={data.impactoBiologico}
+              triggerClassName="w-full py-6 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors flex items-center justify-center gap-2"
+            />
+          </div>
+        </ClientOnly>
         {/* FOOTER */}
         <div className="mt-6 space-y-2">
           {/* Tempo de resposta */}

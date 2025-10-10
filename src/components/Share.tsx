@@ -22,6 +22,9 @@ interface ShareInsightDialogProps {
 }
 
 function openDeepLink(appUrl: string, webUrl: string) {
+  // Verifica se está no cliente antes de usar window
+  if (typeof window === 'undefined') return
+  
   // tenta abrir o app
   window.location.href = appUrl
   // se não abrir em 500ms, vai para o web fallback
@@ -65,6 +68,9 @@ export function ShareInsightDialog({
           {/* Instagram */}
           <button
             onClick={() => {
+              // Verifica se está no cliente antes de usar navigator
+              if (typeof window === 'undefined') return
+              
               // primeiro tenta Web Share API (iOS/Android)
               if (navigator.share) {
                 navigator.share({ title, text, url }).catch(() => {
@@ -149,7 +155,11 @@ export function ShareInsightDialog({
 
           {/* Copiar */}
           <button
-            onClick={() => navigator.clipboard.writeText(`${text} ${url}`)}
+            onClick={() => {
+              // Verifica se está no cliente antes de usar navigator
+              if (typeof window === 'undefined') return
+              navigator.clipboard.writeText(`${text} ${url}`)
+            }}
             className="flex flex-col items-center space-y-1"
           >
             <SocialIcon network="sharethis" style={{ width: 32, height: 32 }} />

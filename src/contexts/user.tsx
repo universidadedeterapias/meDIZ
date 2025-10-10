@@ -2,6 +2,7 @@
 'use client'
 
 import { UserFullProps } from '@/types/User'
+import { useUserCache, SidebarUser } from '@/hooks/use-user-cache'
 import React, {
   createContext,
   ReactNode,
@@ -13,15 +14,20 @@ import React, {
 type UserContextType = {
   user: UserFullProps | null
   setUser: React.Dispatch<React.SetStateAction<UserFullProps | null>>
+  // Dados otimizados para sidebar
+  sidebarUser: SidebarUser | null
+  isLoadingSidebar: boolean
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined)
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserFullProps | null>(null)
+  const { user: sidebarUser, isLoading: isLoadingSidebar } = useUserCache()
 
   useEffect(() => {
-    // ao montar, carrega o user da sua API
+    // Carrega dados completos do usuário apenas quando necessário
+    // (para páginas que precisam de todos os campos)
     fetch('/api/user')
       .then(res => {
         if (!res.ok) throw new Error('Não autenticado')
@@ -32,7 +38,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <UserContext.Provider value={{ user, setUser }}>
+    <UserContext.Provider value={{ 
+      user, 
+      setUser, 
+      sidebarUser, 
+      isLoadingSidebar 
+    }}>
       {children}
     </UserContext.Provider>
   )

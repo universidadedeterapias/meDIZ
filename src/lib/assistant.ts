@@ -28,15 +28,35 @@ export async function runAssistant(threadId: string, assistantId: string) {
 }
 
 export async function waitForRunCompletion(threadId: string, runId: string) {
-  while (true) {
+  const maxAttempts = 60 // Máximo 60 tentativas (60 segundos)
+  let attempts = 0
+  
+  while (attempts < maxAttempts) {
     const res = await openaiRequest<{ status: string }>(
       `threads/${threadId}/runs/${runId}`,
       {
         method: 'GET'
       }
     )
-    if (res.status === 'completed') break
-    await new Promise(r => setTimeout(r, 1000))
+    
+    if (res.status === 'completed') {
+      console.log(`✅ Run completado em ${attempts + 1} tentativas`)
+      break
+    }
+    
+    if (res.status === 'failed' || res.status === 'cancelled') {
+      throw new Error(`Run falhou com status: ${res.status}`)
+    }
+    
+    attempts++
+    
+    // Polling adaptativo: mais frequente no início, menos no final
+    const delay = attempts < 10 ? 500 : 1000 // 500ms nos primeiros 10, depois 1s
+    await new Promise(r => setTimeout(r, delay))
+  }
+  
+  if (attempts >= maxAttempts) {
+    throw new Error('Timeout: Run não completou em 60 segundos')
   }
 }
 

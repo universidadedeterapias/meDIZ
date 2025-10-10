@@ -49,9 +49,10 @@ export function NavHistory({ items, selectedThread, onSelect }: Props) {
 
           // 2) calcula o rótulo do grupo de data
           let dateLabel: string
+          const now = new Date()
           if (isToday(date)) dateLabel = 'Hoje'
           else if (isYesterday(date)) dateLabel = 'Ontem'
-          else if (differenceInCalendarDays(new Date(), date) === 2)
+          else if (differenceInCalendarDays(now, date) === 2)
             dateLabel = 'Anteontem'
           else dateLabel = format(date, 'dd/MM/yyyy')
 
