@@ -44,11 +44,22 @@ export async function GET(req: Request) {
       }
     }
 
-    // Busca usuários com suas subscriptions
-    const users = await prisma.user.findMany({
-      where: whereClause,
-      skip,
-      take: limit,
+    // Busca usuários premium primeiro, depois gratuitos
+    // Primeiro: usuários com subscription ativa
+    const premiumUsers = await prisma.user.findMany({
+      where: {
+        ...whereClause,
+        subscriptions: {
+          some: {
+            status: {
+              in: ['active', 'ACTIVE', 'cancel_at_period_end']
+            },
+            currentPeriodEnd: {
+              gte: new Date()
+            }
+          }
+        }
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         subscriptions: {
@@ -89,6 +100,68 @@ export async function GET(req: Request) {
         }
       }
     })
+
+    // Segundo: usuários sem subscription ativa
+    const freeUsers = await prisma.user.findMany({
+      where: {
+        ...whereClause,
+        NOT: {
+          subscriptions: {
+            some: {
+              status: {
+                in: ['active', 'ACTIVE', 'cancel_at_period_end']
+              },
+              currentPeriodEnd: {
+                gte: new Date()
+              }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        subscriptions: {
+          include: {
+            plan: {
+              select: {
+                name: true
+              }
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        },
+        accounts: {
+          select: {
+            provider: true,
+            providerAccountId: true
+          }
+        },
+        sessions: {
+          select: {
+            expires: true
+          },
+          orderBy: {
+            expires: 'desc'
+          },
+          take: 1
+        },
+        chatSessions: {
+          select: {
+            id: true,
+            createdAt: true
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        }
+      }
+    })
+
+    // Combina os resultados: premium primeiro, depois gratuitos
+    const allUsers = [...premiumUsers, ...freeUsers]
+    const users = allUsers.slice(skip, skip + limit)
 
     // Conta total para paginação
     const totalUsers = await prisma.user.count({ where: whereClause })
