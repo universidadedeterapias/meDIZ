@@ -238,11 +238,21 @@ export async function GET(req: Request) {
       }
     })
     
+    // Contar usuários admin de todos os usuários, não apenas da página atual
+    const adminUsersCount = await prisma.user.count({
+      where: {
+        ...whereClause,
+        email: {
+          contains: '@mediz.com'
+        }
+      }
+    })
+    
     const stats = {
       totalUsers,
       premiumUsers: premiumUsersCount,
       freeUsers: totalUsers - premiumUsersCount,
-      adminUsers: processedUsers.filter(u => u.isAdmin).length,
+      adminUsers: adminUsersCount,
       activeUsers: activeUsersCount
     }
 
