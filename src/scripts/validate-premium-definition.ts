@@ -63,9 +63,9 @@ async function main() {
       }
     })
 
-    premiumUsers.forEach((user: any, index: number) => {
+    premiumUsers.forEach((user: { name: string | null; email: string; subscriptions: Array<{ plan: { name: string }; status: string; currentPeriodStart: Date; currentPeriodEnd: Date }> }, index: number) => {
       console.log(`\n${index + 1}. ${user.name || 'Sem nome'} (${user.email})`)
-      user.subscriptions.forEach((sub: any, subIndex: number) => {
+      user.subscriptions.forEach((sub: { plan: { name: string }; status: string; currentPeriodStart: Date; currentPeriodEnd: Date }, subIndex: number) => {
         console.log(`   📅 Subscription ${subIndex + 1}:`)
         console.log(`      Plano: ${sub.plan.name}`)
         console.log(`      Status: ${sub.status}`)
@@ -105,12 +105,12 @@ async function main() {
       }
     })
 
-    nonPremiumUsers.forEach((user: any, index: number) => {
+    nonPremiumUsers.forEach((user: { name: string | null; email: string; createdAt: Date; subscriptions: Array<{ status: string; currentPeriodEnd: Date }> }, index: number) => {
       console.log(`\n${index + 1}. ${user.name || 'Sem nome'} (${user.email})`)
       console.log(`   📅 Criado em: ${user.createdAt.toLocaleDateString('pt-BR')}`)
       console.log(`   💳 Subscriptions: ${user.subscriptions.length}`)
       if (user.subscriptions.length > 0) {
-        user.subscriptions.forEach((sub: any, subIndex: number) => {
+        user.subscriptions.forEach((sub: { status: string; currentPeriodEnd: Date }, subIndex: number) => {
           console.log(`      ${subIndex + 1}. Status: ${sub.status}, Vence: ${sub.currentPeriodEnd.toLocaleDateString('pt-BR')}`)
         })
       }

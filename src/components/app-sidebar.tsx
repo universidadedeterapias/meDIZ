@@ -33,7 +33,7 @@ type AppSidebarProps = {
  * - enquanto carrega user: mostra header de loading
  * - depois que o user está pronto: avatar + nome e opções de navegação
  */
-export function AppSidebar({}: AppSidebarProps) {
+export function AppSidebar({ history, selectedThread, onSelectSession }: AppSidebarProps) {
   const { sidebarUser, isLoadingSidebar } = useUser()
   
   // Loading inicial - usa dados otimizados da sidebar
