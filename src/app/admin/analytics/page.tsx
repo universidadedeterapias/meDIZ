@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -47,7 +47,7 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null)
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null)
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -66,11 +66,11 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [timeRange])
 
   useEffect(() => {
     fetchAnalytics()
-  }, [timeRange])
+  }, [timeRange, fetchAnalytics])
 
   const handleExport = async (format: 'csv' | 'xlsx' = 'csv') => {
     try {

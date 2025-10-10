@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
+import Image from 'next/image'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -83,7 +83,7 @@ export default function PopupAdminPage() {
           status: 'INACTIVE'
         }
       ])
-      toast.info('Usando dados de demonstração (API indisponível)')
+      showNotification('Usando dados de demonstração (API indisponível)', 'error')
     } finally {
       setLoading(false)
     }
@@ -313,11 +313,13 @@ export default function PopupAdminPage() {
                 
                 {/* Preview da imagem */}
                 {previewUrl && (
-                  <div className="mt-2 border rounded-md overflow-hidden">
-                    <img 
+                  <div className="mt-2 border rounded-md overflow-hidden relative w-full h-40">
+                    <Image 
                       src={previewUrl} 
                       alt="Preview" 
-                      className="w-full h-40 object-cover"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 400px"
                       onError={() => {
                         showNotification('URL da imagem inválida', 'error')
                         setPreviewUrl(null)

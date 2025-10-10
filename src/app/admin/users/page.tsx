@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -81,7 +81,7 @@ export default function UsersPage() {
   })
   const [creatingUser, setCreatingUser] = useState(false)
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -110,11 +110,11 @@ export default function UsersPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentPage, searchTerm, filterPlan, filterRole])
 
   useEffect(() => {
     fetchUsers()
-  }, [currentPage, searchTerm, filterPlan, filterRole])
+  }, [fetchUsers])
 
   const handleCreateUser = async () => {
     if (!newUserData.name || !newUserData.email || !newUserData.password) {

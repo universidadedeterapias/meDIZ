@@ -1,7 +1,7 @@
 'use client'
 
 import { X } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -36,9 +36,9 @@ export default function PromotionPopup({
     if (open) {
       fetchPopupConfig()
     }
-  }, [open])
+  }, [open, fetchPopupConfig])
 
-  const fetchPopupConfig = async () => {
+  const fetchPopupConfig = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/popup')
@@ -61,7 +61,7 @@ export default function PromotionPopup({
     } finally {
       setLoading(false)
     }
-  }
+  }, [onOpenChange])
 
   const handleSubscribe = () => {
     if (popupConfig?.subscribeLink) {
