@@ -1,5 +1,5 @@
 // src/scripts/seed-plans.ts
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, PlanInterval } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
@@ -22,7 +22,7 @@ async function seedPlans() {
         stripeProductId: 'prod_basico',
         amount: 2990, // R$ 29.90 em centavos
         currency: 'brl',
-        interval: 'MONTH',
+        interval: PlanInterval.MONTH,
         intervalCount: 1,
         active: true,
         monthlyLimit: 100
@@ -33,7 +33,7 @@ async function seedPlans() {
         stripeProductId: 'prod_premium',
         amount: 4990, // R$ 49.90 em centavos
         currency: 'brl',
-        interval: 'MONTH',
+        interval: PlanInterval.MONTH,
         intervalCount: 1,
         active: true,
         monthlyLimit: 500
@@ -44,7 +44,7 @@ async function seedPlans() {
         stripeProductId: 'prod_anual',
         amount: 29990, // R$ 299.90 em centavos
         currency: 'brl',
-        interval: 'YEAR',
+        interval: PlanInterval.YEAR,
         intervalCount: 1,
         active: true,
         monthlyLimit: 1000
