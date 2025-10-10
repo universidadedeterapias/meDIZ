@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import Image from 'next/image'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -48,10 +48,10 @@ export default function PopupAdminPage() {
   // Carrega os popups ao montar o componente
   useEffect(() => {
     fetchPopups()
-  }, [])
+  }, [fetchPopups])
   
   // Busca os popups existentes
-  const fetchPopups = async () => {
+  const fetchPopups = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/popup/admin')
@@ -87,7 +87,7 @@ export default function PopupAdminPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
   
   // Seleciona um popup para edição
   const handleSelectPopup = (popup: PopupFormData) => {
