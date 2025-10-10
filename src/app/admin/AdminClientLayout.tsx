@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { BellRing, Home, LifeBuoy, Settings, User, Users, LayoutDashboard, MessageSquareDashed } from 'lucide-react'
+import { Home, LifeBuoy, Settings, User, Users, LayoutDashboard, MessageSquareDashed } from 'lucide-react'
 
 interface AdminClientLayoutProps {
   children: React.ReactNode

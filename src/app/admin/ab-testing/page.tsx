@@ -13,25 +13,12 @@ import { Button } from '@/components/ui/button'
 import { 
   Table, 
   TableBody, 
-  TableCaption, 
   TableCell, 
   TableHead, 
   TableHeader, 
   TableRow 
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
 import { 
   BarChart, 
   Loader2, 
@@ -41,7 +28,7 @@ import {
   Edit, 
   Info 
 } from 'lucide-react'
-import { ABTest, ABTestVariant, exampleTests } from '@/lib/abTesting'
+import { ABTest, exampleTests } from '@/lib/abTesting'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -340,7 +327,7 @@ export default function ABTestingPage() {
                           </div>
                           <div className="ml-4">
                             <h3 className="text-sm font-medium text-green-800">
-                              A variante "{selectedTest.variants[1].name}" está se saindo melhor
+                              A variante &quot;{selectedTest.variants[1].name}&quot; está se saindo melhor
                             </h3>
                             <div className="mt-1 text-sm text-green-700">
                               <p>
