@@ -31,13 +31,6 @@ export default function PromotionPopup({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Busca a configuração do popup quando o componente é montado
-  useEffect(() => {
-    if (open) {
-      fetchPopupConfig()
-    }
-  }, [open, fetchPopupConfig])
-
   const fetchPopupConfig = useCallback(async () => {
     try {
       setLoading(true)
@@ -62,6 +55,13 @@ export default function PromotionPopup({
       setLoading(false)
     }
   }, [onOpenChange])
+
+  // Busca a configuração do popup quando o componente é montado
+  useEffect(() => {
+    if (open) {
+      fetchPopupConfig()
+    }
+  }, [open, fetchPopupConfig])
 
   const handleSubscribe = () => {
     if (popupConfig?.subscribeLink) {

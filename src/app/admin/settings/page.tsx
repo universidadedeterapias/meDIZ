@@ -129,10 +129,10 @@ export default function SettingsPage() {
   }
   
   // Função para atualizar as configurações de um período específico
-  const updatePeriodSettings = (
-    period: 'firstWeek' | 'secondToFourthWeek' | 'beyondMonth',
-    field: keyof typeof defaultBlurSettings.firstWeek,
-    value: number | boolean
+  const updatePeriodSettings = <K extends keyof BlurSettings, F extends keyof BlurSettings[K]>(
+    period: K,
+    field: F,
+    value: BlurSettings[K][F]
   ) => {
     setBlurSettings(prev => ({
       ...prev,
