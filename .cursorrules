@@ -1,0 +1,313 @@
+# meDIZ - Plataforma de IA para Saúde e Bem-Estar
+
+## Visão Geral
+Plataforma que conecta usuários a profissionais de saúde através de IA conversacional, oferecendo suporte em saúde mental, física e espiritual.
+
+## Stack Técnico Completo
+
+### Frontend
+- **Next.js** 15.2.4 (App Router)
+- **React** 19.0.0
+- **TypeScript** 5.8.2
+- **Tailwind CSS** 3.4.1
+- **Framer Motion** 12.23.6 (animações)
+- **Radix UI** (componentes acessíveis)
+- **React Hook Form** 7.57.0 + Zod 3.25.64 (validação)
+- **Lucide React** 0.476.0 (ícones)
+
+### Backend & Database
+- **Prisma** 6.5.0 (ORM)
+- **PostgreSQL** (banco de dados)
+- **NextAuth** 5.0.0-beta.25 (autenticação)
+- **bcryptjs** 3.0.2 (hash de senhas)
+
+### Integrações Externas
+- **Cloudinary** 2.7.0 (upload de imagens)
+- **Stripe** 18.3.0 (pagamentos)
+- **Google OAuth** (login social)
+
+### Markdown & Utilities
+- **React Markdown** 10.1.0
+- **date-fns** 4.1.0
+- **class-variance-authority** 0.7.1
+- **tailwind-merge** 3.0.2
+
+## Estrutura do Projeto
+
+```
+meDIZ/
+├── prisma/
+│   └── schema.prisma          # Schema do banco de dados
+├── public/                    # Assets estáticos
+├── src/
+│   ├── app/                   # App Router (Next.js 15)
+│   │   ├── api/              # API Routes
+│   │   │   ├── auth/         # Autenticação (NextAuth)
+│   │   │   └── ...
+│   │   ├── admin/            # Painel administrativo
+│   │   ├── admin-login/      # Login de admin
+│   │   ├── login/            # Login de usuário
+│   │   ├── signup/           # Cadastro
+│   │   ├── account/          # Conta do usuário
+│   │   ├── chat/             # Interface de chat
+│   │   └── ...
+│   ├── components/           # Componentes React
+│   │   └── ui/              # Componentes de UI (shadcn/ui)
+│   ├── lib/                  # Utilitários
+│   ├── scripts/              # Scripts auxiliares
+│   │   ├── create-admin.ts  # Criar usuário admin
+│   │   └── set-admin.ts     # Definir admin
+│   └── auth.ts              # Configuração NextAuth v5
+├── .cursorrules             # Este arquivo
+└── package.json
+```
+
+## Autenticação (NextAuth v5)
+
+### Configuração Principal
+- **Arquivo:** `src/auth.ts`
+- **Adapter:** PrismaAdapter
+- **Session:** JWT strategy (365 dias)
+- **Providers:**
+  - Google OAuth (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
+  - Credentials (email + password com bcrypt)
+
+### Verificação de Admin
+- Email termina com `@mediz.com`
+- Campo `isAdmin` no banco (boolean)
+- Rota protegida: `/admin` e `/admin-login`
+
+### Como usar
+```typescript
+// Server Component
+import { auth } from '@/auth'
+const session = await auth()
+
+// Client Component
+import { signIn, signOut } from 'next-auth/react'
+await signIn('credentials', { email, password })
+```
+
+## Banco de Dados (Prisma)
+
+### Modelos Principais
+- **User:** Usuários da plataforma
+  - Campos: id, name, email, passwordHash, isAdmin, whatsapp, etc.
+- **Account:** Contas OAuth vinculadas
+- **Session:** Sessões de usuário
+- **VerificationToken:** Tokens de verificação
+
+### Comandos Úteis
+```bash
+npx prisma studio          # Interface visual do banco
+npx prisma generate        # Gerar Prisma Client
+npx prisma migrate dev     # Criar migration
+npx prisma db push         # Push schema sem migration
+```
+
+## Scripts Personalizados
+
+### Criar Usuário Admin
+```bash
+npm run create-admin
+```
+- Verifica se já existe admin
+- Cria admin@mediz.com se não existir
+- Senha padrão: adminPassword123
+
+### Definir Usuário como Admin
+```bash
+npm run set-admin
+```
+- Define usuário existente como admin
+- Atualiza campo `isAdmin = true`
+
+## Regras de Desenvolvimento
+
+### CRÍTICO: Artifacts & Browser Storage
+**NUNCA use localStorage, sessionStorage ou qualquer API de browser storage em artifacts.**
+- Artifacts não têm acesso a browser storage
+- Use React state (useState, useReducer)
+- Para dados persistentes, use banco de dados
+
+### Estrutura de Componentes
+- **Server Components por padrão**
+- Use `'use client'` apenas quando necessário:
+  - Hooks (useState, useEffect)
+  - Event handlers (onClick, onChange)
+  - Browser APIs
+
+### Imports
+- Use imports absolutos com `@/`
+- Exemplo: `import { auth } from '@/auth'`
+
+### Validação de Formulários
+- Use React Hook Form + Zod
+- Schemas de validação separados
+- Mensagens de erro em português
+
+### Estilização
+- Tailwind CSS (utility-first)
+- shadcn/ui para componentes base
+- Framer Motion para animações
+- Temas: light/dark mode (next-themes)
+
+### TypeScript
+- Strict mode ativado
+- Types explícitos quando necessário
+- Evite `any`, use `unknown` se precisar
+
+## Variáveis de Ambiente Necessárias
+
+```env
+# Database
+DATABASE_URL="postgresql://..."
+
+# NextAuth
+NEXTAUTH_SECRET="..."
+NEXTAUTH_URL="http://localhost:3000"
+
+# Google OAuth
+GOOGLE_CLIENT_ID="..."
+GOOGLE_CLIENT_SECRET="..."
+
+# Cloudinary (uploads)
+CLOUDINARY_CLOUD_NAME="..."
+CLOUDINARY_API_KEY="..."
+CLOUDINARY_API_SECRET="..."
+
+# Stripe (pagamentos)
+STRIPE_SECRET_KEY="..."
+STRIPE_PUBLISHABLE_KEY="..."
+```
+
+## Fluxo de Autenticação
+
+### Cadastro
+1. Usuário preenche formulário (`/signup`)
+2. Senha hashada com bcrypt (10 rounds)
+3. Usuário criado no banco via Prisma
+4. Redirect para login
+
+### Login
+1. Usuário faz login (`/login` ou `/admin-login`)
+2. Credenciais validadas via bcrypt.compare
+3. JWT criado e armazenado em cookie
+4. Redirect para dashboard apropriado
+
+### Admin
+1. Verificação via email `@mediz.com` OU campo `isAdmin`
+2. Acesso a `/admin` (painel administrativo)
+3. API `/api/auth-debug` retorna `isAdmin: true/false`
+
+## Padrões de Código
+
+### Nomenclatura
+- Componentes: PascalCase (`UserProfile.tsx`)
+- Arquivos: kebab-case (`user-profile.ts`)
+- Variáveis/funções: camelCase (`getUserData`)
+
+### Componentes
+```typescript
+// Server Component (padrão)
+export default async function Page() {
+  const session = await auth()
+  return <div>...</div>
+}
+
+// Client Component (quando necessário)
+'use client'
+import { useState } from 'react'
+export default function ClientComponent() {
+  const [state, setState] = useState()
+  return <div>...</div>
+}
+```
+
+### API Routes
+```typescript
+// app/api/exemplo/route.ts
+import { NextResponse } from 'next/server'
+import { auth } from '@/auth'
+
+export async function GET() {
+  const session = await auth()
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  return NextResponse.json({ data: '...' })
+}
+```
+
+## Documentação de Referência
+
+### Essenciais
+- **Next.js 15:** https://nextjs.org/docs
+- **NextAuth v5:** https://authjs.dev/getting-started/migrating-to-v5
+- **Prisma:** https://www.prisma.io/docs
+- **TypeScript:** https://www.typescriptlang.org/docs
+
+### UI & Styling
+- **Tailwind CSS:** https://tailwindcss.com/docs
+- **Radix UI:** https://www.radix-ui.com/primitives/docs/overview/introduction
+- **Framer Motion:** https://www.framer.com/motion
+- **shadcn/ui:** https://ui.shadcn.com
+
+### Integrações
+- **Cloudinary:** https://cloudinary.com/documentation
+- **Stripe:** https://stripe.com/docs/api
+- **React Hook Form:** https://react-hook-form.com/get-started
+
+## Comandos Principais
+
+```bash
+# Desenvolvimento
+npm run dev                 # Inicia servidor (localhost:3000)
+npm run build              # Build para produção
+npm run start              # Inicia servidor produção
+npm run lint               # Lint com ESLint
+
+# Scripts personalizados
+npm run create-admin       # Criar usuário admin
+npm run set-admin          # Definir usuário como admin
+
+# Prisma
+npx prisma studio          # Interface visual do banco
+npx prisma generate        # Gerar Prisma Client
+npx prisma migrate dev     # Criar migration
+npx prisma db push         # Push schema sem migration
+```
+
+## Troubleshooting Comum
+
+### Erro: "getServerSession is not a function"
+- **Solução:** Use `auth()` do `src/auth.ts`, não `getServerSession`
+- NextAuth v5 mudou a API
+
+### Erro: "localStorage is not defined" em artifacts
+- **Solução:** Use React state, NUNCA localStorage em artifacts
+- Artifacts são ambiente isolado
+
+### Erro: "Module not found" com imports
+- **Solução:** Verifique `tsconfig.json` e use `@/` para imports absolutos
+
+### Erro de autenticação em produção
+- **Solução:** Verifique `NEXTAUTH_URL` e `NEXTAUTH_SECRET` nas env vars
+
+## Convenções de Commits
+
+```
+feat: nova funcionalidade
+fix: correção de bug
+docs: documentação
+style: formatação
+refactor: refatoração
+test: testes
+chore: manutenção
+```
+
+---
+
+**Versão do Projeto:** 0.1.0
+**Última Atualização:** Outubro 2025
+**Repositório:** https://github.com/universidadedeterapias/meDIZ

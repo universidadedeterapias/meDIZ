@@ -9,6 +9,7 @@ import {
 } from '@/lib/assistant'
 import { createChatSessionWithThread } from '@/lib/chatService'
 import { prisma } from '@/lib/prisma'
+import { getUserLimits, getUserPeriod } from '@/lib/userPeriod'
 import { NextResponse } from 'next/server'
 
 const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID!
@@ -44,12 +45,36 @@ export async function POST(req: Request) {
       currentPeriodEnd: {
         gte: new Date()
       }
+    },
+    select: {
+      id: true // Só seleciona o ID para verificar existência
     }
   })
 
-  // ── 3) Se não tiver assinatura E já fez ≥3 buscas, bloqueia ──────
-  if (!hasActiveSubscription && todayCount >= 3) {
-    return NextResponse.json({ limitReached: true }, { status: 403 })
+  // ── 3) Se não tiver assinatura, aplica regras do plano gratuito ──────
+  if (!hasActiveSubscription) {
+    // Busca informações do usuário para saber a data de cadastro
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { createdAt: true }
+    })
+    
+    if (!user) {
+      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
+    }
+    
+    // Determina o período e limites do usuário
+    const userPeriod = getUserPeriod(user.createdAt)
+    const { searchLimit } = getUserLimits(userPeriod)
+    
+    // Verifica se excedeu o limite baseado no período
+    if (todayCount >= searchLimit) {
+      return NextResponse.json({ 
+        limitReached: true,
+        period: userPeriod,
+        searchLimit
+      }, { status: 403 })
+    }
   }
 
   try {
@@ -64,6 +89,29 @@ export async function POST(req: Request) {
 
     // ── 6) Busca as mensagens geradas e retorna ao cliente ───────────
     const responses = await getMessages(threadId)
+    
+    // ── 7) Se não tiver assinatura, inclui informações do período na resposta ───
+    if (!hasActiveSubscription) {
+      // Busca informações do usuário para determinar o período
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { createdAt: true }
+      })
+      
+      if (user) {
+        const userPeriod = getUserPeriod(user.createdAt)
+        const { fullVisualization } = getUserLimits(userPeriod)
+        
+        return NextResponse.json({ 
+          responses, 
+          threadId,
+          userPeriod,
+          fullVisualization,
+          shouldShowPopup: true // Flag para indicar que deve mostrar o popup
+        })
+      }
+    }
+    
     return NextResponse.json({ responses, threadId })
   } catch (err) {
     console.error(err)

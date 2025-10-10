@@ -13,6 +13,7 @@ import { sidebarOptions } from '@/lib/sidebarOptions'
 import { FirstName, SurName } from '@/lib/utils'
 import { NavOptions } from './nav-options'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
+import { SidebarSkeleton } from './SidebarSkeleton'
 
 type SessionHistoryItem = {
   id: string
@@ -32,37 +33,38 @@ type AppSidebarProps = {
  * - enquanto carrega user: mostra header de loading
  * - depois que o user está pronto: avatar + nome e opções de navegação
  */
-export function AppSidebar({}: AppSidebarProps) {
-  const { user } = useUser()
-  // Loading inicial
-  if (!user) {
+export function AppSidebar({ history, selectedThread, onSelectSession }: AppSidebarProps) {
+  const { sidebarUser, isLoadingSidebar } = useUser()
+  
+  // Loading inicial - usa dados otimizados da sidebar
+  if (isLoadingSidebar || !sidebarUser) {
     return (
       <Sidebar collapsible="icon">
         <SidebarHeader className="border-b-2">
-          <div className="p-4">Carregando...</div>
+          <SidebarSkeleton />
         </SidebarHeader>
         <SidebarContent>
-          {/* aqui você pode colocar um spinner ou skeleton */}
+          <NavOptions options={sidebarOptions} />
         </SidebarContent>
       </Sidebar>
     )
   }
 
-  // Já temos user → mostra avatar, nome e menu
+  // Já temos sidebarUser → mostra avatar, nome e menu
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b-2">
         <div className="p-4 flex items-center gap-6">
           <Avatar className="w-16 h-16 border-2 border-indigo-600">
-            <AvatarImage src={user.image ? user.image : ''} alt="User avatar" />
+            <AvatarImage src={sidebarUser.image ? sidebarUser.image : ''} alt="User avatar" />
             <AvatarFallback>
-              {FirstName(user.fullName ? user.fullName : user.name).charAt(0)}
+              {FirstName(sidebarUser.fullName ? sidebarUser.fullName : sidebarUser.name).charAt(0)}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <h4 className="scroll-m-20 text-xl font-normal tracking-tight">
-              {FirstName(user.fullName ? user.fullName : user.name)}{' '}
-              {SurName(user.fullName ? user.fullName : user.name)}
+              {FirstName(sidebarUser.fullName ? sidebarUser.fullName : sidebarUser.name)}{' '}
+              {SurName(sidebarUser.fullName ? sidebarUser.fullName : sidebarUser.name)}
             </h4>
             <a href="/myAccount" className="text-primary">
               Minha conta

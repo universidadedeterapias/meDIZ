@@ -6,10 +6,12 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { AppSidebar } from '@/components/app-sidebar'
+import { ClientOnly } from '@/components/ClientOnly'
 import { ExternalLinks } from '@/components/ExternalLinks'
 import { Footer } from '@/components/Footer'
 import OptionSelector from '@/components/form/OptionSelector'
 import { LoadingPlaceholder } from '@/components/LoadingPlaceholder'
+import PromotionPopup from '@/components/PromotionPopup'
 import Spinner from '@/components/Spinner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -21,6 +23,7 @@ import {
   SidebarTrigger
 } from '@/components/ui/sidebar'
 import { useUser } from '@/contexts/user'
+import { UserPeriod } from '@/lib/userPeriod'
 import { FirstName } from '@/lib/utils'
 import { User } from '@/types/User'
 import { Result } from './result'
@@ -53,6 +56,11 @@ export default function Page() {
   const [selectedThread, setSelectedThread] = useState<string | null>(null)
   const [limitReached, setLimitReached] = useState(false)
   const [elapsedMs, setElapsedMs] = useState<number | null>(null)
+  
+  // Estados relacionados às regras de uso do plano gratuito
+  const [userPeriod, setUserPeriod] = useState<'first-week' | 'first-month' | 'beyond-month'>('first-week')
+  const [fullVisualization, setFullVisualization] = useState(true)
+  const [showPopup, setShowPopup] = useState(false)
 
   // 1) Confira perfil e normalize o nome
   useEffect(() => {
@@ -132,7 +140,7 @@ export default function Page() {
 
   // 3) Envia mensagem
   const handleSendMessage = async () => {
-    if (!input.trim()) return
+    if (!input.trim() || loading) return // Evita múltiplas chamadas
     setLoading(true)
     setResponses([])
     setElapsedMs(null)
@@ -159,8 +167,23 @@ export default function Page() {
       if (data.threadId) {
         setSelectedThread(data.threadId)
       }
+      
+      // Processa informações do período do usuário e visualização
+      if (data.userPeriod) {
+        setUserPeriod(data.userPeriod as UserPeriod)
+        setFullVisualization(data.fullVisualization || false)
+      }
+      
+      // Verifica se deve mostrar o popup entre pesquisas
+      if (data.shouldShowPopup) {
+        // Atrasa a exibição do popup para após a exibição da resposta
+        setTimeout(() => {
+          setShowPopup(true)
+        }, 2000)
+      }
+      
       if (data.responses?.assistant?.length) {
-        setResponses([data.responses.assistant[0]])
+        setResponses(data.responses.assistant)
       }
       const t1 = performance.now()
       setElapsedMs(t1 - t0)
@@ -170,6 +193,11 @@ export default function Page() {
       setInput('')
       setLoading(false)
     }
+  }
+  
+  // Função para lidar com clique no botão de assinatura
+  const handleSubscribe = () => {
+    window.location.href = 'https://go.hotmart.com/N101121884P'
   }
 
   // Loading enquanto checa o perfil
@@ -270,7 +298,9 @@ export default function Page() {
           {/* Corpo da conversa */}
           <main className="flex-1 overflow-y-auto px-4 pb-6 bg-zinc-100">
             {loading ? (
-              <LoadingPlaceholder />
+              <ClientOnly>
+                <LoadingPlaceholder />
+              </ClientOnly>
             ) : responses.length === 0 ? (
               <div className="w-full max-w-4xl mt-4 flex flex-col gap-4">
                 <Label className="text-zinc-400">Mais buscados:</Label>
@@ -297,10 +327,24 @@ export default function Page() {
             ) : (
               <div className="max-w-4xl mx-auto space-y-4">
                 {responses.map((md, idx) => (
-                  <Result key={idx} markdown={md} elapsedMs={elapsedMs ?? 0} />
+                  <Result 
+                    key={idx} 
+                    markdown={md} 
+                    elapsedMs={elapsedMs ?? 0} 
+                    userPeriod={userPeriod}
+                    fullVisualization={fullVisualization}
+                    onSubscribe={handleSubscribe}
+                  />
                 ))}
               </div>
             )}
+            
+            {/* Pop-up entre pesquisas */}
+            <PromotionPopup
+              open={showPopup}
+              onOpenChange={setShowPopup}
+              onSubscribe={handleSubscribe}
+            />
           </main>
 
           <Footer />

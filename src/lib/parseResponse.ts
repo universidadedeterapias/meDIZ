@@ -1,7 +1,7 @@
 export default function parseResponse(md: string) {
   // escapa caracteres especiais para uso em RegExp
   function escapeRegex(str: string) {
-    return str.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
+    return str.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')
   }
 
   type OtherItem = { title: string; body: string; icon: string | null }

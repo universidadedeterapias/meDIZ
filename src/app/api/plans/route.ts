@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
+import { PlanInterval } from '@prisma/client'
 
 export async function GET() {
   const plans = await prisma.plan.findMany({
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
       stripeProductId?: string
       amount: number
       currency: string
-      interval: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR'
+      interval: PlanInterval
       intervalCount: number
       trialPeriodDays?: number
     }>

@@ -19,9 +19,25 @@ export async function openaiRequest<T>(
   })
 
   if (!res.ok) {
-    const err = await res.json()
-    console.error('OpenAI API error details:', err)
-    throw new Error(`OpenAI API error: ${res.statusText}`)
+    let errorMessage = `OpenAI API error: ${res.statusText}`
+    
+    try {
+      const contentType = res.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        const err = await res.json()
+        console.error('OpenAI API error details:', err)
+        errorMessage = err.error?.message || errorMessage
+      } else {
+        // Resposta não é JSON (provavelmente HTML de erro)
+        const text = await res.text()
+        console.error('OpenAI API non-JSON error:', text.substring(0, 200))
+        errorMessage = `OpenAI API error: ${res.status} - ${res.statusText}`
+      }
+    } catch (parseError) {
+      console.error('Error parsing OpenAI API response:', parseError)
+    }
+    
+    throw new Error(errorMessage)
   }
 
   return res.json()

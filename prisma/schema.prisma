@@ -14,6 +14,7 @@ datasource db {
 enum AppUsage {
   PERSONAL
   PROFESSIONAL
+  ADMIN
 }
 
 enum Gender {
@@ -35,6 +36,11 @@ enum StatusVerificacao {
   PROCESSADO
   ERRO
   PENDENTE
+}
+
+enum PopupStatus {
+  ACTIVE
+  INACTIVE
 }
 
 model User {
@@ -180,4 +186,16 @@ model LogExecucao {
 
   @@index([data_execucao])
   @@map("log_execucoes")
+}
+
+// Configurações para o pop-up entre pesquisas
+model PopupConfig {
+  id               String       @id @default(uuid())
+  title            String
+  content          String       @db.Text
+  imageUrl         String?
+  subscribeLink    String
+  status           PopupStatus  @default(ACTIVE)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 }

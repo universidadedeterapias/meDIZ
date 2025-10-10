@@ -12,7 +12,7 @@ export function LoadingPlaceholder() {
     'Processamento quase concluído'
   ]
 
-  const totalDuration = 30_000 // 30 s em ms
+  const totalDuration = 15_000 // 15 s em ms (reduzido de 30s)
   const fadeDuration = 300 // duração do fade in/out em ms
   const stepCount = steps.length
   const perStep = totalDuration / stepCount // aprox. 3714 ms por frase
@@ -22,10 +22,16 @@ export function LoadingPlaceholder() {
   const barRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    // não faz nada depois da última
-    if (currentIndex >= stepCount) return
+    // não faz nada depois da última ou se não estiver no cliente
+    if (currentIndex >= stepCount || typeof window === 'undefined') return
 
     const bar = barRef.current!
+    
+    // Timeout de segurança para evitar loading infinito
+    const safetyTimeout = setTimeout(() => {
+      console.warn('LoadingPlaceholder: Timeout de segurança ativado')
+      setCurrentIndex(stepCount) // Força o fim do loading
+    }, totalDuration + 5000) // 5s a mais que o tempo total
 
     // reset: sem transição, largura zero e invisível
     bar.style.transition = 'none'
@@ -52,6 +58,7 @@ export function LoadingPlaceholder() {
     return () => {
       clearTimeout(fadeTimer)
       clearTimeout(stepTimer)
+      clearTimeout(safetyTimeout)
     }
   }, [currentIndex, perStep, stepCount])
 
