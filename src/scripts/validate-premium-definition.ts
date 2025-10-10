@@ -1,8 +1,6 @@
 // src/scripts/validate-premium-definition.ts
-import { PrismaClient } from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 import { countPremiumUsers, validatePremiumCount, PREMIUM_VALIDATION_QUERY } from '@/lib/premiumUtils'
-
-const prisma = new PrismaClient()
 
 async function main() {
   console.log('🔍 VALIDAÇÃO DA DEFINIÇÃO DE PREMIUM\n')
@@ -65,9 +63,9 @@ async function main() {
       }
     })
 
-    premiumUsers.forEach((user, index) => {
+    premiumUsers.forEach((user: any, index: number) => {
       console.log(`\n${index + 1}. ${user.name || 'Sem nome'} (${user.email})`)
-      user.subscriptions.forEach((sub, subIndex) => {
+      user.subscriptions.forEach((sub: any, subIndex: number) => {
         console.log(`   📅 Subscription ${subIndex + 1}:`)
         console.log(`      Plano: ${sub.plan.name}`)
         console.log(`      Status: ${sub.status}`)
@@ -107,12 +105,12 @@ async function main() {
       }
     })
 
-    nonPremiumUsers.forEach((user, index) => {
+    nonPremiumUsers.forEach((user: any, index: number) => {
       console.log(`\n${index + 1}. ${user.name || 'Sem nome'} (${user.email})`)
       console.log(`   📅 Criado em: ${user.createdAt.toLocaleDateString('pt-BR')}`)
       console.log(`   💳 Subscriptions: ${user.subscriptions.length}`)
       if (user.subscriptions.length > 0) {
-        user.subscriptions.forEach((sub, subIndex) => {
+        user.subscriptions.forEach((sub: any, subIndex: number) => {
           console.log(`      ${subIndex + 1}. Status: ${sub.status}, Vence: ${sub.currentPeriodEnd.toLocaleDateString('pt-BR')}`)
         })
       }

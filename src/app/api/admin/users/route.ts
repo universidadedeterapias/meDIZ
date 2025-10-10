@@ -18,8 +18,8 @@ export async function GET(req: Request) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
     const search = searchParams.get('search') || ''
-    const planFilter = searchParams.get('plan') || 'all'
-    const roleFilter = searchParams.get('role') || 'all'
+    const planFilter: 'all' | 'free' | 'premium' = (searchParams.get('plan') as 'all' | 'free' | 'premium') || 'all'
+    const roleFilter: 'all' | 'admin' | 'user' = (searchParams.get('role') as 'all' | 'admin' | 'user') || 'all'
 
     const skip = (page - 1) * limit
 
