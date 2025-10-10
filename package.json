@@ -10,7 +10,7 @@
     "check": "tsc --noEmit && eslint . --ext .ts",
     "build-tsc": "tsc",
     "start-node": "node dist/index.js",
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate --no-engine",
     "create-admin": "tsx src/scripts/create-admin.ts",
     "ensure-admin": "node src/scripts/ensure-admin.js",
     "seed-popup": "tsx src/scripts/seed-popup-data.ts",
