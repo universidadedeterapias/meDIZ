@@ -10,8 +10,8 @@ async function testApiUsersDirect() {
     const page = 1
     const limit = 50
     const search = ''
-    const planFilter = 'all'
-    const roleFilter = 'all'
+    const planFilter: 'all' | 'free' | 'premium' = 'all'
+    const roleFilter: 'all' | 'admin' | 'user' = 'all'
     
     const skip = (page - 1) * limit
     
