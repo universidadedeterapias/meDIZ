@@ -45,11 +45,6 @@ export default function PopupAdminPage() {
     }
   })
   
-  // Carrega os popups ao montar o componente
-  useEffect(() => {
-    fetchPopups()
-  }, [fetchPopups])
-  
   // Busca os popups existentes
   const fetchPopups = useCallback(async () => {
     try {
@@ -88,6 +83,11 @@ export default function PopupAdminPage() {
       setLoading(false)
     }
   }, [])
+  
+  // Carrega os popups ao montar o componente
+  useEffect(() => {
+    fetchPopups()
+  }, [fetchPopups])
   
   // Seleciona um popup para edição
   const handleSelectPopup = (popup: PopupFormData) => {
