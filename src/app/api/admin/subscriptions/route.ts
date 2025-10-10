@@ -132,7 +132,7 @@ export async function PUT(req: Request) {
     }
 
     // Preparar dados para atualização
-    const updateData: any = {}
+    const updateData: Record<string, unknown> = {}
     if (planId) updateData.planId = planId
     if (status) updateData.status = status
     if (currentPeriodStart) updateData.currentPeriodStart = new Date(currentPeriodStart)

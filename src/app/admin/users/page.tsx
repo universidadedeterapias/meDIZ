@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Users, 
   Search, 
-  Filter, 
   Download, 
   UserPlus,
   Mail,
@@ -345,7 +344,7 @@ export default function UsersPage() {
                 <div className="flex gap-2">
                   <select
                     value={filterPlan}
-                    onChange={(e) => setFilterPlan(e.target.value as any)}
+                    onChange={(e) => setFilterPlan(e.target.value as 'all' | 'free' | 'premium')}
                     className="px-3 py-2 border border-gray-300 rounded-md"
                   >
                     <option value="all">Todos os planos</option>
@@ -355,7 +354,7 @@ export default function UsersPage() {
                   
                   <select
                     value={filterRole}
-                    onChange={(e) => setFilterRole(e.target.value as any)}
+                    onChange={(e) => setFilterRole(e.target.value as 'all' | 'admin' | 'user')}
                     className="px-3 py-2 border border-gray-300 rounded-md"
                   >
                     <option value="all">Todos os tipos</option>

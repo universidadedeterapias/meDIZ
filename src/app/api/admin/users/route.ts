@@ -2,7 +2,7 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { getUserPeriod, getUserLimits } from '@/lib/userPeriod'
-import { isUserPremium, countPremiumUsers } from '@/lib/premiumUtils'
+import { countPremiumUsers } from '@/lib/premiumUtils'
 import { NextResponse } from 'next/server'
 import { hash } from 'bcryptjs'
 
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     const skip = (page - 1) * limit
 
     // Query base para usuários
-    let whereClause: any = {}
+    const whereClause: Record<string, unknown> = {}
 
     // Filtro de busca
     if (search) {

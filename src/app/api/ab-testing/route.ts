@@ -1,7 +1,7 @@
 // src/app/api/ab-testing/route.ts
 import { auth } from '@/auth'
 import { NextResponse } from 'next/server'
-import { ABTest, ABTestVariant, exampleTests } from '@/lib/abTesting'
+import { ABTest, exampleTests } from '@/lib/abTesting'
 
 // Simulação de banco de dados (em um ambiente real, usaríamos o Prisma)
 let testsDatabase = [...exampleTests]

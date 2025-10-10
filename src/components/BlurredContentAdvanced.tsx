@@ -2,8 +2,6 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Slider } from '@/components/ui/slider'
 
 interface BlurredContentAdvancedProps {
   children: React.ReactNode
@@ -96,7 +94,6 @@ export function BlurredAccordionContentAdvanced({
   onSubscribe,
   blurIntensity = 5,
   visibleLines = 1,
-  customMessage = "Assine para desbloquear este conteúdo",
   showPreview = false
 }: BlurredContentAdvancedProps) {
   const [previewMode, setPreviewMode] = useState(false)

@@ -22,7 +22,6 @@ interface PopupFormData {
 }
 
 export default function PopupAdminPage() {
-  const router = useRouter()
   const [popups, setPopups] = useState<PopupFormData[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)

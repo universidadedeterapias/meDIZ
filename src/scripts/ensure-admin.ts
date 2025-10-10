@@ -1,6 +1,6 @@
-// src/scripts/ensure-admin.js
-const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcryptjs');
+// src/scripts/ensure-admin.ts
+import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
 async function main() {
   console.log('Verificando/criando usuário admin...');

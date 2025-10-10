@@ -1,14 +1,13 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 
 interface BlurredContentProps {
   children: React.ReactNode
   onSubscribe: () => void
 }
 
-export default function BlurredContent({ children, onSubscribe }: BlurredContentProps) {
+export default function BlurredContent({ onSubscribe }: BlurredContentProps) {
   return (
     <div className="relative min-h-[120px] bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
       {/* Overlay completo - sem mostrar conteúdo */}
@@ -36,7 +35,7 @@ export default function BlurredContent({ children, onSubscribe }: BlurredContent
 }
 
 // Versão para usar dentro de um accordion
-export function BlurredAccordionContent({ children, onSubscribe }: BlurredContentProps) {
+export function BlurredAccordionContent({ onSubscribe }: BlurredContentProps) {
   return (
     <div className="relative min-h-[80px] bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
       {/* Overlay completo - sem mostrar conteúdo */}

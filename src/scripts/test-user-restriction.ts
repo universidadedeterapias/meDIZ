@@ -93,7 +93,7 @@ async function main() {
 
     activeSubscriptions.forEach((sub, index) => {
       const period = getUserPeriod(sub.user.createdAt)
-      const limits = getUserLimits(period)
+      getUserLimits(period)
       
       console.log(`${index + 1}. ${sub.user.email}`)
       console.log(`   📅 Criado em: ${sub.user.createdAt.toLocaleDateString('pt-BR')}`)

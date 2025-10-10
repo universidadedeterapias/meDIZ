@@ -201,7 +201,7 @@ async function exportAnalytics(format: string) {
   }
 }
 
-function generateCSV(data: any[], filename: string) {
+function generateCSV(data: Record<string, unknown>[], filename: string) {
   if (data.length === 0) {
     return new NextResponse('Nenhum dado para exportar', { status: 400 })
   }
@@ -231,7 +231,7 @@ function generateCSV(data: any[], filename: string) {
   return response
 }
 
-function generateXLSX(data: any[], filename: string) {
+function generateXLSX(data: Record<string, unknown>[], filename: string) {
   // Para XLSX, vamos retornar JSON por enquanto
   // Em produção, seria necessário instalar uma biblioteca como 'xlsx'
   const response = new NextResponse(JSON.stringify(data, null, 2), {

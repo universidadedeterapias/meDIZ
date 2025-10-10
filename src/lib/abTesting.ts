@@ -20,7 +20,7 @@ export interface ABTestVariant {
   id: string;
   name: string;
   weight: number;  // Peso para distribuição (0-100)
-  data: Record<string, any>;
+  data: Record<string, unknown>;
 }
 
 // Tipos de períodos de usuário

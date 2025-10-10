@@ -1,6 +1,6 @@
 'use client'
 
-import BlurredContent, { BlurredAccordionContent } from '@/components/BlurredContent'
+import { BlurredAccordionContent } from '@/components/BlurredContent'
 import { ClientOnly } from '@/components/ClientOnly'
 import { ShareInsightDialog } from '@/components/Share'
 import {
@@ -61,7 +61,6 @@ type ResultProps = {
 export function Result({ 
   markdown, 
   elapsedMs, 
-  userPeriod = 'first-week',
   fullVisualization = true,
   onSubscribe = () => window.location.href = 'https://go.hotmart.com/N101121884P'
 }: ResultProps) {

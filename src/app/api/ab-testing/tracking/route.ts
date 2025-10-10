@@ -12,7 +12,7 @@ interface Tracking {
   value?: number
 }
 
-let trackingDatabase: Tracking[] = []
+const trackingDatabase: Tracking[] = []
 
 // POST - Registra uma impressão ou conversão
 export async function POST(req: Request) {

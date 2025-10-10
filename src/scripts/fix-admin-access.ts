@@ -75,7 +75,7 @@ async function fixAdminAccess() {
         if (isValid) {
           console.log(`   ✅ SENHA VÁLIDA: "${password}"`)
         }
-      } catch (error) {
+      } catch {
         // Ignorar erros
       }
     }

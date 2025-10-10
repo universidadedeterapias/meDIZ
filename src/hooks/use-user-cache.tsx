@@ -11,7 +11,7 @@ export interface SidebarUser {
 }
 
 // Cache global simples para evitar múltiplas requisições
-let globalCache: {
+const globalCache: {
   data: SidebarUser | null
   timestamp: number
   promise: Promise<SidebarUser> | null

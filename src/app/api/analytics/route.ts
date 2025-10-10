@@ -16,7 +16,6 @@ export async function GET(req: Request) {
   
   try {
     // Calcula a data inicial com base no intervalo solicitado
-    const endDate = new Date()
     const startDate = new Date()
     
     switch(range) {

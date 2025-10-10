@@ -10,7 +10,7 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [debugInfo, setDebugInfo] = useState<any>(null)
+  const [debugInfo, setDebugInfo] = useState<{isAdmin: boolean; email: string} | null>(null)
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
 

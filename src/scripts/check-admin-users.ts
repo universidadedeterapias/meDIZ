@@ -62,7 +62,7 @@ async function checkAdminUsers() {
               console.log(`   ✅ SENHA ENCONTRADA: "${password}"`)
               break
             }
-          } catch (error) {
+          } catch {
             // Ignorar erros de comparação
           }
         }

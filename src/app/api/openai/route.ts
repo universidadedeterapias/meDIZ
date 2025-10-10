@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     
     // Determina o período e limites do usuário
     const userPeriod = getUserPeriod(user.createdAt)
-    const { searchLimit, fullVisualization } = getUserLimits(userPeriod)
+    const { searchLimit } = getUserLimits(userPeriod)
     
     // Verifica se excedeu o limite baseado no período
     if (todayCount >= searchLimit) {

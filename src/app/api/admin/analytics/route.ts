@@ -1,7 +1,6 @@
 // src/app/api/admin/analytics/route.ts
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
-import { getUserPeriod, getUserLimits } from '@/lib/userPeriod'
 import { countPremiumUsers, validatePremiumCount } from '@/lib/premiumUtils'
 import { NextResponse } from 'next/server'
 
