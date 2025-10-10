@@ -150,14 +150,27 @@ export async function GET(req: Request) {
 
     // Estatísticas gerais usando fonte de verdade
     const premiumUsersCount = await countPremiumUsers()
+    
+    // Usuários ativos nos últimos 7 dias (baseado em ChatSession real)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const activeUsersCount = await prisma.user.count({
+      where: {
+        chatSessions: {
+          some: {
+            createdAt: {
+              gte: sevenDaysAgo
+            }
+          }
+        }
+      }
+    })
+    
     const stats = {
       totalUsers,
       premiumUsers: premiumUsersCount,
       freeUsers: totalUsers - premiumUsersCount,
       adminUsers: processedUsers.filter(u => u.isAdmin).length,
-      activeUsers: processedUsers.filter(u => 
-        u.lastLogin && new Date(u.lastLogin) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-      ).length
+      activeUsers: activeUsersCount
     }
 
     return NextResponse.json({

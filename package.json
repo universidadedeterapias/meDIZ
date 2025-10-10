@@ -32,7 +32,8 @@
     "diagnose-session": "tsx src/scripts/diagnose-session-expiry.ts",
     "test-session-fix": "tsx src/scripts/test-session-fix.ts",
     "check-admin-users": "tsx src/scripts/check-admin-users.ts",
-    "fix-admin-access": "tsx src/scripts/fix-admin-access.ts"
+    "fix-admin-access": "tsx src/scripts/fix-admin-access.ts",
+    "fix-expired-subs": "tsx src/scripts/fix-expired-subscriptions.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.9.0",
