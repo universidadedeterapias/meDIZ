@@ -73,7 +73,7 @@ export default function PromotionPopup({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-w-[90vw] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-w-[95vw] max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-bold text-indigo-600">
@@ -97,16 +97,16 @@ export default function PromotionPopup({
         ) : error ? (
           <div className="py-6 text-center text-red-500">{error}</div>
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-6">
             {popupConfig?.imageUrl && (
-              <div className="relative w-full h-[250px] sm:h-[300px]">
+              <div className="relative w-full h-[300px] sm:h-[400px] md:h-[450px] lg:h-[500px]">
                 <Image
                   src={popupConfig.imageUrl}
                   alt="Promoção"
                   fill
                   style={{ objectFit: 'contain' }}
-                  className="rounded-md"
-                  sizes="(max-width: 768px) 90vw, 500px"
+                  className="rounded-lg"
+                  sizes="(max-width: 640px) 90vw, (max-width: 768px) 80vw, (max-width: 1024px) 70vw, 600px"
                   onError={(e) => {
                     console.warn('Erro ao carregar imagem do popup:', popupConfig.imageUrl)
                     // Esconde a imagem em caso de erro
@@ -116,7 +116,7 @@ export default function PromotionPopup({
               </div>
             )}
             
-            <div className="prose prose-sm max-w-none">
+            <div className="prose prose-sm sm:prose-base max-w-none">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {popupConfig?.content || ''}
               </ReactMarkdown>
@@ -125,13 +125,13 @@ export default function PromotionPopup({
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <Button
                 variant="outline"
-                className="w-full sm:w-1/2"
+                className="w-full sm:w-1/2 h-12 text-base"
                 onClick={() => onOpenChange(false)}
               >
                 Fechar
               </Button>
               <Button
-                className="w-full sm:w-1/2 bg-indigo-600 text-white hover:bg-indigo-700"
+                className="w-full sm:w-1/2 h-12 text-base bg-indigo-600 text-white hover:bg-indigo-700"
                 onClick={handleSubscribe}
               >
                 Assinar Agora

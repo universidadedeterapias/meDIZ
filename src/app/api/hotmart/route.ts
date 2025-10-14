@@ -65,18 +65,41 @@ export async function POST(req: NextRequest) {
   log('========== NOVO WEBHOOK RECEBIDO ==========')
   
   try {
+    // Verificar se o método é POST
+    if (req.method !== 'POST') {
+      logError('❌ Método não permitido:', req.method)
+      return NextResponse.json({ error: 'Method not allowed' }, { status: 405 })
+    }
+
     const bodyText = await req.text()
     log('Body recebido, tamanho:', bodyText.length, 'bytes')
+
+    // Verificar se o body não está vazio
+    if (!bodyText || bodyText.trim() === '') {
+      logError('❌ Body vazio recebido')
+      return NextResponse.json({ error: 'Empty body' }, { status: 400 })
+    }
 
     let parsed: HotmartPayload
     try {
       parsed = JSON.parse(bodyText)
       log('JSON parseado com sucesso')
       log('Evento:', parsed.event)
+      
+      // Verificar se a estrutura básica existe
+      if (!parsed.event || !parsed.data || !parsed.data.purchase) {
+        logError('❌ Estrutura de dados inválida:', {
+          hasEvent: !!parsed.event,
+          hasData: !!parsed.data,
+          hasPurchase: !!(parsed.data && parsed.data.purchase)
+        })
+        return NextResponse.json({ error: 'Invalid payload structure' }, { status: 400 })
+      }
+      
       log('Status da compra:', parsed.data.purchase.status)
     } catch (parseError) {
       logError('Falha ao parsear JSON:', parseError)
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid JSON format' }, { status: 400 })
     }
 
     // 1) Apenas eventos relevantes (compra aprovada)
@@ -109,9 +132,10 @@ export async function POST(req: NextRequest) {
 
     if (!incomingProductId) {
       logError('❌ Product ID não encontrado no payload')
+      logError('Estrutura do payload recebido:', JSON.stringify(parsed, null, 2))
       return NextResponse.json(
-        { error: 'Product ID missing in payload' },
-        { status: 400 }
+        { error: 'Product ID missing in payload', received: true },
+        { status: 200 } // Retorna 200 para evitar retry desnecessário
       )
     }
 
@@ -152,8 +176,8 @@ export async function POST(req: NextRequest) {
         codeYearly
       })
       return NextResponse.json(
-        { error: 'Plan not found', planCode: planCodeToFind },
-        { status: 400 }
+        { error: 'Plan not found', planCode: planCodeToFind, received: true },
+        { status: 200 } // Retorna 200 para evitar retry desnecessário
       )
     }
     log('✅ Plano encontrado:', { id: plan.id, name: plan.name })
@@ -234,12 +258,14 @@ export async function POST(req: NextRequest) {
     logError('Stack trace:', err instanceof Error ? err.stack : 'N/A')
     logError('Tempo até erro:', duration, 'ms')
     
+    // Retorna 200 para evitar retry desnecessário da Hotmart
     return NextResponse.json(
       { 
         error: 'Webhook handler failed',
-        message: err instanceof Error ? err.message : 'Unknown error'
+        message: err instanceof Error ? err.message : 'Unknown error',
+        received: true
       },
-      { status: 500 }
+      { status: 200 }
     )
   }
 }

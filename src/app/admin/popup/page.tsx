@@ -1,402 +1,385 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import { useForm } from 'react-hook-form'
-import Image from 'next/image'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-// Removido toast do sonner temporariamente
-import { Loader2, Trash } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { 
+  Upload, 
+  Save, 
+  Trash2, 
+  Eye, 
+  Loader2,
+  Image as ImageIcon,
+  AlertCircle
+} from 'lucide-react'
 
-interface PopupFormData {
-  id?: string
+interface PopupConfig {
+  id: string
   title: string
   content: string
   imageUrl?: string
   subscribeLink: string
   status: 'ACTIVE' | 'INACTIVE'
+  createdAt: string
+  updatedAt: string
 }
 
 export default function PopupAdminPage() {
-  const [popups, setPopups] = useState<PopupFormData[]>([])
+  const [popups, setPopups] = useState<PopupConfig[]>([])
   const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [selectedPopup, setSelectedPopup] = useState<PopupFormData | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null)
-
-  // Função simples para mostrar notificações
-  const showNotification = (message: string, type: 'success' | 'error') => {
-    setNotification({ message, type })
-    setTimeout(() => setNotification(null), 3000)
-  }
-  
-  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<PopupFormData>({
-    defaultValues: {
-      title: '',
-      content: '',
-      imageUrl: '',
-      subscribeLink: 'https://go.hotmart.com/N101121884P',
-      status: 'ACTIVE'
-    }
+  const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedPopup, setSelectedPopup] = useState<PopupConfig | null>(null)
+  const [formData, setFormData] = useState({
+    title: '',
+    content: '',
+    imageUrl: '',
+    subscribeLink: '',
+    status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE'
   })
-  
-  // Busca os popups existentes
-  const fetchPopups = useCallback(async () => {
+
+  useEffect(() => {
+    fetchPopups()
+  }, [])
+
+  const fetchPopups = async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/popup/admin')
       
       if (!response.ok) {
-        throw new Error('Erro ao buscar popups')
+        throw new Error('Erro ao carregar popups')
       }
-      
+
       const data = await response.json()
       setPopups(data)
-    } catch (error) {
-      console.error('Erro ao buscar popups:', error)
-      // Em caso de erro, usa dados mock para demonstração
-      setPopups([
-        {
-          id: '1',
-          title: 'Oferta Especial de Lançamento',
-          content: 'Aproveite nossa oferta especial de lançamento! Desconto de 50% nos primeiros 3 meses para novos assinantes.',
-          imageUrl: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=400&h=300&fit=crop',
-          subscribeLink: 'https://go.hotmart.com/N101121884P',
-          status: 'ACTIVE'
-        },
-        {
-          id: '2',
-          title: 'Desbloqueie Conteúdo Completo',
-          content: 'Você está vendo apenas uma prévia do conteúdo. Assine agora para ter acesso completo a todas as análises e insights médicos.',
-          imageUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=400&h=300&fit=crop',
-          subscribeLink: 'https://go.hotmart.com/N101121884P',
-          status: 'INACTIVE'
-        }
-      ])
-      showNotification('Usando dados de demonstração (API indisponível)', 'error')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar popups')
     } finally {
       setLoading(false)
     }
-  }, [])
-  
-  // Carrega os popups ao montar o componente
-  useEffect(() => {
-    fetchPopups()
-  }, [fetchPopups])
-  
-  // Seleciona um popup para edição
-  const handleSelectPopup = (popup: PopupFormData) => {
-    setSelectedPopup(popup)
-    
-    // Preenche o formulário com os dados do popup selecionado
-    setValue('id', popup.id)
-    setValue('title', popup.title)
-    setValue('content', popup.content)
-    setValue('imageUrl', popup.imageUrl || '')
-    setValue('subscribeLink', popup.subscribeLink)
-    setValue('status', popup.status)
-    
-    if (popup.imageUrl) {
-      setPreviewUrl(popup.imageUrl)
-    } else {
-      setPreviewUrl(null)
+  }
+
+  const handleImageUpload = async (file: File) => {
+    try {
+      setUploading(true)
+      setError(null)
+
+      const formData = new FormData()
+      formData.append('image', file)
+
+      const response = await fetch('/api/popup/upload', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erro ao fazer upload')
+      }
+
+      const data = await response.json()
+      setFormData(prev => ({ ...prev, imageUrl: data.imageUrl }))
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao fazer upload')
+    } finally {
+      setUploading(false)
     }
   }
-  
-  // Cria ou atualiza um popup
-  const onSubmit = async (data: PopupFormData) => {
+
+  const handleSave = async () => {
     try {
-      setSubmitting(true)
-      
+      setSaving(true)
+      setError(null)
+
       const response = await fetch('/api/popup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify({
+          ...formData,
+          id: selectedPopup?.id
+        })
       })
-      
+
       if (!response.ok) {
-        throw new Error('Erro ao salvar popup')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erro ao salvar popup')
       }
+
+      const savedPopup = await response.json()
       
-      showNotification('Popup salvo com sucesso', 'success')
-      
-      // Atualiza a lista de popups
-      fetchPopups()
-      
-      // Limpa o formulário se for uma criação (não uma edição)
-      if (!data.id) {
-        handleReset()
+      if (selectedPopup) {
+        setPopups(prev => prev.map(p => p.id === selectedPopup.id ? savedPopup : p))
+      } else {
+        setPopups(prev => [savedPopup, ...prev])
       }
-    } catch (error) {
-      console.error('Erro ao salvar popup:', error)
-      showNotification('Não foi possível salvar o popup', 'error')
+
+      setSelectedPopup(null)
+      setFormData({
+        title: '',
+        content: '',
+        imageUrl: '',
+        subscribeLink: '',
+        status: 'ACTIVE'
+      })
+
+      alert('Popup salvo com sucesso!')
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao salvar popup')
     } finally {
-      setSubmitting(false)
+      setSaving(false)
     }
   }
-  
-  // Exclui um popup
-  const handleDeletePopup = async (id: string) => {
+
+  const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este popup?')) {
       return
     }
-    
+
     try {
       const response = await fetch(`/api/popup/admin?id=${id}`, {
         method: 'DELETE'
       })
-      
+
       if (!response.ok) {
         throw new Error('Erro ao excluir popup')
       }
-      
-      showNotification('Popup excluído com sucesso', 'success')
-      
-      // Se o popup excluído for o que está sendo editado, limpa o formulário
+
+      setPopups(prev => prev.filter(p => p.id !== id))
       if (selectedPopup?.id === id) {
-        handleReset()
+        setSelectedPopup(null)
       }
       
-      // Atualiza a lista de popups
-      fetchPopups()
-    } catch (error) {
-      console.error('Erro ao excluir popup:', error)
-      showNotification('Não foi possível excluir o popup', 'error')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao excluir popup')
     }
   }
-  
-  // Limpa o formulário
-  const handleReset = () => {
-    reset({
+
+  const handleEdit = (popup: PopupConfig) => {
+    setSelectedPopup(popup)
+    setFormData({
+      title: popup.title,
+      content: popup.content,
+      imageUrl: popup.imageUrl || '',
+      subscribeLink: popup.subscribeLink,
+      status: popup.status
+    })
+  }
+
+  const handleNew = () => {
+    setSelectedPopup(null)
+    setFormData({
       title: '',
       content: '',
       imageUrl: '',
-      subscribeLink: 'https://go.hotmart.com/N101121884P',
+      subscribeLink: '',
       status: 'ACTIVE'
     })
-    setSelectedPopup(null)
-    setPreviewUrl(null)
   }
-  
-  // Visualiza imagem no input
-  const handleImageUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const url = e.target.value
-    setPreviewUrl(url || null)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Carregando popups...</span>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="container py-10">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Gerenciamento de Pop-ups</h1>
-        <Button onClick={handleReset} variant="outline">Novo Pop-up</Button>
+    <div className="container mx-auto py-8 px-4">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Gerenciar Pop-ups</h1>
+        <p className="text-gray-600">Configure os pop-ups promocionais da plataforma</p>
       </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Lista de Popups */}
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Popups Configurados</CardTitle>
-            <CardDescription>
-              {loading ? 'Carregando...' : `${popups.length} popup(s) encontrado(s)`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex justify-center items-center h-40">
-                <Loader2 className="animate-spin h-8 w-8 text-indigo-600" />
-              </div>
-            ) : popups.length === 0 ? (
-              <p className="text-center py-8 text-gray-500">
-                Nenhum popup configurado
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {popups.map(popup => (
-                  <div 
-                    key={popup.id} 
-                    className={`p-3 border rounded-md cursor-pointer transition-colors ${
-                      selectedPopup?.id === popup.id 
-                        ? 'border-indigo-500 bg-indigo-50' 
-                        : 'hover:bg-gray-50'
-                    }`}
-                    onClick={() => handleSelectPopup(popup)}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="font-medium">{popup.title}</h3>
-                        <p className="text-sm text-gray-500 truncate">
-                          {popup.content.substring(0, 50)}
-                          {popup.content.length > 50 ? '...' : ''}
-                        </p>
-                      </div>
-                      <div className="flex items-center">
-                        <span className={`inline-block w-3 h-3 rounded-full mr-2 ${
-                          popup.status === 'ACTIVE' ? 'bg-green-500' : 'bg-red-500'
-                        }`} />
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeletePopup(popup.id!)
-                          }}
-                        >
-                          <Trash className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        
-        {/* Formulário de Edição */}
-        <Card className="md:col-span-2">
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Formulário */}
+        <Card>
           <CardHeader>
             <CardTitle>
               {selectedPopup ? 'Editar Pop-up' : 'Novo Pop-up'}
             </CardTitle>
             <CardDescription>
-              Preencha os campos abaixo para configurar o pop-up
+              Configure o conteúdo e imagem do pop-up promocional
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form id="popupForm" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <input type="hidden" {...register('id')} />
-              
-              <div className="space-y-2">
-                <Label htmlFor="title">Título</Label>
-                <Input 
-                  id="title"
-                  {...register('title', { required: 'Título é obrigatório' })}
-                  placeholder="Ex: Oferta Especial"
-                  className={errors.title ? 'border-red-500' : ''}
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="title">Título</Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="Título do pop-up"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="content">Conteúdo (Markdown)</Label>
+              <Textarea
+                id="content"
+                value={formData.content}
+                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                placeholder="Conteúdo do pop-up em Markdown..."
+                rows={6}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="subscribeLink">Link de Assinatura</Label>
+              <Input
+                id="subscribeLink"
+                value={formData.subscribeLink}
+                onChange={(e) => setFormData({ ...formData, subscribeLink: e.target.value })}
+                placeholder="https://exemplo.com/assinatura"
+              />
+            </div>
+
+            <div>
+              <Label>Imagem</Label>
+              <div className="mt-2 space-y-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      handleImageUpload(file)
+                    }
+                  }}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                 />
-                {errors.title && (
-                  <p className="text-sm text-red-500">{errors.title.message}</p>
+                {uploading && (
+                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Fazendo upload...</span>
+                  </div>
                 )}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="content">
-                  Conteúdo
-                  <span className="text-xs text-gray-500 ml-2">(Suporta Markdown)</span>
-                </Label>
-                <Textarea 
-                  id="content"
-                  {...register('content', { required: 'Conteúdo é obrigatório' })}
-                  placeholder="Ex: Aproveite nosso desconto exclusivo para novos assinantes!"
-                  className={`min-h-[150px] ${errors.content ? 'border-red-500' : ''}`}
-                />
-                {errors.content && (
-                  <p className="text-sm text-red-500">{errors.content.message}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="imageUrl">URL da Imagem (opcional)</Label>
-                <Input 
-                  id="imageUrl"
-                  {...register('imageUrl')}
-                  placeholder="Ex: https://example.com/imagem.jpg"
-                  onChange={handleImageUrlChange}
-                />
-                
-                {/* Preview da imagem */}
-                {previewUrl && (
-                  <div className="mt-2 border rounded-md overflow-hidden relative w-full h-40">
-                    <Image 
-                      src={previewUrl} 
-                      alt="Preview" 
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 100vw, 400px"
-                      onError={() => {
-                        showNotification('URL da imagem inválida', 'error')
-                        setPreviewUrl(null)
-                      }}
+                {formData.imageUrl && (
+                  <div className="relative w-full h-32 border rounded-md overflow-hidden">
+                    <img
+                      src={formData.imageUrl}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
                     />
                   </div>
                 )}
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="subscribeLink">Link de Assinatura</Label>
-                <Input 
-                  id="subscribeLink"
-                  {...register('subscribeLink', { required: 'Link é obrigatório' })}
-                  placeholder="Ex: https://go.hotmart.com/N101121884P"
-                  className={errors.subscribeLink ? 'border-red-500' : ''}
-                />
-                {errors.subscribeLink && (
-                  <p className="text-sm text-red-500">{errors.subscribeLink.message}</p>
+            </div>
+
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <select
+                id="status"
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'ACTIVE' | 'INACTIVE' })}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="ACTIVE">Ativo</option>
+                <option value="INACTIVE">Inativo</option>
+              </select>
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-md flex items-center space-x-2">
+                <AlertCircle className="h-4 w-4" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="flex space-x-2">
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Salvar
+                  </>
                 )}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  {...register('status')}
-                  defaultValue={selectedPopup?.status || 'ACTIVE'}
-                  onValueChange={(value) => setValue('status', value as 'ACTIVE' | 'INACTIVE')}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ACTIVE">Ativo</SelectItem>
-                    <SelectItem value="INACTIVE">Inativo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </form>
+              </Button>
+              <Button variant="outline" onClick={handleNew}>
+                Novo
+              </Button>
+            </div>
           </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button 
-              variant="outline" 
-              onClick={handleReset}
-              disabled={submitting}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              type="submit"
-              form="popupForm"
-              disabled={submitting}
-              className="bg-indigo-600 hover:bg-indigo-700"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                'Salvar'
+        </Card>
+
+        {/* Lista de popups */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Pop-ups Existentes</CardTitle>
+            <CardDescription>
+              Gerencie os pop-ups criados
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {popups.map((popup) => (
+                <div key={popup.id} className="border rounded-lg p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold">{popup.title}</h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {popup.content.substring(0, 100)}...
+                      </p>
+                      <div className="flex items-center space-x-2 mt-2">
+                        <Badge variant={popup.status === 'ACTIVE' ? 'default' : 'secondary'}>
+                          {popup.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                        {popup.imageUrl && (
+                          <Badge variant="outline">
+                            <ImageIcon className="h-3 w-3 mr-1" />
+                            Com imagem
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(popup)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(popup.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {popups.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  Nenhum pop-up criado ainda
+                </div>
               )}
-            </Button>
-          </CardFooter>
+            </div>
+          </CardContent>
         </Card>
       </div>
-      
-      {/* Notificação simples */}
-      {notification && (
-        <div className={`fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 ${
-          notification.type === 'success' 
-            ? 'bg-green-100 border border-green-400 text-green-700' 
-            : 'bg-red-100 border border-red-400 text-red-700'
-        }`}>
-          {notification.message}
-        </div>
-      )}
     </div>
   )
 }

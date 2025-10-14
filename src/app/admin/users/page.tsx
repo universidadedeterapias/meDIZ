@@ -80,6 +80,7 @@ export default function UsersPage() {
     password: ''
   })
   const [creatingUser, setCreatingUser] = useState(false)
+  const [searchDebounce, setSearchDebounce] = useState('')
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -89,7 +90,7 @@ export default function UsersPage() {
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '50',
-        search: searchTerm,
+        search: searchDebounce,
         plan: filterPlan,
         role: filterRole
       })
@@ -110,11 +111,21 @@ export default function UsersPage() {
     } finally {
       setLoading(false)
     }
-  }, [currentPage, searchTerm, filterPlan, filterRole])
+  }, [currentPage, searchDebounce, filterPlan, filterRole])
 
+  // Debounce para busca - evita chamadas excessivas durante digitação
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setSearchDebounce(searchTerm)
+    }, 300) // 300ms de delay
+
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm])
+
+  // Executa busca quando searchDebounce muda ou outros filtros
   useEffect(() => {
     fetchUsers()
-  }, [fetchUsers])
+  }, [searchDebounce, currentPage, filterPlan, filterRole, fetchUsers])
 
   const handleCreateUser = async () => {
     if (!newUserData.name || !newUserData.email || !newUserData.password) {
@@ -457,7 +468,11 @@ export default function UsersPage() {
                           <CreditCard className="h-4 w-4 mr-1" />
                           Assinaturas
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => window.open(`/admin/users/${user.id}/edit`, '_blank')}
+                        >
                           Editar
                         </Button>
                         {!user.isAdmin && (
