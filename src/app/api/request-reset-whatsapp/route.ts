@@ -99,7 +99,7 @@ export async function POST(req: Request) {
       // const resetUrl - usar domínio de produção correto
       // Forçar domínio correto em produção
       const isProduction = process.env.NODE_ENV === 'production'
-      const correctDomain = 'https://mediz.com.br'
+      const correctDomain = 'https://mediz.app'
       
       let baseUrl = correctDomain
       if (!isProduction) {
