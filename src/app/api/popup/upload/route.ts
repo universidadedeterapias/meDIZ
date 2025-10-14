@@ -1,7 +1,14 @@
 import { auth } from '@/auth'
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
+import { v2 as cloudinary, UploadApiResponse } from 'cloudinary'
+import { Readable } from 'stream'
+
+// Configurar Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+})
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,32 +42,41 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    // Criar diretório se não existir
-    const uploadDir = join(process.cwd(), 'public', 'uploads', 'popup')
+    // Converter arquivo para buffer e stream
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    const stream = Readable.from(buffer)
+
+    // Fazer upload para Cloudinary
+    let uploadResult: UploadApiResponse
     try {
-      await mkdir(uploadDir, { recursive: true })
-    } catch (error) {
-      // Diretório já existe, continuar
+      uploadResult = await new Promise((resolve, reject) => {
+        const uploader = cloudinary.uploader.upload_stream(
+          {
+            folder: 'popup_images',
+            public_id: `popup-${Date.now()}`,
+            overwrite: false,
+            resource_type: 'image'
+          },
+          (err, result) => {
+            if (err) return reject(err)
+            resolve(result!)
+          }
+        )
+        stream.pipe(uploader)
+      })
+    } catch (uploadError) {
+      console.error('Erro no upload para Cloudinary:', uploadError)
+      return NextResponse.json({ 
+        error: 'Falha ao fazer upload da imagem' 
+      }, { status: 500 })
     }
-
-    // Gerar nome único para o arquivo
-    const timestamp = Date.now()
-    const extension = file.name.split('.').pop()
-    const fileName = `popup-${timestamp}.${extension}`
-    const filePath = join(uploadDir, fileName)
-
-    // Salvar arquivo
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
-
-    // Retornar URL da imagem
-    const imageUrl = `/uploads/popup/${fileName}`
 
     return NextResponse.json({ 
       success: true, 
-      imageUrl,
-      fileName 
+      imageUrl: uploadResult.secure_url,
+      fileName: file.name,
+      publicId: uploadResult.public_id
     })
 
   } catch (error) {

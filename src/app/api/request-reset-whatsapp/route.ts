@@ -97,11 +97,21 @@ export async function POST(req: Request) {
       }
 
       // const resetUrl - usar domínio de produção correto
-      let baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://mediz.com.br'
+      // Forçar domínio correto em produção
+      const isProduction = process.env.NODE_ENV === 'production'
+      const correctDomain = 'https://mediz.com.br'
+      
+      let baseUrl = correctDomain
+      if (!isProduction) {
+        // Em desenvolvimento, usar variáveis de ambiente ou localhost
+        baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000'
+      }
+      
       baseUrl = baseUrl.replace(/\/+$/g, '') // remove trailing slash
       if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(baseUrl)) {
         baseUrl = `https://${baseUrl}`
       }
+      
       const resetUrl = `${baseUrl}/reset?token=${rawToken}&email=${encodeURIComponent(
         email
       )}`
