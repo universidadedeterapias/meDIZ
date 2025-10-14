@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 // GET - Buscar usuário específico
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -14,7 +14,8 @@ export async function GET(
       return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
     }
 
-    const userId = params.id
+    const resolvedParams = await params
+    const userId = resolvedParams.id
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -74,7 +75,7 @@ export async function GET(
 // PATCH - Atualizar usuário
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -83,7 +84,8 @@ export async function PATCH(
       return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
     }
 
-    const userId = params.id
+    const resolvedParams = await params
+    const userId = resolvedParams.id
     const body = await req.json()
     const { name, email, fullName, whatsapp } = body
 
