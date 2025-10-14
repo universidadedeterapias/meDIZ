@@ -10,7 +10,6 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [debugInfo, setDebugInfo] = useState<{isAdmin: boolean; email: string} | null>(null)
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
 
@@ -37,7 +36,6 @@ export default function AdminLoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    setDebugInfo(null)
     
     try {
       // 1. Tenta fazer login
@@ -48,8 +46,7 @@ export default function AdminLoginPage() {
       })
 
       if (result?.error) {
-        console.error('Erro no login:', result.error)
-        setError(`Credenciais inválidas: ${result.error}`)
+        setError('Credenciais inválidas')
         setLoading(false)
         return
       }
@@ -66,28 +63,23 @@ export default function AdminLoginPage() {
         const res = await fetch('/api/auth-debug')
         
         if (!res.ok) {
-          throw new Error(`Erro na API: ${res.status} ${res.statusText}`)
+          throw new Error(`Erro na API: ${res.status}`)
         }
         
         const data = await res.json()
-        setDebugInfo(data) // Salva informações para debug
         
         if (data.isAdmin) {
-          console.log('Login admin bem-sucedido')
           router.push('/admin')
         } else {
-          // Se não for admin
-          setError(`Você não tem permissão de administrador. Email: ${data.user?.email || 'desconhecido'}`)
+          setError('Você não tem permissão de administrador')
           setLoading(false)
         }
       } catch (apiError) {
-        console.error('Erro ao verificar permissões:', apiError)
-        setError(`Erro ao verificar permissões: ${apiError instanceof Error ? apiError.message : 'Erro desconhecido'}`)
+        setError('Erro ao verificar permissões')
         setLoading(false)
       }
     } catch (error) {
-      console.error('Erro geral no login:', error)
-      setError(`Erro ao fazer login: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
+      setError('Erro ao fazer login')
       setLoading(false)
     }
   }
@@ -112,11 +104,6 @@ export default function AdminLoginPage() {
                 Sua sessão expirou. Por favor, faça login novamente.
               </div>
             )}
-            {error.includes('not_admin') && (
-              <div className="mt-2 text-xs">
-                Acesso restrito para administradores com email @mediz.com
-              </div>
-            )}
           </div>
         )}
         
@@ -130,11 +117,11 @@ export default function AdminLoginPage() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="admin@mediz.com"
+              placeholder="Digite seu email"
               required
             />
             <p className="text-xs text-gray-500 mt-1">
-              Use um email com domínio @mediz.com
+              Acesso restrito para administradores
             </p>
           </div>
           
@@ -171,14 +158,6 @@ export default function AdminLoginPage() {
           Acesso restrito para administradores do sistema.
         </div>
         
-        {debugInfo && process.env.NODE_ENV === 'development' && (
-          <div className="mt-8 p-4 border rounded bg-gray-50 text-xs overflow-auto">
-            <details>
-              <summary className="font-semibold cursor-pointer">Informações de debug</summary>
-              <pre className="mt-2 whitespace-pre-wrap">{JSON.stringify(debugInfo, null, 2)}</pre>
-            </details>
-          </div>
-        )}
       </div>
     </div>
   )

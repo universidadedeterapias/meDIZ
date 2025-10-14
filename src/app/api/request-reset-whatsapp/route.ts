@@ -96,8 +96,8 @@ export async function POST(req: Request) {
         )
       }
 
-      // const resetUrl
-      let baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || ''
+      // const resetUrl - usar domínio de produção correto
+      let baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://mediz.com.br'
       baseUrl = baseUrl.replace(/\/+$/g, '') // remove trailing slash
       if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(baseUrl)) {
         baseUrl = `https://${baseUrl}`
