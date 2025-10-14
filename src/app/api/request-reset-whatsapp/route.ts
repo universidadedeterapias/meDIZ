@@ -120,7 +120,8 @@ export async function POST(req: Request) {
       const phone = toBrazilE164(user.whatsapp)
       const greeting =
         `Olá, ${user.fullName ?? user.name ?? ''}! ` +
-        `Recebemos sua solicitação para redefinir a senha.`
+        `Recebemos sua solicitação para redefinir a senha. ` +
+        `Clique no link para redefinir: ${resetUrl}`
 
       // Z-API endpoints
       const zapiSendText = `${process.env.ZAPI_BASE_URL}/instances/${process.env.ZAPI_INSTANCE_ID}/token/${process.env.ZAPI_TOKEN}/send-text`
