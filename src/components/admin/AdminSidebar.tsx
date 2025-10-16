@@ -10,7 +10,9 @@ import {
   Home,
   LineChart,
   TestTube2,
-  LifeBuoy
+  LifeBuoy,
+  FileSpreadsheet,
+  TrendingUp
 } from 'lucide-react'
 
 export default function AdminSidebar() {
@@ -52,6 +54,18 @@ export default function AdminSidebar() {
       icon: LineChart, 
       label: 'Análises',
       active: pathname === '/admin/analytics'
+    },
+    { 
+      href: '/admin/export-sintomas', 
+      icon: FileSpreadsheet, 
+      label: 'Exportar Sintomas',
+      active: pathname === '/admin/export-sintomas'
+    },
+    { 
+      href: '/admin/sintomas-metrics', 
+      icon: TrendingUp, 
+      label: 'Métricas Sintomas',
+      active: pathname === '/admin/sintomas-metrics'
     }
   ]
   

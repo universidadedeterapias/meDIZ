@@ -1,0 +1,24 @@
+[
+  {
+    "data": "2025-10-15T14:10:00.000Z",
+    "sucesso": true,
+    "sintomasProcessados": 100,
+    "totalSessoes": 100,
+    "duracaoMs": 5000
+  },
+  {
+    "data": "2025-10-08T04:00:00.000Z",
+    "sucesso": true,
+    "sintomasProcessados": 95,
+    "totalSessoes": 95,
+    "duracaoMs": 4800
+  },
+  {
+    "data": "2025-10-01T04:00:00.000Z",
+    "sucesso": false,
+    "sintomasProcessados": 0,
+    "totalSessoes": 0,
+    "erro": "Não autorizado",
+    "duracaoMs": 133
+  }
+]

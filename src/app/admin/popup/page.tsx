@@ -268,11 +268,11 @@ export default function PopupAdminPage() {
                   </div>
                 )}
                 {formData.imageUrl && (
-                  <div className="relative w-full h-32 border rounded-md overflow-hidden">
+                  <div className="relative w-full h-32 border rounded-md overflow-hidden bg-gray-50 flex items-center justify-center">
                     <img
                       src={formData.imageUrl}
                       alt="Preview"
-                      className="w-full h-full object-cover"
+                      className="max-w-full max-h-full object-contain"
                     />
                   </div>
                 )}

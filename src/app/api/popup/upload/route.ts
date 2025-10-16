@@ -47,6 +47,15 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(arrayBuffer)
     const stream = Readable.from(buffer)
 
+    // Log das informações do arquivo original
+    console.log('🔍 DEBUG UPLOAD IMAGE:', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      bufferSize: buffer.length,
+      timestamp: new Date().toISOString()
+    })
+
     // Fazer upload para Cloudinary
     let uploadResult: UploadApiResponse
     try {
@@ -57,9 +66,26 @@ export async function POST(req: NextRequest) {
             public_id: `popup-${Date.now()}`,
             overwrite: false,
             resource_type: 'image'
+            // Removidas todas as configurações que causavam erro 500
           },
           (err, result) => {
-            if (err) return reject(err)
+            if (err) {
+              console.error('❌ Erro no upload Cloudinary:', err)
+              return reject(err)
+            }
+            
+            // Log do resultado do upload
+            console.log('✅ UPLOAD CLOUDINARY SUCCESS:', {
+              publicId: result?.public_id,
+              secureUrl: result?.secure_url,
+              width: result?.width,
+              height: result?.height,
+              format: result?.format,
+              resourceType: result?.resource_type,
+              bytes: result?.bytes,
+              originalFilename: result?.original_filename
+            })
+            
             resolve(result!)
           }
         )

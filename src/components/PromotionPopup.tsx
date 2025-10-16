@@ -4,7 +4,7 @@ import { X } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog-mobile'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -73,7 +73,10 @@ export default function PromotionPopup({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-w-[95vw] max-h-[95vh] overflow-y-auto">
+      <DialogContent 
+        className="sm:max-w-lg max-w-[90vw] max-h-[90vh] overflow-y-auto p-4"
+        hideCloseButton={true}
+      >
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-bold text-indigo-600">
@@ -81,7 +84,7 @@ export default function PromotionPopup({
             </DialogTitle>
             <Button
               variant="ghost"
-              className="h-8 w-8 p-0 rounded-full"
+              className="h-8 w-8 p-0 rounded-full ml-2 flex-shrink-0"
               onClick={() => onOpenChange(false)}
             >
               <X className="h-4 w-4" />
@@ -97,44 +100,40 @@ export default function PromotionPopup({
         ) : error ? (
           <div className="py-6 text-center text-red-500">{error}</div>
         ) : (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            
             {popupConfig?.imageUrl && (
-              <div className="relative w-full h-[300px] sm:h-[400px] md:h-[450px] lg:h-[500px]">
+              <div className="relative w-full h-[280px] sm:h-[320px]">
                 <Image
                   src={popupConfig.imageUrl}
                   alt="Promoção"
-                  fill
-                  style={{ objectFit: 'contain' }}
-                  className="rounded-lg"
-                  sizes="(max-width: 640px) 90vw, (max-width: 768px) 80vw, (max-width: 1024px) 70vw, 600px"
-                  onError={(e) => {
-                    console.warn('Erro ao carregar imagem do popup:', popupConfig.imageUrl)
-                    // Esconde a imagem em caso de erro
-                    e.currentTarget.style.display = 'none'
-                  }}
+                  width={500}
+                  height={320}
+                  className="w-full h-full object-contain rounded-md"
+                  unoptimized={true}
                 />
               </div>
             )}
             
-            <div className="prose prose-sm sm:prose-base max-w-none">
+            <div className="prose prose-xs max-w-none text-xs leading-tight">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {popupConfig?.content || ''}
               </ReactMarkdown>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-3 pt-4">
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
               <Button
-                variant="outline"
-                className="w-full sm:w-1/2 h-12 text-base"
-                onClick={() => onOpenChange(false)}
-              >
-                Fechar
-              </Button>
-              <Button
-                className="w-full sm:w-1/2 h-12 text-base bg-indigo-600 text-white hover:bg-indigo-700"
+                className="w-full sm:w-1/2 bg-indigo-600 text-white hover:bg-indigo-700 order-1"
                 onClick={handleSubscribe}
               >
                 Assinar Agora
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full sm:w-1/2 order-2"
+                onClick={() => onOpenChange(false)}
+              >
+                Fechar
               </Button>
             </div>
           </div>
