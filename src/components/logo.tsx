@@ -1,3 +1,5 @@
+'use client'
+
 const Logo = () => {
   return (
     <svg
@@ -29,9 +31,9 @@ const Logo = () => {
           width="204.264"
           height="80.024"
           filterUnits="userSpaceOnUse"
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             type="matrix"
