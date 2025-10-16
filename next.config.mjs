@@ -2,12 +2,8 @@
 const nextConfig = {
   webpack: (config, { isServer }) => {
     if (!isServer) {
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        'node:async_hooks': false,
-        'async_hooks': false,
-      };
       config.resolve.fallback = {
+        ...config.resolve.fallback,
         async_hooks: false,
         fs: false,
         net: false,
@@ -22,11 +18,16 @@ const nextConfig = {
         encoding: false,
       };
     }
-    config.externals = [...(config.externals || []), 'async_hooks'];
+    
+    // Prevent async_hooks from being bundled
+    config.module = {
+      ...config.module,
+      exprContextCritical: false,
+    };
+    
     return config;
   },
   serverExternalPackages: ['@prisma/client', 'prisma', 'bcryptjs'],
-  swcMinify: false,
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -34,4 +35,5 @@ const nextConfig = {
     ignoreBuildErrors: true,
   }
 };
+
 export default nextConfig;
