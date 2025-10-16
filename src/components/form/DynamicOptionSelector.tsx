@@ -26,7 +26,7 @@ export default function DynamicOptionSelector({
   return (
     <div className="flex flex-wrap gap-2 justify-center pt-2">
       {options.map(option => {
-        const isSelected = option.value === value
+        const isSelected = option.sintoma === value
         const isMostPopular = option.sintoma === sintomaMaisPopular?.sintoma && option.quantidade > 1
 
         return (
