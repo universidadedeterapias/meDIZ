@@ -1,3 +1,5 @@
+'use client'
+
 // src/app/admin/test-layout/page.tsx
 // Este é um Server Component
 import ClientTest from './ClientTest'

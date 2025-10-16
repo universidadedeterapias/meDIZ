@@ -10,6 +10,7 @@ import { ClientOnly } from '@/components/ClientOnly'
 import { ExternalLinks } from '@/components/ExternalLinks'
 import { Footer } from '@/components/Footer'
 import OptionSelector from '@/components/form/OptionSelector'
+import DynamicOptionSelector from '@/components/form/DynamicOptionSelector'
 import { LoadingPlaceholder } from '@/components/LoadingPlaceholder'
 import PromotionPopup from '@/components/PromotionPopup'
 import Spinner from '@/components/Spinner'
@@ -61,6 +62,34 @@ export default function Page() {
   const [userPeriod, setUserPeriod] = useState<'first-week' | 'first-month' | 'beyond-month'>('first-week')
   const [fullVisualization, setFullVisualization] = useState(true)
   const [showPopup, setShowPopup] = useState(false)
+  
+  // Estados para sintomas dinâmicos
+  const [dynamicSymptoms, setDynamicSymptoms] = useState<{sintoma: string, quantidade: number}[]>([])
+  const [symptomsLoaded, setSymptomsLoaded] = useState(false)
+
+  // Carrega sintomas dinâmicos
+  useEffect(() => {
+    async function loadDynamicSymptoms() {
+      try {
+        const response = await fetch('/api/symptoms/popular')
+        const data = await response.json()
+        
+        if (data.success && data.sintomas) {
+          setDynamicSymptoms(data.sintomas)
+          setSymptomsLoaded(true)
+        } else {
+          // Fallback para sintomas fixos
+          setSymptomsLoaded(true)
+        }
+      } catch (error) {
+        console.error('Erro ao carregar sintomas dinâmicos:', error)
+        // Fallback para sintomas fixos
+        setSymptomsLoaded(true)
+      }
+    }
+
+    loadDynamicSymptoms()
+  }, [])
 
   // 1) Confira perfil e normalize o nome
   useEffect(() => {
@@ -304,25 +333,36 @@ export default function Page() {
             ) : responses.length === 0 ? (
               <div className="w-full max-w-4xl mt-4 flex flex-col gap-4">
                 <Label className="text-zinc-400">Mais buscados:</Label>
-                <OptionSelector
-                  value={input}
-                  onChange={val => {
-                    setInput(val)
-                    handleSendMessage()
-                  }}
-                  options={[
-                    { label: 'Dor nas costas', value: 'Dor nas costas' },
-                    { label: 'Pressão alta', value: 'Pressão alta' },
-                    { label: 'Cansaço', value: 'Cansaço' },
-                    { label: 'Enxaqueca', value: 'Enxaqueca' },
-                    { label: 'Insônia', value: 'Insônia' },
-                    { label: 'Ansiedade', value: 'Ansiedade' },
-                    { label: 'Rinite', value: 'Rinite' },
-                    { label: 'Dor no joelho', value: 'Dor no joelho' },
-                    { label: 'Estresse', value: 'Estresse' },
-                    { label: 'Dor de cabeça', value: 'Dor de cabeça' }
-                  ]}
-                />
+                {symptomsLoaded && dynamicSymptoms.length > 0 ? (
+                  <DynamicOptionSelector
+                    value={input}
+                    onChange={val => {
+                      setInput(val)
+                      handleSendMessage()
+                    }}
+                    options={dynamicSymptoms}
+                  />
+                ) : (
+                  <OptionSelector
+                    value={input}
+                    onChange={val => {
+                      setInput(val)
+                      handleSendMessage()
+                    }}
+                    options={[
+                      { label: 'Dor nas costas', value: 'Dor nas costas' },
+                      { label: 'Pressão alta', value: 'Pressão alta' },
+                      { label: 'Cansaço', value: 'Cansaço' },
+                      { label: 'Enxaqueca', value: 'Enxaqueca' },
+                      { label: 'Insônia', value: 'Insônia' },
+                      { label: 'Ansiedade', value: 'Ansiedade' },
+                      { label: 'Rinite', value: 'Rinite' },
+                      { label: 'Dor no joelho', value: 'Dor no joelho' },
+                      { label: 'Estresse', value: 'Estresse' },
+                      { label: 'Dor de cabeça', value: 'Dor de cabeça' }
+                    ]}
+                  />
+                )}
               </div>
             ) : (
               <div className="max-w-4xl mx-auto space-y-4">

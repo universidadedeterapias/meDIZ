@@ -1,3 +1,5 @@
+'use client'
+
 import { SignupForm } from '@/components/register-form'
 
 export default function RegisterPage() {

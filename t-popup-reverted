@@ -1,0 +1,65 @@
+[33mcommit d0edb200b866f89369b24b6a4e502eaec29a3c97[m
+Author: Marianna Yáskara <marianna.yaskara@live.com>
+Date:   Tue Oct 14 00:03:35 2025 -0300
+
+    feat: Implementar correÃ§Ãµes crÃ­ticas do sistema - Webhook Hotmart, Login Admin, BotÃ£o Editar, OrdenaÃ§Ã£o, Busca, Pop-up Responsivo, Upload Imagens, Link Esqueci Senha
+
+[1mdiff --git a/src/components/PromotionPopup.tsx b/src/components/PromotionPopup.tsx[m
+[1mindex 2ba9c0a..0cf54ab 100644[m
+[1m--- a/src/components/PromotionPopup.tsx[m
+[1m+++ b/src/components/PromotionPopup.tsx[m
+[36m@@ -73,7 +73,7 @@[m [mexport default function PromotionPopup({[m
+ [m
+   return ([m
+     <Dialog open={open} onOpenChange={onOpenChange}>[m
+[31m-      <DialogContent className="sm:max-w-lg max-w-[90vw] max-h-[90vh] overflow-y-auto">[m
+[32m+[m[32m      <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-w-[95vw] max-h-[95vh] overflow-y-auto">[m
+         <DialogHeader>[m
+           <div className="flex items-center justify-between">[m
+             <DialogTitle className="text-xl font-bold text-indigo-600">[m
+[36m@@ -97,16 +97,16 @@[m [mexport default function PromotionPopup({[m
+         ) : error ? ([m
+           <div className="py-6 text-center text-red-500">{error}</div>[m
+         ) : ([m
+[31m-          <div className="flex flex-col gap-4">[m
+[32m+[m[32m          <div className="flex flex-col gap-6">[m
+             {popupConfig?.imageUrl && ([m
+[31m-              <div className="relative w-full h-[250px] sm:h-[300px]">[m
+[32m+[m[32m              <div className="relative w-full h-[300px] sm:h-[400px] md:h-[450px] lg:h-[500px]">[m
+                 <Image[m
+                   src={popupConfig.imageUrl}[m
+                   alt="Promoção"[m
+                   fill[m
+                   style={{ objectFit: 'contain' }}[m
+[31m-                  className="rounded-md"[m
+[31m-                  sizes="(max-width: 768px) 90vw, 500px"[m
+[32m+[m[32m                  className="rounded-lg"[m
+[32m+[m[32m                  sizes="(max-width: 640px) 90vw, (max-width: 768px) 80vw, (max-width: 1024px) 70vw, 600px"[m
+                   onError={(e) => {[m
+                     console.warn('Erro ao carregar imagem do popup:', popupConfig.imageUrl)[m
+                     // Esconde a imagem em caso de erro[m
+[36m@@ -116,7 +116,7 @@[m [mexport default function PromotionPopup({[m
+               </div>[m
+             )}[m
+             [m
+[31m-            <div className="prose prose-sm max-w-none">[m
+[32m+[m[32m            <div className="prose prose-sm sm:prose-base max-w-none">[m
+               <ReactMarkdown remarkPlugins={[remarkGfm]}>[m
+                 {popupConfig?.content || ''}[m
+               </ReactMarkdown>[m
+[36m@@ -125,13 +125,13 @@[m [mexport default function PromotionPopup({[m
+             <div className="flex flex-col sm:flex-row gap-3 pt-4">[m
+               <Button[m
+                 variant="outline"[m
+[31m-                className="w-full sm:w-1/2"[m
+[32m+[m[32m                className="w-full sm:w-1/2 h-12 text-base"[m
+                 onClick={() => onOpenChange(false)}[m
+               >[m
+                 Fechar[m
+               </Button>[m
+               <Button[m
+[31m-                className="w-full sm:w-1/2 bg-indigo-600 text-white hover:bg-indigo-700"[m
+[32m+[m[32m                className="w-full sm:w-1/2 h-12 text-base bg-indigo-600 text-white hover:bg-indigo-700"[m
+                 onClick={handleSubscribe}[m
+               >[m
+                 Assinar Agora[m

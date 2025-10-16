@@ -51,7 +51,7 @@ const nextConfig: NextConfig = {
     return config
   },
   // Configuração para pacotes externos do servidor
-  serverExternalPackages: ['@prisma/client', 'bcryptjs']
+  serverExternalPackages: ['@prisma/client', 'bcryptjs', 'prisma']
 }
 
 export default nextConfig
