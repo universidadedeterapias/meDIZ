@@ -1,3 +1,5 @@
+'use client'
+
 // app/page.tsx
 import { auth } from '@/auth'
 import SplashScreen from '@/components/splashScreen'

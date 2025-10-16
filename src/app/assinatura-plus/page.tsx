@@ -1,3 +1,5 @@
+'use client'
+
 import UpSell from '@/components/upsell'
 
 export default function Subscribe() {
