@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Eye, EyeOff } from 'lucide-react'
 import { signIn } from 'next-auth/react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import * as z from 'zod'
@@ -19,7 +20,8 @@ const signupSchema = z
   .object({
     email: z.string().email('E-mail inválido'),
     password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
-    confirm: z.string()
+    confirm: z.string(),
+    whatsapp: z.string().min(10, 'WhatsApp deve ter pelo menos 10 dígitos')
   })
   .refine(data => data.password === data.confirm, {
     path: ['confirm'],
@@ -35,6 +37,7 @@ export function SignupForm({
   // 2) Estados para controlar visibilidade das senhas
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const router = useRouter()
 
   // 3) Hook do React-Hook-Form com Zod
   const {
@@ -51,19 +54,27 @@ export function SignupForm({
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: data.email, password: data.password })
+      body: JSON.stringify({ 
+        email: data.email, 
+        password: data.password,
+        whatsapp: data.whatsapp
+      })
     })
+    
+    const result = await res.json()
+    
     if (!res.ok) {
-      const { error } = await res.json()
-      alert(error || 'Erro ao cadastrar')
+      alert(result.error || 'Erro ao cadastrar')
       return
     }
-    // login automático
-    await signIn('credentials', {
-      email: data.email,
-      password: data.password,
-      callbackUrl: '/chat'
-    })
+    
+    // Se WhatsApp foi enviado automaticamente, ir direto para confirmação
+    if (result.whatsappSent) {
+      router.push(`/confirm-signup?email=${encodeURIComponent(data.email)}&sent=true`)
+    } else {
+      // Senão, ir para página de verificação WhatsApp
+      router.push(`/verify-whatsapp?email=${encodeURIComponent(data.email)}`)
+    }
   }
 
   return (
@@ -95,6 +106,16 @@ export function SignupForm({
               {errors.email && (
                 <p className="text-red-500 text-sm mt-1">
                   {errors.email.message}
+                </p>
+              )}
+            </div>
+
+            {/* WhatsApp */}
+            <div>
+              <Input {...register('whatsapp')} type="tel" placeholder="WhatsApp (ex: 11999999999)" />
+              {errors.whatsapp && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.whatsapp.message}
                 </p>
               )}
             </div>

@@ -140,7 +140,6 @@ async function updatePopularSymptoms() {
     // Processa sintomas
     const sintomasMap = new Map<string, SintomaData>()
     let processadas = 0
-    const total = chatSessions.length
 
     console.log('🔄 Processando mensagens dos usuários...')
 
@@ -266,7 +265,7 @@ async function updatePopularSymptoms() {
   }
 }
 
-function saveCache(cacheData: any) {
+function saveCache(cacheData: Record<string, unknown>) {
   try {
     const cacheDir = join(process.cwd(), 'cache')
     const cacheFile = join(cacheDir, 'sintomas-populares.json')
@@ -299,7 +298,7 @@ function saveJobLog(logEntry: JobLog) {
     // Lê logs existentes
     let logs: JobLog[] = []
     if (existsSync(logsFile)) {
-      const content = require(logsFile)
+      const content = import(logsFile)
       logs = Array.isArray(content) ? content : []
     }
     

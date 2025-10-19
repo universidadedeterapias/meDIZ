@@ -3,10 +3,11 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { getUserPeriod, getUserLimits } from '@/lib/userPeriod'
 import { countPremiumUsers } from '@/lib/premiumUtils'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { hash } from 'bcryptjs'
+import { logUserAction, AuditActions } from '@/lib/auditLogger'
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     const session = await auth()
 
@@ -242,6 +243,27 @@ export async function POST(req: Request) {
         fullName: name
       }
     })
+
+    // Registrar criação no audit log
+    const admin = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true }
+    })
+
+    if (admin) {
+      await logUserAction(
+        admin.id,
+        session.user.email,
+        AuditActions.USER_CREATE,
+        newUser.id,
+        {
+          userName: newUser.name,
+          userEmail: newUser.email,
+          createdBy: session.user.email
+        },
+        req as NextRequest
+      )
+    }
 
     return NextResponse.json({
       id: newUser.id,

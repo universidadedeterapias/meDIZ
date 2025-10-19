@@ -95,7 +95,7 @@ async function buscarSintomasPopulares() {
         // Pequena pausa
         await new Promise(resolve => setTimeout(resolve, 20))
 
-      } catch (error) {
+      } catch {
         console.log(`❌ Erro na sessão ${session.threadId}`)
       }
     }

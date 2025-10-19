@@ -84,6 +84,9 @@ model User {
   // relações usadas pelo Auth.js
   accounts      Account[]     // armazena tokens OAuth, etc
   sessions      Session[]     // armazena sessionTokens JWT ou DB
+  
+  // relações para auditoria
+  // auditLogs      AuditLog[] @relation("UserAuditLogs")       // logs de auditoria - temporariamente comentado
 
   @@index([mensagem_enviada])
   @@index([status_verificacao])
@@ -186,6 +189,55 @@ model LogExecucao {
 
   @@index([data_execucao])
   @@map("log_execucoes")
+}
+
+// Logs de auditoria para ações dos admins
+model AuditLog {
+  id          String   @id @default(uuid())
+  adminId     String
+  adminEmail  String
+  action      String   // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, etc.
+  resource    String   // user, subscription, popup, etc.
+  resourceId  String?  // ID do recurso afetado
+  details     String?  @db.Text // Detalhes da ação em JSON
+  ipAddress   String?
+  userAgent   String?
+  timestamp   DateTime @default(now())
+
+  // Relacionamento com User (admin) - temporariamente removido para criar tabela
+  // admin User @relation("UserAuditLogs", fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([timestamp])
+  @@index([action])
+  @@index([resource])
+  @@map("audit_logs")
+}
+
+// Solicitações de acesso admin
+model AdminRequest {
+  id          String   @id @default(uuid())
+  userId      String   // ID do usuário que solicitou
+  userEmail   String   // Email do usuário
+  userName    String   // Nome do usuário
+  reason      String?  @db.Text // Motivo da solicitação
+  status      AdminRequestStatus @default(PENDING)
+  requestedAt DateTime @default(now())
+  reviewedAt  DateTime?
+  reviewedBy  String?  // ID do admin que aprovou/rejeitou
+  reviewerEmail String? // Email do admin que revisou
+  notes       String?  @db.Text // Notas do revisor
+
+  @@index([status])
+  @@index([requestedAt])
+  @@index([userEmail])
+  @@map("admin_requests")
+}
+
+enum AdminRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 // Configurações para o pop-up entre pesquisas

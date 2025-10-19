@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     console.log('🔍 Iniciando extração de sintomas mais pesquisados...')
     
     // 1. Calcula filtros de data baseado no período
-    let dateFilter: any = {}
+    let dateFilter: Record<string, unknown> = {}
     
     if (period === 'today') {
       const today = new Date()
@@ -104,7 +104,6 @@ export async function POST(req: Request) {
     // 2. Agrupa por threadId (cada threadId = um sintoma único)
     const sintomasMap = new Map<string, SintomaData>()
     let processadas = 0
-    const total = chatSessions.length
 
     console.log('🔄 Processando mensagens dos usuários...')
 

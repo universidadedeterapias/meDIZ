@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { 
   LayoutDashboard, 
   MessageSquareDashed, 
@@ -9,14 +10,29 @@ import {
   Settings, 
   Home,
   LineChart,
-  TestTube2,
   LifeBuoy,
   FileSpreadsheet,
-  TrendingUp
+  TrendingUp,
+  Shield,
+  FileText,
+  Bell
 } from 'lucide-react'
 
 export default function AdminSidebar() {
   const pathname = usePathname()
+  const [pendingRequests, setPendingRequests] = useState(0)
+  
+  useEffect(() => {
+    // Carregar contador de solicitações pendentes
+    fetch('/api/admin/dashboard-stats')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setPendingRequests(data.stats.pendingAdminRequests)
+        }
+      })
+      .catch(() => {}) // Ignorar erros
+  }, [])
   
   const mainLinks = [
     { 
@@ -44,12 +60,6 @@ export default function AdminSidebar() {
       active: pathname === '/admin/settings'
     },
     { 
-      href: '/admin/ab-testing', 
-      icon: TestTube2, 
-      label: 'Testes A/B',
-      active: pathname === '/admin/ab-testing'
-    },
-    { 
       href: '/admin/analytics', 
       icon: LineChart, 
       label: 'Análises',
@@ -66,6 +76,31 @@ export default function AdminSidebar() {
       icon: TrendingUp, 
       label: 'Métricas Sintomas',
       active: pathname === '/admin/sintomas-metrics'
+    },
+    { 
+      href: '/admin/security', 
+      icon: Shield, 
+      label: 'Segurança',
+      active: pathname === '/admin/security'
+    },
+    { 
+      href: '/admin/audit-logs', 
+      icon: FileText, 
+      label: 'Logs de Auditoria',
+      active: pathname === '/admin/audit-logs'
+    },
+    { 
+      href: '/admin/security-alerts', 
+      icon: Bell, 
+      label: 'Alertas de Segurança',
+      active: pathname === '/admin/security-alerts'
+    },
+    { 
+      href: '/admin/admin-requests', 
+      icon: Shield, 
+      label: 'Solicitações Admin',
+      active: pathname === '/admin/admin-requests',
+      badge: pendingRequests > 0 ? pendingRequests : undefined
     }
   ]
   
@@ -98,7 +133,12 @@ export default function AdminSidebar() {
         }`}
       >
         <Icon className="h-5 w-5 mr-3 flex-shrink-0" />
-        <span>{link.label}</span>
+        <span className="flex-1">{link.label}</span>
+        {link.badge && (
+          <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
+            {link.badge}
+          </span>
+        )}
       </Link>
     )
   }

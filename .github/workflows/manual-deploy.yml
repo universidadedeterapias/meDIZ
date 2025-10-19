@@ -1,0 +1,89 @@
+name: Manual Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      version:
+        description: 'Version tag (optional)'
+        required: false
+        type: string
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  manual-deploy:
+    name: 🚀 Manual Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.version || github.ref }}
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Pre-deployment checks
+        run: npm run check:deploy
+
+      - name: 🗄️ Generate Prisma Client
+        run: npx prisma generate
+
+      - name: 🏗️ Build application
+        run: npm run build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+
+      - name: 🚀 Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: ${{ inputs.environment == 'production' && '--prod' || '--prod=false' }}
+          working-directory: ./
+
+      - name: 📊 Deployment Summary
+        run: |
+          echo "✅ Deployment completed successfully!"
+          echo "🌍 Environment: ${{ inputs.environment }}"
+          echo "🏷️  Version: ${{ inputs.version || 'latest' }}"
+          echo "👤 Deployed by: ${{ github.actor }}"
+          echo "📅 Deployed at: $(date)"
+          
+          if [ "${{ inputs.environment }}" = "production" ]; then
+            echo "🌐 Production URL: https://mediz-app.vercel.app"
+          else
+            echo "🌐 Staging URL: https://mediz-app-git-develop.vercel.app"
+          fi
+
+      - name: 🔔 Notify deployment
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          ENVIRONMENT="${{ inputs.environment }}"
+          
+          if [ "$STATUS" = "success" ]; then
+            echo "🎉 Deployment to $ENVIRONMENT completed successfully!"
+          else
+            echo "❌ Deployment to $ENVIRONMENT failed!"
+          fi

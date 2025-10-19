@@ -48,6 +48,20 @@ export default function AdminLoginPage() {
       if (result?.error) {
         setError('Credenciais inválidas')
         setLoading(false)
+        
+        // Registrar tentativa de login falhada
+        try {
+          await fetch('/api/admin/audit-logs/login-failed', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email })
+          })
+        } catch (error) {
+          console.error('Erro ao registrar login falhado:', error)
+        }
+        
         return
       }
 
@@ -69,16 +83,34 @@ export default function AdminLoginPage() {
         const data = await res.json()
         
         if (data.isAdmin) {
-          router.push('/admin')
+          // Registrar login bem-sucedido
+          try {
+            await fetch('/api/admin/audit-logs/login-success', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ email })
+            })
+          } catch (error) {
+            console.error('Erro ao registrar login:', error)
+          }
+          
+          // Aguarda um pouco para garantir que a sessão foi criada
+          setTimeout(() => {
+            router.push('/admin')
+            // Força refresh da página para garantir que os dados sejam carregados
+            router.refresh()
+          }, 100)
         } else {
           setError('Você não tem permissão de administrador')
           setLoading(false)
         }
-      } catch (apiError) {
+      } catch {
         setError('Erro ao verificar permissões')
         setLoading(false)
       }
-    } catch (error) {
+    } catch {
       setError('Erro ao fazer login')
       setLoading(false)
     }
@@ -148,9 +180,12 @@ export default function AdminLoginPage() {
           </button>
         </form>
         
-        <div className="mt-6 text-center">
-          <Link href="/login" className="text-sm text-indigo-600 hover:underline">
+        <div className="mt-6 text-center space-y-2">
+          <Link href="/login" className="text-sm text-indigo-600 hover:underline block">
             Voltar para login regular
+          </Link>
+          <Link href="/request-admin" className="text-sm text-blue-600 hover:underline block">
+            Solicitar acesso administrativo
           </Link>
         </div>
         

@@ -1,9 +1,11 @@
 // src/app/api/admin/export/route.ts
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { logDataExport } from '@/lib/auditLogger'
+import { sendDataExportNotification } from '../security-alerts/route'
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     const session = await auth()
 
@@ -15,13 +17,38 @@ export async function GET(req: Request) {
     const type = searchParams.get('type') || 'users' // 'users' ou 'analytics'
     const format = searchParams.get('format') || 'csv' // 'csv' ou 'xlsx'
 
+    // Buscar admin para registrar no audit log
+    const admin = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true }
+    })
+
+    let result
+    let recordCount = 0
+    
     if (type === 'users') {
-      return await exportUsers(format)
+      result = await exportUsers(format)
+      // Contar registros exportados
+      recordCount = await prisma.user.count()
+      // Registrar exportação no audit log
+      if (admin) {
+        await logDataExport(admin.id, session.user.email, format.toUpperCase(), recordCount, req as NextRequest)
+        // Enviar alerta de segurança
+        await sendDataExportNotification(admin.id, 'Usuários', recordCount)
+      }
     } else if (type === 'analytics') {
-      return await exportAnalytics(format)
+      result = await exportAnalytics(format)
+      // Registrar exportação no audit log
+      if (admin) {
+        await logDataExport(admin.id, session.user.email, format.toUpperCase(), 0, req as NextRequest)
+        // Enviar alerta de segurança
+        await sendDataExportNotification(admin.id, 'Analytics', 0)
+      }
     } else {
       return NextResponse.json({ error: 'Tipo de exportação inválido' }, { status: 400 })
     }
+
+    return result
 
   } catch (error) {
     console.error('Erro na exportação:', error)

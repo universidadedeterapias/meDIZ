@@ -45,8 +45,16 @@ export function LoginForm({
     })
     setIsLoading(false)
 
-    if (res?.error) setError('E-mail ou senha inválidos.')
-    else router.push('/chat')
+    if (res?.error) {
+      setError('E-mail ou senha inválidos.')
+    } else {
+      // Aguarda um pouco para garantir que a sessão foi criada
+      setTimeout(() => {
+        router.push('/chat')
+        // Força refresh da página para garantir que os dados do usuário sejam carregados
+        router.refresh()
+      }, 100)
+    }
   }
 
   const handleForgotByWhatsapp = async () => {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -36,13 +36,7 @@ export default function EditUserPage() {
     whatsapp: ''
   })
 
-  useEffect(() => {
-    if (userId) {
-      fetchUser()
-    }
-  }, [userId])
-
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(`/api/admin/users/${userId}`)
@@ -64,7 +58,13 @@ export default function EditUserPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId])
+
+  useEffect(() => {
+    if (userId) {
+      fetchUser()
+    }
+  }, [userId, fetchUser])
 
   const handleSave = async () => {
     try {

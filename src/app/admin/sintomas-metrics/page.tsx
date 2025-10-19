@@ -44,7 +44,7 @@ export default function SintomasMetricsPage() {
       } else {
         setError(logsData.error || 'Erro ao carregar métricas')
       }
-    } catch (err) {
+    } catch {
       setError('Erro ao carregar métricas')
     } finally {
       setLoading(false)
