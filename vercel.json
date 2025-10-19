@@ -1,19 +1,10 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  },
+  "framework": "nextjs",
   "functions": {
     "src/app/api/**/*.ts": {
       "maxDuration": 30
     }
   },
-  "regions": ["iad1"],
-  "framework": "nextjs"
+  "regions": ["iad1"]
 }
