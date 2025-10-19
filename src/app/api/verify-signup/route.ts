@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendSignupConfirmation, isWhatsAppConfigured, simulateWhatsAppSend } from '@/lib/whatsappService'
 import { randomUUID } from 'crypto'
+import { handleApiError } from '@/lib/errorHandler'
 
 export async function POST(req: NextRequest) {
   try {
@@ -56,8 +57,10 @@ export async function POST(req: NextRequest) {
     })
 
     // Criar URL de confirmação
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3001'
     const confirmationUrl = `${baseUrl}/confirm-signup?token=${verificationToken}&email=${encodeURIComponent(email)}`
+    
+    console.log('[DEBUG] Verify Signup - URL de confirmação gerada:', confirmationUrl)
 
     // Enviar via WhatsApp
     const userName = user.fullName || user.name || 'Usuário'
@@ -84,9 +87,6 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (error) {
-    console.error('[Verify Signup] Erro:', error)
-    return NextResponse.json({ 
-      error: 'Erro interno do servidor' 
-    }, { status: 500 })
+    return handleApiError(error, 'Verify Signup')
   }
 }

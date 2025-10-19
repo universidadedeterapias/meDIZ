@@ -1,26 +1,39 @@
 // src/app/api/confirm-signup/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { handleApiError } from '@/lib/errorHandler'
 
 export async function POST(req: NextRequest) {
   try {
     const { token, email } = await req.json()
+    
+    console.log('[DEBUG] Confirm Signup - Token recebido:', token)
+    console.log('[DEBUG] Confirm Signup - Email recebido:', email)
 
     if (!token || !email) {
+      console.log('[DEBUG] Confirm Signup - Token ou email ausente')
       return NextResponse.json({ 
         error: 'Token e email são obrigatórios' 
       }, { status: 400 })
     }
 
-    // Buscar token de verificação
-    const verificationToken = await prisma.verificationToken.findFirst({
+    // Buscar token de verificação usando a constraint única
+    const verificationToken = await prisma.verificationToken.findUnique({
       where: {
-        token: token,
-        identifier: email
+        identifier_token: {
+          identifier: email,
+          token: token
+        }
       }
     })
 
+    console.log('[DEBUG] Confirm Signup - Token encontrado:', !!verificationToken)
+    if (verificationToken) {
+      console.log('[DEBUG] Confirm Signup - Token expira em:', verificationToken.expires)
+    }
+
     if (!verificationToken) {
+      console.log('[DEBUG] Confirm Signup - Token inválido')
       return NextResponse.json({ 
         error: 'Token de verificação inválido' 
       }, { status: 400 })
@@ -28,13 +41,7 @@ export async function POST(req: NextRequest) {
 
     // Verificar se o token expirou
     if (verificationToken.expires < new Date()) {
-      // Remover token expirado
-      await prisma.verificationToken.delete({
-        where: { 
-          token: verificationToken.token
-        }
-      })
-      
+      // Não deletar - apenas retornar erro (token expira naturalmente)
       return NextResponse.json({ 
         error: 'Token de verificação expirado' 
       }, { status: 400 })
@@ -45,17 +52,27 @@ export async function POST(req: NextRequest) {
       where: { email }
     })
 
+    console.log('[DEBUG] Confirm Signup - Usuário encontrado:', !!user)
+    if (user) {
+      console.log('[DEBUG] Confirm Signup - Usuário já verificado:', !!user.emailVerified)
+    }
+
     if (!user) {
+      console.log('[DEBUG] Confirm Signup - Usuário não encontrado')
       return NextResponse.json({ 
         error: 'Usuário não encontrado' 
       }, { status: 404 })
     }
 
-    // Verificar se já está verificado
+    // Verificar se já está verificado - permitir re-confirmação
     if (user.emailVerified) {
+      console.log('[DEBUG] Confirm Signup - Usuário já verificado, data:', user.emailVerified)
+      
+      // Não deletar token - apenas retornar sucesso (token pode ser reutilizado)
       return NextResponse.json({ 
-        error: 'Usuário já está verificado' 
-      }, { status: 400 })
+        success: true,
+        message: 'Cadastro já confirmado anteriormente. Você já pode fazer login.' 
+      }, { status: 200 })
     }
 
     // Confirmar cadastro
@@ -66,12 +83,8 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // Remover token usado
-    await prisma.verificationToken.delete({
-      where: { 
-        token: verificationToken.token
-      }
-    })
+    // Não deletar token - deixar expirar naturalmente (evita erro de REPLICA IDENTITY)
+    console.log('[DEBUG] Confirm Signup - Token usado com sucesso, deixando expirar naturalmente')
 
     return NextResponse.json({
       success: true,
@@ -79,9 +92,6 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (error) {
-    console.error('[Confirm Signup] Erro:', error)
-    return NextResponse.json({ 
-      error: 'Erro interno do servidor' 
-    }, { status: 500 })
+    return handleApiError(error, 'Confirm Signup')
   }
 }

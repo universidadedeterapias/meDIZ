@@ -27,7 +27,7 @@
     "test-popup": "tsx src/scripts/test-popup-fix.ts",
     "check-popup": "tsx src/scripts/check-popup-data.ts",
     "test-restriction": "tsx src/scripts/test-user-restriction.ts",
-    "audit-users": "tsx src/scripts/audit-users-and-subscriptions.ts",
+    "fix-verification-token": "tsx src/scripts/fix-verification-token-production.ts",
     "create-test-8-30": "tsx src/scripts/create-test-user-8-30-days.ts",
     "validate-premium": "tsx src/scripts/validate-premium-definition.ts",
     "debug-search": "tsx src/scripts/debug-search-api.ts",
