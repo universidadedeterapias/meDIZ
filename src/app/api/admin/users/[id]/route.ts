@@ -171,3 +171,96 @@ export async function PATCH(
     )
   }
 }
+
+// DELETE - Excluir usuário
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth()
+
+    if (!session?.user?.email || !session.user.email.includes('@mediz.com')) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+    }
+
+    const resolvedParams = await params
+    const userId = resolvedParams.id
+
+    console.log('[DEBUG] Delete User - Tentando excluir usuário:', userId)
+    console.log('[DEBUG] Delete User - Admin:', session.user.email)
+
+    // Verificar se o usuário existe
+    const userToDelete = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true
+      }
+    })
+
+    if (!userToDelete) {
+      console.log('[DEBUG] Delete User - Usuário não encontrado')
+      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
+    }
+
+    // Não permitir excluir admins
+    if (userToDelete.email.includes('@mediz.com')) {
+      console.log('[DEBUG] Delete User - Tentativa de excluir admin bloqueada')
+      return NextResponse.json({ 
+        error: 'Não é possível excluir usuários administradores' 
+      }, { status: 400 })
+    }
+
+    // Não permitir auto-exclusão
+    if (userToDelete.email === session.user.email) {
+      console.log('[DEBUG] Delete User - Tentativa de auto-exclusão bloqueada')
+      return NextResponse.json({ 
+        error: 'Não é possível excluir sua própria conta' 
+      }, { status: 400 })
+    }
+
+    // Excluir usuário (cascade delete vai remover dados relacionados)
+    await prisma.user.delete({
+      where: { id: userId }
+    })
+
+    console.log('[DEBUG] Delete User - Usuário excluído com sucesso:', userToDelete.email)
+
+    // Registrar exclusão no audit log
+    const admin = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true }
+    })
+
+    if (admin) {
+      await logUserAction(
+        admin.id,
+        session.user.email,
+        AuditActions.USER_DELETE,
+        userId,
+        {
+          deletedUser: {
+            name: userToDelete.name,
+            email: userToDelete.email
+          },
+          deletedBy: session.user.email
+        },
+        req
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Usuário excluído com sucesso'
+    })
+
+  } catch (error) {
+    console.error('[DEBUG] Delete User - Erro:', error)
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
+    )
+  }
+}

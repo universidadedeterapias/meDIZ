@@ -81,6 +81,7 @@ export default function UsersPage() {
   })
   const [creatingUser, setCreatingUser] = useState(false)
   const [searchDebounce, setSearchDebounce] = useState('')
+  const [deletingUser, setDeletingUser] = useState<string | null>(null)
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -171,6 +172,40 @@ export default function UsersPage() {
       alert(`Erro ao criar usuário: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
     } finally {
       setCreatingUser(false)
+    }
+  }
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    const confirmDelete = confirm(`Tem certeza que deseja excluir o usuário "${userName}"?\n\nEsta ação não pode ser desfeita.`)
+    
+    if (!confirmDelete) return
+
+    setDeletingUser(userId)
+    try {
+      console.log('[DEBUG] Frontend - Excluindo usuário:', userId)
+      
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erro ao excluir usuário')
+      }
+
+      const result = await response.json()
+      console.log('[DEBUG] Frontend - Usuário excluído:', result)
+      
+      // Recarregar lista de usuários
+      await fetchUsers()
+      
+      alert('Usuário excluído com sucesso!')
+      
+    } catch (err) {
+      console.error('[DEBUG] Frontend - Erro ao excluir usuário:', err)
+      alert(err instanceof Error ? err.message : 'Erro ao excluir usuário')
+    } finally {
+      setDeletingUser(null)
     }
   }
 
@@ -476,8 +511,18 @@ export default function UsersPage() {
                           Editar
                         </Button>
                         {!user.isAdmin && (
-                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                            <UserX className="h-4 w-4" />
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => handleDeleteUser(user.id, user.name)}
+                            disabled={deletingUser === user.id}
+                          >
+                            {deletingUser === user.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <UserX className="h-4 w-4" />
+                            )}
                           </Button>
                         )}
                       </div>

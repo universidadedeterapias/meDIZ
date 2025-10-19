@@ -5,8 +5,8 @@ import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog-mobile'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+// import ReactMarkdown from 'react-markdown'
+// import remarkGfm from 'remark-gfm'
 
 interface PopupConfig {
   id: string
@@ -116,9 +116,10 @@ export default function PromotionPopup({
             )}
             
             <div className="prose prose-xs max-w-none text-xs leading-tight">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {/* <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {popupConfig?.content || ''}
-              </ReactMarkdown>
+              </ReactMarkdown> */}
+              <div dangerouslySetInnerHTML={{ __html: popupConfig?.content || '' }} />
             </div>
             
             <div className="flex flex-col sm:flex-row gap-2 pt-2">
