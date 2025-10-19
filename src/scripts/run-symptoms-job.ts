@@ -247,7 +247,7 @@ async function runSymptomsJob() {
   }
 }
 
-function saveCache(cacheData: any) {
+function saveCache(cacheData: Record<string, unknown>) {
   try {
     const cacheDir = join(process.cwd(), 'cache')
     const cacheFile = join(cacheDir, 'sintomas-populares.json')
@@ -275,7 +275,7 @@ function saveJobLog(logEntry: JobLog) {
     
     let logs: JobLog[] = []
     if (existsSync(logsFile)) {
-      const content = require(logsFile)
+      const content = import(logsFile)
       logs = Array.isArray(content) ? content : []
     }
     

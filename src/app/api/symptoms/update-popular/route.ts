@@ -109,7 +109,6 @@ export async function POST(req: Request) {
     // Processa sintomas
     const sintomasMap = new Map<string, SintomaData>()
     let processadas = 0
-    const total = chatSessions.length
 
     console.log('🔄 Processando mensagens dos usuários...')
 

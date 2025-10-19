@@ -4,16 +4,18 @@ import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
 export async function middleware(request: NextRequest) {
-  // Permitir acesso à página de login do admin
-  if (request.nextUrl.pathname === '/admin-login') {
-    return NextResponse.next()
-  }
-  
   // Aplicar apenas a rotas do admin - otimização de performance
-  if (request.nextUrl.pathname.startsWith('/admin')) {
+  // EXCLUIR /admin-login para evitar loop infinito
+  if (request.nextUrl.pathname.startsWith('/admin') && request.nextUrl.pathname !== '/admin-login') {
     console.log(`[Middleware] Acessando: ${request.nextUrl.pathname}`)
     
     try {
+      // Verificar se NEXTAUTH_SECRET está configurado
+      if (!process.env.NEXTAUTH_SECRET) {
+        console.error('[Middleware] NEXTAUTH_SECRET não está configurado')
+        return NextResponse.redirect(new URL('/auth/error?error=Configuration', request.url))
+      }
+
       // Usar getToken que é compatível com middleware
       const token = await getToken({
         req: request,
@@ -59,13 +61,12 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(loginUrl)
       }
       
-      // Usuário autenticado e é admin - permitir acesso
-      console.log('[Middleware] Acesso permitido')
+      console.log('[Middleware] Admin autenticado - acesso permitido')
       return NextResponse.next()
     } catch (error) {
       console.error('[Middleware] Erro:', error)
-      // Em caso de erro, redirecionar para página de login admin
-      return NextResponse.redirect(new URL('/admin-login', request.url))
+      // Em caso de erro, redirecionar para página de erro
+      return NextResponse.redirect(new URL('/auth/error?error=Configuration', request.url))
     }
   }
   
@@ -74,5 +75,5 @@ export async function middleware(request: NextRequest) {
 
 // Configurar quais caminhos o middleware deve executar
 export const config = {
-  matcher: ['/admin/:path*', '/admin-login']
+  matcher: ['/admin/:path*', '/admin-login', '/api/admin/:path*']
 }

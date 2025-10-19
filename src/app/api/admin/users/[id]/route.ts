@@ -1,6 +1,7 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
+import { logUserAction, AuditActions } from '@/lib/auditLogger'
 
 // GET - Buscar usuário específico
 export async function GET(
@@ -130,6 +131,32 @@ export async function PATCH(
         createdAt: true
       }
     })
+
+    // Registrar atualização no audit log
+    const admin = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true }
+    })
+
+    if (admin) {
+      await logUserAction(
+        admin.id,
+        session.user.email,
+        AuditActions.USER_UPDATE,
+        userId,
+        {
+          updatedFields: { name, email, fullName, whatsapp },
+          previousData: {
+            name: existingUser.name,
+            email: existingUser.email,
+            fullName: existingUser.fullName,
+            whatsapp: existingUser.whatsapp
+          },
+          updatedBy: session.user.email
+        },
+        req
+      )
+    }
 
     return NextResponse.json({
       ...updatedUser,

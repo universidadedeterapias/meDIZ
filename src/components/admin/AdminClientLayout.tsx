@@ -2,8 +2,18 @@
 
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { signOut } from 'next-auth/react'
 import AdminSidebar from './AdminSidebar'
-import { User, Bell } from 'lucide-react'
+import { User, Bell, LogOut, Settings } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 interface AdminClientLayoutProps {
   children: React.ReactNode
@@ -18,6 +28,7 @@ export default function AdminClientLayout({
 }: AdminClientLayoutProps) {
   const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
 
   // Evitar hydration mismatch
   useEffect(() => {
@@ -39,6 +50,27 @@ export default function AdminClientLayout({
     }
     
     return titles[lastPart] || 'Admin'
+  }
+
+  const handleLogout = async () => {
+    setLoggingOut(true)
+    try {
+      // Registrar logout no audit log
+      await fetch('/api/admin/audit-logs/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+    } catch (error) {
+      console.error('Erro ao registrar logout:', error)
+    }
+    
+    // Fazer logout
+    await signOut({ 
+      callbackUrl: '/admin-login',
+      redirect: true 
+    })
   }
   
   // Não renderizar até estar montado no cliente
@@ -72,15 +104,36 @@ export default function AdminClientLayout({
               <Bell className="h-5 w-5" />
             </button>
             
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center text-white">
-                <User className="h-5 w-5" />
-              </div>
-              <div className="hidden sm:block">
-                <div className="text-sm font-medium">{userName}</div>
-                <div className="text-xs text-gray-500">{userEmail}</div>
-              </div>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-3 p-2">
+                  <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center text-white">
+                    <User className="h-5 w-5" />
+                  </div>
+                  <div className="hidden sm:block text-left">
+                    <div className="text-sm font-medium">{userName}</div>
+                    <div className="text-xs text-gray-500">{userEmail}</div>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => window.location.href = '/admin/security'}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Segurança
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  {loggingOut ? 'Saindo...' : 'Sair'}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
         
