@@ -29,9 +29,9 @@ import {
   TriangleAlert,
   Workflow
 } from 'lucide-react'
-import React, { useEffect, useState } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import React, { useEffect, useState, useMemo } from 'react'
+// import ReactMarkdown from 'react-markdown'
+// import remarkGfm from 'remark-gfm'
 
 // Mapa de string → componente, mantém tudo num lugar
 const ICON_MAP: Record<
@@ -64,7 +64,7 @@ export function Result({
   fullVisualization = true,
   onSubscribe = () => window.location.href = 'https://go.hotmart.com/N101121884P'
 }: ResultProps) {
-  const data = React.useMemo(() => parseResponse(markdown), [markdown])
+  const data = useMemo(() => parseResponse(markdown), [markdown])
   const [baseUrl, setBaseUrl] = useState('')
   
   // Determina se deve mostrar o conteúdo completo ou parcial
@@ -118,9 +118,10 @@ export function Result({
             </span>
           </div>
           <div className="prose prose-sm max-w-none text-justify">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {/* <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {data.contextoGeral}
-            </ReactMarkdown>
+            </ReactMarkdown> */}
+            <div dangerouslySetInnerHTML={{ __html: data.contextoGeral }} />
           </div>
         </section>
 
@@ -133,9 +134,10 @@ export function Result({
             </span>
           </div>
           <div className="prose prose-sm max-w-none text-justify font-normal">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {/* <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {data.impactoBiologico}
-            </ReactMarkdown>
+            </ReactMarkdown> */}
+            <div dangerouslySetInnerHTML={{ __html: data.impactoBiologico }} />
           </div>
         </section>
 
@@ -170,7 +172,7 @@ export function Result({
                 <AccordionContent className="prose prose-sm max-w-none p-3 text-left">
                   {shouldBlur ? (
                     <BlurredAccordionContent onSubscribe={onSubscribe}>
-                      <ReactMarkdown
+                      {/* <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
                           ul: ({ ...props }) => (
@@ -179,19 +181,11 @@ export function Result({
                         }}
                       >
                         {sec.body}
-                      </ReactMarkdown>
+                      </ReactMarkdown> */}
+                      <div dangerouslySetInnerHTML={{ __html: sec.body }} />
                     </BlurredAccordionContent>
                   ) : (
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        ul: ({ ...props }) => (
-                          <ul className="list-disc list-inside ml-4" {...props} />
-                        )
-                      }}
-                    >
-                      {sec.body}
-                    </ReactMarkdown>
+                    <div dangerouslySetInnerHTML={{ __html: sec.body }} />
                   )}
                 </AccordionContent>
               </AccordionItem>

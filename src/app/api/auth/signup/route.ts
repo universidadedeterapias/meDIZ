@@ -65,8 +65,10 @@ export async function POST(request: Request) {
         })
 
         // Criar URL de confirmação
-        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3001'
         const confirmationUrl = `${baseUrl}/confirm-signup?token=${verificationToken}&email=${encodeURIComponent(email)}`
+        
+        console.log('[DEBUG] Signup - URL de confirmação gerada:', confirmationUrl)
 
         // Enviar via WhatsApp
         const userName = email.split('@')[0] // Usar parte antes do @ como nome
