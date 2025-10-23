@@ -11,11 +11,14 @@ export default function RegisterPage() {
                   bg-gradient-to-br from-indigo-600 to-purple-600"
     >
       <div className="flex w-full max-w-sm flex-col gap-6">
+<<<<<<< HEAD
         {/* <a href="#" className="flex items-center gap-2 self-center font-medium">
           <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <GalleryVerticalEnd className="size-4" />
           </div>
         </a> */}
+=======
+>>>>>>> feature/pdf-export-and-growth
         <SignupForm />
       </div>
     </div>

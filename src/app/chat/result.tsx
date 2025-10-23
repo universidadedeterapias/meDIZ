@@ -2,6 +2,10 @@
 
 import { BlurredAccordionContent } from '@/components/BlurredContent'
 import { ClientOnly } from '@/components/ClientOnly'
+<<<<<<< HEAD
+=======
+import { ExportPDFButton } from '@/components/ExportPDFButton'
+>>>>>>> feature/pdf-export-and-growth
 import { ShareInsightDialog } from '@/components/Share'
 import {
   Accordion,
@@ -56,13 +60,24 @@ type ResultProps = {
   userPeriod?: UserPeriod
   fullVisualization?: boolean
   onSubscribe?: () => void
+<<<<<<< HEAD
+=======
+  userQuestion?: string
+  sessionId?: string
+>>>>>>> feature/pdf-export-and-growth
 }
 
 export function Result({ 
   markdown, 
   elapsedMs, 
   fullVisualization = true,
+<<<<<<< HEAD
   onSubscribe = () => window.location.href = 'https://go.hotmart.com/N101121884P'
+=======
+  onSubscribe = () => window.location.href = 'https://go.hotmart.com/N101121884P',
+  userQuestion = '',
+  sessionId
+>>>>>>> feature/pdf-export-and-growth
 }: ResultProps) {
   const data = useMemo(() => parseResponse(markdown), [markdown])
   const [baseUrl, setBaseUrl] = useState('')
@@ -79,6 +94,7 @@ export function Result({
 
   return (
     <Card className="w-full mb-6">
+<<<<<<< HEAD
       <CardHeader className="space-y-4">
         {data.scientific && (
           <>
@@ -111,6 +127,62 @@ export function Result({
       <CardContent className="space-y-6">
         {/* Contexto Geral */}
         <section className="space-y-1">
+=======
+      <CardHeader className="space-y-6 p-6">
+        {/* Header com botão PDF */}
+        <div className="flex justify-between items-start gap-2 sm:gap-4">
+          <div className="flex-1">
+            {data.scientific && (
+              <>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="block w-1 h-4 bg-primary rounded" />
+                  <span className="uppercase text-sm font-semibold text-primary">
+                    Nome científico
+                  </span>
+                </div>
+                <CardTitle className="text-2xl font-bold text-foreground mb-6">
+                  {data.scientific}
+                </CardTitle>
+              </>
+            )}
+            {data.popular && (
+              <div className="w-full py-4 text-center text-2xl font-bold text-primary bg-indigo-50 rounded-2xl mb-4">
+                {data.popular}
+              </div>
+            )}
+            {data.system && (
+              <Badge
+                variant="outline"
+                className="w-fit text-primary bg-indigo-50 border-none p-2 rounded-full"
+              >
+                {data.system}
+              </Badge>
+            )}
+          </div>
+          
+          {/* Botão de exportação PDF */}
+          <div className="ml-2 sm:ml-4 flex-shrink-0">
+            {(() => {
+              // Debug para ver o que está sendo passado
+              console.log('🔍 Debug Result - Markdown content preview:', markdown?.substring(0, 500))
+              console.log('🔍 Debug Result - Markdown contains IMPACTO BIOLÓGICO:', markdown?.includes('IMPACTO BIOLÓGICO'))
+              console.log('🔍 Debug Result - Markdown contains **IMPACTO BIOLÓGICO**:', markdown?.includes('**IMPACTO BIOLÓGICO**'))
+              console.log('🔍 Debug Result - User question:', userQuestion)
+              return null
+            })()}
+            <ExportPDFButton
+              question={userQuestion}
+              answer={markdown}
+              sessionId={sessionId}
+            />
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-8 p-6 pt-0">
+        {/* Contexto Geral */}
+        <section className="space-y-3">
+>>>>>>> feature/pdf-export-and-growth
           <div className="flex items-center gap-2">
             <span className="block w-1 h-4 bg-primary rounded" />
             <span className="uppercase text-sm font-semibold text-primary">
@@ -126,7 +198,11 @@ export function Result({
         </section>
 
         {/* Impacto biológico */}
+<<<<<<< HEAD
         <section className="space-y-1">
+=======
+        <section className="space-y-3">
+>>>>>>> feature/pdf-export-and-growth
           <div className="flex items-center gap-2">
             <span className="block w-1 h-4 bg-primary rounded" />
             <span className="uppercase text-sm font-semibold text-primary">
@@ -148,11 +224,18 @@ export function Result({
             
             // Verifica se este é o acordeão "Símbolos Biológicos" ou posterior
             // e se devemos aplicar o efeito de blur
+<<<<<<< HEAD
             const isRestrictedSection = sec.title.toLowerCase().includes('símbolos') || 
                                        sec.title.toLowerCase().includes('conflito emocional') ||
                                        sec.icon === 'dna' || 
                                        sec.icon === 'triangle-alert' ||
                                        index >= 1  // Aplica restrição a partir do índice 1 (Conflito Emocional Subjacente)
+=======
+            // LIBERAÇÃO: "Símbolos Biológicos" agora é acessível para todos os usuários
+            const isRestrictedSection = sec.title.toLowerCase().includes('conflito emocional') ||
+                                       sec.icon === 'triangle-alert' ||
+                                       (index >= 2)  // Aplica restrição a partir do índice 2 (pulando Símbolos Biológicos)
+>>>>>>> feature/pdf-export-and-growth
             const shouldBlur = !showFullContent && isRestrictedSection
 
             return (

@@ -21,6 +21,10 @@ import {
   CreditCard
 } from 'lucide-react'
 import { SubscriptionManager } from '@/components/admin/SubscriptionManager'
+<<<<<<< HEAD
+=======
+import { UserGrowthChart } from '@/components/admin/UserGrowthChart'
+>>>>>>> feature/pdf-export-and-growth
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface User {
@@ -82,6 +86,11 @@ export default function UsersPage() {
   const [creatingUser, setCreatingUser] = useState(false)
   const [searchDebounce, setSearchDebounce] = useState('')
   const [deletingUser, setDeletingUser] = useState<string | null>(null)
+<<<<<<< HEAD
+=======
+  const [growthData, setGrowthData] = useState<any>(null)
+  const [growthLoading, setGrowthLoading] = useState(false)
+>>>>>>> feature/pdf-export-and-growth
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -114,6 +123,28 @@ export default function UsersPage() {
     }
   }, [currentPage, searchDebounce, filterPlan, filterRole])
 
+<<<<<<< HEAD
+=======
+  // Função para buscar dados de crescimento
+  const fetchGrowthData = useCallback(async () => {
+    try {
+      setGrowthLoading(true)
+      const response = await fetch('/api/admin/user-growth?weeks=12')
+      
+      if (!response.ok) {
+        throw new Error('Erro ao carregar dados de crescimento')
+      }
+
+      const data = await response.json()
+      setGrowthData(data)
+    } catch (err) {
+      console.error('Erro ao buscar dados de crescimento:', err)
+    } finally {
+      setGrowthLoading(false)
+    }
+  }, [])
+
+>>>>>>> feature/pdf-export-and-growth
   // Debounce para busca - evita chamadas excessivas durante digitação
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -128,6 +159,13 @@ export default function UsersPage() {
     fetchUsers()
   }, [searchDebounce, currentPage, filterPlan, filterRole, fetchUsers])
 
+<<<<<<< HEAD
+=======
+  useEffect(() => {
+    fetchGrowthData()
+  }, [fetchGrowthData])
+
+>>>>>>> feature/pdf-export-and-growth
   const handleCreateUser = async () => {
     if (!newUserData.name || !newUserData.email || !newUserData.password) {
       alert('Por favor, preencha todos os campos')
@@ -350,6 +388,7 @@ export default function UsersPage() {
               </CardContent>
             </Card>
           </div>
+<<<<<<< HEAD
 
           {/* Gráfico de crescimento (simulado) */}
           <Card>
@@ -365,6 +404,8 @@ export default function UsersPage() {
               </div>
             </CardContent>
           </Card>
+=======
+>>>>>>> feature/pdf-export-and-growth
         </TabsContent>
 
         <TabsContent value="users" className="space-y-6">
@@ -572,6 +613,7 @@ export default function UsersPage() {
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-6">
+<<<<<<< HEAD
           <Card>
             <CardHeader>
               <CardTitle>Análises de Usuários</CardTitle>
@@ -585,6 +627,30 @@ export default function UsersPage() {
               </p>
             </CardContent>
           </Card>
+=======
+          {growthLoading ? (
+            <Card>
+              <CardContent className="h-[400px] flex items-center justify-center">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <p className="text-gray-500">Carregando dados de crescimento...</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : growthData ? (
+            <UserGrowthChart 
+              data={growthData.data} 
+              comparison={growthData.comparison}
+              summary={growthData.summary}
+            />
+          ) : (
+            <Card>
+              <CardContent className="h-[400px] flex items-center justify-center">
+                <p className="text-gray-500">Erro ao carregar dados de crescimento</p>
+              </CardContent>
+            </Card>
+          )}
+>>>>>>> feature/pdf-export-and-growth
         </TabsContent>
       </Tabs>
 

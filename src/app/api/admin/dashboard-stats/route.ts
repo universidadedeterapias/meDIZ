@@ -23,6 +23,7 @@ export async function GET(_req: NextRequest) {
     // Inicializar com valores padrão
     const stats = {
       totalUsers: 0,
+<<<<<<< HEAD
       premiumUsers: 0,
       freeUsers: 0,
       activeUsers: 0,
@@ -31,6 +32,12 @@ export async function GET(_req: NextRequest) {
       totalChatSessions: 0,
       pendingAdminRequests: 0,
       conversionRate: 0,
+=======
+      freeUsers: 0,
+      activeUsers: 0,
+      totalChatSessions: 0,
+      pendingAdminRequests: 0,
+>>>>>>> feature/pdf-export-and-growth
       recentAuditLogs: []
     }
 
@@ -43,6 +50,7 @@ export async function GET(_req: NextRequest) {
       const activeUsersResult = await prisma.$queryRaw`SELECT COUNT(*) as count FROM "User" WHERE "createdAt" >= NOW() - INTERVAL '7 days'`
       stats.activeUsers = parseInt((activeUsersResult as Record<string, unknown>[])[0].count as string)
 
+<<<<<<< HEAD
       // Buscar dados reais de assinaturas
       const totalSubscriptionsResult = await prisma.subscription.count()
       stats.totalSubscriptions = totalSubscriptionsResult
@@ -71,11 +79,20 @@ export async function GET(_req: NextRequest) {
       stats.conversionRate = stats.totalUsers > 0 ? 
         Math.round((stats.premiumUsers / stats.totalUsers) * 100) : 0
 
+=======
+>>>>>>> feature/pdf-export-and-growth
       // Buscar total de sessões de chat
       const totalChatSessionsResult = await prisma.chatSession.count()
       stats.totalChatSessions = totalChatSessionsResult
 
+<<<<<<< HEAD
       console.log(`[Dashboard API] Dados reais: ${stats.totalUsers} usuários, ${stats.activeUsers} ativos, ${stats.totalSubscriptions} assinaturas, ${stats.totalChatSessions} sessões de chat`)
+=======
+      // Definir usuários gratuitos como total (já que removemos a distinção premium)
+      stats.freeUsers = stats.totalUsers
+
+      console.log(`[Dashboard API] Dados reais: ${stats.totalUsers} usuários, ${stats.activeUsers} ativos, ${stats.totalChatSessions} sessões de chat`)
+>>>>>>> feature/pdf-export-and-growth
 
       // Tentar buscar dados de admin_requests (se existir)
       try {
