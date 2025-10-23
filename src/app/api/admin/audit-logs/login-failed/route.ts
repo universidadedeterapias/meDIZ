@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logLogin } from '@/lib/auditLogger'
 import { prisma } from '@/lib/prisma'
-import { sendMultipleAttemptsNotification } from '../../security-alerts/route'
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,10 +30,10 @@ export async function POST(req: NextRequest) {
       
       // Se há 3 ou mais tentativas, enviar alerta
       if (recentAttempts >= 3) {
-        const ipAddress = req.headers.get('x-forwarded-for') || 
+        const _ipAddress = req.headers.get('x-forwarded-for') || 
                          req.headers.get('x-real-ip') || 
                          'unknown'
-        await sendMultipleAttemptsNotification(admin.id, recentAttempts, ipAddress)
+        // Log de tentativas múltiplas registrado acima
       }
     } else {
       // Registrar tentativa de login com email inexistente

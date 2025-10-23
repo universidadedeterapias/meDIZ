@@ -71,7 +71,7 @@ export default function SecurityAlertsPage() {
     try {
       const response = await fetch('/api/admin/security-alerts/history')
       const data = await response.json()
-
+      
       if (data.success) {
         setAlerts(data.alerts)
       } else {

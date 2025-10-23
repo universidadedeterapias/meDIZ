@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { SubscriptionManager } from '@/components/admin/SubscriptionManager'
 import { UserGrowthChart } from '@/components/admin/UserGrowthChart'
+import { PasswordResetModal } from '@/components/admin/PasswordResetModal'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface User {
@@ -83,7 +84,11 @@ export default function UsersPage() {
   const [creatingUser, setCreatingUser] = useState(false)
   const [searchDebounce, setSearchDebounce] = useState('')
   const [deletingUser, setDeletingUser] = useState<string | null>(null)
-  const [growthData, setGrowthData] = useState<any>(null)
+  const [growthData, setGrowthData] = useState<{
+    totalUsers: number;
+    newUsersThisMonth: number;
+    growthRate: number;
+  } | null>(null)
   const [growthLoading, setGrowthLoading] = useState(false)
 
   const fetchUsers = useCallback(async () => {
@@ -512,6 +517,15 @@ export default function UsersPage() {
                           <CreditCard className="h-4 w-4 mr-1" />
                           Assinaturas
                         </Button>
+                        <PasswordResetModal
+                          userId={user.id}
+                          userName={user.name}
+                          userEmail={user.email}
+                          onPasswordReset={() => {
+                            // Opcional: recarregar dados se necessário
+                            console.log('Senha resetada para:', user.email)
+                          }}
+                        />
                         <Button 
                           variant="outline" 
                           size="sm"
@@ -592,9 +606,29 @@ export default function UsersPage() {
             </Card>
           ) : growthData ? (
             <UserGrowthChart 
-              data={growthData.data} 
-              comparison={growthData.comparison}
-              summary={growthData.summary}
+              data={[{
+                week: 'Semana Atual',
+                weekStart: new Date().toISOString(),
+                weekEnd: new Date().toISOString(),
+                totalUsers: growthData.totalUsers,
+                newUsers: growthData.newUsersThisMonth,
+                conversions: 0,
+                growthRate: growthData.growthRate,
+                conversionRate: 0
+              }]}
+              comparison={{
+                usersGrowth: growthData.newUsersThisMonth,
+                usersGrowthRate: growthData.growthRate,
+                conversionsGrowth: 0,
+                conversionsGrowthRate: 0
+              }}
+              summary={{
+                totalWeeks: 1,
+                averageGrowthRate: growthData.growthRate,
+                averageConversionRate: 0,
+                totalNewUsers: growthData.newUsersThisMonth,
+                totalConversions: 0
+              }}
             />
           ) : (
             <Card>

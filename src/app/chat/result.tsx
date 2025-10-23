@@ -133,6 +133,7 @@ export function Result({
             />
           </div>
         </div>
+      </CardHeader>
       <CardContent className="space-y-8 p-6 pt-0">
         {/* Contexto Geral */}
         <section className="space-y-3">

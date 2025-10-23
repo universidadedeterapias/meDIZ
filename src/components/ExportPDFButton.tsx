@@ -34,7 +34,7 @@ export function ExportPDFButton({
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [showConfigModal, setShowConfigModal] = useState(false)
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (isLoading) return
 
     if (!isPremium) {

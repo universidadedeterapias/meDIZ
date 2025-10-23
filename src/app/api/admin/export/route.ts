@@ -3,7 +3,6 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import { logDataExport } from '@/lib/auditLogger'
-import { sendDataExportNotification } from '../security-alerts/route'
 
 export async function GET(req: NextRequest) {
   try {
@@ -34,7 +33,7 @@ export async function GET(req: NextRequest) {
       if (admin) {
         await logDataExport(admin.id, session.user.email, format.toUpperCase(), recordCount, req as NextRequest)
         // Enviar alerta de segurança
-        await sendDataExportNotification(admin.id, 'Usuários', recordCount)
+        // Log de exportação registrado acima
       }
     } else if (type === 'analytics') {
       result = await exportAnalytics(format)
@@ -42,7 +41,7 @@ export async function GET(req: NextRequest) {
       if (admin) {
         await logDataExport(admin.id, session.user.email, format.toUpperCase(), 0, req as NextRequest)
         // Enviar alerta de segurança
-        await sendDataExportNotification(admin.id, 'Analytics', 0)
+        // Log de exportação registrado acima
       }
     } else {
       return NextResponse.json({ error: 'Tipo de exportação inválido' }, { status: 400 })

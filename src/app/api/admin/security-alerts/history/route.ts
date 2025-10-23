@@ -17,61 +17,29 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20')
     const skip = (page - 1) * limit
 
-    // Buscar logs de alertas de segurança (usando dados simulados se a tabela não existir)
-    let alerts = []
-    let total = 0
-    
-    try {
-      const [alertsResult, totalResult] = await Promise.all([
-        prisma.auditLog.findMany({
-          where: {
-            action: {
-              in: ['SECURITY_ALERT_SENT', 'SUSPICIOUS_LOGIN', 'MULTIPLE_ATTEMPTS', 'DATA_EXPORT']
-            }
-          },
-          orderBy: { timestamp: 'desc' },
-          skip,
-          take: limit
-        }),
-        prisma.auditLog.count({
-          where: {
-            action: {
-              in: ['SECURITY_ALERT_SENT', 'SUSPICIOUS_LOGIN', 'MULTIPLE_ATTEMPTS', 'DATA_EXPORT']
-            }
+    // Buscar logs de alertas de segurança da tabela audit_logs
+    const [alertsResult, totalResult] = await Promise.all([
+      prisma.auditLog.findMany({
+        where: {
+          action: {
+            in: ['SECURITY_ALERT_SENT', 'SUSPICIOUS_LOGIN', 'MULTIPLE_ATTEMPTS', 'DATA_EXPORT']
           }
-        })
-      ])
-      alerts = alertsResult
-      total = totalResult
-    } catch {
-      console.log('[Security Alerts History API] Tabela audit_logs não existe, retornando dados simulados')
-      
-      // Dados simulados para demonstração
-      alerts = [
-        {
-          id: 'alert-1',
-          action: 'SECURITY_ALERT_SENT',
-          adminEmail: 'marianna.sales@mediz.com',
-          timestamp: new Date(),
-          details: JSON.stringify({
-            alertType: 'LOGIN_SUSPEITO',
-            targetAdminEmail: 'marianna.sales@mediz.com',
-            details: 'Tentativa de login suspeita detectada'
-          })
         },
-        {
-          id: 'alert-2',
-          action: 'DATA_EXPORT',
-          adminEmail: 'marianna.sales@mediz.com',
-          timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-          details: JSON.stringify({
-            exportType: 'users',
-            recordCount: 489
-          })
+        orderBy: { timestamp: 'desc' },
+        skip,
+        take: limit
+      }),
+      prisma.auditLog.count({
+        where: {
+          action: {
+            in: ['SECURITY_ALERT_SENT', 'SUSPICIOUS_LOGIN', 'MULTIPLE_ATTEMPTS', 'DATA_EXPORT']
+          }
         }
-      ]
-      total = alerts.length
-    }
+      })
+    ])
+    
+    const alerts = alertsResult
+    const total = totalResult
 
     // Formatar dados
     const formattedAlerts = alerts.map(alert => {
@@ -82,7 +50,7 @@ export async function GET(req: NextRequest) {
         type: getAlertTypeLabel(alert.action),
         message: getAlertMessage(alert.action, details),
         sent: true, // Assumindo que se está no log, foi enviado
-        timestamp: alert.timestamp.toISOString(),
+        timestamp: alert.timestamp instanceof Date ? alert.timestamp.toISOString() : new Date(alert.timestamp).toISOString(),
         adminName: alert.adminEmail.split('@')[0], // Usar parte do email como nome
         adminEmail: alert.adminEmail,
         details: details

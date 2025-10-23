@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { 
   Users, 
   Crown, 
-  UserCheck, 
   TrendingUp, 
   Clock, 
   Shield, 
@@ -160,7 +159,7 @@ export default function ModernDashboard() {
       </div>
 
       {/* Métricas Principais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total de Usuários</CardTitle>
@@ -183,19 +182,6 @@ export default function ModernDashboard() {
             <div className="text-2xl font-bold">{stats.premiumUsers}</div>
             <p className="text-xs text-muted-foreground">
               {stats.conversionRate}% de conversão
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Assinaturas Ativas</CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activeSubscriptions}</div>
-            <p className="text-xs text-muted-foreground">
-              de {stats.totalSubscriptions} total
             </p>
           </CardContent>
         </Card>
