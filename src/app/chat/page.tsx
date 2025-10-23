@@ -52,15 +52,12 @@ export default function Page() {
   const [user, setUser] = useState<User | null>(null)
   const [checkingProfile, setCheckingProfile] = useState(true)
   const [input, setInput] = useState('')
-<<<<<<< HEAD
-=======
-  const [originalQuestion, setOriginalQuestion] = useState('')
->>>>>>> feature/pdf-export-and-growth
   const [responses, setResponses] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedThread, setSelectedThread] = useState<string | null>(null)
   const [limitReached, setLimitReached] = useState(false)
   const [elapsedMs, setElapsedMs] = useState<number | null>(null)
+  const [originalQuestion, setOriginalQuestion] = useState<string>('')
   
   // Estados relacionados às regras de uso do plano gratuito
   const [userPeriod, setUserPeriod] = useState<'first-week' | 'first-month' | 'beyond-month'>('first-week')
@@ -177,12 +174,9 @@ export default function Page() {
     setLoading(true)
     setResponses([])
     setElapsedMs(null)
-<<<<<<< HEAD
-=======
     
     // Armazena a pergunta original para o PDF
     setOriginalQuestion(input.trim())
->>>>>>> feature/pdf-export-and-growth
 
     const t0 = performance.now()
 
@@ -384,11 +378,8 @@ export default function Page() {
                     userPeriod={userPeriod}
                     fullVisualization={fullVisualization}
                     onSubscribe={handleSubscribe}
-<<<<<<< HEAD
-=======
                     userQuestion={originalQuestion}
                     sessionId={selectedThread || undefined}
->>>>>>> feature/pdf-export-and-growth
                   />
                 ))}
               </div>

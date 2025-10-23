@@ -1,0 +1,46 @@
+[1mdiff --git a/src/app/chat/page.tsx b/src/app/chat/page.tsx[m
+[1mindex 7aa6587..e65869b 100644[m
+[1m--- a/src/app/chat/page.tsx[m
+[1m+++ b/src/app/chat/page.tsx[m
+[36m@@ -52,15 +52,12 @@[m [mexport default function Page() {[m
+   const [user, setUser] = useState<User | null>(null)[m
+   const [checkingProfile, setCheckingProfile] = useState(true)[m
+   const [input, setInput] = useState('')[m
+[31m-<<<<<<< HEAD[m
+[31m-=======[m
+[31m-  const [originalQuestion, setOriginalQuestion] = useState('')[m
+[31m->>>>>>> feature/pdf-export-and-growth[m
+   const [responses, setResponses] = useState<string[]>([])[m
+   const [loading, setLoading] = useState(false)[m
+   const [selectedThread, setSelectedThread] = useState<string | null>(null)[m
+   const [limitReached, setLimitReached] = useState(false)[m
+   const [elapsedMs, setElapsedMs] = useState<number | null>(null)[m
+[32m+[m[32m  const [originalQuestion, setOriginalQuestion] = useState<string>('')[m
+   [m
+   // Estados relacionados às regras de uso do plano gratuito[m
+   const [userPeriod, setUserPeriod] = useState<'first-week' | 'first-month' | 'beyond-month'>('first-week')[m
+[36m@@ -177,12 +174,9 @@[m [mexport default function Page() {[m
+     setLoading(true)[m
+     setResponses([])[m
+     setElapsedMs(null)[m
+[31m-<<<<<<< HEAD[m
+[31m-=======[m
+     [m
+     // Armazena a pergunta original para o PDF[m
+     setOriginalQuestion(input.trim())[m
+[31m->>>>>>> feature/pdf-export-and-growth[m
+ [m
+     const t0 = performance.now()[m
+ [m
+[36m@@ -384,11 +378,8 @@[m [mexport default function Page() {[m
+                     userPeriod={userPeriod}[m
+                     fullVisualization={fullVisualization}[m
+                     onSubscribe={handleSubscribe}[m
+[31m-<<<<<<< HEAD[m
+[31m-=======[m
+                     userQuestion={originalQuestion}[m
+                     sessionId={selectedThread || undefined}[m
+[31m->>>>>>> feature/pdf-export-and-growth[m
+                   />[m
+                 ))}[m
+               </div>[m

@@ -75,11 +75,7 @@ export function handleApiError(error: unknown, context: string = 'API'): NextRes
 /**
  * Wrapper para funções de API que adiciona tratamento de erro automático
  */
-<<<<<<< HEAD
 export function withErrorHandling<T extends any[], R>(
-=======
-export function withErrorHandling<T extends unknown[], R>(
->>>>>>> feature/pdf-export-and-growth
   handler: (...args: T) => Promise<R>,
   context: string = 'API'
 ) {
