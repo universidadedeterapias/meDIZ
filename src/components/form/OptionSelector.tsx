@@ -1,7 +1,6 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { ArrowUp } from 'lucide-react'
 
 interface OptionSelectorProps {
   options: { label: string; value: string }[]
@@ -16,9 +15,8 @@ export default function OptionSelector({
 }: OptionSelectorProps) {
   return (
     <div className="flex flex-wrap gap-2 justify-center pt-2">
-      {options.map((option, index) => {
+      {options.map(option => {
         const isSelected = option.value === value
-        const isMostPopular = index === 0 // Primeiro sintoma é o mais popular
 
         return (
           <Button
@@ -27,7 +25,7 @@ export default function OptionSelector({
             variant="outline"
             onClick={() => onChange(option.value)}
             className={`
-              rounded-full px-4 py-2 text-base font-normal relative
+              rounded-full px-4 py-2 text-base font-normal
               ${
                 isSelected
                   ? 'bg-indigo-600 text-zinc-50 border-indigo-600'
@@ -36,13 +34,6 @@ export default function OptionSelector({
             `}
           >
             {option.label}
-            {isMostPopular && (
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                <ArrowUp 
-                  className="w-2.5 h-2.5 text-white" 
-                />
-              </div>
-            )}
           </Button>
         )
       })}

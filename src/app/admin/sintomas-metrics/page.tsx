@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, TrendingUp, Calendar, Database, AlertCircle, CheckCircle, Crown } from 'lucide-react'
+import { RefreshCw, TrendingUp, Calendar, Database, AlertCircle, CheckCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface JobLog {
@@ -21,7 +21,6 @@ interface CacheData {
   totalProcessados: number
   ultimaAtualizacao: string
   periodo: string
-  isFallback?: boolean
 }
 
 export default function SintomasMetricsPage() {
@@ -117,17 +116,9 @@ export default function SintomasMetricsPage() {
             <CardTitle className="flex items-center gap-2">
               <Database className="w-5 h-5" />
               Status do Cache
-              {cacheData.isFallback && (
-                <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
-                  Fallback
-                </Badge>
-              )}
             </CardTitle>
             <CardDescription>
-              {cacheData.isFallback 
-                ? "Usando sintomas fixos - execute o job para dados reais"
-                : "Informações sobre os sintomas atualmente em cache"
-              }
+              Informações sobre os sintomas atualmente em cache
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -151,12 +142,7 @@ export default function SintomasMetricsPage() {
                 <p className="text-sm text-gray-600 mb-2">Top Sintomas Atuais</p>
                 <div className="flex flex-wrap gap-2">
                   {cacheData.sintomas.slice(0, 5).map((sintoma, index) => (
-                    <Badge 
-                      key={index} 
-                      variant="outline"
-                      className={index === 0 ? "bg-green-50 border-green-300 text-green-800" : ""}
-                    >
-                      {index === 0 && <Crown className="w-3 h-3 mr-1" />}
+                    <Badge key={index} variant="outline">
                       {sintoma.sintoma} ({sintoma.quantidade})
                     </Badge>
                   ))}

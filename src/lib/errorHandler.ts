@@ -75,7 +75,7 @@ export function handleApiError(error: unknown, context: string = 'API'): NextRes
 /**
  * Wrapper para funções de API que adiciona tratamento de erro automático
  */
-export function withErrorHandling<T extends unknown[], R>(
+export function withErrorHandling<T extends any[], R>(
   handler: (...args: T) => Promise<R>,
   context: string = 'API'
 ) {

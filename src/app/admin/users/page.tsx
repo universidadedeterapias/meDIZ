@@ -135,7 +135,6 @@ export default function UsersPage() {
       setGrowthLoading(false)
     }
   }, [])
-
   // Debounce para busca - evita chamadas excessivas durante digitação
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -153,7 +152,6 @@ export default function UsersPage() {
   useEffect(() => {
     fetchGrowthData()
   }, [fetchGrowthData])
-
   const handleCreateUser = async () => {
     if (!newUserData.name || !newUserData.email || !newUserData.password) {
       alert('Por favor, preencha todos os campos')

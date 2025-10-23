@@ -52,12 +52,12 @@ export default function Page() {
   const [user, setUser] = useState<User | null>(null)
   const [checkingProfile, setCheckingProfile] = useState(true)
   const [input, setInput] = useState('')
-  const [originalQuestion, setOriginalQuestion] = useState('')
   const [responses, setResponses] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedThread, setSelectedThread] = useState<string | null>(null)
   const [limitReached, setLimitReached] = useState(false)
   const [elapsedMs, setElapsedMs] = useState<number | null>(null)
+  const [originalQuestion, setOriginalQuestion] = useState<string>('')
   
   // Estados relacionados às regras de uso do plano gratuito
   const [userPeriod, setUserPeriod] = useState<'first-week' | 'first-month' | 'beyond-month'>('first-week')

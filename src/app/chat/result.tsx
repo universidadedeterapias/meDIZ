@@ -66,7 +66,7 @@ export function Result({
   elapsedMs, 
   fullVisualization = true,
   onSubscribe = () => window.location.href = 'https://go.hotmart.com/N101121884P',
-  userQuestion = '',
+  userQuestion,
   sessionId
 }: ResultProps) {
   const data = useMemo(() => parseResponse(markdown), [markdown])
@@ -133,8 +133,6 @@ export function Result({
             />
           </div>
         </div>
-      </CardHeader>
-
       <CardContent className="space-y-8 p-6 pt-0">
         {/* Contexto Geral */}
         <section className="space-y-3">
@@ -173,8 +171,6 @@ export function Result({
           {data.others.map((sec, index) => {
             const Icon = sec.icon ? ICON_MAP[sec.icon] : null
             
-            // Verifica se este é o acordeão "Símbolos Biológicos" ou posterior
-            // e se devemos aplicar o efeito de blur
             // LIBERAÇÃO: "Símbolos Biológicos" agora é acessível para todos os usuários
             const isRestrictedSection = sec.title.toLowerCase().includes('conflito emocional') ||
                                        sec.icon === 'triangle-alert' ||

@@ -27,7 +27,7 @@ export default function DynamicOptionSelector({
     <div className="flex flex-wrap gap-2 justify-center pt-2">
       {options.map(option => {
         const isSelected = option.sintoma === value
-        const isMostPopular = option.sintoma === sintomaMaisPopular?.sintoma
+        const isMostPopular = option.sintoma === sintomaMaisPopular?.sintoma && option.quantidade > 1
 
         return (
           <Button
@@ -46,11 +46,10 @@ export default function DynamicOptionSelector({
           >
             {option.sintoma}
             {isMostPopular && (
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                <ArrowUp 
-                  className="w-2.5 h-2.5 text-white" 
-                />
-              </div>
+              <ArrowUp 
+                className="absolute -top-1 -right-1 w-3 h-3 text-green-500 bg-white rounded-full p-0.5" 
+                style={{ fontSize: '8px' }}
+              />
             )}
           </Button>
         )

@@ -23,10 +23,14 @@ export async function GET(_req: NextRequest) {
     // Inicializar com valores padrão
     const stats = {
       totalUsers: 0,
+      premiumUsers: 0,
       freeUsers: 0,
       activeUsers: 0,
+      totalSubscriptions: 0,
+      activeSubscriptions: 0,
       totalChatSessions: 0,
       pendingAdminRequests: 0,
+      conversionRate: 0,
       recentAuditLogs: []
     }
 
