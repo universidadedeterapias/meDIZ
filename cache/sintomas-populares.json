@@ -1,0 +1,47 @@
+{
+  "sintomas": [
+    {
+      "sintoma": "Dor de cabeça",
+      "quantidade": 1
+    },
+    {
+      "sintoma": "Dor nas costas",
+      "quantidade": 1
+    },
+    {
+      "sintoma": "Ansiedade",
+      "quantidade": 1
+    },
+    {
+      "sintoma": "Cansaço",
+      "quantidade": 1
+    },
+    {
+      "sintoma": "Insônia",
+      "quantidade": 1
+    },
+    {
+      "sintoma": "Enxaqueca",
+      "quantidade": 1
+    },
+    {
+      "sintoma": "Rinite",
+      "quantidade": 1
+    },
+    {
+      "sintoma": "Dor no joelho",
+      "quantidade": 1
+    },
+    {
+      "sintoma": "Estresse",
+      "quantidade": 1
+    },
+    {
+      "sintoma": "Pressão alta",
+      "quantidade": 1
+    }
+  ],
+  "totalProcessados": 200,
+  "ultimaAtualizacao": "2025-10-22T13:01:35.384Z",
+  "periodo": "30 dias (otimizado)"
+}
