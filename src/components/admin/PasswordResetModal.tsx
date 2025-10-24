@@ -63,7 +63,7 @@ export function PasswordResetModal({ userId, userName, userEmail, onPasswordRese
           text: data.error || 'Erro ao resetar senha'
         })
       }
-    } catch (_error) {
+    } catch {
       setMessage({
         type: 'error',
         text: 'Erro de conexão'

@@ -85,9 +85,30 @@ export default function UsersPage() {
   const [searchDebounce, setSearchDebounce] = useState('')
   const [deletingUser, setDeletingUser] = useState<string | null>(null)
   const [growthData, setGrowthData] = useState<{
-    totalUsers: number;
-    newUsersThisMonth: number;
-    growthRate: number;
+    success: boolean;
+    data: Array<{
+      week: string;
+      weekStart: string;
+      weekEnd: string;
+      totalUsers: number;
+      newUsers: number;
+      conversions: number;
+      growthRate: number;
+      conversionRate: number;
+    }>;
+    comparison: {
+      usersGrowth: number;
+      usersGrowthRate: number;
+      conversionsGrowth: number;
+      conversionsGrowthRate: number;
+    };
+    summary: {
+      totalWeeks: number;
+      averageGrowthRate: number;
+      averageConversionRate: number;
+      totalNewUsers: number;
+      totalConversions: number;
+    };
   } | null>(null)
   const [growthLoading, setGrowthLoading] = useState(false)
 
@@ -606,27 +627,18 @@ export default function UsersPage() {
             </Card>
           ) : growthData ? (
             <UserGrowthChart 
-              data={[{
-                week: 'Semana Atual',
-                weekStart: new Date().toISOString(),
-                weekEnd: new Date().toISOString(),
-                totalUsers: growthData.totalUsers,
-                newUsers: growthData.newUsersThisMonth,
-                conversions: 0,
-                growthRate: growthData.growthRate,
-                conversionRate: 0
-              }]}
-              comparison={{
-                usersGrowth: growthData.newUsersThisMonth,
-                usersGrowthRate: growthData.growthRate,
+              data={growthData.data || []}
+              comparison={growthData.comparison || {
+                usersGrowth: 0,
+                usersGrowthRate: 0,
                 conversionsGrowth: 0,
                 conversionsGrowthRate: 0
               }}
-              summary={{
-                totalWeeks: 1,
-                averageGrowthRate: growthData.growthRate,
+              summary={growthData.summary || {
+                totalWeeks: 0,
+                averageGrowthRate: 0,
                 averageConversionRate: 0,
-                totalNewUsers: growthData.newUsersThisMonth,
+                totalNewUsers: 0,
                 totalConversions: 0
               }}
             />

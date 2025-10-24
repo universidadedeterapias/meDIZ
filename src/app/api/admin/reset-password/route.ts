@@ -3,7 +3,16 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { logAuditAction, AuditActions, AuditResources } from '@/lib/auditLogger'
-import { extractRequestInfo } from '@/lib/utils'
+
+// Função para extrair informações da requisição
+function extractRequestInfo(req: NextRequest) {
+  const ipAddress = req.headers.get('x-forwarded-for') ||
+                   req.headers.get('x-real-ip') ||
+                   'unknown'
+  const userAgent = req.headers.get('user-agent') || 'unknown'
+  
+  return { ipAddress, userAgent }
+}
 
 export async function POST(req: NextRequest) {
   try {

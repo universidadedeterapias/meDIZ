@@ -53,10 +53,15 @@ export function ExportPDFButton({
         variant="outline"
         size="sm"
         disabled
-        className={`text-indigo-600 border-indigo-200 bg-indigo-50 ${className}`}
+        className={`text-red-600 border-red-200 bg-red-50 relative ${className}`}
       >
-        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-        <span className="text-sm font-medium">PDF</span>
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm font-medium">PDF</span>
+        </div>
+        <div className="absolute -top-4 -right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-bold animate-pulse shadow-lg z-10">
+          NOVO
+        </div>
       </Button>
     )
   }
@@ -70,19 +75,22 @@ export function ExportPDFButton({
               variant="outline"
               size="sm"
               onClick={handleExport}
-              className={`text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-300 transition-all duration-200 ${className}`}
+              className={`text-red-600 border-red-200 bg-red-50 hover:bg-red-100 hover:border-red-300 transition-all duration-200 relative ${className}`}
             >
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 <span className="text-sm font-medium">PDF</span>
+              </div>
+              <div className="absolute -top-4 -right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-bold animate-pulse shadow-lg z-10">
+                NOVO
               </div>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
             <p>
               {isPremium 
-                ? 'Exportar como PDF' 
-                : 'Função disponível para plano profissional'
+                ? '✨ Nova funcionalidade! Exportar como PDF' 
+                : '✨ Nova funcionalidade! Disponível para plano profissional'
               }
             </p>
           </TooltipContent>
