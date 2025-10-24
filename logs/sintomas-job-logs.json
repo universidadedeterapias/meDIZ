@@ -1,17 +1,9 @@
 [
   {
-    "data": "2025-10-22T12:59:17.663Z",
+    "data": "2025-10-23T14:42:49.078Z",
     "sucesso": true,
-    "sintomasProcessados": 0,
-    "totalSessoes": 0,
-    "duracaoMs": 0,
-    "observacao": "Cache inicial criado"
-  },
-  {
-    "data": "2025-10-22T13:01:35.384Z",
-    "sucesso": true,
-    "sintomasProcessados": 200,
-    "totalSessoes": 200,
-    "duracaoMs": 13581
+    "sintomasProcessados": 714,
+    "totalSessoes": 714,
+    "duracaoMs": 1697100
   }
 ]

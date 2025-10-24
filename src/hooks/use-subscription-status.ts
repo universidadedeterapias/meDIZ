@@ -24,26 +24,25 @@ export function useSubscriptionStatus(): SubscriptionStatus {
 
     async function checkSubscription() {
       try {
-        // Verifica cache local primeiro (TTL de 5 minutos)
+        // Verificar cache primeiro
         const cacheKey = 'subscription-status'
-        const cached = localStorage.getItem(cacheKey)
         const cacheTimestamp = localStorage.getItem(`${cacheKey}-timestamp`)
+        const cachedStatus = localStorage.getItem(cacheKey)
         
-        if (cached && cacheTimestamp) {
-          const now = Date.now()
-          const cacheTime = parseInt(cacheTimestamp)
-          const fiveMinutes = 5 * 60 * 1000
-          
-          if (now - cacheTime < fiveMinutes) {
-            if (!cancelled) {
-              setStatus({
-                isPremium: JSON.parse(cached),
-                isLoading: false,
-                error: null
-              })
-            }
-            return
+        // Cache válido por 5 minutos
+        const cacheValid = cacheTimestamp && 
+          (Date.now() - parseInt(cacheTimestamp)) < 5 * 60 * 1000
+
+        if (cacheValid && cachedStatus) {
+          const isPremium = JSON.parse(cachedStatus)
+          if (!cancelled) {
+            setStatus({
+              isPremium,
+              isLoading: false,
+              error: null
+            })
           }
+          return
         }
 
         // Busca status atual do servidor

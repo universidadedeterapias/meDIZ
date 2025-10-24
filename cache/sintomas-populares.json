@@ -1,47 +1,47 @@
 {
   "sintomas": [
     {
-      "sintoma": "Dor de cabeça",
-      "quantidade": 1
-    },
-    {
-      "sintoma": "Dor nas costas",
-      "quantidade": 1
-    },
-    {
-      "sintoma": "Ansiedade",
-      "quantidade": 1
+      "sintoma": "Dor Nas Costas",
+      "quantidade": 67
     },
     {
       "sintoma": "Cansaço",
-      "quantidade": 1
+      "quantidade": 57
     },
     {
-      "sintoma": "Insônia",
-      "quantidade": 1
+      "sintoma": "Ansiedade",
+      "quantidade": 52
+    },
+    {
+      "sintoma": "Pressão Alta",
+      "quantidade": 50
     },
     {
       "sintoma": "Enxaqueca",
-      "quantidade": 1
+      "quantidade": 36
     },
     {
-      "sintoma": "Rinite",
-      "quantidade": 1
+      "sintoma": "Dor De Cabeça",
+      "quantidade": 33
     },
     {
-      "sintoma": "Dor no joelho",
-      "quantidade": 1
+      "sintoma": "Dor No Joelho",
+      "quantidade": 32
+    },
+    {
+      "sintoma": "Insônia",
+      "quantidade": 28
     },
     {
       "sintoma": "Estresse",
-      "quantidade": 1
+      "quantidade": 15
     },
     {
-      "sintoma": "Pressão alta",
-      "quantidade": 1
+      "sintoma": "Rinite",
+      "quantidade": 15
     }
   ],
-  "totalProcessados": 200,
-  "ultimaAtualizacao": "2025-10-22T13:01:35.384Z",
-  "periodo": "30 dias (otimizado)"
+  "totalProcessados": 714,
+  "ultimaAtualizacao": "2025-10-23T14:42:49.078Z",
+  "periodo": "30 dias"
 }

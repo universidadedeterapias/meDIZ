@@ -582,7 +582,7 @@ function createPDFHTML(data: PDFData): string {
           <div class="logo">
             me<span class="highlight">DIZ</span>!
           </div>
-          <div class="title">Relatório de Consulta</div>
+          <div class="title">Relatório de Origem Emocional</div>
         </div>
         
         ${data.patientName ? `
@@ -625,7 +625,7 @@ function createPDFHTML(data: PDFData): string {
             <strong>⚠️ Importante:</strong> Sempre consulte um profissional de saúde qualificado antes de tomar decisões relacionadas à sua saúde.
           </div>
           <div style="margin-top: 12px;">
-            © ${new Date().getFullYear()} Relatório Médico
+            © ${new Date().getFullYear()} Relatório de Origem Emocional
           </div>
         </div>
       </div>

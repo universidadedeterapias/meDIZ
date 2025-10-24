@@ -91,7 +91,16 @@ export const AuditActions = {
   // Admin requests
   ADMIN_ACCESS_REQUESTED: 'ADMIN_ACCESS_REQUESTED',
   ADMIN_ACCESS_APPROVED: 'ADMIN_ACCESS_APPROVED',
-  ADMIN_ACCESS_REJECTED: 'ADMIN_ACCESS_REJECTED'
+  ADMIN_ACCESS_REJECTED: 'ADMIN_ACCESS_REJECTED',
+  
+  // Security alerts
+  SECURITY_ALERT_SENT: 'SECURITY_ALERT_SENT',
+  SUSPICIOUS_LOGIN: 'SUSPICIOUS_LOGIN',
+  MULTIPLE_ATTEMPTS: 'MULTIPLE_ATTEMPTS',
+  
+  // Password management
+  PASSWORD_RESET: 'PASSWORD_RESET',
+  PASSWORD_CHANGED: 'PASSWORD_CHANGED'
 } as const
 
 export const AuditResources = {
@@ -217,5 +226,84 @@ export async function logDataExport(
     },
     ipAddress,
     userAgent
+  })
+}
+
+/**
+ * Helper para log de alertas de segurança
+ */
+export async function logSecurityAlert(
+  adminId: string, 
+  adminEmail: string, 
+  alertType: string, 
+  details: Record<string, unknown>,
+  req: NextRequest
+): Promise<void> {
+  const { ipAddress, userAgent } = extractRequestInfo(req)
+  
+  await logAuditAction({
+    adminId,
+    adminEmail,
+    action: AuditActions.SECURITY_ALERT_SENT,
+    resource: AuditResources.AUTH,
+    details: {
+      alertType,
+      ...details,
+      timestamp: new Date().toISOString()
+    },
+    ipAddress,
+    userAgent
+  })
+}
+
+/**
+ * Helper para log de login suspeito
+ */
+export async function logSuspiciousLogin(
+  adminId: string, 
+  adminEmail: string, 
+  ipAddress: string, 
+  userAgent: string,
+  details: Record<string, unknown> = {}
+): Promise<void> {
+  await logAuditAction({
+    adminId,
+    adminEmail,
+    action: AuditActions.SUSPICIOUS_LOGIN,
+    resource: AuditResources.AUTH,
+    details: {
+      ipAddress,
+      userAgent,
+      ...details,
+      timestamp: new Date().toISOString()
+    },
+    ipAddress,
+    userAgent
+  })
+}
+
+/**
+ * Helper para log de múltiplas tentativas
+ */
+export async function logMultipleAttempts(
+  adminId: string, 
+  adminEmail: string, 
+  attempts: number, 
+  ipAddress: string,
+  details: Record<string, unknown> = {}
+): Promise<void> {
+  await logAuditAction({
+    adminId,
+    adminEmail,
+    action: AuditActions.MULTIPLE_ATTEMPTS,
+    resource: AuditResources.AUTH,
+    details: {
+      attempts,
+      ipAddress,
+      ...details,
+      timestamp: new Date().toISOString()
+    },
+    ipAddress,
+    userAgent: 'unknown'
   })
 }

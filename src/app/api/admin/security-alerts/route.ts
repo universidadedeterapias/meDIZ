@@ -4,20 +4,30 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { 
   sendSecurityAlert, 
-  sendSuspiciousLoginAlert, 
-  sendMultipleLoginAttemptsAlert,
-  sendDataExportAlert,
   isWhatsAppConfigured,
   simulateWhatsAppSend
 } from '@/lib/whatsappService'
-import { logAuditAction, AuditResources } from '@/lib/auditLogger'
+import { logSecurityAlert } from '@/lib/auditLogger'
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
     
+    // DEBUG: Log detalhado da sessão
+    console.log('[Security Alerts API] DEBUG - Session details:', {
+      hasSession: !!session,
+      userEmail: session?.user?.email,
+      userId: session?.user?.id,
+      sessionKeys: session ? Object.keys(session) : 'no session'
+    })
+    
     // Verificar se é admin
     if (!session?.user?.email || !session.user.email.includes('@mediz.com')) {
+      console.log('[Security Alerts API] ERROR - Não autorizado:', {
+        hasSession: !!session,
+        userEmail: session?.user?.email,
+        isMedizEmail: session?.user?.email?.includes('@mediz.com')
+      })
       return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
     }
 
@@ -32,21 +42,48 @@ export async function POST(req: NextRequest) {
     // Buscar admin que vai receber o alerta
     let targetAdmin = null
     if (targetAdminId) {
+      console.log('[Security Alerts API] DEBUG - Buscando admin por ID:', targetAdminId)
       targetAdmin = await prisma.user.findUnique({
         where: { id: targetAdminId },
         select: { id: true, name: true, email: true, whatsapp: true }
       })
+      console.log('[Security Alerts API] DEBUG - Resultado busca por ID:', targetAdmin)
     } else {
       // Se não especificado, buscar o admin atual
+      console.log('[Security Alerts API] DEBUG - Buscando admin por email:', session.user.email)
+      
+      // Tentar busca exata primeiro
       targetAdmin = await prisma.user.findUnique({
         where: { email: session.user.email },
         select: { id: true, name: true, email: true, whatsapp: true }
       })
+      
+      // Se não encontrou, tentar busca case-insensitive
+      if (!targetAdmin) {
+        console.log('[Security Alerts API] DEBUG - Tentando busca case-insensitive')
+        const users = await prisma.user.findMany({
+          where: {
+            email: {
+              equals: session.user.email,
+              mode: 'insensitive'
+            }
+          },
+          select: { id: true, name: true, email: true, whatsapp: true }
+        })
+        targetAdmin = users[0] || null
+      }
+      
+      console.log('[Security Alerts API] DEBUG - Resultado busca por email:', targetAdmin)
     }
 
     if (!targetAdmin) {
+      console.log('[Security Alerts API] ERROR - Admin não encontrado:', {
+        sessionEmail: session?.user?.email,
+        targetAdminId,
+        searchedBy: targetAdminId ? 'ID' : 'email'
+      })
       return NextResponse.json({ 
-        error: 'Admin não encontrado' 
+        error: `Admin não encontrado. Verifique se você está logado com um email @mediz.com. Email atual: ${session?.user?.email || 'não logado'}` 
       }, { status: 404 })
     }
 
@@ -73,7 +110,7 @@ export async function POST(req: NextRequest) {
       }, { status: 500 })
     }
 
-    // Registrar no audit log (se a tabela existir)
+    // Registrar no audit log
     try {
       const currentAdmin = await prisma.user.findUnique({
         where: { email: session.user.email },
@@ -81,23 +118,21 @@ export async function POST(req: NextRequest) {
       })
 
       if (currentAdmin) {
-        await logAuditAction({
-          adminId: currentAdmin.id,
-          adminEmail: session.user.email,
-          action: 'SECURITY_ALERT_SENT',
-          resource: AuditResources.AUTH,
-          details: {
-            alertType,
+        await logSecurityAlert(
+          currentAdmin.id,
+          session.user.email,
+          alertType,
+          {
             targetAdminId: targetAdmin.id,
             targetAdminEmail: targetAdmin.email,
-            details
+            details,
+            whatsappSent: sent
           },
-          ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown',
-          userAgent: req.headers.get('user-agent') || 'unknown'
-        })
+          req
+        )
       }
     } catch (auditError) {
-      console.log('[Security Alerts API] Audit log não disponível:', auditError.message)
+      console.log('[Security Alerts API] Erro no audit log:', auditError.message)
       // Não falhar a operação principal por causa do audit log
     }
 
@@ -114,81 +149,3 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Funções específicas para diferentes tipos de alertas
-export async function sendSuspiciousLoginNotification(adminId: string, ipAddress: string, userAgent: string) {
-  try {
-    const admin = await prisma.user.findUnique({
-      where: { id: adminId },
-      select: { name: true, whatsapp: true }
-    })
-
-    if (!admin || !admin.whatsapp) return false
-
-    const _adminName = admin.name || 'Admin'
-    let sent = false
-
-    if (isWhatsAppConfigured()) {
-      sent = await sendSuspiciousLoginAlert(admin.whatsapp, _adminName, ipAddress, userAgent)
-    } else {
-      simulateWhatsAppSend(admin.whatsapp, `LOGIN SUSPEITO: IP ${ipAddress}`)
-      sent = true
-    }
-
-    return sent
-  } catch (error) {
-    console.error('[Suspicious Login Alert] Erro:', error)
-    return false
-  }
-}
-
-export async function sendMultipleAttemptsNotification(adminId: string, attempts: number, ipAddress: string) {
-  try {
-    const admin = await prisma.user.findUnique({
-      where: { id: adminId },
-      select: { name: true, whatsapp: true }
-    })
-
-    if (!admin || !admin.whatsapp) return false
-
-    const _adminName = admin.name || 'Admin'
-    let sent = false
-
-    if (isWhatsAppConfigured()) {
-      sent = await sendMultipleLoginAttemptsAlert(admin.whatsapp, _adminName, attempts, ipAddress)
-    } else {
-      simulateWhatsAppSend(admin.whatsapp, `MÚLTIPLAS TENTATIVAS: ${attempts} tentativas de IP ${ipAddress}`)
-      sent = true
-    }
-
-    return sent
-  } catch (error) {
-    console.error('[Multiple Attempts Alert] Erro:', error)
-    return false
-  }
-}
-
-export async function sendDataExportNotification(adminId: string, exportType: string, recordCount: number) {
-  try {
-    const admin = await prisma.user.findUnique({
-      where: { id: adminId },
-      select: { name: true, whatsapp: true }
-    })
-
-    if (!admin || !admin.whatsapp) return false
-
-    const adminName = admin.name || 'Admin'
-    let sent = false
-
-    if (isWhatsAppConfigured()) {
-      sent = await sendDataExportAlert(admin.whatsapp, adminName, exportType, recordCount)
-    } else {
-      simulateWhatsAppSend(admin.whatsapp, `EXPORTAÇÃO: ${exportType} - ${recordCount} registros`)
-      sent = true
-    }
-
-    return sent
-  } catch (error) {
-    console.error('[Data Export Alert] Erro:', error)
-    return false
-  }
-}

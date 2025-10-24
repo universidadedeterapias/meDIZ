@@ -47,8 +47,31 @@ export async function GET(_req: NextRequest) {
       const totalChatSessionsResult = await prisma.chatSession.count()
       stats.totalChatSessions = totalChatSessionsResult
 
-      // Definir usuários gratuitos como total (já que removemos a distinção premium)
-      stats.freeUsers = stats.totalUsers
+      // Buscar usuários premium (com assinaturas ativas)
+      try {
+        const premiumUsersResult = await prisma.$queryRaw`
+          SELECT COUNT(DISTINCT u.id) as count 
+          FROM "User" u
+          INNER JOIN "Subscription" s ON u.id = s."userId"
+          WHERE s.status IN ('active', 'ACTIVE', 'cancel_at_period_end')
+          AND s."currentPeriodEnd" >= NOW()
+        `
+        stats.premiumUsers = parseInt((premiumUsersResult as Record<string, unknown>[])[0].count as string)
+        
+        // Calcular usuários gratuitos
+        stats.freeUsers = stats.totalUsers - stats.premiumUsers
+        
+        // Calcular taxa de conversão
+        stats.conversionRate = stats.totalUsers > 0 ? 
+          Math.round((stats.premiumUsers / stats.totalUsers) * 100) : 0
+        
+        console.log(`[Dashboard API] Usuários premium: ${stats.premiumUsers}, Gratuitos: ${stats.freeUsers}, Conversão: ${stats.conversionRate}%`)
+      } catch (error) {
+        console.log('[Dashboard API] Erro ao calcular usuários premium, usando valores padrão:', error)
+        stats.premiumUsers = 0
+        stats.freeUsers = stats.totalUsers
+        stats.conversionRate = 0
+      }
 
       console.log(`[Dashboard API] Dados reais: ${stats.totalUsers} usuários, ${stats.activeUsers} ativos, ${stats.totalChatSessions} sessões de chat`)
 

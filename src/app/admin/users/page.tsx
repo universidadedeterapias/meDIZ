@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { SubscriptionManager } from '@/components/admin/SubscriptionManager'
 import { UserGrowthChart } from '@/components/admin/UserGrowthChart'
+import { PasswordResetModal } from '@/components/admin/PasswordResetModal'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface User {
@@ -83,7 +84,32 @@ export default function UsersPage() {
   const [creatingUser, setCreatingUser] = useState(false)
   const [searchDebounce, setSearchDebounce] = useState('')
   const [deletingUser, setDeletingUser] = useState<string | null>(null)
-  const [growthData, setGrowthData] = useState<any>(null)
+  const [growthData, setGrowthData] = useState<{
+    success: boolean;
+    data: Array<{
+      week: string;
+      weekStart: string;
+      weekEnd: string;
+      totalUsers: number;
+      newUsers: number;
+      conversions: number;
+      growthRate: number;
+      conversionRate: number;
+    }>;
+    comparison: {
+      usersGrowth: number;
+      usersGrowthRate: number;
+      conversionsGrowth: number;
+      conversionsGrowthRate: number;
+    };
+    summary: {
+      totalWeeks: number;
+      averageGrowthRate: number;
+      averageConversionRate: number;
+      totalNewUsers: number;
+      totalConversions: number;
+    };
+  } | null>(null)
   const [growthLoading, setGrowthLoading] = useState(false)
 
   const fetchUsers = useCallback(async () => {
@@ -512,6 +538,15 @@ export default function UsersPage() {
                           <CreditCard className="h-4 w-4 mr-1" />
                           Assinaturas
                         </Button>
+                        <PasswordResetModal
+                          userId={user.id}
+                          userName={user.name}
+                          userEmail={user.email}
+                          onPasswordReset={() => {
+                            // Opcional: recarregar dados se necessário
+                            console.log('Senha resetada para:', user.email)
+                          }}
+                        />
                         <Button 
                           variant="outline" 
                           size="sm"
@@ -592,9 +627,20 @@ export default function UsersPage() {
             </Card>
           ) : growthData ? (
             <UserGrowthChart 
-              data={growthData.data} 
-              comparison={growthData.comparison}
-              summary={growthData.summary}
+              data={growthData.data || []}
+              comparison={growthData.comparison || {
+                usersGrowth: 0,
+                usersGrowthRate: 0,
+                conversionsGrowth: 0,
+                conversionsGrowthRate: 0
+              }}
+              summary={growthData.summary || {
+                totalWeeks: 0,
+                averageGrowthRate: 0,
+                averageConversionRate: 0,
+                totalNewUsers: 0,
+                totalConversions: 0
+              }}
             />
           ) : (
             <Card>
