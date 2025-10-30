@@ -1,3 +1,27 @@
+# Logs e cache locais (não versionar)
+logs/
+cache/
+.data/
+
+# Ambiente e sistema
+.env.local
+.env*.local
+.DS_Store
+Thumbs.db
+
+# Build/Lint/TS
+.next/
+out/
+dist/
+coverage/
+*.log
+*.tsbuildinfo
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
