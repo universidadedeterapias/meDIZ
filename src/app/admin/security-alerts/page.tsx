@@ -68,17 +68,28 @@ export default function SecurityAlertsPage() {
 
   const loadAlerts = async () => {
     setLoading(true)
+    setError('')
     try {
       const response = await fetch('/api/admin/security-alerts/history')
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`)
+      }
+      
       const data = await response.json()
       
       if (data.success) {
-        setAlerts(data.alerts)
+        setAlerts(data.alerts || [])
+        setError('')
       } else {
         setError(data.error || 'Erro ao carregar alertas')
       }
-    } catch {
-      setError('Erro de conexão')
+    } catch (error) {
+      console.error('[SecurityAlertsPage] Erro ao carregar alertas:', error)
+      setError(error instanceof Error ? error.message : 'Erro de conexão')
+      // Em caso de erro, definir lista vazia para não quebrar a UI
+      setAlerts([])
     } finally {
       setLoading(false)
     }
@@ -107,6 +118,11 @@ export default function SecurityAlertsPage() {
         })
       })
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`)
+      }
+
       const data = await response.json()
 
       if (data.success) {
@@ -118,8 +134,9 @@ export default function SecurityAlertsPage() {
       } else {
         setError(data.error || 'Erro ao enviar alerta')
       }
-    } catch {
-      setError('Erro de conexão')
+    } catch (error) {
+      console.error('[SecurityAlertsPage] Erro ao enviar alerta:', error)
+      setError(error instanceof Error ? error.message : 'Erro de conexão')
     } finally {
       setSending(false)
     }
@@ -127,6 +144,8 @@ export default function SecurityAlertsPage() {
 
   const testWhatsApp = async () => {
     setSending(true)
+    setError('')
+    setSuccess('')
     try {
       const response = await fetch('/api/admin/security-alerts', {
         method: 'POST',
@@ -139,15 +158,22 @@ export default function SecurityAlertsPage() {
         })
       })
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`)
+      }
+
       const data = await response.json()
 
       if (data.success) {
         setSuccess('Teste enviado com sucesso! Verifique seu WhatsApp.')
+        loadAlerts() // Recarregar lista
       } else {
         setError(data.error || 'Erro ao enviar teste')
       }
-    } catch {
-      setError('Erro de conexão')
+    } catch (error) {
+      console.error('[SecurityAlertsPage] Erro ao testar WhatsApp:', error)
+      setError(error instanceof Error ? error.message : 'Erro de conexão')
     } finally {
       setSending(false)
     }

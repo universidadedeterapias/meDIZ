@@ -5,12 +5,23 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import { prisma } from '@/lib/prisma'
 
+// 🔍 DEBUG: Log das variáveis de ambiente durante inicialização
+console.log('[DEBUG auth.ts] Iniciando verificação de variáveis de ambiente...')
+console.log('[DEBUG auth.ts] NODE_ENV:', process.env.NODE_ENV)
+console.log('[DEBUG auth.ts] NEXTAUTH_SECRET:', process.env.NEXTAUTH_SECRET ? '✅ Configurado' : '❌ Não configurado')
+console.log('[DEBUG auth.ts] DATABASE_URL:', process.env.DATABASE_URL ? '✅ Configurado' : '❌ Não configurado')
+console.log('[DEBUG auth.ts] NEXTAUTH_URL:', process.env.NEXTAUTH_URL || 'Não configurado')
+
 // Verificar se as variáveis de ambiente estão configuradas
 if (!process.env.NEXTAUTH_SECRET) {
+  console.error('[DEBUG auth.ts] ❌ ERRO: NEXTAUTH_SECRET não está configurado')
+  console.error('[DEBUG auth.ts] 🔍 Variáveis de ambiente disponíveis:', Object.keys(process.env).filter(k => k.includes('AUTH') || k.includes('DATABASE')).join(', '))
   throw new Error('NEXTAUTH_SECRET não está configurado')
 }
 
 if (!process.env.DATABASE_URL) {
+  console.error('[DEBUG auth.ts] ❌ ERRO: DATABASE_URL não está configurado')
+  console.error('[DEBUG auth.ts] 🔍 Variáveis de ambiente disponíveis:', Object.keys(process.env).filter(k => k.includes('AUTH') || k.includes('DATABASE')).join(', '))
   throw new Error('DATABASE_URL não está configurado')
 }
 

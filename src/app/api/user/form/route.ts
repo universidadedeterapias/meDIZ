@@ -1,8 +1,10 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { analyzeRouteData } from '@/lib/security/injection-route-helper'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const session = await auth()
 
   if (!session?.user?.id) {
@@ -11,6 +13,19 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
+    
+    // 🔒 Detectar SQL/Command Injection antes de processar
+    const securityCheck = await analyzeRouteData(
+      request,
+      '/api/user/form',
+      body,
+      session.user.id
+    )
+    
+    // Se detectado, retorna 403 automaticamente
+    if (securityCheck) {
+      return securityCheck
+    }
     const {
       fullName,
       whatsapp,

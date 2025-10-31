@@ -96,6 +96,12 @@ export default function AdminSidebar() {
       active: pathname === '/admin/security-alerts'
     },
     { 
+      href: '/admin/injection-attempts', 
+      icon: Shield, 
+      label: 'Tentativas de Injeção',
+      active: pathname === '/admin/injection-attempts'
+    },
+    { 
       href: '/admin/admin-requests', 
       icon: Shield, 
       label: 'Solicitações Admin',

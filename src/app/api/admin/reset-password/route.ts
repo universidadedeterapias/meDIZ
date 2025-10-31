@@ -59,9 +59,13 @@ export async function POST(req: NextRequest) {
       userAgent
     })
 
+    // 🔒 SEGURANÇA: NÃO retornar senha na resposta JSON
+    // A senha deve ser comunicada ao usuário por outro canal seguro (email/WhatsApp)
+    // NUNCA retornar senhas em respostas de API
+    
     return NextResponse.json({
       success: true,
-      message: `Senha do usuário ${userToReset.email} resetada com sucesso. Nova senha: ${newPassword || 'mediz123'}`
+      message: `Senha do usuário ${userToReset.email} resetada com sucesso.`
     })
 
   } catch (error) {

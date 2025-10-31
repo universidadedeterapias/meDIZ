@@ -8,6 +8,14 @@ export async function GET() {
     // Usar o auth() importado de @/auth que já tem a configuração
     const session = await auth()
     
+    // 🔒 SEGURANÇA: Endpoint de debug restrito apenas para admins
+    if (!session?.user?.email?.includes('@mediz.com')) {
+      return NextResponse.json(
+        { error: 'Não autorizado. Apenas admins podem acessar este endpoint.' },
+        { status: 403 }
+      )
+    }
+    
     // Para debug, vamos verificar os cookies também
     const cookiesList = await cookies()  // Adicionando await aqui
     const sessionTokenCookie = cookiesList.get('next-auth.session-token')

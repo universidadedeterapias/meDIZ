@@ -20,14 +20,22 @@ export default function DynamicOptionSelector({
   onChange
 }: DynamicOptionSelectorProps) {
   // Encontra o sintoma mais popular (maior quantidade)
-  const maxQuantidade = Math.max(...options.map(opt => opt.quantidade))
+  // Verifica se há opções antes de calcular o máximo
+  const maxQuantidade = options.length > 0 
+    ? Math.max(...options.map(opt => opt.quantidade))
+    : 0
+  
   const sintomaMaisPopular = options.find(opt => opt.quantidade === maxQuantidade)
 
   return (
     <div className="flex flex-wrap gap-2 justify-center pt-2">
       {options.map(option => {
         const isSelected = option.sintoma === value
-        const isMostPopular = option.sintoma === sintomaMaisPopular?.sintoma && option.quantidade > 1
+        // Mostra a seta verde no sintoma mais popular (sem exigir quantidade > 1)
+        // Se houver empate, mostra no primeiro encontrado
+        const isMostPopular = option.sintoma === sintomaMaisPopular?.sintoma && 
+                              maxQuantidade > 0 &&
+                              sintomaMaisPopular.quantidade === option.quantidade
 
         return (
           <Button
@@ -47,7 +55,7 @@ export default function DynamicOptionSelector({
             {option.sintoma}
             {isMostPopular && (
               <ArrowUp 
-                className="absolute -top-1 -right-1 w-3 h-3 text-green-500 bg-white rounded-full p-0.5" 
+                className="absolute -top-1 -right-1 w-3 h-3 text-green-500 bg-white rounded-full p-0.5 shadow-sm" 
                 style={{ fontSize: '8px' }}
               />
             )}

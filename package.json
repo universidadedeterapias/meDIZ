@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "fix-cache": "node scripts/fix-einval.js",
     "dev": "next dev",
+    "dev:safe": "powershell -ExecutionPolicy Bypass -File scripts/dev-safe.ps1",
+    "dev:clean": "node scripts/fix-einval.js && next dev",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
@@ -69,6 +72,11 @@
     "build:safe": "npm run check:deploy && npm run build",
     "setup:cicd": "node scripts/setup-cicd.js",
     "test:2fa": "node scripts/test-2fa-local.js",
+    "waf:configure": "tsx scripts/configure-waf.ts",
+    "waf:rules": "tsx scripts/create-waf-custom-rules.ts",
+    "waf:status": "tsx scripts/check-waf-status.ts",
+    "test:injection-alerts": "tsx scripts/test-injection-alerts.ts",
+    "debug:injection": "tsx scripts/debug-injection-detection.ts",
     "prepare": "husky"
   },
   "dependencies": {
@@ -127,11 +135,14 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@eslint/js": "^9.37.0",
+    "@next/env": "^16.0.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/formidable": "^3.4.5",
     "@types/node": "^20.19.19",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vercel/sdk": "^3.0.0",
+    "cross-env": "^10.1.0",
     "eslint": "^9.37.0",
     "eslint-config-next": "15.1.7",
     "eslint-plugin-react": "^7.37.5",

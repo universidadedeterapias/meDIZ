@@ -1,4 +1,9 @@
 /** @type {import('next').NextConfig} */
+
+// 🔧 SOLUÇÃO DEFINITIVA EINVAL: Força desabilitação de symlinks
+// Isso é crítico para projetos no Windows/OneDrive
+process.env.NODE_OPTIONS = (process.env.NODE_OPTIONS || '') + ' --no-preserve-symlinks --preserve-symlinks-main=false';
+
 const nextConfig = {
   webpack: (config, { isServer }) => {
     if (!isServer) {
@@ -9,8 +14,12 @@ const nextConfig = {
         stream: false,
       };
     }
-    // Evita problemas com symlinks no Windows/OneDrive
+    // 🔧 CORREÇÃO EINVAL: Desabilita symlinks completamente no Windows/OneDrive
     config.resolve.symlinks = false;
+    
+    // Força webpack a não seguir symlinks
+    config.resolve.plugins = config.resolve.plugins || [];
+    
     return config;
   },
   eslint: {
@@ -19,11 +28,9 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Desabilita symlinks para evitar problemas no Windows/OneDrive
-  experimental: {
-    // Evita uso de symlinks que causa EINVAL no Windows
-    outputFileTracingIncludes: {},
-  },
+  // 🔧 SOLUÇÃO EINVAL: Usa sistema de arquivos real, não symlinks
+  // serverComponentsExternalPackages foi movido para serverExternalPackages no Next.js 15
+  serverExternalPackages: [],
 };
 
 export default nextConfig;

@@ -216,9 +216,26 @@ export default function Page() {
 
       // Verifica se a resposta é JSON válida
       if (!res.ok) {
-        const errorText = await res.text()
-        console.error('[Chat] Erro na API:', res.status, errorText)
-        throw new Error(`Erro na API: ${res.status} - ${errorText}`)
+        let errorData
+        try {
+          errorData = await res.json()
+        } catch {
+          const errorText = await res.text()
+          errorData = { error: errorText }
+        }
+        
+        console.error('[Chat] Erro na API:', res.status, errorData)
+        
+        // Tratamento específico para timeout (504)
+        if (res.status === 504 || errorData.timeout) {
+          throw new Error(
+            'A consulta está demorando mais do que o esperado. Por favor, tente novamente com uma pergunta mais específica ou aguarde alguns instantes.'
+          )
+        }
+        
+        // Usa mensagem de erro do servidor se disponível
+        const errorMessage = errorData.error || `Erro na API: ${res.status}`
+        throw new Error(errorMessage)
       }
 
       const data = await res.json()
@@ -248,12 +265,32 @@ export default function Page() {
       setElapsedMs(t1 - t0)
     } catch (err) {
       console.error('[Chat] Erro ao enviar mensagem:', err)
-      // Mostra erro ao usuário
+      
+      // Determina mensagem de erro amigável
+      let userMessage = 'Erro ao processar sua mensagem. Tente novamente.'
+      
       if (err instanceof Error) {
-        alert(`Erro ao processar sua mensagem: ${err.message}`)
-      } else {
-        alert('Erro ao processar sua mensagem. Tente novamente.')
+        const errorMsg = err.message.toLowerCase()
+        
+        // Mensagens específicas para diferentes tipos de erro
+        if (errorMsg.includes('timeout') || errorMsg.includes('504')) {
+          userMessage = '⏱️ A consulta está demorando mais do que o esperado.\n\nPor favor, tente:\n• Reformular sua pergunta de forma mais específica\n• Aguardar alguns instantes e tentar novamente\n• Verificar sua conexão com a internet'
+        } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+          userMessage = '🌐 Erro de conexão.\n\nVerifique sua conexão com a internet e tente novamente.'
+        } else if (errorMsg.includes('401') || errorMsg.includes('autenticado')) {
+          userMessage = '🔐 Você precisa fazer login novamente.'
+          // Redireciona para login após 2 segundos
+          setTimeout(() => {
+            router.replace('/login')
+          }, 2000)
+        } else {
+          // Usa a mensagem original se for específica e útil
+          userMessage = err.message
+        }
       }
+      
+      // Mostra erro ao usuário
+      alert(`Erro ao processar sua mensagem:\n\n${userMessage}`)
     } finally {
       setInput('')
       setLoading(false)

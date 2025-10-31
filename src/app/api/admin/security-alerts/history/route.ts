@@ -9,7 +9,10 @@ export async function GET(req: NextRequest) {
     
     // Verificar se é admin
     if (!session?.user?.email || !session.user.email.includes('@mediz.com')) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+      return NextResponse.json({ 
+        success: false,
+        error: 'Não autorizado' 
+      }, { status: 403 })
     }
 
     const { searchParams } = new URL(req.url)
@@ -22,7 +25,7 @@ export async function GET(req: NextRequest) {
       prisma.auditLog.findMany({
         where: {
           action: {
-            in: ['SECURITY_ALERT_SENT', 'SUSPICIOUS_LOGIN', 'MULTIPLE_ATTEMPTS', 'DATA_EXPORT']
+            in: ['SECURITY_ALERT_SENT', 'SUSPICIOUS_LOGIN', 'MULTIPLE_ATTEMPTS', 'DATA_EXPORT', 'INJECTION_SQL_INJECTION_DETECTED', 'INJECTION_COMMAND_INJECTION_DETECTED']
           }
         },
         orderBy: { timestamp: 'desc' },
@@ -32,27 +35,45 @@ export async function GET(req: NextRequest) {
       prisma.auditLog.count({
         where: {
           action: {
-            in: ['SECURITY_ALERT_SENT', 'SUSPICIOUS_LOGIN', 'MULTIPLE_ATTEMPTS', 'DATA_EXPORT']
+            in: ['SECURITY_ALERT_SENT', 'SUSPICIOUS_LOGIN', 'MULTIPLE_ATTEMPTS', 'DATA_EXPORT', 'INJECTION_SQL_INJECTION_DETECTED', 'INJECTION_COMMAND_INJECTION_DETECTED']
           }
         }
       })
     ])
     
-    const alerts = alertsResult
-    const total = totalResult
+    const alerts = alertsResult || []
+    const total = totalResult || 0
 
-    // Formatar dados
+    // Formatar dados com tratamento de erros
     const formattedAlerts = alerts.map(alert => {
-      const details = alert.details ? JSON.parse(alert.details) : {}
+      let details = {}
+      try {
+        details = alert.details ? (typeof alert.details === 'string' ? JSON.parse(alert.details) : alert.details) : {}
+      } catch (parseError) {
+        console.warn('[Security Alerts History API] Erro ao parsear details:', parseError)
+        details = {}
+      }
+      
+      // Garantir que timestamp seja válido
+      let timestamp: string
+      try {
+        if (alert.timestamp instanceof Date) {
+          timestamp = alert.timestamp.toISOString()
+        } else {
+          timestamp = new Date(alert.timestamp).toISOString()
+        }
+      } catch {
+        timestamp = new Date().toISOString()
+      }
       
       return {
         id: alert.id,
         type: getAlertTypeLabel(alert.action),
         message: getAlertMessage(alert.action, details),
         sent: true, // Assumindo que se está no log, foi enviado
-        timestamp: alert.timestamp instanceof Date ? alert.timestamp.toISOString() : new Date(alert.timestamp).toISOString(),
-        adminName: alert.adminEmail.split('@')[0], // Usar parte do email como nome
-        adminEmail: alert.adminEmail,
+        timestamp,
+        adminName: alert.adminEmail?.split('@')[0] || 'Admin', // Usar parte do email como nome
+        adminEmail: alert.adminEmail || '',
         details: details
       }
     })
@@ -71,7 +92,15 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('[Security Alerts History API] Erro:', error)
     return NextResponse.json({ 
-      error: 'Erro interno do servidor' 
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro interno do servidor',
+      alerts: [],
+      pagination: {
+        page: 1,
+        limit: 20,
+        total: 0,
+        pages: 0
+      }
     }, { status: 500 })
   }
 }
@@ -81,7 +110,9 @@ function getAlertTypeLabel(action: string): string {
     'SECURITY_ALERT_SENT': 'Alerta Personalizado',
     'SUSPICIOUS_LOGIN': 'Login Suspeito',
     'MULTIPLE_ATTEMPTS': 'Múltiplas Tentativas',
-    'DATA_EXPORT': 'Exportação de Dados'
+    'DATA_EXPORT': 'Exportação de Dados',
+    'INJECTION_SQL_INJECTION_DETECTED': 'SQL Injection',
+    'INJECTION_COMMAND_INJECTION_DETECTED': 'Command Injection'
   }
   
   return labels[action] || action
@@ -97,6 +128,10 @@ function getAlertMessage(action: string, details: Record<string, unknown>): stri
       return `${details.attempts || 0} tentativas de login falhadas`
     case 'DATA_EXPORT':
       return `Exportação de ${details.recordCount || 0} registros`
+    case 'INJECTION_SQL_INJECTION_DETECTED':
+      return `SQL Injection detectada - Endpoint: ${details.endpoint || 'desconhecido'}`
+    case 'INJECTION_COMMAND_INJECTION_DETECTED':
+      return `Command Injection detectada - Endpoint: ${details.endpoint || 'desconhecido'}`
     default:
       return 'Alerta de segurança'
   }

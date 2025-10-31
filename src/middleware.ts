@@ -2,11 +2,22 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import { securityMiddleware } from './middleware-security'
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+  
+  // 🔒 SEGURANÇA: Detectar SQL/Command Injection em todas as rotas API
+  if (pathname.startsWith('/api/')) {
+    const securityResponse = await securityMiddleware(request, pathname)
+    if (securityResponse) {
+      return securityResponse // Bloqueia requisição maliciosa
+    }
+  }
+  
   // Aplicar apenas a rotas do admin - otimização de performance
   // EXCLUIR /admin-login para evitar loop infinito
-  if (request.nextUrl.pathname.startsWith('/admin') && request.nextUrl.pathname !== '/admin-login') {
+  if (pathname.startsWith('/admin') && pathname !== '/admin-login') {
     console.log(`[Middleware] Acessando: ${request.nextUrl.pathname}`)
     
     try {
@@ -74,6 +85,12 @@ export async function middleware(request: NextRequest) {
 }
 
 // Configurar quais caminhos o middleware deve executar
+// Adicionar /api/* para detecção de segurança
 export const config = {
-  matcher: ['/admin/:path*', '/admin-login', '/api/admin/:path*']
+  matcher: [
+    '/admin/:path*', 
+    '/admin-login', 
+    '/api/admin/:path*',
+    '/api/:path*' // Todas as rotas API para detecção de injeção
+  ]
 }

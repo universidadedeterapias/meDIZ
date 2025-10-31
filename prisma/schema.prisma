@@ -284,3 +284,29 @@ model SavedSymptom {
   @@index([folderId])
   @@index([createdAt])
 }
+
+// Tentativas de injeção de comandos (SQL Injection, Command Injection)
+model InjectionAttempt {
+  id            String   @id @default(uuid())
+  type          String   // 'SQL_INJECTION' | 'COMMAND_INJECTION'
+  severity      String   // 'low' | 'medium' | 'high' | 'critical'
+  pattern       String   // Padrão detectado
+  location      String   // 'query' | 'body' | 'headers' | 'path'
+  field         String?  // Campo onde foi detectado (opcional)
+  value         String?  @db.Text // Valor suspeito (sanitizado, limitado)
+  endpoint      String   // Endpoint atacado
+  method        String   // HTTP method
+  ipAddress     String   // IP do atacante
+  userAgent     String?  @db.Text // User agent
+  userId        String?  // ID do usuário (se autenticado)
+  blocked       Boolean  @default(true) // Se foi bloqueado
+  alertSent     Boolean  @default(false) // Se alerta foi enviado
+  createdAt     DateTime @default(now())
+  
+  @@index([type])
+  @@index([ipAddress])
+  @@index([createdAt])
+  @@index([blocked])
+  @@index([severity])
+  @@map("injection_attempts")
+}
