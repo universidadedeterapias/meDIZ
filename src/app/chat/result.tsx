@@ -3,6 +3,7 @@
 import { BlurredAccordionContent } from '@/components/BlurredContent'
 import { ClientOnly } from '@/components/ClientOnly'
 import { ExportPDFButton } from '@/components/ExportPDFButton'
+import { SaveSymptomDialog } from '@/components/SaveSymptomDialog'
 import { ShareInsightDialog } from '@/components/Share'
 import {
   Accordion,
@@ -11,9 +12,9 @@ import {
   AccordionTrigger
 } from '@/components/ui/accordion'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import parseResponse from '@/lib/parseResponse'
+import { processMarkdownContent } from '@/lib/markdownProcessor'
 import { UserPeriod } from '@/lib/userPeriod'
 import {
   Activity,
@@ -23,7 +24,6 @@ import {
   ChartLine,
   Clock,
   Dna,
-  Heart,
   HeartPulse,
   Lightbulb,
   MessageCircleQuestion,
@@ -74,6 +74,9 @@ export function Result({
   
   // Determina se deve mostrar o conteúdo completo ou parcial
   const showFullContent = fullVisualization
+  
+  // Usa userQuestion se disponível, senão usa o nome popular do sintoma
+  const symptomText = userQuestion || data.popular || data.scientific || 'Sintoma'
 
   useEffect(() => {
     // só roda no client
@@ -118,14 +121,7 @@ export function Result({
           
           {/* Botão de exportação PDF */}
           <div className="ml-2 sm:ml-4 flex-shrink-0">
-            {(() => {
-              // Debug para ver o que está sendo passado
-              console.log('🔍 Debug Result - Markdown content preview:', markdown?.substring(0, 500))
-              console.log('🔍 Debug Result - Markdown contains IMPACTO BIOLÓGICO:', markdown?.includes('IMPACTO BIOLÓGICO'))
-              console.log('🔍 Debug Result - Markdown contains **IMPACTO BIOLÓGICO**:', markdown?.includes('**IMPACTO BIOLÓGICO**'))
-              console.log('🔍 Debug Result - User question:', userQuestion)
-              return null
-            })()}
+            {/* Logs removidos em produção para evitar vazamento de conteúdo/PII */}
             <ExportPDFButton
               question={userQuestion}
               answer={markdown}
@@ -147,7 +143,7 @@ export function Result({
             {/* <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {data.contextoGeral}
             </ReactMarkdown> */}
-            <div dangerouslySetInnerHTML={{ __html: data.contextoGeral }} />
+            <div dangerouslySetInnerHTML={{ __html: processMarkdownContent(data.contextoGeral) }} />
           </div>
         </section>
 
@@ -163,7 +159,7 @@ export function Result({
             {/* <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {data.impactoBiologico}
             </ReactMarkdown> */}
-            <div dangerouslySetInnerHTML={{ __html: data.impactoBiologico }} />
+            <div dangerouslySetInnerHTML={{ __html: processMarkdownContent(data.impactoBiologico) }} />
           </div>
         </section>
 
@@ -205,10 +201,10 @@ export function Result({
                       >
                         {sec.body}
                       </ReactMarkdown> */}
-                      <div dangerouslySetInnerHTML={{ __html: sec.body }} />
+                      <div dangerouslySetInnerHTML={{ __html: processMarkdownContent(sec.body) }} />
                     </BlurredAccordionContent>
                   ) : (
-                    <div dangerouslySetInnerHTML={{ __html: sec.body }} />
+                    <div dangerouslySetInnerHTML={{ __html: processMarkdownContent(sec.body) }} />
                   )}
                 </AccordionContent>
               </AccordionItem>
@@ -219,9 +215,16 @@ export function Result({
         {/* Ações */}
         <ClientOnly>
           <div className="w-full flex items-center justify-between gap-2">
-            <Button className="w-full py-6 bg-rose-100 text-red-600 hover:bg-rose-200 transition-colors hidden">
-              <Heart /> Favoritar
-            </Button>
+            <SaveSymptomDialog 
+              symptom={symptomText} 
+              threadId={sessionId}
+              onSaved={() => {
+                // Disparar evento customizado para atualizar a sidebar
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('foldersUpdated'))
+                }
+              }}
+            />
             <ShareInsightDialog
               title={`${data.popular} – Impacto biológico`}
               url={baseUrl}

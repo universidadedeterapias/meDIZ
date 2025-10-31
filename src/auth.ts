@@ -16,9 +16,28 @@ if (!process.env.DATABASE_URL) {
 
 // Validar e corrigir NEXTAUTH_URL
 let nextAuthUrl = process.env.NEXTAUTH_URL
+
 if (!nextAuthUrl) {
-  console.warn('[NextAuth] NEXTAUTH_URL não configurado, usando localhost:3000')
-  nextAuthUrl = 'http://localhost:3000'
+  // Em desenvolvimento, usar localhost automaticamente
+  // Em produção, NEXTAUTH_URL é obrigatório e será lançado um erro
+  if (process.env.NODE_ENV === 'development') {
+    nextAuthUrl = process.env.PORT 
+      ? `http://localhost:${process.env.PORT}`
+      : 'http://localhost:3000'
+    console.warn('[NextAuth] NEXTAUTH_URL não configurado, usando URL de desenvolvimento:', nextAuthUrl)
+  } else {
+    // ⚠️ PRODUÇÃO: NEXTAUTH_URL é obrigatório
+    console.warn('[NextAuth] NEXTAUTH_URL não configurado')
+    throw new Error('NEXTAUTH_URL deve ser configurado em produção')
+  }
+}
+
+// 🔧 DESENVOLVIMENTO: Se NEXTAUTH_URL aponta para produção, forçar localhost
+// ✅ PRODUÇÃO: Esta condição NUNCA será verdadeira, então usa NEXTAUTH_URL normalmente
+if (process.env.NODE_ENV === 'development' && nextAuthUrl.includes('mediz.app')) {
+  const port = process.env.PORT || '3000'
+  nextAuthUrl = `http://localhost:${port}`
+  console.warn('[NextAuth] ⚠️ Desenvolvimento detectado - Forçando uso de localhost:', nextAuthUrl)
 }
 
 // Garantir que a URL seja válida
@@ -29,11 +48,14 @@ try {
   throw new Error(`NEXTAUTH_URL inválida: ${nextAuthUrl}`)
 }
 
-console.log('[NextAuth] Configuração:', {
-  url: nextAuthUrl,
-  secret: process.env.NEXTAUTH_SECRET ? 'Configurado' : 'Não configurado',
-  database: process.env.DATABASE_URL ? 'Configurado' : 'Não configurado'
-})
+// Log de configuração apenas em desenvolvimento
+if (process.env.NODE_ENV === 'development') {
+  console.log('[NextAuth] Configuração:', {
+    url: nextAuthUrl,
+    secret: process.env.NEXTAUTH_SECRET ? 'Configurado' : 'Não configurado',
+    database: process.env.DATABASE_URL ? 'Configurado' : 'Não configurado'
+  })
+}
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -148,11 +170,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   // Configuração de debug para desenvolvimento
   debug: process.env.NODE_ENV === 'development',
   
-  // Configuração de eventos para debug
-  events: {
-    async signIn({ user, account, profile: _profile, isNewUser }) {
+  // Configuração de eventos para debug (apenas em desenvolvimento)
+  events: process.env.NODE_ENV === 'development' ? {
+    async signIn({ user: _user, account, profile: _profile, isNewUser }) {
       console.log('[NextAuth] SignIn event:', { 
-        user: user.email, 
         provider: account?.provider,
         isNewUser 
       })
@@ -160,29 +181,21 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     async signOut() {
       console.log('[NextAuth] SignOut event')
     },
-    async createUser({ user }) {
-      console.log('[NextAuth] CreateUser event:', { 
-        user: user.email 
-      })
+    async createUser() {
+      console.log('[NextAuth] CreateUser event')
     },
-    async updateUser({ user }) {
-      console.log('[NextAuth] UpdateUser event:', { 
-        user: user.email 
-      })
+    async updateUser() {
+      console.log('[NextAuth] UpdateUser event')
     },
-    async linkAccount({ user, account, profile: _profile }) {
+    async linkAccount({ account }) {
       console.log('[NextAuth] LinkAccount event:', { 
-        user: user.email, 
         provider: account.provider 
       })
     },
-    async session({ session, token }) {
-      console.log('[NextAuth] Session event:', { 
-        user: session.user?.email,
-        tokenId: token.id 
-      })
+    async session() {
+      console.log('[NextAuth] Session event')
     }
-  },
+  } : {},
   
   // opcional: redireciona erros pra uma página customizada
   pages: {

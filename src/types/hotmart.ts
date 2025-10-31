@@ -1,9 +1,23 @@
 enum HotmartEvent {
-  PURCHASE_APPROVED = 'PURCHASE_APPROVED'
+  PURCHASE_APPROVED = 'PURCHASE_APPROVED',
+  PURCHASE_COMPLETE = 'PURCHASE_COMPLETE',
+  PURCHASE_CANCELLED = 'PURCHASE_CANCELLED',
+  PURCHASE_CHARGEBACK = 'PURCHASE_CHARGEBACK',
+  PURCHASE_REFUNDED = 'PURCHASE_REFUNDED',
+  PURCHASE_EXPIRED = 'PURCHASE_EXPIRED',
+  // Eventos de assinatura
+  SUBSCRIPTION_CANCELLATION = 'SUBSCRIPTION_CANCELLATION',
+  SUBSCRIPTION_CANCELLED = 'SUBSCRIPTION_CANCELLED',
+  SUBSCRIPTION_EXPIRED = 'SUBSCRIPTION_EXPIRED'
 }
 
 enum PurchaseStatus {
-  APPROVED = 'APPROVED'
+  APPROVED = 'APPROVED',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+  REFUNDED = 'REFUNDED',
+  EXPIRED = 'EXPIRED',
+  CHARGEBACK = 'CHARGEBACK'
 }
 
 enum PaymentType {
@@ -50,16 +64,57 @@ type Purchase = {
   price: { value: number; currency_value: string }
   checkout_country?: { name: string; iso: string }
   order_bump?: { is_order_bump: boolean }
+  origin?: { sck?: string; xcod?: string }
   original_offer_price?: { value: number; currency_value: string }
   order_date: number
   status: PurchaseStatus
   transaction: string
   payment?: { installments_number: number; type: PaymentType }
-  offer?: { code: string }
+  offer?: { code: string; name?: string; description?: string }
   invoice_by?: string
   subscription_anticipation_purchase?: boolean
+  date_next_charge?: number
+  recurrence_number?: number
   is_funnel?: boolean
   business_model?: string
+}
+
+type SubscriptionPlan = {
+  id: number
+  name: string
+}
+
+type SubscriptionData = {
+  status: string
+  plan?: SubscriptionPlan
+  subscriber?: { code: string }
+  id?: number
+}
+
+// Estrutura alternativa para SUBSCRIPTION_CANCELLATION
+type SubscriptionCancellationData = {
+  subscriber: {
+    code: string
+    name?: string
+    email: string
+    phone?: {
+      dddPhone?: string
+      phone?: string
+      dddCell?: string
+      cell?: string
+    }
+  }
+  subscription: {
+    id: number
+    plan: SubscriptionPlan
+  }
+  actual_recurrence_value?: number
+  cancellation_date?: number
+  date_next_charge?: number
+  product: {
+    id: number | string
+    name?: string
+  }
 }
 
 export type HotmartPayload = {
@@ -70,10 +125,16 @@ export type HotmartPayload = {
   data: {
     product: Product
     affiliates?: { affiliate_code: string; name: string }[]
-    buyer: Buyer
+    buyer?: Buyer // Opcional para eventos de assinatura sem purchase
     producer?: { name: string; document: string; legal_nature: string }
     commissions?: { value: number; source: string; currency_value: string }[]
-    purchase: Purchase
+    purchase?: Purchase // Opcional para SUBSCRIPTION_CANCELLATION
+    subscription?: SubscriptionData
+    // Campos específicos para SUBSCRIPTION_CANCELLATION
+    subscriber?: SubscriptionCancellationData['subscriber']
+    actual_recurrence_value?: number
+    cancellation_date?: number
+    date_next_charge?: number
   }
 }
 

@@ -30,6 +30,19 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const { user: sidebarUser, isLoading: isLoadingSidebar } = useUserCache()
   const { status } = useSession()
 
+  // Debug temporário para verificar propagação do sidebarUser
+  useEffect(() => {
+    console.log('[UserProvider] 🔄 ====== sidebarUser mudou ======')
+    console.log('[UserProvider] sidebarUser:', sidebarUser ? {
+      id: sidebarUser.id,
+      name: sidebarUser.name,
+      email: sidebarUser.email
+    } : null)
+    console.log('[UserProvider] isLoadingSidebar:', isLoadingSidebar)
+    console.log('[UserProvider] session status:', status)
+    console.log('[UserProvider] =================================')
+  }, [sidebarUser, isLoadingSidebar, status])
+
   const refreshUser = useCallback(async () => {
     if (status === 'loading') return
     

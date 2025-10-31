@@ -171,28 +171,54 @@ export default function Page() {
   // 3) Envia mensagem
   const handleSendMessage = async () => {
     if (!input.trim() || loading) return // Evita múltiplas chamadas
+    handleSendMessageFromText(input.trim())
+  }
+
+  // Função reutilizável para enviar mensagem
+  const handleSendMessageFromText = async (text: string) => {
+    if (loading) return
     setLoading(true)
     setResponses([])
     setElapsedMs(null)
     
     // Armazena a pergunta original para o PDF
-    setOriginalQuestion(input.trim())
+    setOriginalQuestion(text)
+    setInput(text) // Atualiza o input
 
     const t0 = performance.now()
 
     try {
       const res = await fetch('/api/openai', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input.trim() })
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Inclui cookies na requisição
+        body: JSON.stringify({ message: text })
       })
+
+      // Verifica se houve erro de autenticação
+      if (res.status === 401) {
+        console.error('[Chat] Não autenticado, redirecionando para login...')
+        router.replace('/login')
+        setLoading(false)
+        return
+      }
 
       if (res.status === 403) {
         const data = await res.json()
         if (data.limitReached) {
           setLimitReached(true)
+          setLoading(false)
           return
         }
+      }
+
+      // Verifica se a resposta é JSON válida
+      if (!res.ok) {
+        const errorText = await res.text()
+        console.error('[Chat] Erro na API:', res.status, errorText)
+        throw new Error(`Erro na API: ${res.status} - ${errorText}`)
       }
 
       const data = await res.json()
@@ -221,7 +247,13 @@ export default function Page() {
       const t1 = performance.now()
       setElapsedMs(t1 - t0)
     } catch (err) {
-      console.error(err)
+      console.error('[Chat] Erro ao enviar mensagem:', err)
+      // Mostra erro ao usuário
+      if (err instanceof Error) {
+        alert(`Erro ao processar sua mensagem: ${err.message}`)
+      } else {
+        alert('Erro ao processar sua mensagem. Tente novamente.')
+      }
     } finally {
       setInput('')
       setLoading(false)
@@ -262,6 +294,12 @@ export default function Page() {
         history={[]} // implemente seu histórico se quiser
         selectedThread={selectedThread}
         onSelectSession={setSelectedThread}
+        onSelectSymptom={(symptomText) => {
+          setInput(symptomText)
+          setResponses([])
+          setSelectedThread(null)
+          handleSendMessageFromText(symptomText)
+        }}
       />
 
       <SidebarInset>

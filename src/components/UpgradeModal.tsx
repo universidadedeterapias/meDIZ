@@ -39,7 +39,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
             Função Premium
           </DialogTitle>
           <DialogDescription className="text-center text-gray-600 mt-2">
-            A exportação em PDF está disponível apenas para usuários do plano profissional.
+            Esta funcionalidade está disponível apenas para usuários do plano profissional.
           </DialogDescription>
         </DialogHeader>
         
@@ -50,6 +50,8 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
             </h3>
             <ul className="space-y-1 text-sm text-indigo-700">
               <li>• Exportação de consultas em PDF</li>
+              <li>• Organização de sintomas em pastas personalizadas</li>
+              <li>• Adição de observações e notas nas pastas</li>
               <li>• Acesso completo a todas as funcionalidades</li>
               <li>• Sem limitações de uso</li>
             </ul>

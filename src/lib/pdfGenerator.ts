@@ -1,4 +1,5 @@
 import html2pdf from 'html2pdf.js'
+import { logger } from '@/lib/logger'
 
 interface PDFData {
   question: string
@@ -6,6 +7,7 @@ interface PDFData {
   timestamp: Date
   sessionId?: string
   patientName?: string
+  therapistName?: string
 }
 
 /**
@@ -14,7 +16,7 @@ interface PDFData {
  */
 export async function generateChatPDF(data: PDFData): Promise<void> {
   try {
-    console.log('🔍 Debug PDF - Dados recebidos:', {
+    logger.debug('🔍 Debug PDF - Dados recebidos:', {
       question: data.question,
       answerLength: data.answer?.length || 0,
       hasAnswer: !!data.answer,
@@ -22,14 +24,14 @@ export async function generateChatPDF(data: PDFData): Promise<void> {
     })
     
     // Debug específico para IMPACTO BIOLÓGICO
-    console.log('🔍 Debug PDF - Answer content preview:', data.answer?.substring(0, 500))
-    console.log('🔍 Debug PDF - Answer contains IMPACTO BIOLÓGICO:', data.answer?.includes('IMPACTO BIOLÓGICO'))
-    console.log('🔍 Debug PDF - Answer contains **IMPACTO BIOLÓGICO**:', data.answer?.includes('**IMPACTO BIOLÓGICO**'))
+    logger.debug('🔍 Debug PDF - Answer content preview:', data.answer?.substring(0, 200))
+    logger.debug('🔍 Debug PDF - Answer contains IMPACTO BIOLÓGICO:', data.answer?.includes('IMPACTO BIOLÓGICO'))
+    logger.debug('🔍 Debug PDF - Answer contains **IMPACTO BIOLÓGICO**:', data.answer?.includes('**IMPACTO BIOLÓGICO**'))
 
     // Cria o HTML que será convertido para PDF
     const htmlContent = createPDFHTML(data)
     
-    console.log('🔍 Debug PDF - HTML gerado:', {
+    logger.debug('🔍 Debug PDF - HTML gerado:', {
       htmlLength: htmlContent?.length || 0,
       hasContent: htmlContent?.includes('answer-content') || false
     })
@@ -54,14 +56,14 @@ export async function generateChatPDF(data: PDFData): Promise<void> {
       }
     }
 
-    console.log('🔍 Debug PDF - Iniciando geração...')
+    logger.debug('🔍 Debug PDF - Iniciando geração...')
     
     // Gera e baixa o PDF
     await html2pdf().set(options).from(htmlContent).save()
     
-    console.log('✅ Debug PDF - PDF gerado com sucesso!')
+    logger.debug('✅ Debug PDF - PDF gerado com sucesso!')
   } catch (error) {
-    console.error('❌ Erro ao gerar PDF:', error)
+    logger.error('❌ Erro ao gerar PDF:', error)
     throw new Error('Falha na geração do PDF')
   }
 }
@@ -126,6 +128,11 @@ function processAnswerContent(htmlContent: string): string {
       // Inicia nova seção
       currentSectionTitle = line
       currentSection = ''
+      
+      // Pula apenas barras horizontais que aparecem logo após o título
+      if (i + 1 < lines.length && /^[-=_]{2,}$/.test(lines[i + 1].trim())) {
+        i++ // Pula a barra horizontal
+      }
     } else {
       // Adiciona conteúdo à seção atual
       if (currentSection) {
@@ -239,44 +246,99 @@ function isSectionTitle(line: string): boolean {
 }
 
 /**
+ * Processa conteúdo markdown para PDF (versão com estilos inline)
+ */
+function processMarkdownForPDF(content: string): string {
+  if (!content || content.trim().length === 0) {
+    return ''
+  }
+
+  // Lista de emojis separadores
+  const PARAGRAPH_SEPARATORS = ['🌀', '📍', '💡', '🔍', '📌', '✨', '🔑', '⚡', '🌟', '🎯', '📊', '💭', '🧠', '🛡️', '⏳']
+  
+  function escapeRegex(str: string): string {
+    return str.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
+  }
+
+  // 1. Primeiro converte markdown básico para HTML
+  let processed = content
+    // Negrito (dois asteriscos) - substituir por placeholder temporário
+    .replace(/\*\*(.+?)\*\*/g, '___STRONG_START___$1___STRONG_END___')
+    // Itálico (um asterisco)
+    .replace(/\*(.+?)\*/g, '<em style="font-style: italic; color: #6b7280;">$1</em>')
+    // Restaurar negrito com estilos inline para PDF
+    .replace(/___STRONG_START___/g, '<strong style="font-weight: 600; color: #1f2937;">')
+    .replace(/___STRONG_END___/g, '</strong>')
+    // Ícones de placeholder
+    .replace(/\(pink brain icon\)/g, '🧠')
+    .replace(/\(blue shield icon\)/g, '🛡️')
+    .replace(/\(hourglass icon\)/g, '⏳')
+    .replace(/\(lightning bolt icon\)/g, '⚡')
+  
+  // 2. Processa emojis separadores - adiciona quebra de parágrafo ANTES do emoji
+  PARAGRAPH_SEPARATORS.forEach(emoji => {
+    // Adiciona quebra de linha dupla ANTES do emoji (se não estiver no início já)
+    processed = processed.replace(
+      new RegExp(`([^\\n])(\\s*)(${escapeRegex(emoji)}\\s)`, 'g'),
+      `$1\n\n$3`
+    )
+    
+    // Se emoji está no início da linha mas logo após texto na mesma linha, adiciona quebra
+    processed = processed.replace(
+      new RegExp(`([^\\n\\r])(\\s*)(${escapeRegex(emoji)})`, 'g'),
+      `$1\n\n$3`
+    )
+  })
+
+  // 3. Normaliza quebras de linha múltiplas
+  processed = processed.replace(/\n{3,}/g, '\n\n')
+
+  // 4. Divide em parágrafos baseado em quebras de linha duplas
+  const paragraphs = processed
+    .split(/\n\s*\n/)
+    .map(p => p.trim())
+    .filter(p => p.length > 0)
+
+  // 5. Processa cada parágrafo e cria HTML com estilos inline para PDF
+  const paragraphHTML = paragraphs
+    .map(paragraph => {
+      const trimmed = paragraph.trim()
+      
+      if (trimmed.length > 0) {
+        // Preserva quebras de linha simples dentro do parágrafo
+        const normalizedParagraph = trimmed.replace(/\n{2,}/g, '\n').replace(/\n/g, '<br />')
+        // CSS otimizado para evitar quebras no meio de frases - mantém palavras íntegras
+        return `<p style="margin-bottom: 12px; text-align: justify; line-height: 1.6; color: #1f2937; font-size: 13px; orphans: 3; widows: 3; page-break-inside: avoid; break-inside: avoid; word-break: keep-all; overflow-wrap: anywhere; hyphens: manual;">${normalizedParagraph}</p>\n`
+      }
+      return ''
+    })
+    .filter(p => p.length > 0)
+    .join('\n')
+
+  return paragraphHTML
+}
+
+/**
  * Cria HTML para uma seção
  */
 function createSectionHTML(title: string, content: string): string {
   if (!content || content.trim().length === 0) return ''
   
   // Limpa o título removendo formatação markdown
-  const cleanTitle = title.replace(/\*\*/g, '').replace(/\*/g, '').trim()
+  const cleanTitle = title.replace(/\*\*/g, '').replace(/\*/g, '').replace(/:/g, '').trim()
   
-  console.log(`🔍 Debug createSectionHTML - Título original: "${title}"`)
-  console.log(`🔍 Debug createSectionHTML - Título limpo: "${cleanTitle}"`)
+  // Mantém o conteúdo original sem remover nada - apenas processa formatação
+  // O título duplicado será tratado apenas visualmente (não removido do conteúdo)
+  const cleanedContent = content.trim()
   
-  // Processa o conteúdo
-  const processedContent = content
-    .replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight: 600; color: #1f2937;">$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em style="font-style: italic; color: #6b7280;">$1</em>')
-    .replace(/\(pink brain icon\)/g, '🧠')
-    .replace(/\(blue shield icon\)/g, '🛡️')
-    .replace(/\(hourglass icon\)/g, '⏳')
-    .replace(/\(lightning bolt icon\)/g, '⚡')
-  
-  // Divide em parágrafos
-  const paragraphs = processedContent
-    .split(/\n\s*\n/)
-    .map(p => p.trim())
-    .filter(p => p.length > 0)
-  
-  let paragraphHTML = ''
-  for (const paragraph of paragraphs) {
-    if (paragraph.trim()) {
-      paragraphHTML += `<p style="margin-bottom: 12px; text-align: justify; line-height: 1.6; color: #1f2937;">${paragraph.trim()}</p>\n`
-    }
-  }
+  // Usa a função de processamento que detecta emojis como separadores
+  const paragraphHTML = processMarkdownForPDF(cleanedContent)
   
   return `
-    <div class="content-section" style="margin-bottom: 25px; page-break-inside: avoid;">
-      <div class="section-header" style="display: flex; align-items: center; margin-bottom: 12px;">
+    <div class="content-section" style="margin-bottom: 25px; page-break-inside: avoid; break-inside: avoid;">
+      <div class="section-header" style="display: flex; align-items: center; margin-bottom: 12px; page-break-inside: avoid; page-break-after: avoid; break-inside: avoid; break-after: avoid;">
         <div class="section-bar" style="width: 4px; height: 20px; background: #4f46e5; margin-right: 8px; border-radius: 2px;"></div>
-        <h2 class="section-title" style="font-size: 14px; font-weight: 600; color: #4f46e5; margin: 0; text-transform: uppercase;">
+        <h2 class="section-title" style="font-size: 14px; font-weight: 600; color: #4f46e5; margin: 0; text-transform: uppercase; page-break-after: avoid; page-break-inside: avoid; break-after: avoid; break-inside: avoid;">
           ${cleanTitle}
         </h2>
       </div>
@@ -316,7 +378,7 @@ function createPDFHTML(data: PDFData): string {
           line-height: 1.6;
           color: #1f2937;
           background: white;
-          font-size: 12px;
+          font-size: 14px;
         }
         
         .page-container {
@@ -396,7 +458,7 @@ function createPDFHTML(data: PDFData): string {
         }
         
         .section-title {
-          font-size: 14px;
+          font-size: 16px;
           font-weight: 600;
           color: #4f46e5;
           margin-bottom: 8px;
@@ -411,13 +473,13 @@ function createPDFHTML(data: PDFData): string {
           padding: 12px;
           border-radius: 8px;
           border-left: 4px solid #0ea5e9;
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 500;
           color: #0c4a6e;
         }
         
         .answer-content {
-          font-size: 11px;
+          font-size: 13px;
           line-height: 1.6;
           color: #1f2937;
         }
@@ -427,6 +489,12 @@ function createPDFHTML(data: PDFData): string {
           text-align: justify;
           line-height: 1.5;
           text-indent: 0;
+          word-break: keep-all;
+          overflow-wrap: anywhere;
+          hyphens: manual;
+          page-break-inside: avoid;
+          break-inside: avoid;
+          white-space: pre-wrap;
         }
         
         .answer-content h1, .answer-content h2, .answer-content h3 {
@@ -437,21 +505,21 @@ function createPDFHTML(data: PDFData): string {
         }
         
         .answer-content h1 {
-          font-size: 14px;
+          font-size: 16px;
           border-bottom: 2px solid #4f46e5;
           padding-bottom: 8px;
           margin-top: 25px;
         }
         
         .answer-content h2 {
-          font-size: 13px;
+          font-size: 15px;
           border-bottom: 1px solid #e5e7eb;
           padding-bottom: 5px;
           margin-top: 20px;
         }
         
         .answer-content h3 {
-          font-size: 12px;
+          font-size: 14px;
           border-left: 3px solid #4f46e5;
           padding-left: 10px;
           margin-top: 15px;
@@ -493,7 +561,7 @@ function createPDFHTML(data: PDFData): string {
           padding: 2px 6px;
           border-radius: 3px;
           font-family: 'Courier New', monospace;
-          font-size: 10px;
+          font-size: 12px;
           color: #e11d48;
         }
         
@@ -515,15 +583,59 @@ function createPDFHTML(data: PDFData): string {
         /* Melhorias para quebra de página */
         .answer-content h1, .answer-content h2 {
           page-break-after: avoid;
+          break-after: avoid;
         }
         
         .answer-content p, .answer-content li {
           orphans: 3;
           widows: 3;
+          word-wrap: break-word;
+          hyphens: auto;
+          word-break: break-word;
+        }
+        
+        /* Previne quebra de palavras no meio */
+        .answer-content p {
+          overflow-wrap: break-word;
+          word-spacing: normal;
         }
         
         .answer-content ul, .answer-content ol {
           page-break-inside: avoid;
+          break-inside: avoid;
+        }
+        
+        /* Previne quebra de seções e cabeçalhos */
+        .content-section {
+          page-break-inside: avoid;
+          break-inside: avoid;
+          orphans: 3;
+          widows: 3;
+        }
+        
+        .section-header {
+          page-break-inside: avoid;
+          page-break-after: avoid;
+          break-inside: avoid;
+          break-after: avoid;
+        }
+        
+        .section-title {
+          page-break-after: avoid;
+          page-break-inside: avoid;
+          break-after: avoid;
+          break-inside: avoid;
+        }
+        
+        .section-content {
+          page-break-before: avoid;
+          break-before: avoid;
+        }
+        
+        /* Garante que pelo menos 2 linhas fiquem juntas */
+        .section-header + .section-content {
+          page-break-before: avoid;
+          break-before: avoid;
         }
         
         .footer {
@@ -555,7 +667,7 @@ function createPDFHTML(data: PDFData): string {
         
         @media print {
           body {
-            font-size: 11px;
+            font-size: 13px;
           }
           
           .page-container {
@@ -585,29 +697,33 @@ function createPDFHTML(data: PDFData): string {
           <div class="title">Relatório de Origem Emocional</div>
         </div>
         
-        ${data.patientName ? `
-        <div class="patient-info">
-          <div class="patient-name">
-            👤 Paciente: ${escapeHtml(data.patientName)}
-          </div>
-        </div>
-        ` : ''}
-        
-        <div class="metadata">
-          <div class="metadata-grid">
-            <div class="metadata-item">
-              <span class="metadata-label">📅 Data:</span>
-              <span class="metadata-value">${formattedDate}</span>
+        <div class="metadata" style="text-align: left; background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #4f46e5;">
+          <div class="metadata-list" style="display: flex; flex-direction: column; gap: 8px;">
+            ${data.therapistName ? `
+            <div class="metadata-item" style="font-size: 13px;">
+              <span class="metadata-label" style="font-weight: 600; color: #374151;">👤 Terapeuta:</span>
+              <span class="metadata-value" style="color: #6b7280; margin-left: 8px;">${escapeHtml(data.therapistName)}</span>
             </div>
-            <div class="metadata-item">
-              <span class="metadata-label">🕐 Hora:</span>
-              <span class="metadata-value">${formattedTime}</span>
+            ` : ''}
+            ${data.patientName ? `
+            <div class="metadata-item" style="font-size: 13px;">
+              <span class="metadata-label" style="font-weight: 600; color: #374151;">👤 Paciente:</span>
+              <span class="metadata-value" style="color: #6b7280; margin-left: 8px;">${escapeHtml(data.patientName)}</span>
+            </div>
+            ` : ''}
+            <div class="metadata-item" style="font-size: 13px;">
+              <span class="metadata-label" style="font-weight: 600; color: #374151;">📅 Data:</span>
+              <span class="metadata-value" style="color: #6b7280; margin-left: 8px;">${formattedDate}</span>
+            </div>
+            <div class="metadata-item" style="font-size: 13px;">
+              <span class="metadata-label" style="font-weight: 600; color: #374151;">🕐 Hora:</span>
+              <span class="metadata-value" style="color: #6b7280; margin-left: 8px;">${formattedTime}</span>
             </div>
           </div>
         </div>
         
         <div class="question-section">
-          <div class="section-title">❓ Sintoma</div>
+          <div class="section-title">Sintoma</div>
           <div class="question-content">
             ${escapeHtml(data.question)}
           </div>
@@ -664,9 +780,21 @@ function formatDateForFilename(date: Date): string {
 
 /**
  * Escapa caracteres HTML para segurança
+ * Funciona tanto no servidor quanto no cliente
  */
 function escapeHtml(text: string): string {
-  const div = document.createElement('div')
-  div.textContent = text
-  return div.innerHTML
+  if (!text) return ''
+  // Usa método que funciona em ambos os ambientes
+  if (typeof document !== 'undefined') {
+    const div = document.createElement('div')
+    div.textContent = text
+    return div.innerHTML
+  }
+  // Fallback para servidor (embora generateChatPDF seja executado no cliente)
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
 }

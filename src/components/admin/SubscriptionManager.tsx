@@ -182,7 +182,7 @@ export function SubscriptionManager({ userId, userName, userEmail }: Subscriptio
     setIsDialogOpen(true)
   }
 
-  const openCreateDialog = () => {
+  const openCreateDialog = async () => {
     setEditingSubscription(null)
     setFormData({
       planId: '',
@@ -190,6 +190,20 @@ export function SubscriptionManager({ userId, userName, userEmail }: Subscriptio
       currentPeriodStart: new Date().toISOString().split('T')[0],
       currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     })
+    
+    // Recarregar planos quando abrir o modal para garantir dados atualizados
+    try {
+      const plansResponse = await fetch('/api/admin/plans', {
+        cache: 'no-store' // Força busca atualizada, sem cache
+      })
+      if (plansResponse.ok) {
+        const plansData = await plansResponse.json()
+        setPlans(plansData)
+      }
+    } catch (err) {
+      console.error('Erro ao recarregar planos:', err)
+    }
+    
     setIsDialogOpen(true)
   }
 

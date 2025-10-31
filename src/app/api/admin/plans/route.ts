@@ -12,9 +12,16 @@ export async function GET() {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
     }
 
+    // Retornar APENAS os 2 planos válidos: price_hotmart_mensal e price_hotmart_anual
     const plans = await prisma.plan.findMany({
+      where: {
+        stripePriceId: {
+          in: ['price_hotmart_mensal', 'price_hotmart_anual']
+        },
+        active: true
+      },
       orderBy: {
-        createdAt: 'desc'
+        interval: 'asc' // Mensal primeiro, depois Anual
       }
     })
 

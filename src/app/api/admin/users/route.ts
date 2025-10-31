@@ -7,6 +7,36 @@ import { NextRequest, NextResponse } from 'next/server'
 import { hash } from 'bcryptjs'
 import { logUserAction, AuditActions } from '@/lib/auditLogger'
 
+/**
+ * Retorna o nome correto do plano baseado no stripePriceId
+ * Normaliza nomes antigos para os nomes corretos
+ */
+function getCorrectPlanName(stripePriceId: string, interval: string | null, currentName?: string): string {
+  // Se já tem o nome correto, retornar
+  if (currentName === 'Assinatura mensal hotmart' || currentName === 'Assinatura anual hotmart') {
+    return currentName
+  }
+  
+  // Mapear códigos conhecidos para nomes corretos
+  if (stripePriceId === 'price_hotmart_mensal' || 
+      stripePriceId === 'price_1RcsjzA' || 
+      stripePriceId.includes('mensal') ||
+      (interval === 'MONTH' && stripePriceId.includes('hotmart'))) {
+    return 'Assinatura mensal hotmart'
+  }
+  
+  if (stripePriceId === 'price_hotmart_anual' || 
+      stripePriceId === 'price_1Rd9st' || 
+      stripePriceId.includes('anual') ||
+      (interval === 'YEAR' && stripePriceId.includes('hotmart'))) {
+    return 'Assinatura anual hotmart'
+  }
+  
+  // Para outros planos, retornar o nome original (caso existam outros tipos)
+  // Mas isso não deve acontecer com os 2 planos válidos
+  return currentName || stripePriceId
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await auth()
@@ -54,7 +84,10 @@ export async function GET(req: NextRequest) {
           include: {
             plan: {
               select: {
-                name: true
+                name: true,
+                interval: true,
+                intervalCount: true,
+                stripePriceId: true
               }
             }
           },
@@ -134,7 +167,8 @@ export async function GET(req: NextRequest) {
         hasActiveSubscription: !!activeSubscription,
         subscriptionDetails: activeSubscription ? {
           id: activeSubscription.id,
-          planName: activeSubscription.plan.name,
+          planName: getCorrectPlanName(activeSubscription.plan.stripePriceId, activeSubscription.plan.interval, activeSubscription.plan.name),
+          planInterval: activeSubscription.plan.interval, // Adicionar intervalo do plano
           status: activeSubscription.status,
           currentPeriodEnd: activeSubscription.currentPeriodEnd.toISOString(),
           currentPeriodStart: activeSubscription.currentPeriodStart.toISOString()
