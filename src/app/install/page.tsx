@@ -15,11 +15,11 @@ import {
 
 import { ArrowRight, CheckCircle, Download, Smartphone } from 'lucide-react'
 
-import bannerApp from '../assets/bannerapp(1).png'
-import medizIcon from '../assets/iconemeDIZ512x512.png'
-import tela1 from '../assets/TELA1.jpeg'
-import tela2 from '../assets/TELA2.png'
-import tela3 from '../assets/TELA3.jpeg'
+import bannerApp from '@/app/assets/bannerapp(1).png'
+import medizIcon from '@/app/assets/iconemeDIZ512x512.png'
+import tela1 from '@/app/assets/TELA1.jpeg'
+import tela2 from '@/app/assets/TELA2.png'
+import tela3 from '@/app/assets/TELA3.jpeg'
 
 // ----------------------------------------------------------------------------
 // Evento de beforeinstallprompt
