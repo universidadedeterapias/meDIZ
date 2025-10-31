@@ -12,6 +12,7 @@ import { useUser } from '@/contexts/user'
 import { sidebarOptions } from '@/lib/sidebarOptions'
 import { FirstName, SurName } from '@/lib/utils'
 import { NavOptions } from './nav-options'
+import { NavFolders } from './nav-folders'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { SidebarSkeleton } from './SidebarSkeleton'
 
@@ -26,6 +27,7 @@ type AppSidebarProps = {
   history: SessionHistoryItem[]
   selectedThread: string | null
   onSelectSession: (threadId: string) => void
+  onSelectSymptom?: (symptomText: string) => void
 }
 
 /**
@@ -33,11 +35,19 @@ type AppSidebarProps = {
  * - enquanto carrega user: mostra header de loading
  * - depois que o user está pronto: avatar + nome e opções de navegação
  */
-export function AppSidebar({ history: _history, selectedThread: _selectedThread, onSelectSession: _onSelectSession }: AppSidebarProps) {
+export function AppSidebar({ history: _history, selectedThread: _selectedThread, onSelectSession: _onSelectSession, onSelectSymptom }: AppSidebarProps) {
   const { sidebarUser, isLoadingSidebar } = useUser()
+  
+  // Debug temporário
+  console.log('[AppSidebar] 🔄 Render - isLoadingSidebar:', isLoadingSidebar, 'sidebarUser:', sidebarUser ? {
+    id: sidebarUser.id,
+    name: sidebarUser.name,
+    email: sidebarUser.email
+  } : null)
   
   // Loading inicial - usa dados otimizados da sidebar
   if (isLoadingSidebar || !sidebarUser) {
+    console.log('[AppSidebar] 💀 Mostrando skeleton - isLoadingSidebar:', isLoadingSidebar, 'sidebarUser:', sidebarUser)
     return (
       <Sidebar collapsible="icon">
         <SidebarHeader className="border-b-2">
@@ -45,9 +55,14 @@ export function AppSidebar({ history: _history, selectedThread: _selectedThread,
         </SidebarHeader>
         <SidebarContent>
           <NavOptions options={sidebarOptions} />
+          <NavFolders onSelectSymptom={onSelectSymptom} />
         </SidebarContent>
       </Sidebar>
     )
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[AppSidebar] Renderizando sidebar completa com NavFolders')
   }
 
   // Já temos sidebarUser → mostra avatar, nome e menu
@@ -75,7 +90,7 @@ export function AppSidebar({ history: _history, selectedThread: _selectedThread,
 
       <SidebarContent>
         <NavOptions options={sidebarOptions} />
-
+        <NavFolders onSelectSymptom={onSelectSymptom} />
         {/*
           Quando quiser renderizar o histórico de sessões:
           descomente abaixo e passe as props corretas para o componente NavHistory,

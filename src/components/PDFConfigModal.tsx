@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -35,7 +35,36 @@ export function PDFConfigModal({
   sessionId 
 }: PDFConfigModalProps) {
   const [patientName, setPatientName] = useState('')
+  const [therapistName, setTherapistName] = useState<string>('')
   const [isGenerating, setIsGenerating] = useState(false)
+  // removido estado de loading de terapeuta (não utilizado visualmente)
+
+  // Busca o nome do terapeuta do cadastro do usuário (banco de dados)
+  useEffect(() => {
+    const fetchTherapistName = async () => {
+      // loading local não exibido, remover
+      try {
+        const res = await fetch('/api/user')
+        if (res.ok) {
+          const userData = await res.json()
+          // Prioriza fullName, depois name, depois fallback
+          const name = userData.fullName || userData.name || 'Terapeuta'
+          setTherapistName(name)
+        } else {
+          setTherapistName('Terapeuta')
+        }
+      } catch (error) {
+        console.error('Erro ao buscar nome do terapeuta:', error)
+        setTherapistName('Terapeuta')
+      } finally {
+        // noop
+      }
+    }
+
+    if (open) {
+      fetchTherapistName()
+    }
+  }, [open])
 
   const handleExport = async () => {
     setIsGenerating(true)
@@ -46,7 +75,8 @@ export function PDFConfigModal({
         answer,
         timestamp: new Date(),
         sessionId,
-        patientName: patientName.trim() || undefined
+        patientName: patientName.trim() || undefined,
+        therapistName: therapistName
       })
       onOpenChange(false)
     } catch (error) {

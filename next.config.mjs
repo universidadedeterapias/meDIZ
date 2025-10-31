@@ -9,6 +9,8 @@ const nextConfig = {
         stream: false,
       };
     }
+    // Evita problemas com symlinks no Windows/OneDrive
+    config.resolve.symlinks = false;
     return config;
   },
   eslint: {
@@ -16,7 +18,12 @@ const nextConfig = {
   },
   typescript: {
     ignoreBuildErrors: true,
-  }
+  },
+  // Desabilita symlinks para evitar problemas no Windows/OneDrive
+  experimental: {
+    // Evita uso de symlinks que causa EINVAL no Windows
+    outputFileTracingIncludes: {},
+  },
 };
 
 export default nextConfig;

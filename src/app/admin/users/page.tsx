@@ -41,6 +41,7 @@ interface User {
   subscriptionDetails?: {
     id: string
     planName: string
+    planInterval?: string | null
     status: string
     currentPeriodEnd: string
     currentPeriodStart: string
@@ -200,8 +201,8 @@ export default function UsersPage() {
         throw new Error(errorData.error || 'Erro ao criar usuário')
       }
 
-      const newUser = await response.json()
-      console.log('Usuário criado:', newUser)
+      const _newUser = await response.json()
+      if (process.env.NODE_ENV !== 'production') console.log('Usuário criado')
       
       // Limpar formulário
       setNewUserData({
@@ -232,7 +233,7 @@ export default function UsersPage() {
 
     setDeletingUser(userId)
     try {
-      console.log('[DEBUG] Frontend - Excluindo usuário:', userId)
+      if (process.env.NODE_ENV !== 'production') console.log('[DEBUG] Excluindo usuário')
       
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'DELETE'
@@ -243,8 +244,8 @@ export default function UsersPage() {
         throw new Error(errorData.error || 'Erro ao excluir usuário')
       }
 
-      const result = await response.json()
-      console.log('[DEBUG] Frontend - Usuário excluído:', result)
+      const _result = await response.json()
+      if (process.env.NODE_ENV !== 'production') console.log('[DEBUG] Usuário excluído')
       
       // Recarregar lista de usuários
       await fetchUsers()
@@ -510,10 +511,23 @@ export default function UsersPage() {
                               </span>
                             )}
                             {user.subscriptionDetails && (
-                              <span className="flex items-center">
-                                <Shield className="h-3 w-3 mr-1" />
-                                Vence: {formatDate(user.subscriptionDetails.currentPeriodEnd)}
-                              </span>
+                              <>
+                                <span className="flex items-center">
+                                  <Shield className="h-3 w-3 mr-1" />
+                                  Plano: {user.subscriptionDetails.planName}
+                                  {user.subscriptionDetails.planInterval && (
+                                    <Badge variant="outline" className="ml-1 text-xs">
+                                      {user.subscriptionDetails.planInterval === 'YEAR' ? 'Anual' : 
+                                       user.subscriptionDetails.planInterval === 'MONTH' ? 'Mensal' : 
+                                       user.subscriptionDetails.planInterval}
+                                    </Badge>
+                                  )}
+                                </span>
+                                <span className="flex items-center">
+                                  <Shield className="h-3 w-3 mr-1" />
+                                  Vence: {formatDate(user.subscriptionDetails.currentPeriodEnd)}
+                                </span>
+                              </>
                             )}
                           </div>
                           {user.providers && user.providers.length > 0 && (
@@ -544,7 +558,7 @@ export default function UsersPage() {
                           userEmail={user.email}
                           onPasswordReset={() => {
                             // Opcional: recarregar dados se necessário
-                            console.log('Senha resetada para:', user.email)
+                            if (process.env.NODE_ENV !== 'production') console.log('Senha resetada')
                           }}
                         />
                         <Button 

@@ -80,6 +80,7 @@ model User {
   // assinaturas
   subscriptions      Subscription[]
   chatSessions       ChatSession[]
+  symptomFolders     SymptomFolder[]
 
   // relações usadas pelo Auth.js
   accounts      Account[]     // armazena tokens OAuth, etc
@@ -250,4 +251,36 @@ model PopupConfig {
   status           PopupStatus  @default(ACTIVE)
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
+}
+
+// Pastas de sintomas salvas pelo usuário
+model SymptomFolder {
+  id          String         @id @default(uuid())
+  userId      String
+  name        String
+  color       String?        // Cor da pasta (para UI)
+  notes       String?        @db.Text // Observações/comentários sobre a pasta
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symptoms    SavedSymptom[]
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Sintomas salvos dentro de pastas
+model SavedSymptom {
+  id          String         @id @default(uuid())
+  folderId    String
+  symptom     String         // Texto do sintoma
+  threadId    String?        // Opcional: associação com thread do chat
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  
+  folder      SymptomFolder  @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  
+  @@index([folderId])
+  @@index([createdAt])
 }
