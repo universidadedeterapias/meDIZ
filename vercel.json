@@ -4,6 +4,9 @@
   "functions": {
     "src/app/api/**/*.ts": {
       "maxDuration": 30
+    },
+    "src/app/api/openai/route.ts": {
+      "maxDuration": 60
     }
   },
   "regions": ["iad1"]

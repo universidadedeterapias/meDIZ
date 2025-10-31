@@ -24,8 +24,6 @@ export default function ConfirmSignupPage() {
 
   const confirmSignup = useCallback(async () => {
     try {
-      console.log('[DEBUG] Frontend - Iniciando confirmação:', { token, email })
-      
       const response = await fetch('/api/confirm-signup', {
         method: 'POST',
         headers: {
@@ -34,9 +32,7 @@ export default function ConfirmSignupPage() {
         body: JSON.stringify({ token, email })
       })
 
-      console.log('[DEBUG] Frontend - Response status:', response.status)
       const data = await response.json()
-      console.log('[DEBUG] Frontend - Response data:', data)
 
       if (response.ok) {
         setStatus('success')
@@ -47,7 +43,6 @@ export default function ConfirmSignupPage() {
           router.push('/login')
         }, 3000)
       } else {
-        console.log('[DEBUG] Frontend - Erro na resposta:', data.error)
         if (data.error?.includes('expirado')) {
           setStatus('expired')
         } else {
@@ -55,8 +50,7 @@ export default function ConfirmSignupPage() {
         }
         setMessage(data.error || 'Erro ao confirmar cadastro')
       }
-    } catch (error) {
-      console.error('[DEBUG] Frontend - Erro na requisição:', error)
+    } catch {
       setStatus('error')
       setMessage('Erro de conexão. Tente novamente.')
     }
@@ -64,24 +58,21 @@ export default function ConfirmSignupPage() {
 
   useEffect(() => {
     if (mounted) {
-      console.log('[DEBUG] Frontend - useEffect executado:', { sent, email, token })
-      
       if (sent && email) {
         // Se foi enviado automaticamente, mostrar mensagem de espera
-        console.log('[DEBUG] Frontend - Modo waiting (enviado automaticamente)')
         setStatus('waiting')
         setMessage('Link de confirmação enviado para seu WhatsApp!')
       } else if (token && email) {
         // Se tem token, confirmar automaticamente
-        console.log('[DEBUG] Frontend - Modo confirmação automática')
         confirmSignup()
+        // Limpar token da URL após processar (segurança)
+        router.replace('/confirm-signup?sent=true&email=' + encodeURIComponent(email))
       } else {
-        console.log('[DEBUG] Frontend - Modo erro (sem token ou email)')
         setStatus('error')
         setMessage('Token ou email não encontrado')
       }
     }
-  }, [mounted, token, email, sent, confirmSignup])
+  }, [mounted, token, email, sent, confirmSignup, router])
 
   const resendConfirmation = async () => {
     if (!email) return

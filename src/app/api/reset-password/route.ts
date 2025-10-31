@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       )
     }
 
-    // Confere token no banco
+    // Confere token no banco (não logar o token por segurança)
     const tokenHash = hashToken(token)
     const verification = await prisma.verificationToken.findFirst({
       where: {

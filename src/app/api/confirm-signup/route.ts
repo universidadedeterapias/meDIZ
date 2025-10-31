@@ -6,12 +6,8 @@ import { handleApiError } from '@/lib/errorHandler'
 export async function POST(req: NextRequest) {
   try {
     const { token, email } = await req.json()
-    
-    console.log('[DEBUG] Confirm Signup - Token recebido:', token)
-    console.log('[DEBUG] Confirm Signup - Email recebido:', email)
 
     if (!token || !email) {
-      console.log('[DEBUG] Confirm Signup - Token ou email ausente')
       return NextResponse.json({ 
         error: 'Token e email são obrigatórios' 
       }, { status: 400 })
@@ -27,13 +23,7 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    console.log('[DEBUG] Confirm Signup - Token encontrado:', !!verificationToken)
-    if (verificationToken) {
-      console.log('[DEBUG] Confirm Signup - Token expira em:', verificationToken.expires)
-    }
-
     if (!verificationToken) {
-      console.log('[DEBUG] Confirm Signup - Token inválido')
       return NextResponse.json({ 
         error: 'Token de verificação inválido' 
       }, { status: 400 })
@@ -52,13 +42,7 @@ export async function POST(req: NextRequest) {
       where: { email }
     })
 
-    console.log('[DEBUG] Confirm Signup - Usuário encontrado:', !!user)
-    if (user) {
-      console.log('[DEBUG] Confirm Signup - Usuário já verificado:', !!user.emailVerified)
-    }
-
     if (!user) {
-      console.log('[DEBUG] Confirm Signup - Usuário não encontrado')
       return NextResponse.json({ 
         error: 'Usuário não encontrado' 
       }, { status: 404 })
@@ -66,8 +50,6 @@ export async function POST(req: NextRequest) {
 
     // Verificar se já está verificado - permitir re-confirmação
     if (user.emailVerified) {
-      console.log('[DEBUG] Confirm Signup - Usuário já verificado, data:', user.emailVerified)
-      
       // Não deletar token - apenas retornar sucesso (token pode ser reutilizado)
       return NextResponse.json({ 
         success: true,
@@ -84,7 +66,6 @@ export async function POST(req: NextRequest) {
     })
 
     // Não deletar token - deixar expirar naturalmente (evita erro de REPLICA IDENTITY)
-    console.log('[DEBUG] Confirm Signup - Token usado com sucesso, deixando expirar naturalmente')
 
     return NextResponse.json({
       success: true,

@@ -28,8 +28,10 @@ export async function runAssistant(threadId: string, assistantId: string) {
 }
 
 export async function waitForRunCompletion(threadId: string, runId: string) {
-  const maxAttempts = 60 // Máximo 60 tentativas (60 segundos)
+  const startTime = Date.now()
+  const maxAttempts = 50 // Reduzido para 50 tentativas (com exponential backoff, isso dá ~55-60s máximo)
   let attempts = 0
+  let delay = 500 // Começa com 500ms
   
   while (attempts < maxAttempts) {
     const res = await openaiRequest<{ status: string }>(
@@ -40,24 +42,39 @@ export async function waitForRunCompletion(threadId: string, runId: string) {
     )
     
     if (res.status === 'completed') {
-      console.log(`✅ Run completado em ${attempts + 1} tentativas`)
-      break
+      return
     }
     
     if (res.status === 'failed' || res.status === 'cancelled') {
       throw new Error(`Run falhou com status: ${res.status}`)
     }
     
+    // Verifica se excedeu o tempo máximo (55s para dar margem de 5s para outros processos)
+    const elapsed = Date.now() - startTime
+    if (elapsed > 55000) {
+      throw new Error(`Timeout: Run não completou em 55 segundos`)
+    }
+    
     attempts++
     
-    // Polling adaptativo: mais frequente no início, menos no final
-    const delay = attempts < 10 ? 500 : 1000 // 500ms nos primeiros 10, depois 1s
+    // Exponential backoff: 500ms, 1s, 1.5s, 2s, 2.5s, 3s, ... até 10s máximo
+    // Isso reduz o número de requisições e o tempo total
     await new Promise(r => setTimeout(r, delay))
+    
+    // Aumenta delay progressivamente, mas com limite máximo
+    if (attempts < 5) {
+      delay = 500 // Primeiros 5: 500ms
+    } else if (attempts < 15) {
+      delay = 1000 // Próximos 10: 1s
+    } else if (attempts < 30) {
+      delay = 2000 // Próximos 15: 2s
+    } else {
+      delay = Math.min(3000, delay + 500) // Depois: 3s com crescimento até 10s
+    }
   }
   
-  if (attempts >= maxAttempts) {
-    throw new Error('Timeout: Run não completou em 60 segundos')
-  }
+  const totalTime = Date.now() - startTime
+  throw new Error(`Timeout: Run não completou em ${Math.round(totalTime / 1000)} segundos`)
 }
 
 export async function getMessages(threadId: string): Promise<ThreadMessages> {
