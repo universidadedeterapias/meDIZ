@@ -89,8 +89,21 @@ const checkTypeScript = () => {
     console.log('✅ TypeScript compilation successful');
     return 0;
   } catch (error) {
-    console.log('❌ TypeScript compilation errors found:');
-    console.log(error.stdout?.toString() || error.message);
+    console.log('\n❌ TypeScript compilation errors found:');
+    console.log('═══════════════════════════════════════════════════════════');
+    const output = error.stdout?.toString() || error.stderr?.toString() || error.message;
+    if (output) {
+      // Separar erros por linha e destacar
+      const lines = output.split('\n');
+      lines.forEach(line => {
+        if (line.includes('error TS')) {
+          console.log('  ❌', line);
+        } else if (line.trim()) {
+          console.log('     ', line);
+        }
+      });
+    }
+    console.log('═══════════════════════════════════════════════════════════');
     return 1;
   }
 };
@@ -105,8 +118,21 @@ const checkESLint = () => {
     console.log('✅ ESLint checks passed');
     return 0;
   } catch (error) {
-    console.log('❌ ESLint errors found:');
-    console.log(error.stdout?.toString() || error.message);
+    console.log('\n❌ ESLint errors found:');
+    console.log('═══════════════════════════════════════════════════════════');
+    const output = error.stdout?.toString() || error.stderr?.toString() || error.message;
+    if (output) {
+      // Separar erros por arquivo
+      const lines = output.split('\n');
+      lines.forEach(line => {
+        if (line.includes('error') || line.includes('warning')) {
+          console.log('  ❌', line);
+        } else if (line.trim()) {
+          console.log('     ', line);
+        }
+      });
+    }
+    console.log('═══════════════════════════════════════════════════════════');
     return 1;
   }
 };
@@ -174,14 +200,24 @@ const runChecks = () => {
 const totalIssues = runChecks();
 
 if (totalIssues === 0) {
-  console.log('\n✅ All checks passed! Ready for deployment.');
-  console.log('🚀 You can now run: npm run build');
+  console.log('\n');
+  console.log('═══════════════════════════════════════════════════════════');
+  console.log('✅ TODAS AS VERIFICAÇÕES PASSARAM!');
+  console.log('═══════════════════════════════════════════════════════════');
+  console.log('🚀 Pronto para deployment.');
+  console.log('💡 Execute: npm run build');
+  console.log('═══════════════════════════════════════════════════════════\n');
 } else {
-  console.log(`\n⚠️  Found ${totalIssues} issues. Fix before deploying.`);
-  console.log('💡 Run individual checks:');
-  console.log('   - npm run check:deploy (this script)');
-  console.log('   - npx tsc --noEmit (TypeScript)');
-  console.log('   - npx eslint src (ESLint)');
-  console.log('   - npx prisma validate (Prisma)');
+  console.log('\n');
+  console.log('═══════════════════════════════════════════════════════════');
+  console.log(`❌ ERROS ENCONTRADOS: ${totalIssues} problema(s) detectado(s)`);
+  console.log('═══════════════════════════════════════════════════════════');
+  console.log('⚠️  CORRIJA OS ERROS ANTES DE FAZER COMMIT!');
+  console.log('\n💡 Comandos úteis para debugar:');
+  console.log('   • npm run check:deploy     - Executar todas as verificações');
+  console.log('   • npx tsc --noEmit        - Verificar apenas TypeScript');
+  console.log('   • npx eslint src          - Verificar apenas ESLint');
+  console.log('   • npx prisma validate     - Verificar apenas Prisma');
+  console.log('═══════════════════════════════════════════════════════════\n');
   process.exit(1);
 }

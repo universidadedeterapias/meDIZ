@@ -28,13 +28,49 @@ jobs:
         run: npm ci
 
       - name: 📝 TypeScript check
-        run: npx tsc --noEmit
+        id: typescript
+        continue-on-error: false
+        run: |
+          echo "🔍 Verificando TypeScript..."
+          if ! npx tsc --noEmit; then
+            echo "❌ ERRO: TypeScript compilation failed!"
+            echo "════════════════════════════════════════════════"
+            echo "Corrija os erros de TypeScript antes de fazer commit"
+            echo "Execute localmente: npx tsc --noEmit"
+            echo "════════════════════════════════════════════════"
+            exit 1
+          fi
+          echo "✅ TypeScript check passed"
 
       - name: 🧹 ESLint check
-        run: npx eslint src --ext .ts,.tsx
+        id: eslint
+        continue-on-error: false
+        run: |
+          echo "🔍 Verificando ESLint..."
+          if ! npx eslint src --ext .ts,.tsx; then
+            echo "❌ ERRO: ESLint validation failed!"
+            echo "════════════════════════════════════════════════"
+            echo "Corrija os erros de ESLint antes de fazer commit"
+            echo "Execute localmente: npx eslint src --ext .ts,.tsx"
+            echo "════════════════════════════════════════════════"
+            exit 1
+          fi
+          echo "✅ ESLint check passed"
 
       - name: 🗄️ Prisma validation
-        run: npx prisma validate
+        id: prisma
+        continue-on-error: false
+        run: |
+          echo "🔍 Validando schema do Prisma..."
+          if ! npx prisma validate; then
+            echo "❌ ERRO: Prisma schema validation failed!"
+            echo "════════════════════════════════════════════════"
+            echo "Corrija o schema do Prisma antes de fazer commit"
+            echo "Execute localmente: npx prisma validate"
+            echo "════════════════════════════════════════════════"
+            exit 1
+          fi
+          echo "✅ Prisma validation passed"
 
   build-check:
     name: 🏗️ Build Check
@@ -58,7 +94,20 @@ jobs:
         run: npx prisma generate
 
       - name: 🏗️ Build application
-        run: npm run build
+        id: build
+        continue-on-error: false
+        run: |
+          echo "🔍 Iniciando build da aplicação..."
+          if ! npm run build; then
+            echo "❌ ERRO: Build failed!"
+            echo "════════════════════════════════════════════════"
+            echo "O build da aplicação falhou."
+            echo "Execute localmente: npm run build"
+            echo "Para verificar antes de commitar: npm run check:deploy"
+            echo "════════════════════════════════════════════════"
+            exit 1
+          fi
+          echo "✅ Build completed successfully"
         env:
           # Variáveis mínimas para build
           DATABASE_URL: "postgresql://user:pass@localhost:5432/test"
@@ -80,7 +129,34 @@ jobs:
     steps:
       - name: 📊 Pipeline Summary
         run: |
-          echo "🎉 CI/CD Pipeline completed!"
-          echo "📊 Jobs status:"
-          echo "  - Quality Checks: ${{ needs.quality-checks.result }}"
-          echo "  - Build Check: ${{ needs.build-check.result }}"
+          echo ""
+          echo "═══════════════════════════════════════════════════════════"
+          echo "📊 RESUMO DO CI/CD PIPELINE"
+          echo "═══════════════════════════════════════════════════════════"
+          
+          QUALITY_STATUS="${{ needs.quality-checks.result }}"
+          BUILD_STATUS="${{ needs.build-check.result }}"
+          
+          if [ "$QUALITY_STATUS" = "success" ] && [ "$BUILD_STATUS" = "success" ]; then
+            echo "✅ TODOS OS CHECKS PASSARAM!"
+            echo "🎉 Pipeline concluído com sucesso!"
+          else
+            echo "❌ PIPELINE FALHOU!"
+            echo ""
+            echo "Status dos jobs:"
+            echo "  - Quality Checks: $QUALITY_STATUS"
+            echo "  - Build Check: $BUILD_STATUS"
+            echo ""
+            echo "⚠️  CORRIJA OS ERROS ANTES DE FAZER NOVO COMMIT"
+            echo ""
+            echo "💡 Dica: Execute localmente antes de commitar:"
+            echo "   npm run check:deploy"
+          fi
+          
+          echo "═══════════════════════════════════════════════════════════"
+          echo ""
+          
+          # Falhar se algum job falhou
+          if [ "$QUALITY_STATUS" != "success" ] || [ "$BUILD_STATUS" != "success" ]; then
+            exit 1
+          fi

@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Executando verificações pré-commit..."
+echo ""
+
+npm run check:deploy
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Erros encontrados! Corrija antes de fazer commit."
+  echo "💡 Dica: Execute 'npm run check:deploy' para ver detalhes dos erros."
+  exit 1
+fi
+
+echo ""
+echo "✅ Todas as verificações passaram! Continuando com o commit..."
