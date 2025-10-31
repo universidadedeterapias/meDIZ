@@ -63,6 +63,12 @@ export default function ResetFormClient() {
       })
 
       if (res.ok) {
+        // Limpar token da URL após sucesso (segurança)
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href)
+          url.searchParams.delete('token')
+          window.history.replaceState({}, '', url.toString())
+        }
         setMsg('Senha alterada com sucesso! Redirecionando para o login…')
         setTimeout(() => router.push('/login'), 1500)
       } else {

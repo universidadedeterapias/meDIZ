@@ -20,10 +20,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   // Desabilita symlinks para evitar problemas no Windows/OneDrive
-  experimental: {
-    // Evita uso de symlinks que causa EINVAL no Windows
-    outputFileTracingIncludes: {},
-  },
+  outputFileTracingIncludes: {},
 };
 
 export default nextConfig;

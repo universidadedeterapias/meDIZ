@@ -14,6 +14,11 @@ import { NextResponse } from 'next/server'
 
 const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID!
 
+// Configuração para aumentar timeout da função no Vercel (requer plano Pro)
+export const config = {
+  maxDuration: 60 // 60 segundos (máximo para Serverless Function no plano Pro)
+}
+
 export async function POST(req: Request) {
   const session = await auth()
   if (!session?.user?.id) {
@@ -114,7 +119,7 @@ export async function POST(req: Request) {
     
     return NextResponse.json({ responses, threadId })
   } catch (err) {
-    console.error(err)
+    console.error('[API OpenAI] Erro:', err)
     return NextResponse.json(
       { error: 'Erro ao processar assistant' },
       { status: 500 }
