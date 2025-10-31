@@ -141,7 +141,6 @@
     "@types/node": "^20.19.19",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vercel/sdk": "^3.0.0",
     "cross-env": "^10.1.0",
     "eslint": "^9.37.0",
     "eslint-config-next": "15.1.7",
