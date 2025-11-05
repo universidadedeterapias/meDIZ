@@ -50,8 +50,24 @@ export function NavOptions({ options }: NavOptionsProps) {
     subscription?.status.toLocaleLowerCase() === 'trialing'
 
   const handleLogout = async () => {
+    // Limpar todos os caches ANTES do logout
+    const { clearAllCaches } = await import('@/lib/logout-utils')
+    clearAllCaches()
+    
+    // Fazer logout
     await signOut({ redirect: false })
+    
+    // Forçar refresh completo da página para limpar cache do Next.js
+    router.refresh()
+    
+    // Redirecionar para login
     router.push('/login')
+    
+    // Forçar reload completo da página após um pequeno delay
+    // Isso garante que todos os caches sejam limpos
+    setTimeout(() => {
+      window.location.href = '/login'
+    }, 100)
   }
 
   return (

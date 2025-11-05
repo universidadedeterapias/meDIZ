@@ -205,13 +205,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
     }
 
-    // Não permitir excluir admins
-    if (userToDelete.email.includes('@mediz.com')) {
-      console.log('[DEBUG] Delete User - Tentativa de excluir admin bloqueada')
-      return NextResponse.json({ 
-        error: 'Não é possível excluir usuários administradores' 
-      }, { status: 400 })
-    }
+    console.log('[DEBUG] Delete User - Usuário encontrado:', {
+      id: userToDelete.id,
+      name: userToDelete.name,
+      email: userToDelete.email,
+      isAdmin: userToDelete.email.includes('@mediz.com')
+    })
 
     // Não permitir auto-exclusão
     if (userToDelete.email === session.user.email) {
@@ -220,6 +219,10 @@ export async function DELETE(
         error: 'Não é possível excluir sua própria conta' 
       }, { status: 400 })
     }
+
+    // Permitir exclusão de admins (removida a restrição anterior)
+    // Apenas verificar se não é auto-exclusão (já verificado acima)
+    console.log('[DEBUG] Delete User - Prosseguindo com exclusão')
 
     // Excluir usuário (cascade delete vai remover dados relacionados)
     await prisma.user.delete({

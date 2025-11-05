@@ -7,7 +7,7 @@ import {
   CarouselNext,
   CarouselPrevious
 } from '@/components/ui/carousel'
-import { Calendar, GraduationCap, Headphones } from 'lucide-react'
+import { GraduationCap, Headphones } from 'lucide-react'
 import Link from 'next/link'
 
 export function ExternalLinks() {
@@ -18,11 +18,6 @@ export function ExternalLinks() {
       href: 'https://universidadedeterapias.com.br/thank-you-audiotherapy'
     },
     {
-      icon: Calendar,
-      label: 'Agendar Terapia',
-      href: 'http://universidadedeterapias.com.br/agendesuaterapia'
-    },
-    {
       icon: GraduationCap,
       label: 'Formação',
       href: 'http://universidadedeterapias.com.br/formacao'
@@ -31,16 +26,14 @@ export function ExternalLinks() {
 
   return (
     <Carousel className="w-full px-6">
-      {/* 1) overflow-visible para mostrar parte do próximo item */}
       <CarouselContent className="overflow-visible -ml-1 flex gap-2">
         {links.map(({ icon: Icon, label, href }, idx) => (
           <CarouselItem
             key={idx}
             className="
-              flex-none         /* não deixa encolher */
-              basis-2/3         /* 66.6% width no mobile */
-              md:basis-1/2      /* 50% no tablet pra caber 2 inteiros */
-              lg:basis-1/3      /* 33.3% no desktop pra caber 3 inteiros */
+              flex-none
+              basis-[calc(50%-0.25rem)]
+              min-w-0
               pl-1
             "
           >

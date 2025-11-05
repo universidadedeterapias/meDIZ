@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import { logDataExport } from '@/lib/auditLogger'
+import { sendDataExportAlert } from '@/lib/whatsappService'
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,10 +17,10 @@ export async function GET(req: NextRequest) {
     const type = searchParams.get('type') || 'users' // 'users' ou 'analytics'
     const format = searchParams.get('format') || 'csv' // 'csv' ou 'xlsx'
 
-    // Buscar admin para registrar no audit log
+    // Buscar admin para registrar no audit log e enviar alerta
     const admin = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true }
+      select: { id: true, name: true, whatsapp: true }
     })
 
     let result
@@ -31,17 +32,41 @@ export async function GET(req: NextRequest) {
       recordCount = await prisma.user.count()
       // Registrar exportação no audit log
       if (admin) {
-        await logDataExport(admin.id, session.user.email, format.toUpperCase(), recordCount, req as NextRequest)
-        // Enviar alerta de segurança
-        // Log de exportação registrado acima
+        await logDataExport(admin.id, session.user.email, format.toUpperCase(), recordCount, req)
+        
+        // Enviar alerta de segurança via WhatsApp
+        if (admin.whatsapp) {
+          try {
+            await sendDataExportAlert(
+              admin.whatsapp,
+              admin.name || 'Admin',
+              'Usuários',
+              recordCount
+            )
+          } catch {
+            // Não falhar o fluxo principal se o alerta falhar
+          }
+        }
       }
     } else if (type === 'analytics') {
       result = await exportAnalytics(format)
       // Registrar exportação no audit log
       if (admin) {
-        await logDataExport(admin.id, session.user.email, format.toUpperCase(), 0, req as NextRequest)
-        // Enviar alerta de segurança
-        // Log de exportação registrado acima
+        await logDataExport(admin.id, session.user.email, format.toUpperCase(), 0, req)
+        
+        // Enviar alerta de segurança via WhatsApp
+        if (admin.whatsapp) {
+          try {
+            await sendDataExportAlert(
+              admin.whatsapp,
+              admin.name || 'Admin',
+              'Analytics',
+              0
+            )
+          } catch {
+            // Não falhar o fluxo principal se o alerta falhar
+          }
+        }
       }
     } else {
       return NextResponse.json({ error: 'Tipo de exportação inválido' }, { status: 400 })
@@ -49,8 +74,8 @@ export async function GET(req: NextRequest) {
 
     return result
 
-  } catch (error) {
-    console.error('Erro na exportação:', error)
+  } catch {
+    // Usar sistema de logs estruturado (será implementado)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

@@ -71,8 +71,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
     if (status === 'authenticated') {
       refreshUser()
     } else if (status === 'unauthenticated') {
+      // Limpar dados do usuário imediatamente quando não autenticado
       setUser(null)
       setIsLoading(false)
+      
+      // Limpar caches quando sessão fica unauthenticated
+      if (typeof window !== 'undefined') {
+        import('@/lib/logout-utils').then(({ clearAllCaches }) => {
+          clearAllCaches()
+        }).catch(() => {
+          // Ignora erros de import
+        })
+      }
     }
   }, [status, refreshUser])
 

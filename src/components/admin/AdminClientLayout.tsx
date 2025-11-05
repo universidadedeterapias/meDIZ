@@ -55,6 +55,10 @@ export default function AdminClientLayout({
   const handleLogout = async () => {
     setLoggingOut(true)
     try {
+      // Limpar todos os caches ANTES do logout
+      const { clearAllCaches } = await import('@/lib/logout-utils')
+      clearAllCaches()
+      
       // Registrar logout no audit log
       await fetch('/api/admin/audit-logs/logout', {
         method: 'POST',
@@ -66,11 +70,16 @@ export default function AdminClientLayout({
       console.error('Erro ao registrar logout:', error)
     }
     
-    // Fazer logout
+    // Fazer logout com callback que força refresh
     await signOut({ 
       callbackUrl: '/admin-login',
       redirect: true 
     })
+    
+    // Forçar reload completo após logout (fallback caso redirect não funcione)
+    setTimeout(() => {
+      window.location.href = '/admin-login'
+    }, 500)
   }
   
   // Não renderizar até estar montado no cliente

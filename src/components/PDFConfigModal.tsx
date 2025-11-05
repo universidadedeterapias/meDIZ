@@ -76,7 +76,7 @@ export function PDFConfigModal({
         timestamp: new Date(),
         sessionId,
         patientName: patientName.trim() || undefined,
-        therapistName: therapistName
+        therapistName: therapistName.trim() || undefined
       })
       onOpenChange(false)
     } catch (error) {
@@ -104,6 +104,24 @@ export function PDFConfigModal({
         </DialogHeader>
         
         <div className="space-y-4 mt-6">
+          {/* Nome da Terapeuta */}
+          <div className="space-y-2">
+            <Label htmlFor="therapistName" className="flex items-center gap-2 text-sm font-medium">
+              <User className="h-4 w-4 text-indigo-600" />
+              Nome da Terapeuta
+            </Label>
+            <Input
+              id="therapistName"
+              placeholder="Digite o nome da terapeuta"
+              value={therapistName}
+              onChange={(e) => setTherapistName(e.target.value)}
+              className="border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500"
+            />
+            <p className="text-xs text-gray-500">
+              Aparecerá como título grande logo abaixo da logo no PDF
+            </p>
+          </div>
+
           {/* Nome do Paciente */}
           <div className="space-y-2">
             <Label htmlFor="patientName" className="flex items-center gap-2 text-sm font-medium">

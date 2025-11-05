@@ -48,6 +48,15 @@ export function LoginForm({
     if (res?.error) {
       setError('E-mail ou senha inválidos.')
     } else {
+      // Limpar caches antes de login bem-sucedido para garantir dados frescos
+      if (typeof window !== 'undefined') {
+        import('@/lib/logout-utils').then(({ clearAllCaches }) => {
+          clearAllCaches()
+        }).catch(() => {
+          // Ignora erros de import
+        })
+      }
+      
       // Aguarda um pouco para garantir que a sessão foi criada
       setTimeout(() => {
         router.push('/chat')

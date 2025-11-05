@@ -218,6 +218,7 @@ export function Result({
             <SaveSymptomDialog 
               symptom={symptomText} 
               threadId={sessionId}
+              triggerClassName="w-full py-6 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors flex items-center justify-center gap-2"
               onSaved={() => {
                 // Disparar evento customizado para atualizar a sidebar
                 if (typeof window !== 'undefined') {

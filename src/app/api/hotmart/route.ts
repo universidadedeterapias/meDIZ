@@ -4,12 +4,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
 
 // Usa logger que reda PII e desativa logs em produção
-const log = (...args: unknown[]) => {
-  logger.debug('[hotmart]', ...args)
+const log = (message: string, data?: string | Record<string, unknown>) => {
+  if (typeof data === 'string') {
+    logger.debug(message, '[hotmart]', { value: data })
+  } else if (data) {
+    logger.debug(message, '[hotmart]', data)
+  } else {
+    logger.debug(message, '[hotmart]')
+  }
 }
 
-const logError = (...args: unknown[]) => {
-  logger.error('[hotmart ERROR]', ...args)
+const logError = (message: string, error?: unknown, context?: string, data?: Record<string, unknown>) => {
+  const err = error instanceof Error ? error : undefined
+  logger.error(message, err, context || '[hotmart ERROR]', data)
 }
 
 function isPurchaseApproved(p: HotmartPayload): boolean {
@@ -263,12 +270,12 @@ export async function POST(req: NextRequest) {
   try {
     // Verificar se o método é POST
     if (req.method !== 'POST') {
-      logError('❌ Método não permitido:', req.method)
+      logError(`❌ Método não permitido: ${req.method}`)
       return NextResponse.json({ error: 'Method not allowed' }, { status: 405 })
     }
 
     const bodyText = await req.text()
-    log('Body recebido, tamanho:', bodyText.length, 'bytes')
+    log('Body recebido, tamanho:', `${bodyText.length} bytes`)
 
     // Verificar se o body não está vazio
     if (!bodyText || bodyText.trim() === '') {
@@ -284,7 +291,7 @@ export async function POST(req: NextRequest) {
       
       // Verificar se a estrutura básica existe
       if (!parsed.event || !parsed.data || !parsed.data.purchase) {
-        logError('❌ Estrutura de dados inválida:', {
+        logError('❌ Estrutura de dados inválida', undefined, '[hotmart]', {
           hasEvent: !!parsed.event,
           hasData: !!parsed.data,
           hasPurchase: !!(parsed.data && parsed.data.purchase)
@@ -294,7 +301,7 @@ export async function POST(req: NextRequest) {
       
       log('Status da compra:', parsed.data.purchase.status)
     } catch (parseError) {
-      logError('Falha ao parsear JSON:', parseError)
+      logError('Falha ao parsear JSON', parseError instanceof Error ? parseError : undefined)
       return NextResponse.json({ error: 'Invalid JSON format' }, { status: 400 })
     }
 
@@ -368,7 +375,7 @@ export async function POST(req: NextRequest) {
 
     if (!incomingProductId) {
       logError('❌ Product ID não encontrado no payload')
-      logError('Estrutura do payload recebido:', JSON.stringify(parsed, null, 2))
+      logError('Estrutura do payload recebido', undefined, '[hotmart]', { payload: JSON.stringify(parsed, null, 2) })
       return NextResponse.json(
         { error: 'Product ID missing in payload', received: true },
         { status: 200 } // Retorna 200 para evitar retry desnecessário
@@ -481,7 +488,7 @@ export async function POST(req: NextRequest) {
         select: { stripePriceId: true, name: true, interval: true, active: true }
       })
       
-      logError('❌ Plano Hotmart não encontrado no DB:', {
+      logError('❌ Plano Hotmart não encontrado no DB', undefined, '[hotmart]', {
         periodicity,
         codesToTry,
         monthlyCodes,
@@ -510,13 +517,13 @@ export async function POST(req: NextRequest) {
     
     // Validação: verificar se o intervalo do plano bate com a periodicidade inferida
     if (periodicity === 'year' && plan.interval !== 'YEAR') {
-      logError('⚠️ AVISO CRÍTICO: Periodicidade inferida é YEAR, mas plano encontrado tem intervalo:', plan.interval)
+      logError('⚠️ AVISO CRÍTICO: Periodicidade inferida é YEAR, mas plano encontrado tem intervalo diferente', undefined, '[hotmart]', { interval: plan.interval })
       logError('Isso causa o problema de assinaturas anuais aparecerem como mensais no admin!')
-      logError('Plano encontrado:', { name: plan.name, interval: plan.interval, stripePriceId: plan.stripePriceId })
+      logError('Plano encontrado', undefined, '[hotmart]', { name: plan.name, interval: plan.interval, stripePriceId: plan.stripePriceId })
     }
     if (periodicity === 'month' && plan.interval !== 'MONTH') {
-      logError('⚠️ AVISO: Periodicidade inferida é MONTH, mas plano encontrado tem intervalo:', plan.interval)
-      logError('Plano encontrado:', { name: plan.name, interval: plan.interval, stripePriceId: plan.stripePriceId })
+      logError('⚠️ AVISO: Periodicidade inferida é MONTH, mas plano encontrado tem intervalo diferente', undefined, '[hotmart]', { interval: plan.interval })
+      logError('Plano encontrado', undefined, '[hotmart]', { name: plan.name, interval: plan.interval, stripePriceId: plan.stripePriceId })
     }
 
     // 4) Usuário (cria se não existir)
@@ -580,7 +587,7 @@ export async function POST(req: NextRequest) {
     const duration = Date.now() - startTime
     log('✅✅✅ WEBHOOK PROCESSADO COM SUCESSO ✅✅✅')
     log('Subscription ID:', subscription.id)
-    log('Tempo total:', duration, 'ms')
+    log('Tempo total:', `${duration}ms`)
     log('==========================================')
 
     return NextResponse.json({ 
@@ -591,9 +598,11 @@ export async function POST(req: NextRequest) {
 
   } catch (err) {
     const duration = Date.now() - startTime
-    logError('💥 ERRO CRÍTICO NO WEBHOOK:', err)
-    logError('Stack trace:', err instanceof Error ? err.stack : 'N/A')
-    logError('Tempo até erro:', duration, 'ms')
+    logError('💥 ERRO CRÍTICO NO WEBHOOK', err instanceof Error ? err : undefined)
+    if (err instanceof Error) {
+      logError('Stack trace', err, '[hotmart]')
+    }
+    logError(`Tempo até erro: ${duration}ms`)
     
     // Retorna 200 para evitar retry desnecessário da Hotmart
     return NextResponse.json(
