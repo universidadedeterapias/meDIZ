@@ -169,8 +169,23 @@ export default function MyAccountPage() {
   }
 
   const handleLogout = async () => {
+    // Limpar todos os caches ANTES do logout
+    const { clearAllCaches } = await import('@/lib/logout-utils')
+    clearAllCaches()
+    
+    // Fazer logout
     await signOut({ redirect: false })
+    
+    // Forçar refresh completo da página
+    router.refresh()
+    
+    // Redirecionar para login
     router.push('/login')
+    
+    // Forçar reload completo após um pequeno delay
+    setTimeout(() => {
+      window.location.href = '/login'
+    }, 100)
   }
   return (
     <>
@@ -188,15 +203,6 @@ export default function MyAccountPage() {
       </header>
 
       <div className="max-w-3xl mx-auto p-4 space-y-6">
-        {/* Idioma */}
-        <div className="flex items-center justify-between px-4">
-          <span className="text-sm">Idioma</span>
-          <select className="border p-1 rounded text-sm">
-            <option value="pt-BR">🇧🇷 Português (BR)</option>
-            <option value="en-US">🇺🇸 English (US)</option>
-          </select>
-        </div>
-
         {/* Perfil */}
         <Card className="shadow-sm">
           <CardHeader className="flex items-center gap-4 p-4">

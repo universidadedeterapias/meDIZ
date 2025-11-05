@@ -77,13 +77,18 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
             password?: string
           }
           if (!email || !password) return null
+          
+          // Rate limiting será aplicado na rota /api/admin/audit-logs/login-failed
+          // Bloqueio por IP será aplicado na mesma rota
+          // Aqui apenas validamos credenciais
+          
           const user = await prisma.user.findUnique({ where: { email } })
           if (!user?.passwordHash) return null
           const isValid = await compare(password, user.passwordHash)
           if (!isValid) return null
           return { id: user.id, name: user.name!, email: user.email }
-        } catch (error) {
-          console.error('[NextAuth] Erro no authorize:', error)
+        } catch {
+          // Usar sistema de logs estruturado (será implementado)
           return null
         }
       }

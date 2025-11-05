@@ -19,12 +19,6 @@ export default function MyAccountSkeleton() {
       </header>
 
       <div className="max-w-3xl mx-auto p-4 space-y-6">
-        {/* Language selector */}
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-8 w-20 rounded" />
-        </div>
-
         {/* Perfil */}
         <Card className="shadow-sm">
           <CardHeader className="flex items-center gap-4 p-4">

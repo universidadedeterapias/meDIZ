@@ -23,9 +23,10 @@ type SaveSymptomDialogProps = {
   symptom: string
   threadId?: string
   onSaved?: () => void // Callback para atualizar lista na sidebar
+  triggerClassName?: string // Classe CSS customizada para o botão trigger
 }
 
-export function SaveSymptomDialog({ symptom, threadId, onSaved }: SaveSymptomDialogProps) {
+export function SaveSymptomDialog({ symptom, threadId, onSaved, triggerClassName }: SaveSymptomDialogProps) {
   const [folders, setFolders] = useState<SymptomFolder[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
@@ -168,8 +169,7 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved }: SaveSymptomDia
         }}>
           <DialogTrigger asChild>
             <Button 
-              variant="outline" 
-              className="w-full"
+              className={triggerClassName || "w-full"}
               onClick={(e) => {
                 if (!isPremium && !isLoadingPremium) {
                   e.preventDefault()
@@ -177,8 +177,8 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved }: SaveSymptomDia
                 }
               }}
             >
-              <Save className="mr-2 h-4 w-4" />
-              Salvar Sintoma
+              <Save />
+              <span>Salvar Sintoma</span>
             </Button>
           </DialogTrigger>
         <DialogContent>
@@ -196,7 +196,7 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved }: SaveSymptomDia
                   id="new-folder-name"
                   value={newFolderName}
                   onChange={e => setNewFolderName(e.target.value)}
-                  placeholder="Ex: Doenças respiratórias"
+                  placeholder="Ex: João Silva"
                   onKeyDown={e => e.key === 'Enter' && !e.shiftKey && newFolderName.trim() && handleCreateFolder()}
                 />
               </div>
@@ -256,8 +256,7 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved }: SaveSymptomDia
       }}>
         <DialogTrigger asChild>
           <Button 
-            variant="outline" 
-            className="w-full"
+            className={triggerClassName || "w-full"}
             onClick={(e) => {
               if (!isPremium && !isLoadingPremium) {
                 e.preventDefault()
@@ -265,8 +264,8 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved }: SaveSymptomDia
               }
             }}
           >
-            <Save className="mr-2 h-4 w-4" />
-            Salvar Sintoma
+            <Save />
+            <span>Salvar Sintoma</span>
           </Button>
         </DialogTrigger>
       <DialogContent className="max-w-md">
@@ -286,7 +285,7 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved }: SaveSymptomDia
                   id="create-folder-name"
                   value={newFolderName}
                   onChange={e => setNewFolderName(e.target.value)}
-                  placeholder="Ex: Doenças respiratórias"
+                  placeholder="Ex: João Silva"
                   onKeyDown={e => {
                     if (e.key === 'Enter' && !e.shiftKey && newFolderName.trim()) {
                       handleCreateFolder()

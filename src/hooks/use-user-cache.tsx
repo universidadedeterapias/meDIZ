@@ -12,7 +12,7 @@ export interface SidebarUser {
 }
 
 // Cache global simples para evitar múltiplas requisições
-const globalCache: {
+export const globalCache: {
   data: SidebarUser | null
   timestamp: number
   promise: Promise<SidebarUser> | null
@@ -20,6 +20,15 @@ const globalCache: {
   data: null,
   timestamp: 0,
   promise: null
+}
+
+/**
+ * Limpa o cache global (exportado para uso em logout)
+ */
+export function clearGlobalCache(): void {
+  globalCache.data = null
+  globalCache.timestamp = 0
+  globalCache.promise = null
 }
 
 const CACHE_DURATION = 60000 // 1 minuto
@@ -58,6 +67,22 @@ export function useUserCache() {
   useEffect(() => {
     return () => {
       mountedRef.current = false
+    }
+  }, [])
+
+  // Escuta evento de limpeza de cache (disparado no logout)
+  useEffect(() => {
+    const handleClearCache = () => {
+      console.log('[useUserCache] 🧹 Limpando cache via evento')
+      clearGlobalCache()
+      setUser(null)
+      setIsLoading(false)
+      setError(null)
+    }
+
+    window.addEventListener('clear-user-cache', handleClearCache)
+    return () => {
+      window.removeEventListener('clear-user-cache', handleClearCache)
     }
   }, [])
 
@@ -164,8 +189,18 @@ export function useUserCache() {
       // Se não autenticado, não busca dados e limpa cache
       if (sessionStatus === 'unauthenticated') {
         console.log('[useUserCache] Não autenticado, limpando cache')
-        globalCache.data = null
-        globalCache.timestamp = 0
+        clearGlobalCache()
+        
+        // Limpar localStorage também
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.removeItem('subscription-status')
+            localStorage.removeItem('subscription-status-timestamp')
+          } catch {
+            // Ignora erros de localStorage
+          }
+        }
+        
         if (mountedRef.current) {
           setUser(null)
           setIsLoading(false)

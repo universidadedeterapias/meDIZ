@@ -41,6 +41,12 @@ HOTMART_YEARLY_PLAN_NAME="Nome do Plano Anual"
 # Opcionais: Valores em centavos (se quiser exibir preços)
 HOTMART_MONTHLY_AMOUNT="9900"  # R$ 99,00
 HOTMART_YEARLY_AMOUNT="99000"  # R$ 990,00
+
+# Redis (RECOMENDADO para produção)
+# Para rate limiting e bloqueio de IPs
+REDIS_URL="redis://localhost:6379"  # Local
+# Ou para produção (Upstash, Redis Cloud, etc):
+# REDIS_URL="rediss://default:senha@host.upstash.io:6379"
 ```
 
 ## ⚠️ Problema Identificado

@@ -83,6 +83,12 @@ export default function AdminLoginPage() {
         const data = await res.json()
         
         if (data.isAdmin) {
+          // Limpar caches antes de login bem-sucedido para garantir dados frescos
+          if (typeof window !== 'undefined') {
+            const { clearAllCaches } = await import('@/lib/logout-utils')
+            clearAllCaches()
+          }
+          
           // Registrar login bem-sucedido
           try {
             await fetch('/api/admin/audit-logs/login-success', {

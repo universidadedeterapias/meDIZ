@@ -395,7 +395,7 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
     return (
       <SidebarGroup>
         <SidebarGroupLabel className="text-sm font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-          📁 Pastas de Sintomas
+          📁 Pastas de Pacientes
         </SidebarGroupLabel>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -422,7 +422,7 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
       <SidebarGroup>
         <div className="flex items-center justify-between px-2 mb-3">
           <SidebarGroupLabel className="text-sm font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-            📁 Pastas de Sintomas
+            📁 Pastas de Pacientes
           </SidebarGroupLabel>
           <Dialog open={openCreateDialog} onOpenChange={(open) => {
             if (!open) {
@@ -467,7 +467,7 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
                     id="folder-name"
                     value={newFolderName}
                     onChange={e => setNewFolderName(e.target.value)}
-                    placeholder="Ex: Doenças respiratórias"
+                    placeholder="Ex: João Silva"
                     onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleCreateFolder()}
                   />
                 </div>

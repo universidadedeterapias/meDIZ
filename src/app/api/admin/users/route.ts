@@ -51,6 +51,8 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search') || ''
     const planFilter: 'all' | 'free' | 'premium' = (searchParams.get('plan') as 'all' | 'free' | 'premium') || 'all'
     const roleFilter: 'all' | 'admin' | 'user' = (searchParams.get('role') as 'all' | 'admin' | 'user') || 'all'
+    const subscriptionDateStart = searchParams.get('subscriptionDateStart') || null
+    const subscriptionDateEnd = searchParams.get('subscriptionDateEnd') || null
 
     const skip = (page - 1) * limit
 
@@ -72,6 +74,42 @@ export async function GET(req: NextRequest) {
     } else if (roleFilter === 'user') {
       whereClause.NOT = {
         email: { contains: '@mediz.com' }
+      }
+    }
+
+    // Filtro por data de criação de assinatura ativa
+    if (subscriptionDateStart || subscriptionDateEnd) {
+      const subscriptionFilter: Record<string, unknown> = {
+        status: {
+          in: ['active', 'ACTIVE', 'cancel_at_period_end']
+        },
+        currentPeriodEnd: {
+          gte: new Date() // Apenas assinaturas ativas
+        }
+      }
+
+      // Filtro por data de criação (createdAt da Subscription)
+      if (subscriptionDateStart) {
+        const startDate = new Date(subscriptionDateStart)
+        startDate.setHours(0, 0, 0, 0)
+        subscriptionFilter.createdAt = { gte: startDate }
+      }
+
+      if (subscriptionDateEnd) {
+        const endDate = new Date(subscriptionDateEnd)
+        endDate.setHours(23, 59, 59, 999)
+        if (subscriptionFilter.createdAt) {
+          subscriptionFilter.createdAt = {
+            ...(subscriptionFilter.createdAt as Record<string, unknown>),
+            lte: endDate
+          }
+        } else {
+          subscriptionFilter.createdAt = { lte: endDate }
+        }
+      }
+
+      whereClause.subscriptions = {
+        some: subscriptionFilter
       }
     }
 

@@ -16,22 +16,22 @@ interface PDFData {
  */
 export async function generateChatPDF(data: PDFData): Promise<void> {
   try {
-    logger.debug('🔍 Debug PDF - Dados recebidos:', {
+    logger.debug('🔍 Debug PDF - Dados recebidos', '[pdfGenerator]', {
       question: data.question,
       answerLength: data.answer?.length || 0,
       hasAnswer: !!data.answer,
-      timestamp: data.timestamp
+      timestamp: data.timestamp.toISOString()
     })
     
     // Debug específico para IMPACTO BIOLÓGICO
-    logger.debug('🔍 Debug PDF - Answer content preview:', data.answer?.substring(0, 200))
-    logger.debug('🔍 Debug PDF - Answer contains IMPACTO BIOLÓGICO:', data.answer?.includes('IMPACTO BIOLÓGICO'))
-    logger.debug('🔍 Debug PDF - Answer contains **IMPACTO BIOLÓGICO**:', data.answer?.includes('**IMPACTO BIOLÓGICO**'))
+    logger.debug('🔍 Debug PDF - Answer content preview', '[pdfGenerator]', { preview: data.answer?.substring(0, 200) })
+    logger.debug('🔍 Debug PDF - Answer contains IMPACTO BIOLÓGICO', '[pdfGenerator]', { contains: data.answer?.includes('IMPACTO BIOLÓGICO') })
+    logger.debug('🔍 Debug PDF - Answer contains **IMPACTO BIOLÓGICO**', '[pdfGenerator]', { contains: data.answer?.includes('**IMPACTO BIOLÓGICO**') })
 
     // Cria o HTML que será convertido para PDF
     const htmlContent = createPDFHTML(data)
     
-    logger.debug('🔍 Debug PDF - HTML gerado:', {
+    logger.debug('🔍 Debug PDF - HTML gerado', '[pdfGenerator]', {
       htmlLength: htmlContent?.length || 0,
       hasContent: htmlContent?.includes('answer-content') || false
     })
@@ -335,14 +335,14 @@ function createSectionHTML(title: string, content: string): string {
   const paragraphHTML = processMarkdownForPDF(cleanedContent)
   
   return `
-    <div class="content-section" style="margin-bottom: 25px; page-break-inside: avoid; break-inside: avoid;">
-      <div class="section-header" style="display: flex; align-items: center; margin-bottom: 12px; page-break-inside: avoid; page-break-after: avoid; break-inside: avoid; break-after: avoid;">
-        <div class="section-bar" style="width: 4px; height: 20px; background: #4f46e5; margin-right: 8px; border-radius: 2px;"></div>
-        <h2 class="section-title" style="font-size: 14px; font-weight: 600; color: #4f46e5; margin: 0; text-transform: uppercase; page-break-after: avoid; page-break-inside: avoid; break-after: avoid; break-inside: avoid;">
+    <div class="content-section" style="margin-bottom: 25px; margin-top: 15px; page-break-inside: avoid !important; break-inside: avoid !important; orphans: 2; widows: 2; min-height: 50px;">
+      <div class="section-header" style="display: flex; align-items: center; margin-bottom: 12px; page-break-inside: avoid !important; page-break-after: avoid !important; break-inside: avoid !important; break-after: avoid !important; orphans: 2; widows: 2;">
+        <div class="section-bar" style="width: 4px; height: 20px; background: #4f46e5; margin-right: 8px; border-radius: 2px; flex-shrink: 0;"></div>
+        <h2 class="section-title" style="font-size: 14px; font-weight: 600; color: #4f46e5; margin: 0; text-transform: uppercase; page-break-after: avoid !important; page-break-inside: avoid !important; page-break-before: avoid !important; break-after: avoid !important; break-inside: avoid !important; break-before: avoid !important; word-break: keep-all; overflow-wrap: break-word; orphans: 2; widows: 2;">
           ${cleanTitle}
         </h2>
       </div>
-      <div class="section-content" style="padding-left: 12px;">
+      <div class="section-content" style="padding-left: 12px; page-break-before: avoid !important; break-before: avoid !important; orphans: 2; widows: 2;">
         ${paragraphHTML}
       </div>
     </div>
@@ -403,6 +403,15 @@ function createPDFHTML(data: PDFData): string {
         
         .logo .highlight {
           color: #fbbf24;
+        }
+        
+        .therapist-name {
+          font-size: 28px;
+          font-weight: 700;
+          color: #1f2937;
+          margin-top: 12px;
+          margin-bottom: 8px;
+          letter-spacing: 0.5px;
         }
         
         .title {
@@ -605,37 +614,49 @@ function createPDFHTML(data: PDFData): string {
           break-inside: avoid;
         }
         
-        /* Previne quebra de seções e cabeçalhos */
-        .content-section {
-          page-break-inside: avoid;
-          break-inside: avoid;
-          orphans: 3;
-          widows: 3;
-        }
+        /* Previne quebra de seções e cabeçalhos - regras duplicadas removidas, já estão acima */
         
         .section-header {
-          page-break-inside: avoid;
-          page-break-after: avoid;
-          break-inside: avoid;
-          break-after: avoid;
+          page-break-inside: avoid !important;
+          page-break-after: avoid !important;
+          break-inside: avoid !important;
+          break-after: avoid !important;
+          orphans: 2;
+          widows: 2;
         }
         
         .section-title {
-          page-break-after: avoid;
-          page-break-inside: avoid;
-          break-after: avoid;
-          break-inside: avoid;
+          page-break-after: avoid !important;
+          page-break-inside: avoid !important;
+          page-break-before: avoid !important;
+          break-after: avoid !important;
+          break-inside: avoid !important;
+          break-before: avoid !important;
+          word-break: keep-all;
+          overflow-wrap: break-word;
+          orphans: 2;
+          widows: 2;
         }
         
         .section-content {
-          page-break-before: avoid;
-          break-before: avoid;
+          page-break-before: avoid !important;
+          break-before: avoid !important;
+          orphans: 2;
+          widows: 2;
         }
         
         /* Garante que pelo menos 2 linhas fiquem juntas */
         .section-header + .section-content {
-          page-break-before: avoid;
-          break-before: avoid;
+          page-break-before: avoid !important;
+          break-before: avoid !important;
+        }
+        
+        /* Previne quebra dentro de toda a seção */
+        .content-section {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          orphans: 2;
+          widows: 2;
         }
         
         .footer {
@@ -645,6 +666,17 @@ function createPDFHTML(data: PDFData): string {
           text-align: center;
           font-size: 10px;
           color: #6b7280;
+        }
+        
+        .footer-logo {
+          font-size: 20px;
+          font-weight: bold;
+          color: #4f46e5;
+          margin-bottom: 15px;
+        }
+        
+        .footer-logo .highlight {
+          color: #fbbf24;
         }
         
         .disclaimer {
@@ -694,17 +726,16 @@ function createPDFHTML(data: PDFData): string {
           <div class="logo">
             me<span class="highlight">DIZ</span>!
           </div>
+          ${data.therapistName ? `
+          <div class="therapist-name">
+            ${escapeHtml(data.therapistName)}
+          </div>
+          ` : ''}
           <div class="title">Relatório de Origem Emocional</div>
         </div>
         
         <div class="metadata" style="text-align: left; background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #4f46e5;">
           <div class="metadata-list" style="display: flex; flex-direction: column; gap: 8px;">
-            ${data.therapistName ? `
-            <div class="metadata-item" style="font-size: 13px;">
-              <span class="metadata-label" style="font-weight: 600; color: #374151;">👤 Terapeuta:</span>
-              <span class="metadata-value" style="color: #6b7280; margin-left: 8px;">${escapeHtml(data.therapistName)}</span>
-            </div>
-            ` : ''}
             ${data.patientName ? `
             <div class="metadata-item" style="font-size: 13px;">
               <span class="metadata-label" style="font-weight: 600; color: #374151;">👤 Paciente:</span>
@@ -737,6 +768,9 @@ function createPDFHTML(data: PDFData): string {
         </div>
         
         <div class="footer">
+          <div class="footer-logo">
+            me<span class="highlight">DIZ</span>!
+          </div>
           <div class="disclaimer">
             <strong>⚠️ Importante:</strong> Sempre consulte um profissional de saúde qualificado antes de tomar decisões relacionadas à sua saúde.
           </div>

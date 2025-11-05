@@ -9,6 +9,11 @@ on:
 env:
   NODE_VERSION: '20'
 
+# Permissões explícitas seguindo o princípio do menor privilégio
+permissions:
+  contents: read          # Ler código do repositório (checkout)
+  pull-requests: read      # Ler informações de Pull Requests (para contexto)
+
 jobs:
   quality-checks:
     name: 🔍 Quality Checks
@@ -35,6 +40,9 @@ jobs:
 
       - name: 🗄️ Prisma validation
         run: npx prisma validate
+        env:
+          # Dummy DATABASE_URL for schema validation (actual URL is set in deployment)
+          DATABASE_URL: "postgresql://user:pass@localhost:5432/test"
 
   build-check:
     name: 🏗️ Build Check

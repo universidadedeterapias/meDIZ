@@ -74,6 +74,8 @@ export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterPlan, setFilterPlan] = useState<'all' | 'free' | 'premium'>('all')
   const [filterRole, setFilterRole] = useState<'all' | 'admin' | 'user'>('all')
+  const [subscriptionDateStart, setSubscriptionDateStart] = useState('')
+  const [subscriptionDateEnd, setSubscriptionDateEnd] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [isCreateUserDialogOpen, setIsCreateUserDialogOpen] = useState(false)
@@ -93,10 +95,17 @@ export default function UsersPage() {
       weekEnd: string;
       totalUsers: number;
       newUsers: number;
+      premiumUsers: number;
+      freeUsers: number;
       conversions: number;
       growthRate: number;
       conversionRate: number;
     }>;
+    current?: {
+      totalUsers: number;
+      premiumUsers: number;
+      freeUsers: number;
+    };
     comparison: {
       usersGrowth: number;
       usersGrowthRate: number;
@@ -125,6 +134,13 @@ export default function UsersPage() {
         plan: filterPlan,
         role: filterRole
       })
+      
+      if (subscriptionDateStart) {
+        params.append('subscriptionDateStart', subscriptionDateStart)
+      }
+      if (subscriptionDateEnd) {
+        params.append('subscriptionDateEnd', subscriptionDateEnd)
+      }
 
       const response = await fetch(`/api/admin/users?${params}`)
       
@@ -142,13 +158,13 @@ export default function UsersPage() {
     } finally {
       setLoading(false)
     }
-  }, [currentPage, searchDebounce, filterPlan, filterRole])
+  }, [currentPage, searchDebounce, filterPlan, filterRole, subscriptionDateStart, subscriptionDateEnd])
 
   // Função para buscar dados de crescimento
   const fetchGrowthData = useCallback(async () => {
     try {
       setGrowthLoading(true)
-      const response = await fetch('/api/admin/user-growth?weeks=12')
+      const response = await fetch('/api/admin/user-growth?days=30')
       
       if (!response.ok) {
         throw new Error('Erro ao carregar dados de crescimento')
@@ -174,7 +190,7 @@ export default function UsersPage() {
   // Executa busca quando searchDebounce muda ou outros filtros
   useEffect(() => {
     fetchUsers()
-  }, [searchDebounce, currentPage, filterPlan, filterRole, fetchUsers])
+  }, [searchDebounce, currentPage, filterPlan, filterRole, subscriptionDateStart, subscriptionDateEnd, fetchUsers])
 
   useEffect(() => {
     fetchGrowthData()
@@ -227,13 +243,25 @@ export default function UsersPage() {
   }
 
   const handleDeleteUser = async (userId: string, userName: string) => {
-    const confirmDelete = confirm(`Tem certeza que deseja excluir o usuário "${userName}"?\n\nEsta ação não pode ser desfeita.`)
+    const userToDelete = users.find(u => u.id === userId)
+    const isAdmin = userToDelete?.isAdmin || userToDelete?.email.includes('@mediz.com')
+    
+    const confirmMessage = isAdmin 
+      ? `ATENÇÃO: Este é um usuário ADMINISTRADOR.\n\nTem certeza que deseja excluir "${userName}"?\n\nEsta ação não pode ser desfeita.`
+      : `Tem certeza que deseja excluir o usuário "${userName}"?\n\nEsta ação não pode ser desfeita.`
+    
+    const confirmDelete = confirm(confirmMessage)
     
     if (!confirmDelete) return
 
     setDeletingUser(userId)
     try {
-      if (process.env.NODE_ENV !== 'production') console.log('[DEBUG] Excluindo usuário')
+      console.log('[DEBUG] Frontend - Iniciando exclusão:', {
+        userId,
+        userName,
+        email: userToDelete?.email,
+        isAdmin
+      })
       
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'DELETE'
@@ -241,11 +269,15 @@ export default function UsersPage() {
 
       if (!response.ok) {
         const errorData = await response.json()
+        console.error('[DEBUG] Frontend - Erro na resposta:', {
+          status: response.status,
+          error: errorData.error
+        })
         throw new Error(errorData.error || 'Erro ao excluir usuário')
       }
 
-      const _result = await response.json()
-      if (process.env.NODE_ENV !== 'production') console.log('[DEBUG] Usuário excluído')
+      const result = await response.json()
+      console.log('[DEBUG] Frontend - Usuário excluído com sucesso:', result)
       
       // Recarregar lista de usuários
       await fetchUsers()
@@ -423,7 +455,7 @@ export default function UsersPage() {
                   </div>
                 </div>
                 
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <select
                     value={filterPlan}
                     onChange={(e) => setFilterPlan(e.target.value as 'all' | 'free' | 'premium')}
@@ -443,6 +475,42 @@ export default function UsersPage() {
                     <option value="admin">Administradores</option>
                     <option value="user">Usuários</option>
                   </select>
+                  
+                  <div className="flex flex-col">
+                    <label className="text-xs text-gray-500 mb-1">Data inicial</label>
+                    <Input
+                      type="date"
+                      value={subscriptionDateStart}
+                      onChange={(e) => setSubscriptionDateStart(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-md"
+                      title="Filtrar por data de criação de assinatura (inicial)"
+                    />
+                  </div>
+                  
+                  <div className="flex flex-col">
+                    <label className="text-xs text-gray-500 mb-1">Data final</label>
+                    <Input
+                      type="date"
+                      value={subscriptionDateEnd}
+                      onChange={(e) => setSubscriptionDateEnd(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-md"
+                      title="Filtrar por data de criação de assinatura (final)"
+                    />
+                  </div>
+                  
+                  {(subscriptionDateStart || subscriptionDateEnd) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSubscriptionDateStart('')
+                        setSubscriptionDateEnd('')
+                      }}
+                      className="px-3 py-2"
+                    >
+                      Limpar
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -568,21 +636,28 @@ export default function UsersPage() {
                         >
                           Editar
                         </Button>
-                        {!user.isAdmin && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => handleDeleteUser(user.id, user.name)}
-                            disabled={deletingUser === user.id}
-                          >
-                            {deletingUser === user.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <UserX className="h-4 w-4" />
-                            )}
-                          </Button>
-                        )}
+                        {/* Botão de exclusão - sempre visível, mas API bloqueia admins */}
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => {
+                            console.log('[DEBUG] Tentando excluir usuário:', {
+                              id: user.id,
+                              name: user.name,
+                              email: user.email,
+                              isAdmin: user.isAdmin
+                            })
+                            handleDeleteUser(user.id, user.name)
+                          }}
+                          disabled={deletingUser === user.id}
+                        >
+                          {deletingUser === user.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <UserX className="h-4 w-4" />
+                          )}
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -655,6 +730,7 @@ export default function UsersPage() {
                 totalNewUsers: 0,
                 totalConversions: 0
               }}
+              current={growthData.current}
             />
           ) : (
             <Card>
