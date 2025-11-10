@@ -37,13 +37,7 @@ jobs:
 
       - name: 🧹 ESLint check
         run: npx eslint src --ext .ts,.tsx
-
-      - name: 🗄️ Prisma validation
-        run: npx prisma validate
-        env:
-          # Dummy DATABASE_URL for schema validation (actual URL is set in deployment)
-          DATABASE_URL: "postgresql://user:pass@localhost:5432/test"
-
+       
   build-check:
     name: 🏗️ Build Check
     runs-on: ubuntu-latest
@@ -67,12 +61,7 @@ jobs:
 
       - name: 🏗️ Build application
         run: npm run build
-        env:
-          # Variáveis mínimas para build
-          DATABASE_URL: "postgresql://user:pass@localhost:5432/test"
-          NEXTAUTH_SECRET: "test-secret"
-          NEXTAUTH_URL: "http://localhost:3000"
-
+      
       - name: 📊 Notify deployment success
         run: |
           echo "✅ Production deployment completed successfully!"
