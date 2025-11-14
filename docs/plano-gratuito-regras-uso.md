@@ -2,7 +2,7 @@
 
 ## 📋 Visão Geral
 
-Este documento descreve em detalhes a implementação das novas regras de uso dinâmicas para usuários do plano gratuito no sistema meDIZ. As regras afetam o limite de pesquisas diárias e a visualização do conteúdo com base no tempo desde o cadastro do usuário. Adicionalmente, foi implementado um pop-up de engajamento entre pesquisas.
+Este documento descreve em detalhes a implementação das novas regras de uso dinâmicas para usuários do plano gratuito no sistema ExemploApp. As regras afetam o limite de pesquisas diárias e a visualização do conteúdo com base no tempo desde o cadastro do usuário. Adicionalmente, foi implementado um pop-up de engajamento entre pesquisas.
 
 ## 🎯 Objetivos da Implementação
 

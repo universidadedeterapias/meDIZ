@@ -1,4 +1,4 @@
-# Configuração Redis - meDIZ
+# Configuração Redis - ExemploApp
 
 ## 📋 Visão Geral
 

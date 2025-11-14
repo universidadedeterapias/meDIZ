@@ -1,4 +1,4 @@
-# 📊 Sistema de Logs de Auditoria - meDIZ
+# 📊 Sistema de Logs de Auditoria - ExemploApp
 
 ## 🎯 Visão Geral
 

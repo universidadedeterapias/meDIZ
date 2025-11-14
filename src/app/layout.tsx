@@ -4,6 +4,8 @@ import SessionProvider from '@/components/SessionProvider'
 import { HydrationBoundary } from '@/components/hydration-boundary'
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+import { LanguageProvider } from '@/i18n/LanguageProvider'
+import { getCurrentLanguage } from '@/i18n/server'
 import './globals.css'
 
 const geistSans = Geist({
@@ -25,28 +27,33 @@ export const metadata: Metadata = {
   }
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const language = await getCurrentLanguage()
+
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
+    <html lang={language} suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
+        data-language={language}
       >
         <HydrationBoundary>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <SessionProvider>
-              <UserProvider>{children}</UserProvider>
-            </SessionProvider>
-          </ThemeProvider>
+          <LanguageProvider initialLanguage={language}>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="light"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <SessionProvider>
+                <UserProvider>{children}</UserProvider>
+              </SessionProvider>
+            </ThemeProvider>
+          </LanguageProvider>
         </HydrationBoundary>
       </body>
     </html>

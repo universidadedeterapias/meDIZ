@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/sidebar'
 import { useUser } from '@/contexts/user'
 import { IconType } from 'react-icons/lib'
+import { useTranslation } from '@/i18n/useTranslation'
 
 type SubscriptionAPI = {
   status: 'active' | 'trialing' | 'cancel_at_period_end' | 'canceled'
@@ -21,6 +22,7 @@ type SubscriptionAPI = {
 
 type NavOption = {
   name: string
+  translationKey?: string
   url: string
   icon: LucideIcon | IconType
 }
@@ -33,6 +35,7 @@ export function NavOptions({ options }: NavOptionsProps) {
   const router = useRouter()
   const { user } = useUser()
   const [subscription, setSubscription] = useState<SubscriptionAPI | null>(null)
+  const { t } = useTranslation()
 
   // Carrega status da assinatura
   useEffect(() => {
@@ -75,6 +78,10 @@ export function NavOptions({ options }: NavOptionsProps) {
       <SidebarMenu className="gap-1 pt-4">
         {options.map((item, idx) => {
           // Opção premium em destaque e só se não for assinante
+          const label = item.translationKey
+            ? t(item.translationKey, item.name)
+            : t(item.name, item.name)
+
           if (idx === 0 && !isSubscribed) {
             return (
               <SidebarMenuItem key={item.name}>
@@ -92,7 +99,7 @@ export function NavOptions({ options }: NavOptionsProps) {
                       strokeWidth="1"
                       fill="yellow"
                     />
-                    {item.name}
+                    {label}
                   </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -117,7 +124,7 @@ export function NavOptions({ options }: NavOptionsProps) {
                     : {})}
                 >
                   <item.icon style={{ width: 24, height: 24 }} />
-                  {item.name}
+                  {label}
                 </a>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -133,7 +140,7 @@ export function NavOptions({ options }: NavOptionsProps) {
               className="w-full justify-start text-zinc-800 font-normal flex items-center gap-4 text-base group-data-[collapsed=true]:hidden pl-4"
             >
               <LogOut style={{ width: 24, height: 24 }} />
-              Sair
+              {t('navbar.logout', 'Sair')}
             </Button>
           </SidebarMenuButton>
         </SidebarMenuItem>

@@ -6,7 +6,7 @@
 #    crontab -e
 #
 # 2. Adicione a linha abaixo para executar toda segunda-feira às 04h:
-#    0 4 * * 1 cd /caminho/para/meDIZ && npm run update-popular-symptoms >> logs/cron-sintomas.log 2>&1
+#    0 4 * * 1 cd /caminho/para/ExemploApp && npm run update-popular-symptoms >> logs/cron-sintomas.log 2>&1
 #
 # 3. Para testar manualmente:
 #    npm run update-popular-symptoms
@@ -16,7 +16,7 @@
 #
 # Exemplo de configuração completa:
 # # Atualização semanal de sintomas populares (segunda-feira às 04h)
-# 0 4 * * 1 cd /home/user/meDIZ && npm run update-popular-symptoms >> logs/cron-sintomas.log 2>&1
+# 0 4 * * 1 cd /home/user/ExemploApp && npm run update-popular-symptoms >> logs/cron-sintomas.log 2>&1
 #
 # Variáveis de ambiente necessárias:
 # - CRON_SECRET: Chave secreta para autenticação do job

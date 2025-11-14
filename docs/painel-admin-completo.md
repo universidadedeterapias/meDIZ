@@ -1,12 +1,12 @@
-# 📊 Painel Administrativo meDIZ - Documentação Completa
+# 📊 Painel Administrativo ExemploApp - Documentação Completa
 
 ## 🎯 Visão Geral
 
-O painel administrativo do meDIZ é uma interface completa para gerenciar usuários, assinaturas, configurações e monitorar o desempenho da plataforma. Acesso restrito a administradores com email `@mediz.com`.
+O painel administrativo do ExemploApp é uma interface completa para gerenciar usuários, assinaturas, configurações e monitorar o desempenho da plataforma. Acesso restrito a administradores com email `@exemplo.com`.
 
 ### 🔐 Acesso
 - **URL:** `http://localhost:3000/admin-login`
-- **Credenciais:** `marianna.yaskara@mediz.com` / `Admin123!`
+- **Credenciais:** `admin.exemplo@exemplo.com` / `Admin123!`
 - **Autenticação:** NextAuth v5 com JWT
 - **Sessão:** Persistente com cookies seguros
 
@@ -275,7 +275,7 @@ interface BlurSettings {
 | **Após 1 Mês** | 30+ dias | **1 busca/dia** | ❌ Blurrada | **Máxima restrição** |
 
 ### 🔐 **Autenticação Admin**
-- **Requisito:** Email terminando em `@mediz.com`
+- **Requisito:** Email terminando em `@exemplo.com`
 - **Sessão:** JWT com 30 dias de validade
 - **Middleware:** Proteção automática de rotas
 - **Cookies:** Seguros com flags apropriadas
@@ -297,7 +297,7 @@ interface BlurSettings {
 - **Visualização:** Blurrada
 
 #### **Usuário Antigo (30+ dias):**
-- **Email:** `teste8dias@mediz.com`
+- **Email:** `teste8dias@exemplo.com`
 - **Limite:** **1 busca/dia**
 - **Visualização:** Blurrada
 
@@ -357,7 +357,7 @@ interface BlurSettings {
 - Limpar cache do navegador
 
 #### **Acesso negado:**
-- Confirmar email `@mediz.com`
+- Confirmar email `@exemplo.com`
 - Verificar middleware
 - Checar logs do servidor
 

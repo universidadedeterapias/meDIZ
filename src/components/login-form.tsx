@@ -17,12 +17,14 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import GoogleIcon from './icons/Google'
+import { useTranslation } from '@/i18n/useTranslation'
 
 export function LoginForm({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   const router = useRouter()
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +48,7 @@ export function LoginForm({
     setIsLoading(false)
 
     if (res?.error) {
-      setError('E-mail ou senha inválidos.')
+      setError(t('login.error.invalidCredentials', 'E-mail ou senha inválidos.'))
     } else {
       // Limpar caches antes de login bem-sucedido para garantir dados frescos
       if (typeof window !== 'undefined') {
@@ -68,7 +70,12 @@ export function LoginForm({
 
   const handleForgotByWhatsapp = async () => {
     if (!email) {
-      setError('Informe seu e-mail para enviarmos o link pelo WhatsApp.')
+      setError(
+        t(
+          'login.error.emailRequiredWhatsapp',
+          'Informe seu e-mail para enviarmos o link pelo WhatsApp.'
+        )
+      )
       return
     }
     try {
@@ -101,9 +108,12 @@ export function LoginForm({
           </p>
           <hr className="w-1/12 border-indigo-600 my-4" />
           <p className="text-zinc-500 mb-6">
-            <span className="text-indigo-600">12.460</span> pessoas já usaram
+            <span className="text-indigo-600">12.460</span>{' '}
+            {t('login.stats', 'pessoas já usaram')}
           </p>
-          <CardTitle className="text-xl text-zinc-800 pt-2">Login</CardTitle>
+          <CardTitle className="text-xl text-zinc-800 pt-2">
+            {t('login.form.title', 'Login')}
+          </CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-6">
@@ -111,7 +121,7 @@ export function LoginForm({
             <Input
               name="email"
               type="email"
-              placeholder="E-mail"
+              placeholder={t('login.email', 'E-mail')}
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
@@ -119,14 +129,14 @@ export function LoginForm({
             <Input
               name="password"
               type="password"
-              placeholder="Senha"
+              placeholder={t('login.password', 'Senha')}
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
             />
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Entrando...' : 'Entrar'}
+              {isLoading ? t('login.button.loading', 'Entrando...') : t('login.submit', 'Entrar')}
             </Button>
           </form>
 
@@ -137,13 +147,15 @@ export function LoginForm({
             className="w-full text-sm text-indigo-600 underline hover:text-indigo-500 text-left pl-2"
             disabled={sending}
           >
-            {sending ? 'Enviando via WhatsApp…' : 'Esqueci minha senha'}
+            {sending
+              ? t('login.forgot.whatsappSending', 'Enviando via WhatsApp…')
+              : t('login.forgot.action', 'Esqueci minha senha')}
           </button>
 
           {/* Divider “ou” */}
           <div className="flex items-center">
             <hr className="flex-grow border-zinc-300" />
-            <span className="px-2 text-zinc-500">ou</span>
+            <span className="px-2 text-zinc-500">{t('login.divider.or', 'ou')}</span>
             <hr className="flex-grow border-zinc-300" />
           </div>
 
@@ -155,39 +167,39 @@ export function LoginForm({
             onClick={() => signIn('google', { callbackUrl: '/chat' })}
           >
             <GoogleIcon />
-            Continuar com Google
+            {t('login.google', 'Continuar com Google')}
           </Button>
 
           <Link href="/chat?guest=1">
             <Button variant="link" className="w-full mt-4">
-              Entrar como convidado
+              {t('login.guest', 'Entrar como convidado')}
             </Button>
           </Link>
 
           <p className="text-center text-sm text-zinc-600">
-            Ainda não tem conta?{' '}
+            {t('login.signup.prompt', 'Ainda não tem conta?')}{' '}
             <Link
               href="/signup"
               className="underline text-indigo-600 hover:text-indigo-500"
             >
-              Cadastre-se!
+              {t('login.signup.cta', 'Cadastre-se!')}
             </Link>
           </p>
 
           <p className="text-center text-xs text-zinc-500 mt-4">
-            Ao clicar em qualquer opção, você concorda com nossos{' '}
+            {t('login.terms.notice', 'Ao clicar em qualquer opção, você concorda com nossos')}{' '}
             <a
               href="https://universidadedeterapias.com.br/termos-de-uso"
               className="underline text-indigo-600"
             >
-              Termos de Serviço
+              {t('login.terms.service', 'Termos de Serviço')}
             </a>{' '}
-            e{' '}
+            {t('login.terms.and', 'e')}{' '}
             <a
               href="https://universidadedeterapias.com.br/politica-de-privacidade"
               className="underline text-indigo-600"
             >
-              Política de Privacidade
+              {t('login.terms.privacy', 'Política de Privacidade')}
             </a>
             .
           </p>
@@ -198,23 +210,35 @@ export function LoginForm({
       <Dialog open={openModal} onOpenChange={setOpenModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confira seu WhatsApp</DialogTitle>
+            <DialogTitle>{t('login.whatsapp.modal.title', 'Confira seu WhatsApp')}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-zinc-700">
-            {maskedPhone ? (
+            {maskedPhone ? (() => {
+              const template = t(
+                'login.whatsapp.modal.sent',
+                'Enviamos um link de redefinição para o número com final {phone}.'
+              )
+              const [prefix, suffix] = template.split('{phone}')
+              return (
+                <>
+                  {prefix}
+                  <b>{maskedPhone}</b>
+                  {suffix}
+                </>
+              )
+            })() : (
               <>
-                Enviamos um link de redefinição para o número com final{' '}
-                <b>{maskedPhone}</b>.
-              </>
-            ) : (
-              <>
-                Se existir uma conta com esse e-mail, enviaremos um link de
-                redefinição via WhatsApp.
+                {t(
+                  'login.whatsapp.modal.sentFallback',
+                  'Se existir uma conta com esse e-mail, enviaremos um link de redefinição via WhatsApp.'
+                )}
               </>
             )}
           </p>
           <DialogFooter>
-            <Button onClick={() => setOpenModal(false)}>Ok</Button>
+            <Button onClick={() => setOpenModal(false)}>
+              {t('general.confirm', 'Confirmar')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

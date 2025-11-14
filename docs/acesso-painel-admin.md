@@ -1,6 +1,6 @@
-# Guia de Acesso ao Painel Administrativo meDIZ
+# Guia de Acesso ao Painel Administrativo ExemploApp
 
-Este guia explica como acessar e utilizar o painel administrativo do meDIZ, incluindo a resolução de problemas comuns e os requisitos de acesso.
+Este guia explica como acessar e utilizar o painel administrativo do ExemploApp, incluindo a resolução de problemas comuns e os requisitos de acesso.
 
 ## 1. Requisitos de Acesso
 
@@ -8,11 +8,11 @@ Este guia explica como acessar e utilizar o painel administrativo do meDIZ, incl
 
 Para acessar o painel administrativo, você deve:
 
-- Ter uma conta de usuário no sistema meDIZ
-- Ter um email com o domínio `@mediz.com`
+- Ter uma conta de usuário no sistema ExemploApp
+- Ter um email com o domínio `@exemplo.com`
 - Estar autenticado no sistema
 
-> **Nota importante:** Esta é uma restrição de segurança intencional. Apenas emails que terminam com `@mediz.com` têm permissão para acessar o painel administrativo.
+> **Nota importante:** Esta é uma restrição de segurança intencional. Apenas emails que terminam com `@exemplo.com` têm permissão para acessar o painel administrativo.
 
 ### 1.2. Navegadores Suportados
 
@@ -36,7 +36,7 @@ O painel foi testado e funciona corretamente nos seguintes navegadores:
 Para um login direcionado ao painel administrativo:
 
 1. Navegue até `https://[seu-dominio]/admin-login`
-2. Insira suas credenciais de administrador (email com domínio `@mediz.com`)
+2. Insira suas credenciais de administrador (email com domínio `@exemplo.com`)
 3. Clique em "Entrar"
 
 ### 2.3. Verificação de Autenticação
@@ -59,7 +59,7 @@ npx ts-node -r tsconfig-paths/register src/scripts/create-admin.ts
 
 Este script:
 - Verifica se já existem usuários admin
-- Se não existir, cria um usuário admin padrão com email `admin@mediz.com`
+- Se não existir, cria um usuário admin padrão com email `admin@exemplo.com`
 - Exibe a senha temporária gerada (deve ser alterada após o primeiro login)
 
 ### 3.2. Usando o Prisma Studio
@@ -71,7 +71,7 @@ Este script:
 
 2. No navegador que abrir, clique na tabela `User`
 3. Clique em "Add record" (ou edite um usuário existente)
-4. Defina o email como `[nome]@mediz.com`
+4. Defina o email como `[nome]@exemplo.com`
 5. Preencha os outros campos necessários
 6. Clique em "Save" para salvar as alterações
 
@@ -102,7 +102,7 @@ O painel administrativo está organizado nas seguintes seções:
 
 1. **Autenticação:**
    - Certifique-se de estar logado no sistema
-   - Verifique se seu email termina com `@mediz.com`
+   - Verifique se seu email termina com `@exemplo.com`
    - Tente fazer logout e login novamente
 
 2. **Cookies e Sessão:**
@@ -152,7 +152,7 @@ Os acessos ao painel administrativo são registrados para fins de segurança. Os
 
 **P: Posso mudar o domínio de email necessário para acesso administrativo?**
 
-R: Sim, isso pode ser modificado no arquivo `middleware.ts` e `layout.tsx` do admin, alterando a verificação de `@mediz.com` para outro domínio.
+R: Sim, isso pode ser modificado no arquivo `middleware.ts` e `layout.tsx` do admin, alterando a verificação de `@exemplo.com` para outro domínio.
 
 **P: O que fazer se esquecer a senha de admin?**
 
@@ -160,11 +160,11 @@ R: Use o Prisma Studio para redefinir a senha ou crie um novo usuário admin.
 
 **P: Posso ter múltiplos administradores?**
 
-R: Sim, basta criar mais usuários com o domínio de email `@mediz.com`.
+R: Sim, basta criar mais usuários com o domínio de email `@exemplo.com`.
 
 **P: Como mudar meu email para o formato admin?**
 
-R: Use o Prisma Studio para editar o campo de email do usuário para incluir o domínio `@mediz.com`.
+R: Use o Prisma Studio para editar o campo de email do usuário para incluir o domínio `@exemplo.com`.
 
 ## 8. Suporte Técnico
 

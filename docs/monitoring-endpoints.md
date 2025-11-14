@@ -1,4 +1,4 @@
-# 🔍 Endpoints para Monitoramento - meDIZ
+# 🔍 Endpoints para Monitoramento - ExemploApp
 
 ## ✅ Endpoint de Health Check (Recomendado)
 
@@ -68,24 +68,24 @@
 
 ```bash
 # Health Check (RECOMENDADO)
-GET https://mediz-app.vercel.app/api/health
+GET https://exemplo-app.vercel.app/api/health
 
 # Verifica apenas se a aplicação está online
-GET https://mediz-app.vercel.app
+GET https://exemplo-app.vercel.app
 ```
 
 ### ❌ NÃO use estas URLs:
 
 ```bash
 # ❌ URL incorreta (tem /POST/ na URL)
-POST https://mediz-app.vercel.app/POST/api/auth/signup
+POST https://exemplo-app.vercel.app/POST/api/auth/signup
 
 # ❌ Endpoint que requer autenticação
-POST https://mediz-app.vercel.app/api/openai
+POST https://exemplo-app.vercel.app/api/openai
 
 # ✅ URLs corretas (mas não para monitoramento simples)
-POST https://mediz-app.vercel.app/api/auth/signup
-POST https://mediz-app.vercel.app/api/openai  (com auth)
+POST https://exemplo-app.vercel.app/api/auth/signup
+POST https://exemplo-app.vercel.app/api/openai  (com auth)
 ```
 
 ---
@@ -94,7 +94,7 @@ POST https://mediz-app.vercel.app/api/openai  (com auth)
 
 ### Para serviços como UptimeRobot, Pingdom, etc:
 
-1. **URL:** `https://mediz-app.vercel.app/api/health`
+1. **URL:** `https://exemplo-app.vercel.app/api/health`
 2. **Método:** `GET`
 3. **Intervalo:** A cada 5 minutos
 4. **Timeout:** 10 segundos
@@ -105,8 +105,8 @@ POST https://mediz-app.vercel.app/api/openai  (com auth)
 
 ```yaml
 monitor:
-  name: "meDIZ Health Check"
-  url: "https://mediz-app.vercel.app/api/health"
+  name: "ExemploApp Health Check"
+  url: "https://exemplo-app.vercel.app/api/health"
   method: GET
   expected_status: 200
   timeout: 10s
@@ -123,19 +123,18 @@ monitor:
 
 ### Se `/api/health` retornar 503:
 
-1. **Verificar variáveis de ambiente no Vercel:**
-   - `OPENAI_API_KEY` está configurada?
-   - `OPENAI_ASSISTANT_ID` está configurada?
+1. **Verificar variáveis de ambiente na plataforma de deploy:**
+   - `N8N_CHAT_WEBHOOK_URL` está configurada?
    - `DATABASE_URL` está configurada?
    - `NEXTAUTH_SECRET` está configurada?
 
-2. **Verificar logs do Vercel:**
-   - Acesse Vercel Dashboard → Logs
+2. **Verificar logs da plataforma de deploy:**
+   - Acesse o dashboard da plataforma → Logs
    - Procure por erros relacionados aos serviços
 
 3. **Testar manualmente:**
 ```bash
-curl https://mediz-app.vercel.app/api/health
+curl https://exemplo-app.vercel.app/api/health
 ```
 
 ### Se endpoint ainda estiver "Offline":
@@ -157,7 +156,7 @@ Se quiser monitorar endpoints específicos **com autenticação**, crie um endpo
 
 export async function GET(req: Request) {
   const session = await auth()
-  if (!session?.user?.email?.includes('@mediz.com')) {
+  if (!session?.user?.email?.includes('@exemplo.com')) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
   }
   

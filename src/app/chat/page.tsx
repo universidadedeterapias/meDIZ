@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 
 import { AppSidebar } from '@/components/app-sidebar'
 import { ClientOnly } from '@/components/ClientOnly'
+import { LanguageSwitcher } from '@/components/language-switcher'
 import { ExternalLinks } from '@/components/ExternalLinks'
 import { Footer } from '@/components/Footer'
 import OptionSelector from '@/components/form/OptionSelector'
@@ -24,6 +25,7 @@ import {
   SidebarTrigger
 } from '@/components/ui/sidebar'
 import { useUser } from '@/contexts/user'
+import { useTranslation } from '@/i18n/useTranslation'
 import { UserPeriod } from '@/lib/userPeriod'
 import { FirstName } from '@/lib/utils'
 import { User } from '@/types/User'
@@ -47,6 +49,7 @@ type RawUser = {
 export default function Page() {
   const router = useRouter()
   const { user: userContext } = useUser()
+  const { t, language } = useTranslation()
 
   // Estados principais
   const [user, setUser] = useState<User | null>(null)
@@ -67,6 +70,49 @@ export default function Page() {
   // Estados para sintomas dinâmicos
   const [dynamicSymptoms, setDynamicSymptoms] = useState<{sintoma: string, quantidade: number}[]>([])
   const [symptomsLoaded, setSymptomsLoaded] = useState(false)
+
+  const presetSymptomOptions = [
+    {
+      label: t('symptoms.backPain', 'Dor nas costas'),
+      value: t('symptoms.backPain', 'Dor nas costas')
+    },
+    {
+      label: t('symptoms.highBloodPressure', 'Pressão alta'),
+      value: t('symptoms.highBloodPressure', 'Pressão alta')
+    },
+    {
+      label: t('symptoms.fatigue', 'Cansaço'),
+      value: t('symptoms.fatigue', 'Cansaço')
+    },
+    {
+      label: t('symptoms.migraine', 'Enxaqueca'),
+      value: t('symptoms.migraine', 'Enxaqueca')
+    },
+    {
+      label: t('symptoms.insomnia', 'Insônia'),
+      value: t('symptoms.insomnia', 'Insônia')
+    },
+    {
+      label: t('symptoms.anxiety', 'Ansiedade'),
+      value: t('symptoms.anxiety', 'Ansiedade')
+    },
+    {
+      label: t('symptoms.rhinitis', 'Rinite'),
+      value: t('symptoms.rhinitis', 'Rinite')
+    },
+    {
+      label: t('symptoms.kneePain', 'Dor no joelho'),
+      value: t('symptoms.kneePain', 'Dor no joelho')
+    },
+    {
+      label: t('symptoms.stress', 'Estresse'),
+      value: t('symptoms.stress', 'Estresse')
+    },
+    {
+      label: t('symptoms.headache', 'Dor de cabeça'),
+      value: t('symptoms.headache', 'Dor de cabeça')
+    }
+  ]
 
   // Carrega sintomas dinâmicos
   useEffect(() => {
@@ -147,7 +193,7 @@ export default function Page() {
     }
   }, [router])
 
-  // 2) Carrega respostas do OpenAI quando selecionar uma thread
+  // 2) Carrega respostas do chat quando selecionar uma thread
   useEffect(() => {
     if (checkingProfile || !selectedThread) return
     let cancelled = false
@@ -194,7 +240,7 @@ export default function Page() {
           'Content-Type': 'application/json',
         },
         credentials: 'include', // Inclui cookies na requisição
-        body: JSON.stringify({ message: text })
+        body: JSON.stringify({ message: text, language })
       })
 
       // Verifica se houve erro de autenticação
@@ -241,8 +287,12 @@ export default function Page() {
         }, 2000)
       }
       
-      if (data.responses?.assistant?.length) {
+      // Valida e processa as respostas
+      if (data.responses?.assistant && Array.isArray(data.responses.assistant) && data.responses.assistant.length > 0) {
         setResponses(data.responses.assistant)
+      } else {
+        console.error('[Chat] Resposta inválida ou vazia:', data.responses)
+        throw new Error('Resposta inválida do servidor')
       }
       const t1 = performance.now()
       setElapsedMs(t1 - t0)
@@ -250,9 +300,9 @@ export default function Page() {
       console.error('[Chat] Erro ao enviar mensagem:', err)
       // Mostra erro ao usuário
       if (err instanceof Error) {
-        alert(`Erro ao processar sua mensagem: ${err.message}`)
+        alert(`${t('chat.error.prefix', 'Erro ao processar sua mensagem')}: ${err.message}`)
       } else {
-        alert('Erro ao processar sua mensagem. Tente novamente.')
+        alert(t('chat.error.generic', 'Erro ao processar sua mensagem. Tente novamente.'))
       }
     } finally {
       setInput('')
@@ -278,7 +328,9 @@ export default function Page() {
             <Spinner size={48} />
           </div>
         </div>
-        <p className="text-zinc-100 text-lg font-bold">Bem-vindo!</p>
+        <p className="text-zinc-100 text-lg font-bold">
+          {t('chat.loading.welcome', 'Bem-vindo!')}
+        </p>
       </div>
     )
   }
@@ -303,14 +355,14 @@ export default function Page() {
       />
 
       <SidebarInset>
-        <div className="flex flex-col h-screen overflow-hidden">
+        <div className="flex flex-col min-h-screen">
           {/* Header */}
-          <header className="w-full sticky top-0 z-10 flex items-center h-16 bg-zinc-50 p-4 shadow-sm">
-            <div className="w-full flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <SidebarTrigger className="-ml-1" />
-                <div className="flex flex-row items-center">
-                  <Avatar className="w-8 h-8 border-2 border-indigo-600">
+          <header className="w-full sticky top-0 z-30 flex items-center h-16 bg-zinc-50 p-4 shadow-sm">
+            <div className="w-full flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+                <SidebarTrigger className="-ml-1 flex-shrink-0" />
+                <div className="flex flex-row items-center min-w-0">
+                  <Avatar className="w-8 h-8 border-2 border-indigo-600 flex-shrink-0">
                     <AvatarImage
                       src={userContext?.image ?? undefined}
                       alt="User"
@@ -319,12 +371,15 @@ export default function Page() {
                       {FirstName(user.name).charAt(0)}
                     </AvatarFallback>
                   </Avatar>
-                  <h2 className="ml-2 scroll-m-20 text-xl font-semibold tracking-tight text-indigo-600">
-                    Olá, {FirstName(user.name)}!
+                  <h2 className="ml-2 scroll-m-20 text-base sm:text-xl font-semibold tracking-tight text-indigo-600 truncate">
+                    {t('chat.greeting.prefix', 'Olá')}, {FirstName(user.name)}!
                   </h2>
                 </div>
               </div>
-              <Bell className="mr-2" />
+              <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+                <LanguageSwitcher showLabel={false} className="min-w-[120px] sm:min-w-[160px]" />
+                <Bell className="mr-2" />
+              </div>
             </div>
           </header>
 
@@ -334,14 +389,14 @@ export default function Page() {
               me<span className="uppercase">diz</span>
               <span className="text-yellow-400">!</span>
             </p>
-            <div className="w-full max-w-4xl">
+            <div className="w-full max-w-4xl space-y-4">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search className="w-5 h-5 text-gray-400" />
                 </div>
                 <Input
                   type="text"
-                  placeholder="Digite uma dor, doença ou sintoma"
+                  placeholder={t('chat.input.placeholder', 'Digite uma dor, doença ou sintoma')}
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
@@ -353,7 +408,7 @@ export default function Page() {
                   disabled={loading}
                   className="absolute inset-y-1 right-1 rounded-sm px-6 py-4 min-h-[41.5px] bg-indigo-600 text-white hover:bg-indigo-700"
                 >
-                  {loading ? '...' : 'Buscar'}
+                  {loading ? '...' : t('general.search', 'Buscar')}
                 </Button>
               </div>
             </div>
@@ -374,7 +429,9 @@ export default function Page() {
               </ClientOnly>
             ) : responses.length === 0 ? (
               <div className="w-full max-w-4xl mt-4 flex flex-col gap-4">
-                <Label className="text-zinc-400">Mais buscados:</Label>
+                <Label className="text-zinc-400">
+                  {t('chat.popularQueries', 'Mais buscados:')}
+                </Label>
                 {symptomsLoaded && dynamicSymptoms.length > 0 ? (
                   <DynamicOptionSelector
                     value={input}
@@ -391,18 +448,7 @@ export default function Page() {
                       setInput(val)
                       handleSendMessage()
                     }}
-                    options={[
-                      { label: 'Dor nas costas', value: 'Dor nas costas' },
-                      { label: 'Pressão alta', value: 'Pressão alta' },
-                      { label: 'Cansaço', value: 'Cansaço' },
-                      { label: 'Enxaqueca', value: 'Enxaqueca' },
-                      { label: 'Insônia', value: 'Insônia' },
-                      { label: 'Ansiedade', value: 'Ansiedade' },
-                      { label: 'Rinite', value: 'Rinite' },
-                      { label: 'Dor no joelho', value: 'Dor no joelho' },
-                      { label: 'Estresse', value: 'Estresse' },
-                      { label: 'Dor de cabeça', value: 'Dor de cabeça' }
-                    ]}
+                    options={presetSymptomOptions}
                   />
                 )}
               </div>

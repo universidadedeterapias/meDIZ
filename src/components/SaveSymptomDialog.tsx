@@ -5,11 +5,19 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter
+} from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Folder, Save, Plus } from 'lucide-react'
 import { useSubscriptionStatus } from '@/hooks/use-subscription-status'
 import { UpgradeModal } from '@/components/UpgradeModal'
+import { useTranslation } from '@/i18n/useTranslation'
 
 type SymptomFolder = {
   id: string
@@ -27,6 +35,7 @@ type SaveSymptomDialogProps = {
 }
 
 export function SaveSymptomDialog({ symptom, threadId, onSaved, triggerClassName }: SaveSymptomDialogProps) {
+  const { t } = useTranslation()
   const [folders, setFolders] = useState<SymptomFolder[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
@@ -178,35 +187,35 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved, triggerClassName
               }}
             >
               <Save />
-              <span>Salvar Sintoma</span>
+              <span>{t('symptom.save', 'Salvar Sintoma')}</span>
             </Button>
           </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Salvar Sintoma</DialogTitle>
+            <DialogTitle>{t('symptom.save.title', 'Salvar Sintoma')}</DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-muted-foreground mb-4">
-              Você ainda não criou nenhuma pasta. Crie uma pasta para começar a organizar seus sintomas.
+              {t('symptom.save.noFolders', 'Você ainda não criou nenhuma pasta. Crie uma pasta para começar a organizar seus sintomas.')}
             </p>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="new-folder-name">Nome da pasta</Label>
+                <Label htmlFor="new-folder-name">{t('folders.folderName', 'Nome da pasta')}</Label>
                 <Input
                   id="new-folder-name"
                   value={newFolderName}
                   onChange={e => setNewFolderName(e.target.value)}
-                  placeholder="Ex: João Silva"
+                  placeholder={t('folders.folderNamePlaceholder', 'Ex: João Silva')}
                   onKeyDown={e => e.key === 'Enter' && !e.shiftKey && newFolderName.trim() && handleCreateFolder()}
                 />
               </div>
               <div>
-                <Label htmlFor="new-folder-notes">Observações (opcional)</Label>
+                <Label htmlFor="new-folder-notes">{t('folders.notes', 'Observações (opcional)')}</Label>
                 <Textarea
                   id="new-folder-notes"
                   value={newFolderNotes}
                   onChange={e => setNewFolderNotes(e.target.value)}
-                  placeholder="Adicione observações sobre esta pasta..."
+                  placeholder={t('folders.observationsPlaceholder', 'Adicione observações sobre esta pasta...')}
                   rows={3}
                 />
               </div>
@@ -215,10 +224,10 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved, triggerClassName
                 disabled={!newFolderName.trim() || creatingFolder}
                 className="w-full"
               >
-                {creatingFolder ? 'Criando...' : (
+                {creatingFolder ? t('symptom.save.creating', 'Criando...') : (
                   <>
                     <Plus className="mr-2 h-4 w-4" />
-                    Criar Pasta e Salvar
+                    {t('symptom.save.createAndSave', 'Criar Pasta e Salvar')}
                   </>
                 )}
               </Button>
@@ -226,7 +235,7 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved, triggerClassName
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancelar
+              {t('general.cancel', 'Cancelar')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -265,27 +274,27 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved, triggerClassName
             }}
           >
             <Save />
-            <span>Salvar Sintoma</span>
+            <span>{t('symptom.save', 'Salvar Sintoma')}</span>
           </Button>
         </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Salvar Sintoma: "{symptom}"</DialogTitle>
+          <DialogTitle>{t('symptom.save.title', 'Salvar Sintoma')}: "{symptom}"</DialogTitle>
         </DialogHeader>
         <div className="py-4">
           {loading ? (
             <div className="text-sm text-muted-foreground text-center py-4">
-              Carregando pastas...
+              {t('folders.loading', 'Carregando pastas...')}
             </div>
           ) : showCreateFolder ? (
             <div className="space-y-4">
               <div>
-                <Label htmlFor="create-folder-name">Nome da pasta</Label>
+                <Label htmlFor="create-folder-name">{t('folders.folderName', 'Nome da pasta')}</Label>
                 <Input
                   id="create-folder-name"
                   value={newFolderName}
                   onChange={e => setNewFolderName(e.target.value)}
-                  placeholder="Ex: João Silva"
+                  placeholder={t('folders.folderNamePlaceholder', 'Ex: João Silva')}
                   onKeyDown={e => {
                     if (e.key === 'Enter' && !e.shiftKey && newFolderName.trim()) {
                       handleCreateFolder()
@@ -300,12 +309,12 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved, triggerClassName
                 />
               </div>
               <div>
-                <Label htmlFor="create-folder-notes">Observações (opcional)</Label>
+                <Label htmlFor="create-folder-notes">{t('folders.notes', 'Observações (opcional)')}</Label>
                 <Textarea
                   id="create-folder-notes"
                   value={newFolderNotes}
                   onChange={e => setNewFolderNotes(e.target.value)}
-                  placeholder="Adicione observações sobre esta pasta..."
+                  placeholder={t('folders.observationsPlaceholder', 'Adicione observações sobre esta pasta...')}
                   rows={3}
                 />
               </div>
@@ -319,21 +328,21 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved, triggerClassName
                   }}
                   className="flex-1"
                 >
-                  Voltar
+                  {t('general.back', 'Voltar')}
                 </Button>
                 <Button 
                   onClick={handleCreateFolder} 
                   disabled={!newFolderName.trim() || creatingFolder}
                   className="flex-1"
                 >
-                  {creatingFolder ? 'Criando...' : 'Criar'}
+                  {creatingFolder ? t('symptom.save.creating', 'Criando...') : t('folders.create', 'Criar')}
                 </Button>
               </div>
             </div>
           ) : (
             <div className="space-y-2">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium">Escolha uma pasta:</p>
+                <p className="text-sm font-medium">{t('symptom.save.chooseFolder', 'Escolha uma pasta:')}</p>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -341,7 +350,7 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved, triggerClassName
                   className="text-xs"
                 >
                   <Plus className="mr-1 h-3 w-3" />
-                  Nova pasta
+                  {t('symptom.save.newFolder', 'Nova pasta')}
                 </Button>
               </div>
               <div className="max-h-[300px] overflow-y-auto space-y-2">

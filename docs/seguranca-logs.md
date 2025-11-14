@@ -17,7 +17,7 @@
 - ✅ `src/app/chat/result.tsx` - Removidos logs de conteúdo
 - ✅ `src/components/nav-folders.tsx` - Logs apenas em dev
 - ✅ `src/app/api/folders/*` - Removidos logs com dados sensíveis
-- ✅ `src/app/api/hotmart/route.ts` - Usa logger seguro, remove emails dos logs
+- ✅ `src/app/api/plataforma-pagamento/route.ts` - Usa logger seguro, remove emails dos logs
 - ✅ `src/app/admin/users/page.tsx` - Remove emails de logs
 - ✅ `src/auth.ts` - Remove emails de eventos, logs apenas em dev
 
@@ -121,7 +121,7 @@ Estes são seguros e devem aparecer:
 - [x] Emails removidos de logs de eventos
 - [x] Logs de conteúdo sensível removidos
 - [x] Logs de admin protegidos
-- [x] Webhook Hotmart usa logger seguro
+- [x] Webhook PlataformaPagamento usa logger seguro
 - [ ] Verificar `NODE_ENV=production` na Vercel
 - [ ] Testar logs em produção após deploy
 - [ ] Remover variáveis `AUTH_DEBUG` se existirem

@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Crown, ExternalLink } from 'lucide-react'
+import { useTranslation } from '@/i18n/useTranslation'
 
 interface UpgradeModalProps {
   open: boolean
@@ -20,6 +21,8 @@ interface UpgradeModalProps {
  * quando tentam usar funcionalidades premium
  */
 export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
+  const { t } = useTranslation()
+  
   const handleUpgrade = () => {
     // Redireciona para a página de upgrade (Hotmart)
     window.open('https://go.hotmart.com/N101121884P', '_blank')
@@ -36,24 +39,24 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
             </div>
           </div>
           <DialogTitle className="text-center text-xl font-bold text-indigo-600">
-            Função Premium
+            {t('upgrade.title', 'Função Premium')}
           </DialogTitle>
           <DialogDescription className="text-center text-gray-600 mt-2">
-            Esta funcionalidade está disponível apenas para usuários do plano profissional.
+            {t('upgrade.description', 'Esta funcionalidade está disponível apenas para usuários do plano profissional.')}
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4 mt-6">
           <div className="bg-indigo-50 p-4 rounded-lg">
             <h3 className="font-semibold text-indigo-800 mb-2">
-              Com o plano profissional você tem:
+              {t('upgrade.benefits.title', 'Com o plano profissional você tem:')}
             </h3>
             <ul className="space-y-1 text-sm text-indigo-700">
-              <li>• Exportação de consultas em PDF</li>
-              <li>• Organização de sintomas em pastas personalizadas</li>
-              <li>• Adição de observações e notas nas pastas</li>
-              <li>• Acesso completo a todas as funcionalidades</li>
-              <li>• Sem limitações de uso</li>
+              <li>• {t('upgrade.benefits.pdf', 'Exportação de consultas em PDF')}</li>
+              <li>• {t('upgrade.benefits.folders', 'Organização de sintomas em pastas personalizadas')}</li>
+              <li>• {t('upgrade.benefits.notes', 'Adição de observações e notas nas pastas')}</li>
+              <li>• {t('upgrade.benefits.fullAccess', 'Acesso completo a todas as funcionalidades')}</li>
+              <li>• {t('upgrade.benefits.noLimits', 'Sem limitações de uso')}</li>
             </ul>
           </div>
           
@@ -63,7 +66,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
               className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3"
             >
               <Crown className="h-4 w-4 mr-2" />
-              Fazer Upgrade Agora
+              {t('upgrade.cta', 'Fazer Upgrade Agora')}
               <ExternalLink className="h-4 w-4 ml-2" />
             </Button>
             
@@ -72,7 +75,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
               onClick={() => onOpenChange(false)}
               className="w-full"
             >
-              Cancelar
+              {t('general.cancel', 'Cancelar')}
             </Button>
           </div>
         </div>

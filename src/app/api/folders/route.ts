@@ -6,23 +6,37 @@ import { NextResponse } from 'next/server'
 
 // GET - Listar todas as pastas do usuário
 export async function GET() {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
+    const folders = await prisma.symptomFolder.findMany({
+      where: { userId: session.user.id },
+      include: {
+        symptoms: {
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, symptom: true, threadId: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+
+    return NextResponse.json(folders)
+  } catch (error) {
+    console.error('[API Folders] Erro ao listar pastas:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+    const _errorStack = error instanceof Error ? error.stack : undefined
+    
+    return NextResponse.json(
+      { 
+        error: 'Erro ao carregar pastas',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      },
+      { status: 500 }
+    )
   }
-
-  const folders = await prisma.symptomFolder.findMany({
-    where: { userId: session.user.id },
-    include: {
-      symptoms: {
-        orderBy: { createdAt: 'desc' },
-        select: { id: true, symptom: true, threadId: true }
-      }
-    },
-    orderBy: { createdAt: 'desc' }
-  })
-
-  return NextResponse.json(folders)
 }
 
 // POST - Criar nova pasta

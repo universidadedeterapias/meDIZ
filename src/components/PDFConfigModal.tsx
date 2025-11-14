@@ -14,6 +14,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { generateChatPDF } from '@/lib/pdfGenerator'
 import { FileText, User, Calendar, MessageSquare } from 'lucide-react'
+import { useLanguage } from '@/i18n/useLanguage'
+import { useTranslation } from '@/i18n/useTranslation'
 
 interface PDFConfigModalProps {
   open: boolean
@@ -34,6 +36,8 @@ export function PDFConfigModal({
   answer, 
   sessionId 
 }: PDFConfigModalProps) {
+  const { language } = useLanguage()
+  const { t } = useTranslation()
   const [patientName, setPatientName] = useState('')
   const [therapistName, setTherapistName] = useState<string>('')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -76,7 +80,8 @@ export function PDFConfigModal({
         timestamp: new Date(),
         sessionId,
         patientName: patientName.trim() || undefined,
-        therapistName: therapistName.trim() || undefined
+        therapistName: therapistName.trim() || undefined,
+        language
       })
       onOpenChange(false)
     } catch (error) {
@@ -96,10 +101,10 @@ export function PDFConfigModal({
             </div>
           </div>
           <DialogTitle className="text-center text-xl font-bold text-indigo-600">
-            Configurar Exportação PDF
+            {t('pdf.config.title', 'Configurar Exportação PDF')}
           </DialogTitle>
           <DialogDescription className="text-center text-gray-600 mt-2">
-            Personalize as informações que aparecerão no PDF da consulta.
+            {t('pdf.config.description', 'Personalize as informações que aparecerão no PDF da consulta.')}
           </DialogDescription>
         </DialogHeader>
         
@@ -108,17 +113,17 @@ export function PDFConfigModal({
           <div className="space-y-2">
             <Label htmlFor="therapistName" className="flex items-center gap-2 text-sm font-medium">
               <User className="h-4 w-4 text-indigo-600" />
-              Nome da Terapeuta
+              {t('pdf.config.therapistName', 'Nome da Terapeuta')}
             </Label>
             <Input
               id="therapistName"
-              placeholder="Digite o nome da terapeuta"
+              placeholder={t('pdf.config.therapistNamePlaceholder', 'Digite o nome da terapeuta')}
               value={therapistName}
               onChange={(e) => setTherapistName(e.target.value)}
               className="border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500"
             />
             <p className="text-xs text-gray-500">
-              Aparecerá como título grande logo abaixo da logo no PDF
+              {t('pdf.config.therapistNameHint', 'Aparecerá como título grande logo abaixo da logo no PDF')}
             </p>
           </div>
 
@@ -126,17 +131,17 @@ export function PDFConfigModal({
           <div className="space-y-2">
             <Label htmlFor="patientName" className="flex items-center gap-2 text-sm font-medium">
               <User className="h-4 w-4 text-indigo-600" />
-              Nome do Paciente (opcional)
+              {t('pdf.config.patientName', 'Nome do Paciente (opcional)')}
             </Label>
             <Input
               id="patientName"
-              placeholder="Digite o nome do paciente"
+              placeholder={t('pdf.config.patientNamePlaceholder', 'Digite o nome do paciente')}
               value={patientName}
               onChange={(e) => setPatientName(e.target.value)}
               className="border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500"
             />
             <p className="text-xs text-gray-500">
-              Se preenchido, aparecerá no cabeçalho do PDF
+              {t('pdf.config.patientNameHint', 'Se preenchido, aparecerá no cabeçalho do PDF')}
             </p>
           </div>
 
@@ -144,7 +149,7 @@ export function PDFConfigModal({
           <div className="space-y-2">
             <Label className="flex items-center gap-2 text-sm font-medium">
               <MessageSquare className="h-4 w-4 text-indigo-600" />
-              Resumo da Consulta
+              {t('pdf.config.summary', 'Resumo da Consulta')}
             </Label>
             <div className="bg-gray-50 p-3 rounded-lg text-sm">
               <div className="flex items-center gap-2 mb-2">
@@ -154,11 +159,11 @@ export function PDFConfigModal({
                 </span>
               </div>
               <div className="text-gray-700">
-                <strong>Pergunta:</strong> {question.length > 50 ? `${question.substring(0, 50)}...` : question}
+                <strong>{t('pdf.config.question', 'Pergunta:')}</strong> {question.length > 50 ? `${question.substring(0, 50)}...` : question}
               </div>
               {patientName && (
                 <div className="text-indigo-600 mt-1">
-                  <strong>Paciente:</strong> {patientName}
+                  <strong>{t('pdf.config.patient', 'Paciente:')}</strong> {patientName}
                 </div>
               )}
             </div>
@@ -171,7 +176,7 @@ export function PDFConfigModal({
             onClick={() => onOpenChange(false)}
             disabled={isGenerating}
           >
-            Cancelar
+            {t('general.cancel', 'Cancelar')}
           </Button>
           <Button 
             onClick={handleExport}
@@ -181,12 +186,12 @@ export function PDFConfigModal({
             {isGenerating ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Gerando PDF...
+                {t('pdf.config.generating', 'Gerando PDF...')}
               </>
             ) : (
               <>
                 <FileText className="h-4 w-4 mr-2" />
-                Exportar PDF
+                {t('pdf.config.export', 'Exportar PDF')}
               </>
             )}
           </Button>

@@ -1,4 +1,4 @@
-# 📱 Sistema WhatsApp - meDIZ
+# 📱 Sistema WhatsApp - ExemploApp
 
 ## 🎯 Visão Geral
 
@@ -104,7 +104,7 @@ graph TD
 #### **Verificação de Cadastro**
 1. Faça cadastro no sistema
 2. Receba link via WhatsApp
-3. **IMPORTANTE**: Adicione o número do meDIZ aos contatos
+3. **IMPORTANTE**: Adicione o número do ExemploApp aos contatos
 4. Clique no link para confirmar
 5. Faça login normalmente
 
@@ -112,7 +112,7 @@ graph TD
 ```
 Olá [Nome]! 👋
 
-Bem-vindo(a) ao meDIZ! 
+Bem-vindo(a) ao ExemploApp! 
 
 Para confirmar seu cadastro e ativar sua conta, clique no link abaixo.
 

@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { useSubscriptionStatus } from '@/hooks/use-subscription-status'
 import { UpgradeModal } from '@/components/UpgradeModal'
+import { useTranslation } from '@/i18n/useTranslation'
 import {
   DndContext,
   DragOverlay,
@@ -119,6 +120,7 @@ function DraggableSymptomItem({ symptom, onSelect }: { symptom: SavedSymptom; on
 }
 
 export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
+  const { t } = useTranslation()
   const [folders, setFolders] = useState<SymptomFolder[]>([])
   const [loading, setLoading] = useState(true)
   const [openCreateDialog, setOpenCreateDialog] = useState(false)
@@ -170,17 +172,26 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
       const res = await fetch('/api/folders')
       if (process.env.NODE_ENV !== 'production') console.log('[NavFolders] Response status:', res.status)
       if (!res.ok) {
-        console.error('[NavFolders] Erro na resposta:', res.status, res.statusText)
+        const errorData = await res.json().catch(() => ({ error: 'Erro desconhecido' }))
+        console.error('[NavFolders] Erro na resposta:', res.status, res.statusText, errorData)
+        // Não mostra alerta para erro 401 (não autenticado) - pode ser temporário
+        if (res.status !== 401) {
+          console.warn('[NavFolders] Falha ao carregar pastas. Tentando novamente...')
+        }
+        // Define pastas vazias em caso de erro para não travar a UI
+        setFolders([])
         return
       }
       const data = await res.json()
-      console.log('[NavFolders] Pastas carregadas:', data)
-      setFolders(data)
+      if (process.env.NODE_ENV !== 'production') console.log('[NavFolders] Pastas carregadas:', data)
+      setFolders(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('[NavFolders] Erro ao carregar pastas:', error)
+      // Define pastas vazias em caso de erro para não travar a UI
+      setFolders([])
     } finally {
       setLoading(false)
-      console.log('[NavFolders] Loading finalizado')
+      if (process.env.NODE_ENV !== 'production') console.log('[NavFolders] Loading finalizado')
     }
   }
 
@@ -394,14 +405,14 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
   if (loading) {
     return (
       <SidebarGroup>
-        <SidebarGroupLabel className="text-sm font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-          📁 Pastas de Pacientes
+        <SidebarGroupLabel className="text-sm font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent group-data-[collapsed=true]:hidden">
+          📁 {t('folders.title', 'Pastas de Pacientes')}
         </SidebarGroupLabel>
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex items-center gap-2 px-2 py-3">
               <div className="h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-muted-foreground">Carregando pastas...</span>
+              <span className="text-sm text-muted-foreground">{t('folders.loading', 'Carregando pastas...')}</span>
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -420,9 +431,9 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
       onDragOver={handleDragOver}
     >
       <SidebarGroup>
-        <div className="flex items-center justify-between px-2 mb-3">
+        <div className="flex items-center justify-between px-2 mb-3 group-data-[collapsed=true]:hidden">
           <SidebarGroupLabel className="text-sm font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-            📁 Pastas de Pacientes
+            📁 {t('folders.title', 'Pastas de Pacientes')}
           </SidebarGroupLabel>
           <Dialog open={openCreateDialog} onOpenChange={(open) => {
             if (!open) {
@@ -458,26 +469,26 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Nova Pasta</DialogTitle>
+                <DialogTitle>{t('folders.newFolder', 'Nova Pasta')}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="folder-name">Nome da pasta</Label>
+                  <Label htmlFor="folder-name">{t('folders.folderName', 'Nome da pasta')}</Label>
                   <Input
                     id="folder-name"
                     value={newFolderName}
                     onChange={e => setNewFolderName(e.target.value)}
-                    placeholder="Ex: João Silva"
+                    placeholder={t('folders.folderNamePlaceholder', 'Ex: João Silva')}
                     onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleCreateFolder()}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="folder-notes">Observações (opcional)</Label>
+                  <Label htmlFor="folder-notes">{t('folders.notes', 'Observações (opcional)')}</Label>
                   <Textarea
                     id="folder-notes"
                     value={newFolderNotes}
                     onChange={e => setNewFolderNotes(e.target.value)}
-                    placeholder="Adicione notas ou comentários sobre esta pasta..."
+                    placeholder={t('folders.notesPlaceholder', 'Adicione notas ou comentários sobre esta pasta...')}
                     rows={3}
                   />
                 </div>
@@ -488,9 +499,9 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
                   setNewFolderName('')
                   setNewFolderNotes('')
                 }}>
-                  Cancelar
+                  {t('general.cancel', 'Cancelar')}
                 </Button>
-                <Button onClick={handleCreateFolder}>Criar</Button>
+                <Button onClick={handleCreateFolder}>{t('folders.create', 'Criar')}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -502,9 +513,22 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
               <div className="flex flex-col items-center justify-center p-6 text-center space-y-3 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30">
                 <Folder className="h-10 w-10 text-muted-foreground/50" />
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-foreground">Nenhuma pasta criada</p>
+                  <p className="text-sm font-medium text-foreground">{t('folders.noFolders', 'Nenhuma pasta criada')}</p>
                   <p className="text-xs text-muted-foreground">
-                    Clique no botão <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-[10px]">+</span> acima para criar sua primeira pasta
+                    {(() => {
+                      const desc = t('folders.noFoldersDescription', 'Clique no botão + acima para criar sua primeira pasta')
+                      const parts = desc.split('+')
+                      if (parts.length === 2) {
+                        return (
+                          <>
+                            {parts[0]}
+                            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-[10px]">+</span>
+                            {parts[1]}
+                          </>
+                        )
+                      }
+                      return desc
+                    })()}
                   </p>
                 </div>
               </div>
@@ -565,7 +589,7 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
                         {editingFolderNotes === folder.id ? (
                           <div className="space-y-2">
                             <div className="flex items-center justify-between mb-1">
-                              <Label className="text-xs font-medium">Observações</Label>
+                              <Label className="text-xs font-medium">{t('folders.observations', 'Observações')}</Label>
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -581,7 +605,7 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
                             <Textarea
                               value={editingNotes}
                               onChange={e => setEditingNotes(e.target.value)}
-                              placeholder="Adicione observações sobre esta pasta..."
+                              placeholder={t('folders.observationsPlaceholder', 'Adicione observações sobre esta pasta...')}
                               rows={3}
                               className="text-xs"
                             />
@@ -595,14 +619,14 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
                                   setEditingNotes('')
                                 }}
                               >
-                                Cancelar
+                                {t('general.cancel', 'Cancelar')}
                               </Button>
                               <Button
                                 size="sm"
                                 className="h-6 text-xs flex-1"
                                 onClick={() => handleUpdateNotes(folder.id)}
                               >
-                                Salvar
+                                {t('general.save', 'Salvar')}
                               </Button>
                             </div>
                           </div>
@@ -611,7 +635,7 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-1.5">
                                 <FileText className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-                                <Label className="text-xs font-semibold text-foreground">Observações</Label>
+                                <Label className="text-xs font-semibold text-foreground">{t('folders.observations', 'Observações')}</Label>
                               </div>
                               <Button
                                 variant="ghost"
@@ -635,7 +659,7 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
                               </p>
                             ) : (
                               <p className="text-xs text-muted-foreground italic px-2 py-1.5 rounded bg-muted/50 border border-dashed border-muted-foreground/20">
-                                Sem observações. Clique no ícone de editar para adicionar.
+                                {t('folders.noObservations', 'Sem observações. Clique no ícone de editar para adicionar.')}
                               </p>
                             )}
                           </div>
