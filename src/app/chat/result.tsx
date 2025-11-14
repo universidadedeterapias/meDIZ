@@ -31,8 +31,9 @@ import {
   Workflow
 } from 'lucide-react'
 import React, { useEffect, useState, useMemo } from 'react'
-// import ReactMarkdown from 'react-markdown'
-// import remarkGfm from 'remark-gfm'
+import { useTranslation } from '@/i18n/useTranslation'
+import { useLanguage } from '@/i18n/useLanguage'
+import type { LanguageCode } from '@/i18n/config'
 
 // Mapa de string → componente, mantém tudo num lugar
 const ICON_MAP: Record<
@@ -49,6 +50,75 @@ const ICON_MAP: Record<
   activity: Activity,
   'heart-pulse': HeartPulse,
   'circle-question-mark': MessageCircleQuestion
+}
+
+// Mapeamento de tradução dos títulos das seções
+const SECTION_TITLE_TRANSLATIONS: Record<string, Record<LanguageCode, string>> = {
+  'Símbolos Biológicos': {
+    'pt-BR': 'Símbolos Biológicos',
+    'pt-PT': 'Símbolos Biológicos',
+    en: 'Biological Symbols',
+    es: 'Símbolos Biológicos'
+  },
+  'Conflito Emocional Subjacente': {
+    'pt-BR': 'Conflito Emocional Subjacente',
+    'pt-PT': 'Conflito Emocional Subjacente',
+    en: 'Underlying Emotional Conflict',
+    es: 'Conflicto Emocional Subyacente'
+  },
+  'Experiências comuns': {
+    'pt-BR': 'Experiências comuns',
+    'pt-PT': 'Experiências comuns',
+    en: 'Common Experiences',
+    es: 'Experiencias comunes'
+  },
+  'Padrões de comportamento': {
+    'pt-BR': 'Padrões de comportamento',
+    'pt-PT': 'Padrões de comportamento',
+    en: 'Behavior Patterns',
+    es: 'Patrones de comportamiento'
+  },
+  'Impacto Transgeracional': {
+    'pt-BR': 'Impacto Transgeracional',
+    'pt-PT': 'Impacto Transgeracional',
+    en: 'Transgenerational Impact',
+    es: 'Impacto Transgeneracional'
+  },
+  'Lateralidade': {
+    'pt-BR': 'Lateralidade',
+    'pt-PT': 'Lateralidade',
+    en: 'Laterality',
+    es: 'Lateralidad'
+  },
+  'Fases da doença': {
+    'pt-BR': 'Fases da doença',
+    'pt-PT': 'Fases da doença',
+    en: 'Disease Phases',
+    es: 'Fases de la enfermedad'
+  },
+  'Possíveis doenças correlacionadas': {
+    'pt-BR': 'Possíveis doenças correlacionadas',
+    'pt-PT': 'Possíveis doenças correlacionadas',
+    en: 'Possible Related Conditions',
+    es: 'Posibles enfermedades correlacionadas'
+  },
+  'Perguntas Reflexivas': {
+    'pt-BR': 'Perguntas Reflexivas',
+    'pt-PT': 'Perguntas Reflexivas',
+    en: 'Reflective Questions',
+    es: 'Preguntas Reflexivas'
+  },
+  'Chave Terapêutica do [RE]Sentir': {
+    'pt-BR': 'Chave Terapêutica do [RE]Sentir',
+    'pt-PT': 'Chave Terapêutica do [RE]Sentir',
+    en: 'Therapeutic Key of [RE]Feeling',
+    es: 'Clave Terapéutica del [RE]Sentir'
+  }
+}
+
+// Função para traduzir título da seção
+function translateSectionTitle(title: string, language: LanguageCode): string {
+  return SECTION_TITLE_TRANSLATIONS[title]?.[language] || title
 }
 
 type ResultProps = {
@@ -69,14 +139,21 @@ export function Result({
   userQuestion,
   sessionId
 }: ResultProps) {
-  const data = useMemo(() => parseResponse(markdown), [markdown])
+  // DEBUG: Log do markdown recebido
+  const data = useMemo(() => {
+    const parsed = parseResponse(markdown)
+    return parsed
+  }, [markdown])
   const [baseUrl, setBaseUrl] = useState('')
+  const { t } = useTranslation()
+  const { language } = useLanguage()
   
   // Determina se deve mostrar o conteúdo completo ou parcial
   const showFullContent = fullVisualization
   
   // Usa userQuestion se disponível, senão usa o nome popular do sintoma
-  const symptomText = userQuestion || data.popular || data.scientific || 'Sintoma'
+  const symptomText =
+    userQuestion || data.popular || data.scientific || t('result.defaultSymptom', 'Sintoma')
 
   useEffect(() => {
     // só roda no client
@@ -96,7 +173,7 @@ export function Result({
                 <div className="flex items-center gap-2 mb-3">
                   <span className="block w-1 h-4 bg-primary rounded" />
                   <span className="uppercase text-sm font-semibold text-primary">
-                    Nome científico
+                    {t('result.scientificName', 'Nome científico')}
                   </span>
                 </div>
                 <CardTitle className="text-2xl font-bold text-foreground mb-6">
@@ -136,7 +213,7 @@ export function Result({
           <div className="flex items-center gap-2">
             <span className="block w-1 h-4 bg-primary rounded" />
             <span className="uppercase text-sm font-semibold text-primary">
-              Contexto Geral
+              {t('result.generalContext', 'Contexto geral')}
             </span>
           </div>
           <div className="prose prose-sm max-w-none text-justify">
@@ -152,7 +229,7 @@ export function Result({
           <div className="flex items-center gap-2">
             <span className="block w-1 h-4 bg-primary rounded" />
             <span className="uppercase text-sm font-semibold text-primary">
-              Impacto biológico
+              {t('result.biologicalImpact', 'Impacto biológico')}
             </span>
           </div>
           <div className="prose prose-sm max-w-none text-justify font-normal">
@@ -185,7 +262,7 @@ export function Result({
                     {Icon && (
                       <Icon className="h-4 w-4 flex-shrink-0 text-primary" />
                     )}
-                    {sec.title.toLowerCase()}
+                    {translateSectionTitle(sec.title, language).toLowerCase()}
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="prose prose-sm max-w-none p-3 text-left">
@@ -227,7 +304,12 @@ export function Result({
               }}
             />
             <ShareInsightDialog
-              title={`${data.popular} – Impacto biológico`}
+              title={
+                t('result.shareTitle', '{symptom} – Impacto biológico').replace(
+                  '{symptom}',
+                  data.popular || symptomText
+                )
+              }
               url={baseUrl}
               text={data.impactoBiologico}
               triggerClassName="w-full py-6 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors flex items-center justify-center gap-2"
@@ -240,7 +322,7 @@ export function Result({
           <div className="flex items-center text-sm text-gray-500">
             <Clock className="w-4 h-4 mr-1 flex-shrink-0" />
             <span>
-              Tempo de resposta:{' '}
+              {t('result.responseTime', 'Tempo de resposta')}{' '}
               <strong>{(elapsedMs / 1000).toFixed(2)}s</strong>
             </span>
           </div>
@@ -249,8 +331,10 @@ export function Result({
           <div className="flex items-start gap-2 p-3 bg-yellow-50 text-yellow-800 rounded-md text-xs">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             <span>
-              O <strong>meDIZ!</strong> pode cometer erros. Sempre verifique as
-              informações antes de tomar decisões críticas.
+              {t(
+                'result.disclaimer',
+                'O meDIZ! pode cometer erros. Sempre verifique as informações antes de tomar decisões críticas.'
+              )}
             </span>
           </div>
         </div>

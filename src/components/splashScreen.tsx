@@ -2,10 +2,13 @@
 'use client'
 
 import { useEffect } from 'react'
+import { useTranslation } from '@/i18n/useTranslation'
 
 type Props = { target: string }
 
 export default function SplashScreen({ target }: Props) {
+  const { t } = useTranslation()
+
   useEffect(() => {
     const timer = setTimeout(() => {
       window.location.href = target
@@ -27,7 +30,9 @@ export default function SplashScreen({ target }: Props) {
           <span className="text-yellow-400">!</span>
         </p>
       </div>
-      <p className="text-zinc-100 text-lg font-bold">Bem-vindo!</p>
+      <p className="text-zinc-100 text-lg font-bold">
+        {t('chat.loading.welcome', 'Bem-vindo!')}
+      </p>
     </div>
   )
 }

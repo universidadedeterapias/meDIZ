@@ -21,7 +21,7 @@ Verificar se o painel de usuários (`/admin/users`) está buscando dados reais d
 - **Usuários premium:** 44 (com subscription ativa)
 - **Usuários gratuitos:** 378
 - **Usuários órfãos:** 178 (sem Account, Session ou Subscription)
-- **Usuários admin:** Calculado dinamicamente (email @mediz.com)
+- **Usuários admin:** Calculado dinamicamente (email @exemplo.com)
 
 ### Distribuição de Usuários Gratuitos por Período
 - **1-7 dias:** 24 usuários
@@ -129,7 +129,7 @@ const activeUsersCount = await prisma.user.count({
 
 #### C) Usuários com Múltiplas Subscriptions (3)
 1. **marilin_mb@yahoo.com.br:** 3 subscriptions ativas
-   - meDIZ Assin Anual 30D - Free (até 22/07/2026)
+   - ExemploApp Assin Anual 30D - Free (até 22/07/2026)
    - Assin Mensal 30D|free (até 22/10/2025)
    - Assin Mensal 30D|free (até 22/10/2025)
 
@@ -140,7 +140,7 @@ const activeUsersCount = await prisma.user.count({
 
 3. **martalevita1976@gmail.com:** 2 subscriptions ativas
    - Assin Mensal 30D|free (até 03/11/2025)
-   - Assinatura Mensal Hotmart (até 02/11/2025)
+   - Assinatura Mensal PlataformaPagamento (até 02/11/2025)
 
 ---
 

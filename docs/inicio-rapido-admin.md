@@ -1,16 +1,16 @@
-# Guia Rápido: Painel Administrativo meDIZ
+# Guia Rápido: Painel Administrativo ExemploApp
 
-Este guia fornece instruções rápidas para acessar e usar o painel administrativo do meDIZ.
+Este guia fornece instruções rápidas para acessar e usar o painel administrativo do ExemploApp.
 
 ## Acesso ao Painel
 
 1. **URL**: [http://localhost:3000/admin-login](http://localhost:3000/admin-login) (em desenvolvimento)
 
 2. **Credenciais**:
-   - **Email**: marianna.yaskara@mediz.com
+   - **Email**: admin.exemplo@exemplo.com
    - **Senha**: Admin123!
 
-3. **Requisitos**: O email do administrador deve terminar com `@mediz.com`
+3. **Requisitos**: O email do administrador deve terminar com `@exemplo.com`
 
 ## Funcionalidades Disponíveis
 

@@ -305,7 +305,7 @@ npm run check-subscriptions
 ## 🔒 Segurança e Validação
 
 ### Autenticação
-- ✅ **Verificação de admin**: Email @mediz.com
+- ✅ **Verificação de admin**: Email @exemplo.com
 - ✅ **Middleware**: Proteção de rotas
 - ✅ **Session validation**: Verificação de sessão ativa
 

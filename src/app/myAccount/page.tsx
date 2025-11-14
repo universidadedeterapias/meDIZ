@@ -32,6 +32,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { FaWhatsapp } from 'react-icons/fa'
 import MyAccountSkeleton from './skeleton'
+import { useTranslation } from '@/i18n/useTranslation'
 
 type SubscriptionAPI = {
   status: 'active' | 'trialing' | 'cancel_at_period_end' | 'canceled'
@@ -48,6 +49,7 @@ export default function MyAccountPage() {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { user, setUser } = useUser()
+  const { t } = useTranslation()
 
   const [editing, setEditing] = useState(false)
   const [subscription, setSubscription] = useState<SubscriptionAPI | null>(null)
@@ -110,7 +112,7 @@ export default function MyAccountPage() {
       )
       setEditing(false)
     } catch {
-      alert('Não foi possível salvar as mudanças.')
+      alert(t('account.data.saveError', 'Não foi possível salvar as mudanças.'))
     }
   }
 
@@ -146,25 +148,25 @@ export default function MyAccountPage() {
       const { image } = await res.json()
       setUser(u => (u ? { ...u, image } : u))
     } catch {
-      alert('Erro ao enviar a imagem')
+      alert(t('account.avatar.uploadError', 'Erro ao enviar a imagem'))
     }
   }
 
   const handleCancelSubscription = async () => {
     if (!isActive || isCancelling) return
     const msg = renewDate
-      ? `Cancelar ao fim do ciclo (até ${formatDate(renewDate)})?`
-      : 'Cancelar sua assinatura?'
+      ? t('account.subscription.cancelConfirm', 'Cancelar ao fim do ciclo (até {date})?').replace('{date}', formatDate(renewDate) ?? '')
+      : t('account.subscription.cancelConfirmNoDate', 'Cancelar sua assinatura?')
     if (!confirm(msg)) return
 
     const res = await fetch('/api/stripe/subscription/cancel', {
       method: 'PATCH'
     })
     if (!res.ok) {
-      alert('Falha ao agendar cancelamento.')
+      alert(t('account.subscription.cancelError', 'Falha ao agendar cancelamento.'))
       return
     }
-    alert('Cancelamento agendado!')
+    alert(t('account.subscription.cancelSuccess', 'Cancelamento agendado!'))
     setSubscription(s => (s ? { ...s, status: 'cancel_at_period_end' } : s))
   }
 
@@ -215,10 +217,10 @@ export default function MyAccountPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 <DropdownMenuItem onSelect={() => handleMenuSelect('view')}>
-                  Ver imagem
+                  {t('account.avatar.view', 'Ver imagem')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => handleMenuSelect('change')}>
-                  Alterar imagem
+                  {t('account.avatar.change', 'Alterar imagem')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -241,12 +243,12 @@ export default function MyAccountPage() {
           <Card className="border-yellow-400 bg-yellow-50 shadow-sm text-sm border-l-4">
             <CardHeader className="space-y-1">
               <CardTitle className="text-yellow-800">
-                🌟 Assinatura Premium
+                {t('account.subscription.premium', '🌟 Assinatura Premium')}
               </CardTitle>
               <CardDescription className="text-yellow-700/80">
                 {isCancelling
-                  ? `Cancelamento agendado para ${formatDate(renewDate!)}`
-                  : `Renovação em ${formatDate(renewDate!)}`}
+                  ? `${t('account.subscription.cancelling', 'Cancelamento agendado para')} ${formatDate(renewDate!)}`
+                  : `${t('account.subscription.renewal', 'Renovação em')} ${formatDate(renewDate!)}`}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -254,10 +256,10 @@ export default function MyAccountPage() {
           <Card className="border-l-8 border-yellow-400 bg-gradient-to-r from-yellow-100 to-yellow-50 shadow-lg ">
             <CardHeader className="space-y-2">
               <CardTitle className="text-xl font-semibold text-yellow-800">
-                🔑 Assinatura Premium
+                {t('account.subscription.unlock', '🔑 Assinatura Premium')}
               </CardTitle>
               <CardDescription className="text-yellow-700">
-                Desbloqueie todos os recursos Premium e eleve sua experiência!
+                {t('account.subscription.unlockDescription', 'Desbloqueie todos os recursos Premium e eleve sua experiência!')}
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-0">
@@ -267,7 +269,7 @@ export default function MyAccountPage() {
                 size="lg"
                 className="w-full tracking-wide bg-yellow-400 text-yellow-900"
               >
-                <Link href="/assinatura-plus">Assine Agora 🚀</Link>
+                <Link href="/assinatura-plus">{t('account.subscription.subscribeNow', 'Assine Agora 🚀')}</Link>
               </Button>
             </CardContent>
           </Card>
@@ -278,14 +280,14 @@ export default function MyAccountPage() {
         {/* Dados do Usuário */}
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row justify-between items-center p-4">
-            <CardTitle className="text-sm font-medium">Seus dados</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('account.data.title', 'Seus dados')}</CardTitle>
             {!editing ? (
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setEditing(true)}
               >
-                Editar
+                {t('account.data.edit', 'Editar')}
               </Button>
             ) : (
               <Button
@@ -294,7 +296,7 @@ export default function MyAccountPage() {
                 onClick={() => setEditing(false)}
                 disabled={isSubmitting}
               >
-                Cancelar
+                {t('account.data.cancel', 'Cancelar')}
               </Button>
             )}
           </CardHeader>
@@ -302,7 +304,7 @@ export default function MyAccountPage() {
           <CardContent className="p-4 space-y-4">
             {/* Nome */}
             <div>
-              <Label className="text-xs">Nome</Label>
+              <Label className="text-xs">{t('account.data.fullName', 'Nome completo')}</Label>
               {editing ? (
                 <Input
                   {...register('fullName', {
@@ -322,7 +324,7 @@ export default function MyAccountPage() {
 
             {/* E-mail */}
             <div>
-              <Label className="text-xs">E-mail</Label>
+              <Label className="text-xs">{t('account.data.email', 'E-mail')}</Label>
               {editing ? (
                 <Input
                   type="email"
@@ -345,7 +347,7 @@ export default function MyAccountPage() {
 
             {/* Whatsapp */}
             <div>
-              <Label className="text-xs">Whatsapp</Label>
+              <Label className="text-xs">{t('account.data.whatsapp', 'WhatsApp')}</Label>
 
               {editing ? (
                 <Input
@@ -379,7 +381,7 @@ export default function MyAccountPage() {
                   onClick={handleSubmit(onSubmit)}
                   disabled={isSubmitting}
                 >
-                  Salvar
+                  {t('account.data.save', 'Salvar')}
                 </Button>
               </div>
             )}
@@ -394,14 +396,14 @@ export default function MyAccountPage() {
         >
           <CardHeader className="flex flex-row justify-between items-center">
             <CardTitle className="text-sm font-medium">
-              Planos &amp; Preços
+              {t('account.subscription.plansPrices', 'Planos & Preços')}
             </CardTitle>
           </CardHeader>
           <Separator />
           <CardContent className="p-4 space-y-4">
             {isActive && (
               <div className="flex justify-between text-sm">
-                <span>Data de Renovação:</span>
+                <span>{t('account.subscription.renewalDate', 'Data de Renovação:')}</span>
                 <span className="font-bold">{formatDate(renewDate!)}</span>
               </div>
             )}
@@ -415,7 +417,7 @@ export default function MyAccountPage() {
                 disabled={!isActive}
               >
                 <Link href="/account/payments-history">
-                  Ver Histórico de Pagamentos
+                  {t('account.subscription.viewPaymentHistory', 'Ver Histórico de Pagamentos')}
                 </Link>
               </Button>
               <Button
@@ -425,7 +427,7 @@ export default function MyAccountPage() {
                 disabled={!isActive || isCancelling}
                 className="w-full text-red-700"
               >
-                {isCancelling ? 'Cancelamento Agendado' : 'Cancelar Assinatura'}
+                {isCancelling ? t('account.subscription.cancelSuccess', 'Cancelamento agendado!') : t('account.subscription.cancel', 'Cancelar assinatura')}
               </Button>
             </div>
           </CardContent>
@@ -455,7 +457,7 @@ export default function MyAccountPage() {
           onClick={() => window.open('https://wa.me/+5555997230707', '_blank')}
         >
           <FaWhatsapp />
-          Suporte via WhatsApp
+          {t('account.support.whatsapp', 'Suporte via WhatsApp')}
         </Button>
 
         {/* Logout */}
@@ -464,7 +466,7 @@ export default function MyAccountPage() {
           className="w-full bg-red-100 text-red-700 hover:bg-red-200"
           onClick={handleLogout}
         >
-          Sair
+          {t('navbar.logout', 'Sair')}
         </Button>
       </div>
 

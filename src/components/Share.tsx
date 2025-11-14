@@ -13,6 +13,7 @@ import {
 import { Share2 } from 'lucide-react'
 import { useState } from 'react'
 import { SocialIcon } from 'react-social-icons'
+import { useTranslation } from '@/i18n/useTranslation'
 
 interface ShareInsightDialogProps {
   title: string
@@ -39,6 +40,7 @@ export function ShareInsightDialog({
   url,
   triggerClassName
 }: ShareInsightDialogProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const encodedText = encodeURIComponent(text)
   const encodedUrl = encodeURIComponent(url)
@@ -49,7 +51,7 @@ export function ShareInsightDialog({
       <DialogTrigger asChild>
         <Button className={triggerClassName ?? ''}>
           <Share2 />
-          <span>Compartilhar</span>
+          <span>{t('share.title', 'Compartilhar')}</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg rounded">
@@ -163,7 +165,7 @@ export function ShareInsightDialog({
             className="flex flex-col items-center space-y-1"
           >
             <SocialIcon network="sharethis" style={{ width: 32, height: 32 }} />
-            <span className="text-xs">Copiar</span>
+            <span className="text-xs">{t('share.copy', 'Copiar')}</span>
           </button>
         </div>
 
@@ -173,7 +175,7 @@ export function ShareInsightDialog({
             className="bg-zinc-100"
             onClick={() => setOpen(false)}
           >
-            Fechar
+            {t('share.close', 'Fechar')}
           </Button>
         </DialogFooter>
       </DialogContent>

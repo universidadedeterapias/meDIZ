@@ -1,16 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
+import { useTranslation } from '@/i18n/useTranslation'
 
 export function LoadingPlaceholder() {
-  // 6 passos + frase final
-  const steps = [
-    'Analisando símbolos biológicos',
-    'Detectando conflito emocional',
-    'Coletando experiências comuns',
-    'Identificando padrões de comportamento',
-    'Avaliando impacto',
-    'Verificando lateralidade',
-    'Processamento quase concluído'
-  ]
+  const { t } = useTranslation()
+  
+  // 6 passos + frase final - agora com tradução
+  const steps = useMemo(() => [
+    t('loading.step1', 'Analisando símbolos biológicos'),
+    t('loading.step2', 'Detectando conflito emocional'),
+    t('loading.step3', 'Coletando experiências comuns'),
+    t('loading.step4', 'Identificando padrões de comportamento'),
+    t('loading.step5', 'Avaliando impacto'),
+    t('loading.step6', 'Verificando lateralidade'),
+    t('loading.step7', 'Processamento quase concluído')
+  ], [t])
 
   const totalDuration = 15_000 // 15 s em ms (reduzido de 30s)
   const fadeDuration = 300 // duração do fade in/out em ms

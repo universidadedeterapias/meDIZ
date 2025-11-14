@@ -1,5 +1,6 @@
 import html2pdf from 'html2pdf.js'
 import { logger } from '@/lib/logger'
+import type { LanguageCode } from '@/i18n/config'
 
 interface PDFData {
   question: string
@@ -8,6 +9,7 @@ interface PDFData {
   sessionId?: string
   patientName?: string
   therapistName?: string
+  language?: LanguageCode
 }
 
 /**
@@ -37,9 +39,11 @@ export async function generateChatPDF(data: PDFData): Promise<void> {
     })
     
     // Configurações do PDF otimizadas
+    const language = data.language || 'pt-BR'
+    const filenamePrefix = REPORT_FILENAME_TRANSLATIONS[language] || REPORT_FILENAME_TRANSLATIONS['pt-BR']
     const options = {
       margin: [0.3, 0.3, 0.3, 0.3] as [number, number, number, number],
-      filename: `relatorio-de-origem-emocional-${formatDateForFilename(data.timestamp)}.pdf`,
+      filename: `${filenamePrefix}-${formatDateForFilename(data.timestamp)}.pdf`,
       image: { type: 'jpeg' as const, quality: 0.98 },
       html2canvas: { 
         scale: 2,
@@ -72,43 +76,50 @@ export async function generateChatPDF(data: PDFData): Promise<void> {
  * Processa e organiza o conteúdo HTML da resposta para melhor formatação no PDF
  * Versão simplificada e robusta para evitar seções vazias
  */
-function processAnswerContent(htmlContent: string): string {
-  console.log('🔍 Debug processAnswerContent - Input:', {
-    contentLength: htmlContent?.length || 0,
-    hasContent: !!htmlContent,
-    firstChars: htmlContent?.substring(0, 100) || 'VAZIO'
-  })
-
+function processAnswerContent(htmlContent: string, language: LanguageCode = 'pt-BR'): string {
   // Se o conteúdo estiver vazio, retorna uma mensagem padrão
   if (!htmlContent || htmlContent.trim().length === 0) {
-    console.log('⚠️ Debug processAnswerContent - Conteúdo vazio, retornando mensagem padrão')
     return '<p style="margin-bottom: 10px; text-align: justify; line-height: 1.5;">Conteúdo não disponível.</p>'
   }
+
+  // Primeiro, tenta extrair "Contexto Geral" e "Impacto Biológico" usando a mesma lógica do parseResponse
+  // Essas seções podem aparecer com dois pontos após o título
+  function findField(fieldNames: string[]): { title: string; content: string } | null {
+    for (const fieldName of fieldNames) {
+      const escaped = fieldName.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')
+      // Procura por **Título:** ou **Título** seguido de conteúdo
+      const pattern = new RegExp(`\\*\\*${escaped}:?\\*\\*:?\\s*([\\s\\S]*?)(?=\\r?\\n\\*\\*|$)`, 'i')
+      const match = htmlContent.match(pattern)
+      if (match && match[1]?.trim()) {
+        return { title: fieldName, content: match[1].trim() }
+      }
+    }
+    return null
+  }
+
+  // Extrai Contexto Geral e Impacto Biológico primeiro
+  const contextoGeral = findField(['Contexto Geral', 'Contexto General', 'General Context'])
+  const impactoBiologico = findField(['Impacto Biológico', 'Biological Impact'])
 
   // Versão simplificada: divide por quebras de linha e processa cada parte
   const lines = htmlContent.split('\n').map(line => line.trim()).filter(line => line.length > 0)
   
-  console.log('🔍 Debug processAnswerContent - Linhas encontradas:', lines.length)
-  
   let result = ''
   let currentSection = ''
-  let currentSectionTitle = ''
+  let currentSectionPtTitle = '' // Título em PT (padrão)
+  
+  // Flags para evitar duplicar Contexto Geral e Impacto Biológico
+  let hasAddedContextoGeral = false
+  let hasAddedImpactoBiologico = false
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
-    
-    // Debug específico para IMPACTO BIOLÓGICO
-    if (line.toUpperCase().includes('IMPACTO BIOLÓGICO')) {
-      console.log(`🔍 Encontrou IMPACTO BIOLÓGICO na linha ${i}: "${line}"`)
-      console.log(`🔍 isSectionTitle retornou: ${isSectionTitle(line)}`)
-    }
     
     // Verifica se é um título de seção
     if (isSectionTitle(line)) {
       // Verificação especial para "LATERALIDADE DEPENDE..." - deve ser tratado como conteúdo
       const cleanLine = line.replace(/\*\*/g, '').replace(/\*/g, '').trim().toUpperCase()
       if (cleanLine.includes('LATERALIDADE') && cleanLine.includes('DEPENDE')) {
-        console.log(`🔄 Linha especial "${line}" - tratando como conteúdo da seção atual`)
         if (currentSection) {
           currentSection += '\n' + line
         } else {
@@ -117,16 +128,38 @@ function processAnswerContent(htmlContent: string): string {
         continue
       }
       
-      console.log(`✅ Título detectado: "${line}"`)
+      // Extrai o título limpo (sem markdown)
+      const cleanTitle = line.replace(/\*\*/g, '').replace(/:/g, '').trim()
+      
+      // Verifica se é Contexto Geral ou Impacto Biológico
+      const matchedPtTitle = findMatchingSection(cleanTitle)
+      
+      // Se for Contexto Geral ou Impacto Biológico e já extraímos separadamente, pula
+      if (matchedPtTitle === 'Contexto Geral' && contextoGeral && !hasAddedContextoGeral) {
+        // Adiciona Contexto Geral extraído separadamente
+        result += createSectionHTML('Contexto Geral', contextoGeral.content, language)
+        hasAddedContextoGeral = true
+        currentSection = ''
+        currentSectionPtTitle = ''
+        continue
+      }
+      
+      if (matchedPtTitle === 'Impacto Biológico' && impactoBiologico && !hasAddedImpactoBiologico) {
+        // Adiciona Impacto Biológico extraído separadamente
+        result += createSectionHTML('Impacto Biológico', impactoBiologico.content, language)
+        hasAddedImpactoBiologico = true
+        currentSection = ''
+        currentSectionPtTitle = ''
+        continue
+      }
       
       // Salva seção anterior se tiver conteúdo
-      if (currentSectionTitle && currentSection.trim()) {
-        result += createSectionHTML(currentSectionTitle, currentSection.trim())
-        console.log(`✅ Seção criada: ${currentSectionTitle}`)
+      if (currentSectionPtTitle && currentSection.trim()) {
+        result += createSectionHTML(currentSectionPtTitle, currentSection.trim(), language)
       }
       
       // Inicia nova seção
-      currentSectionTitle = line
+      currentSectionPtTitle = matchedPtTitle || cleanTitle // Usa PT se encontrou match, senão usa o original
       currentSection = ''
       
       // Pula apenas barras horizontais que aparecem logo após o título
@@ -144,105 +177,303 @@ function processAnswerContent(htmlContent: string): string {
   }
   
   // Adiciona a última seção
-  if (currentSectionTitle && currentSection.trim()) {
-    result += createSectionHTML(currentSectionTitle, currentSection.trim())
-    console.log(`✅ Última seção criada: ${currentSectionTitle}`)
+  if (currentSectionPtTitle && currentSection.trim()) {
+    result += createSectionHTML(currentSectionPtTitle, currentSection.trim(), language)
   } else if (currentSection.trim()) {
     // Se não tem título mas tem conteúdo, cria seção geral
-    result += createSectionHTML('RESPOSTA', currentSection.trim())
-    console.log('✅ Seção geral criada: RESPOSTA')
+    result += createSectionHTML('RESPOSTA', currentSection.trim(), language)
   }
 
   // Se não gerou nada, pelo menos mostra o conteúdo original
   if (result.trim().length === 0) {
-    console.log('⚠️ Debug processAnswerContent - Nenhum resultado gerado, usando conteúdo original')
-    result = createSectionHTML('RESPOSTA', htmlContent.trim())
+    result = createSectionHTML('RESPOSTA', htmlContent.trim(), language)
   }
-
-  console.log('🔍 Debug processAnswerContent - Resultado final:', {
-    resultLength: result.length,
-    hasContent: result.includes('<div') || result.includes('<p')
-  })
 
   return result
 }
 
 /**
- * Verifica se uma linha é um título de seção
+ * Normaliza strings (remove acentos, pontuação, converte para lowercase)
+ */
+function normalizeString(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+    .replace(/[^a-z0-9\s]/g, '') // Remove pontuação e caracteres especiais
+    .replace(/\s+/g, ' ') // Normaliza espaços
+    .trim()
+}
+
+/**
+ * Extrai palavras-chave principais de um título
+ */
+function extractKeywords(normalized: string): string[] {
+  // Remove palavras comuns (stop words)
+  const stopWords = ['the', 'of', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 'do', 'da', 'de', 'do', 'das', 'dos', 'del', 'el', 'la', 'los', 'las']
+  return normalized
+    .split(' ')
+    .filter(word => word.length > 2 && !stopWords.includes(word))
+    .sort()
+}
+
+/**
+ * Calcula similaridade entre dois conjuntos de palavras-chave
+ */
+function calculateSimilarity(keywords1: string[], keywords2: string[]): number {
+  if (keywords1.length === 0 || keywords2.length === 0) return 0
+  
+  const set1 = new Set(keywords1)
+  const set2 = new Set(keywords2)
+  const intersection = new Set([...set1].filter(x => set2.has(x)))
+  const union = new Set([...set1, ...set2])
+  
+  // Jaccard similarity
+  return intersection.size / union.size
+}
+
+/**
+ * Mapeamento de seções conhecidas (mesmo do parseResponse)
+ * Inclui Contexto Geral e Impacto Biológico que são processados separadamente no frontend
+ */
+const sectionTitlesMap: Record<string, string[]> = {
+  'Contexto Geral': [
+    'Contexto Geral',
+    'Contexto General',
+    'General Context'
+  ],
+  'Impacto Biológico': [
+    'Impacto Biológico',
+    'Biological Impact'
+  ],
+  'Símbolos Biológicos': ['Símbolos Biológicos', 'Biological Symbols', 'Biological Symbol'],
+  'Conflito Emocional Subjacente': ['Conflito Emocional Subjacente', 'Conflicto Emocional Subyacente', 'Underlying Emotional Conflict'],
+  'Experiências comuns': ['Experiências comuns', 'Experiencias comunes', 'Common Experiences'],
+  'Padrões de comportamento': ['Padrões de comportamento', 'Patrones de comportamiento', 'Behavior Patterns', 'Behavioral Patterns'],
+  'Impacto Transgeracional': ['Impacto Transgeracional', 'Impacto Transgeneracional', 'Transgenerational Impact'],
+  'Lateralidade': ['Lateralidade', 'Lateralidad', 'Laterality'],
+  'Fases da doença': ['Fases da doença', 'Fases de la enfermedad', 'Disease Phases', 'Phases of the Condition'],
+  'Possíveis doenças correlacionadas': [
+    'Possíveis doenças correlacionadas',
+    'Posibles enfermedades correlacionadas',
+    'Possible Correlated Diseases',
+    'Possible Related Conditions',
+    'Possible Correlated Conditions'
+  ],
+  'Perguntas Reflexivas': ['Perguntas Reflexivas', 'Preguntas Reflexivas', 'Reflective Questions'],
+  'Chave Terapêutica do [RE]Sentir': [
+    'Chave Terapêutica do [RE]Sentir',
+    'Clave Terapéutica del [RE]Sentir',
+    'Therapeutic Key of [RE]Feeling',
+    'Therapeutic Key of [RE]Sentir',
+    '[RE]Sentir Therapeutic Key'
+  ]
+}
+
+/**
+ * Mapeamento de tradução do título do relatório
+ */
+const REPORT_TITLE_TRANSLATIONS: Record<LanguageCode, string> = {
+  'pt-BR': 'Relatório de Origem Emocional',
+  'pt-PT': 'Relatório de Origem Emocional',
+  en: 'Emotional Origin Report',
+  es: 'Informe de Origen Emocional'
+}
+
+/**
+ * Mapeamento de tradução do nome do arquivo PDF
+ */
+const REPORT_FILENAME_TRANSLATIONS: Record<LanguageCode, string> = {
+  'pt-BR': 'relatorio-de-origem-emocional',
+  'pt-PT': 'relatorio-de-origem-emocional',
+  en: 'emotional-origin-report',
+  es: 'informe-de-origen-emocional'
+}
+
+/**
+ * Mapeamento de tradução das seções do PDF
+ */
+const PDF_SECTION_TRANSLATIONS: Record<LanguageCode, { symptom: string; response: string; patient: string; date: string; time: string }> = {
+  'pt-BR': {
+    symptom: 'Sintoma',
+    response: 'Resposta',
+    patient: 'Paciente:',
+    date: 'Data:',
+    time: 'Hora:'
+  },
+  'pt-PT': {
+    symptom: 'Sintoma',
+    response: 'Resposta',
+    patient: 'Paciente:',
+    date: 'Data:',
+    time: 'Hora:'
+  },
+  en: {
+    symptom: 'Symptom',
+    response: 'Response',
+    patient: 'Patient:',
+    date: 'Date:',
+    time: 'Time:'
+  },
+  es: {
+    symptom: 'Síntoma',
+    response: 'Respuesta',
+    patient: 'Paciente:',
+    date: 'Fecha:',
+    time: 'Hora:'
+  }
+}
+
+/**
+ * Mapeamento de tradução dos títulos das seções (mesmo do result.tsx)
+ */
+const SECTION_TITLE_TRANSLATIONS: Record<string, Record<LanguageCode, string>> = {
+  'Contexto Geral': {
+    'pt-BR': 'Contexto Geral',
+    'pt-PT': 'Contexto Geral',
+    en: 'General Context',
+    es: 'Contexto General'
+  },
+  'Impacto Biológico': {
+    'pt-BR': 'Impacto Biológico',
+    'pt-PT': 'Impacto Biológico',
+    en: 'Biological Impact',
+    es: 'Impacto Biológico'
+  },
+  'Símbolos Biológicos': {
+    'pt-BR': 'Símbolos Biológicos',
+    'pt-PT': 'Símbolos Biológicos',
+    en: 'Biological Symbols',
+    es: 'Símbolos Biológicos'
+  },
+  'Conflito Emocional Subjacente': {
+    'pt-BR': 'Conflito Emocional Subjacente',
+    'pt-PT': 'Conflito Emocional Subjacente',
+    en: 'Underlying Emotional Conflict',
+    es: 'Conflicto Emocional Subyacente'
+  },
+  'Experiências comuns': {
+    'pt-BR': 'Experiências comuns',
+    'pt-PT': 'Experiências comuns',
+    en: 'Common Experiences',
+    es: 'Experiencias comunes'
+  },
+  'Padrões de comportamento': {
+    'pt-BR': 'Padrões de comportamento',
+    'pt-PT': 'Padrões de comportamento',
+    en: 'Behavior Patterns',
+    es: 'Patrones de comportamiento'
+  },
+  'Impacto Transgeracional': {
+    'pt-BR': 'Impacto Transgeracional',
+    'pt-PT': 'Impacto Transgeracional',
+    en: 'Transgenerational Impact',
+    es: 'Impacto Transgeneracional'
+  },
+  'Lateralidade': {
+    'pt-BR': 'Lateralidade',
+    'pt-PT': 'Lateralidade',
+    en: 'Laterality',
+    es: 'Lateralidad'
+  },
+  'Fases da doença': {
+    'pt-BR': 'Fases da doença',
+    'pt-PT': 'Fases da doença',
+    en: 'Disease Phases',
+    es: 'Fases de la enfermedad'
+  },
+  'Possíveis doenças correlacionadas': {
+    'pt-BR': 'Possíveis doenças correlacionadas',
+    'pt-PT': 'Possíveis doenças correlacionadas',
+    en: 'Possible Related Conditions',
+    es: 'Posibles enfermedades correlacionadas'
+  },
+  'Perguntas Reflexivas': {
+    'pt-BR': 'Perguntas Reflexivas',
+    'pt-PT': 'Perguntas Reflexivas',
+    en: 'Reflective Questions',
+    es: 'Preguntas Reflexivas'
+  },
+  'Chave Terapêutica do [RE]Sentir': {
+    'pt-BR': 'Chave Terapêutica do [RE]Sentir',
+    'pt-PT': 'Chave Terapêutica do [RE]Sentir',
+    en: 'Therapeutic Key of [RE]Feeling',
+    es: 'Clave Terapéutica del [RE]Sentir'
+  }
+}
+
+/**
+ * Traduz título da seção para o idioma selecionado
+ */
+function translateSectionTitle(title: string, language: LanguageCode): string {
+  return SECTION_TITLE_TRANSLATIONS[title]?.[language] || title
+}
+
+/**
+ * Faz match inteligente de um título encontrado com as seções conhecidas
+ */
+function findMatchingSection(foundTitle: string): string | null {
+  const normalizedFound = normalizeString(foundTitle)
+  const keywordsFound = extractKeywords(normalizedFound)
+  
+  let bestMatch: { ptTitle: string; similarity: number } | null = null
+  
+  // Tenta match exato primeiro (mais rápido)
+  for (const [ptTitle, variants] of Object.entries(sectionTitlesMap)) {
+    for (const variant of variants) {
+      if (normalizeString(variant) === normalizedFound) {
+        return ptTitle
+      }
+    }
+  }
+  
+  // Se não encontrou match exato, tenta match por similaridade
+  for (const [ptTitle, variants] of Object.entries(sectionTitlesMap)) {
+    for (const variant of variants) {
+      const normalizedVariant = normalizeString(variant)
+      const keywordsVariant = extractKeywords(normalizedVariant)
+      const similarity = calculateSimilarity(keywordsFound, keywordsVariant)
+      
+      // Se a similaridade for alta (>= 0.5), considera um match
+      if (similarity >= 0.5 && (!bestMatch || similarity > bestMatch.similarity)) {
+        bestMatch = { ptTitle, similarity }
+      }
+    }
+  }
+  
+  return bestMatch?.ptTitle || null
+}
+
+/**
+ * Verifica se uma linha é um título de seção usando a mesma lógica do parseResponse
  */
 function isSectionTitle(line: string): boolean {
-  const sectionKeywords = [
-    'CONTEXTO GERAL', 
-    'IMPACTO BIOLÓGICO', 
-    'SÍMBOLOS BIOLÓGICOS', 
-    'CONFLITO EMOCIONAL SUBAJACENTE',
-    'CONFLITO EMOCIONAL',
-    'EXPERIÊNCIAS COMUNS', 
-    'PADRÕES DE COMPORTAMENTO', 
-    'IMPACTO TRANSGERACIONAL',
-    'LATERALIDADE', 
-    'FASES DA DOENÇA', 
-    'POSSÍVEIS DOENÇAS CORRELACIONADAS', 
-    'PERGUNTAS REFLEXIVAS', 
-    'CHAVE TERAPÊUTICA',
-    'CHAVE RESSENTIR',
-    'CHAVE [RE]SENTIR'
+  // Remove formatação markdown (**texto**, *texto*, etc.)
+  const cleanLine = line.replace(/\*\*/g, '').replace(/\*/g, '').replace(/:/g, '').trim()
+  
+  // Ignora linhas muito curtas
+  if (cleanLine.length < 3) {
+    return false
+  }
+  
+  // Lista de padrões que devem ser IGNORADOS (são parte do conteúdo, não títulos)
+  const excludedPatterns = [
+    /^#\d+$/i, // Números como "#1", "#2"
+    /^(common situations include|situações comuns incluem|impacto sentido|impact felt|conflict of|conflicto de)/i,
+    /^(right side|left side|lado direito|lado esquerdo)$/i,
+    /^(active conflict phase|solution phase|epileptoid crisis|final repair phase|fase ativa|fase de solução|fase de reparo)/i,
+    /^(simpaticotonia|pcl-a|pcl-b)$/i
   ]
   
-  // Remove formatação markdown (**texto**, *texto*, etc.) e normaliza espaços
-  const cleanLine = line.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\s+/g, ' ').trim()
-  const upperLine = cleanLine.toUpperCase()
-  
-  // Debug específico para seções conhecidas e a DICA
-  if (upperLine.includes('IMPACTO') || upperLine.includes('CONTEXTO') || upperLine.includes('SÍMBOLOS') || upperLine.includes('CHAVE') || upperLine.includes('LATERALIDADE') || upperLine.includes('EXPERIÊNCIAS COMUNS') || upperLine.includes('CONFLITO EMOCIONAL') || upperLine.startsWith('DICA:')) {
-    console.log(`🔍 Debug isSectionTitle - Linha original: "${line}"`)
-    console.log(`🔍 Debug isSectionTitle - Linha limpa: "${cleanLine}"`)
-    console.log(`🔍 Debug isSectionTitle - Upper (normalized): "${upperLine}"`)
-    console.log(`🔍 Debug isSectionTitle - Length: ${upperLine.length}`)
-    console.log(`🔍 Debug isSectionTitle - Char codes:`, Array.from(upperLine).map(c => c.charCodeAt(0)))
-    const isSection = sectionKeywords.some(keyword => upperLine.startsWith(keyword.toUpperCase()) && upperLine.length >= keyword.toUpperCase().length);
-    console.log(`🔍 Debug isSectionTitle - Is a section title? ${isSection}`);
-    if (upperLine.includes('EXPERIÊNCIAS COMUNS')) {
-      console.log(`🔍 Debug EXPERIÊNCIAS COMUNS - Detecção: ${isSection}`);
-    }
-    if (upperLine.includes('CONFLITO EMOCIONAL')) {
-      console.log(`🔍 Debug CONFLITO EMOCIONAL - Detecção: ${isSection}`);
-    }
-    if (upperLine.startsWith('DICA:')) {
-      console.log(`🔍 Debug DICA - Detecção: ${isSection}`);
-    }
+  // Ignora padrões que são claramente parte do conteúdo
+  if (excludedPatterns.some(pattern => pattern.test(cleanLine) || pattern.test(normalizeString(cleanLine)))) {
+    return false
   }
   
-  // Ordena as palavras-chave por comprimento (mais longas primeiro) para evitar detecção incorreta
-  const sortedKeywords = sectionKeywords.sort((a, b) => b.length - a.length)
+  // Tenta fazer match com seções conhecidas
+  const matchedPtTitle = findMatchingSection(cleanLine)
   
-  for (const keyword of sortedKeywords) {
-    const upperKeyword = keyword.toUpperCase()
-    
-    // Verifica se a linha começa exatamente com a palavra-chave (mais preciso)
-    const exactMatch = upperLine.startsWith(upperKeyword)
-    
-    // Para evitar falsos positivos, só considera "includes" se a linha for muito próxima do tamanho da palavra-chave
-    const includesMatch = upperLine.includes(upperKeyword) && 
-                         upperLine.length <= upperKeyword.length + 5 && 
-                         !upperLine.includes('DEPENDE') && // Evita "LATERALIDADE DEPENDE..."
-                         !upperLine.includes('POIS') // Evita outras variações
-    
-    // Debug específico para seções importantes
-    if (upperKeyword.includes('CHAVE') || upperKeyword.includes('LATERALIDADE') || upperKeyword.includes('EXPERIÊNCIAS COMUNS') || upperKeyword.includes('CONFLITO EMOCIONAL')) {
-      console.log(`🔍 Debug ${upperKeyword} - Line: "${upperLine}"`)
-      console.log(`🔍 Debug ${upperKeyword} - Exact match: ${exactMatch}`)
-      console.log(`🔍 Debug ${upperKeyword} - Includes match: ${includesMatch}`)
-      console.log(`🔍 Debug ${upperKeyword} - Length check: ${upperLine.length <= upperKeyword.length + 5}`)
-      console.log(`🔍 Debug ${upperKeyword} - Contains DEPENDE: ${upperLine.includes('DEPENDE')}`)
-    }
-    
-    if (exactMatch || includesMatch) {
-      return true
-    }
-  }
-  
-  return false
+  return matchedPtTitle !== null
 }
 
 /**
@@ -321,11 +552,14 @@ function processMarkdownForPDF(content: string): string {
 /**
  * Cria HTML para uma seção
  */
-function createSectionHTML(title: string, content: string): string {
+function createSectionHTML(title: string, content: string, language: LanguageCode = 'pt-BR'): string {
   if (!content || content.trim().length === 0) return ''
   
   // Limpa o título removendo formatação markdown
   const cleanTitle = title.replace(/\*\*/g, '').replace(/\*/g, '').replace(/:/g, '').trim()
+  
+  // Traduz o título para o idioma selecionado (mesmo comportamento do chat)
+  const translatedTitle = translateSectionTitle(cleanTitle, language)
   
   // Mantém o conteúdo original sem remover nada - apenas processa formatação
   // O título duplicado será tratado apenas visualmente (não removido do conteúdo)
@@ -339,7 +573,7 @@ function createSectionHTML(title: string, content: string): string {
       <div class="section-header" style="display: flex; align-items: center; margin-bottom: 12px; page-break-inside: avoid !important; page-break-after: avoid !important; break-inside: avoid !important; break-after: avoid !important; orphans: 2; widows: 2;">
         <div class="section-bar" style="width: 4px; height: 20px; background: #4f46e5; margin-right: 8px; border-radius: 2px; flex-shrink: 0;"></div>
         <h2 class="section-title" style="font-size: 14px; font-weight: 600; color: #4f46e5; margin: 0; text-transform: uppercase; page-break-after: avoid !important; page-break-inside: avoid !important; page-break-before: avoid !important; break-after: avoid !important; break-inside: avoid !important; break-before: avoid !important; word-break: keep-all; overflow-wrap: break-word; orphans: 2; widows: 2;">
-          ${cleanTitle}
+          ${translatedTitle}
         </h2>
       </div>
       <div class="section-content" style="padding-left: 12px; page-break-before: avoid !important; break-before: avoid !important; orphans: 2; widows: 2;">
@@ -357,7 +591,8 @@ function createPDFHTML(data: PDFData): string {
   const formattedTime = formatTime(data.timestamp)
   
   // Processa o conteúdo da resposta para melhor organização
-  const processedAnswer = processAnswerContent(data.answer)
+  const language = data.language || 'pt-BR'
+  const processedAnswer = processAnswerContent(data.answer, language)
   
   return `
     <!DOCTYPE html>
@@ -731,37 +966,37 @@ function createPDFHTML(data: PDFData): string {
             ${escapeHtml(data.therapistName)}
           </div>
           ` : ''}
-          <div class="title">Relatório de Origem Emocional</div>
+          <div class="title">${REPORT_TITLE_TRANSLATIONS[language] || REPORT_TITLE_TRANSLATIONS['pt-BR']}</div>
         </div>
         
         <div class="metadata" style="text-align: left; background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #4f46e5;">
           <div class="metadata-list" style="display: flex; flex-direction: column; gap: 8px;">
             ${data.patientName ? `
             <div class="metadata-item" style="font-size: 13px;">
-              <span class="metadata-label" style="font-weight: 600; color: #374151;">👤 Paciente:</span>
+              <span class="metadata-label" style="font-weight: 600; color: #374151;">👤 ${PDF_SECTION_TRANSLATIONS[language]?.patient || PDF_SECTION_TRANSLATIONS['pt-BR'].patient}</span>
               <span class="metadata-value" style="color: #6b7280; margin-left: 8px;">${escapeHtml(data.patientName)}</span>
             </div>
             ` : ''}
             <div class="metadata-item" style="font-size: 13px;">
-              <span class="metadata-label" style="font-weight: 600; color: #374151;">📅 Data:</span>
+              <span class="metadata-label" style="font-weight: 600; color: #374151;">📅 ${PDF_SECTION_TRANSLATIONS[language]?.date || PDF_SECTION_TRANSLATIONS['pt-BR'].date}</span>
               <span class="metadata-value" style="color: #6b7280; margin-left: 8px;">${formattedDate}</span>
             </div>
             <div class="metadata-item" style="font-size: 13px;">
-              <span class="metadata-label" style="font-weight: 600; color: #374151;">🕐 Hora:</span>
+              <span class="metadata-label" style="font-weight: 600; color: #374151;">🕐 ${PDF_SECTION_TRANSLATIONS[language]?.time || PDF_SECTION_TRANSLATIONS['pt-BR'].time}</span>
               <span class="metadata-value" style="color: #6b7280; margin-left: 8px;">${formattedTime}</span>
             </div>
           </div>
         </div>
         
         <div class="question-section">
-          <div class="section-title">Sintoma</div>
+          <div class="section-title">${PDF_SECTION_TRANSLATIONS[language]?.symptom || PDF_SECTION_TRANSLATIONS['pt-BR'].symptom}</div>
           <div class="question-content">
             ${escapeHtml(data.question)}
           </div>
         </div>
         
         <div class="answer-section">
-          <div class="section-title">💡 Resposta</div>
+          <div class="section-title">💡 ${PDF_SECTION_TRANSLATIONS[language]?.response || PDF_SECTION_TRANSLATIONS['pt-BR'].response}</div>
           <div class="answer-content">
             ${processedAnswer}
           </div>

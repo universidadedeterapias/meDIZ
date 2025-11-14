@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { ArrowUp } from 'lucide-react'
+import { useTranslation } from '@/i18n/useTranslation'
 
 interface SymptomOption {
   sintoma: string
@@ -14,19 +15,52 @@ interface DynamicOptionSelectorProps {
   onChange: (value: string) => void
 }
 
+/**
+ * Mapeia sintomas em português para chaves de tradução
+ */
+function getSymptomTranslationKey(sintoma: string): string | null {
+  const sintomaLower = sintoma.toLowerCase().trim()
+  
+  const symptomMap: Record<string, string> = {
+    'dor nas costas': 'symptoms.backPain',
+    'pressão alta': 'symptoms.highBloodPressure',
+    'cansaço': 'symptoms.fatigue',
+    'enxaqueca': 'symptoms.migraine',
+    'insônia': 'symptoms.insomnia',
+    'ansiedade': 'symptoms.anxiety',
+    'rinite': 'symptoms.rhinitis',
+    'dor no joelho': 'symptoms.kneePain',
+    'estresse': 'symptoms.stress',
+    'dor de cabeça': 'symptoms.headache'
+  }
+  
+  return symptomMap[sintomaLower] || null
+}
+
+/**
+ * Traduz um sintoma do português para o idioma atual
+ */
+function translateSymptom(sintoma: string, t: (key: string, fallback?: string) => string): string {
+  const translationKey = getSymptomTranslationKey(sintoma)
+  if (translationKey) {
+    return t(translationKey, sintoma)
+  }
+  return sintoma
+}
+
 export default function DynamicOptionSelector({
   options,
   value,
   onChange
 }: DynamicOptionSelectorProps) {
-  // Encontra o sintoma mais popular (maior quantidade)
-  // Filtra apenas opções com quantidade válida
+  const { t } = useTranslation()
+
   const validOptions = options.filter(opt => opt.quantidade > 0)
-  
+
   if (validOptions.length === 0) {
     return null
   }
-  
+
   const maxQuantidade = Math.max(...validOptions.map(opt => opt.quantidade))
   const sintomaMaisPopular = validOptions.find(opt => opt.quantidade === maxQuantidade)
 
@@ -34,9 +68,8 @@ export default function DynamicOptionSelector({
     <div className="flex flex-wrap gap-2 justify-center pt-2">
       {options.map(option => {
         const isSelected = option.sintoma === value
-        // Mostra a seta se for o mais popular E tiver quantidade > 0
-        // Remove a condição > 1 para permitir mostrar mesmo quando todos têm quantidade 1
         const isMostPopular = option.sintoma === sintomaMaisPopular?.sintoma && option.quantidade > 0
+        const translatedSymptom = translateSymptom(option.sintoma, t)
 
         return (
           <Button
@@ -54,12 +87,12 @@ export default function DynamicOptionSelector({
               }
             `}
           >
-            {option.sintoma}
+            {translatedSymptom}
             {isMostPopular && (
-              <ArrowUp 
-                className="absolute -top-1.5 -right-1.5 w-4 h-4 text-green-600 bg-white rounded-full p-0.5 shadow-sm border border-green-200 z-10" 
+              <ArrowUp
+                className="absolute -top-1.5 -right-1.5 w-4 h-4 text-green-600 bg-white rounded-full p-0.5 shadow-sm border border-green-200 z-10"
                 strokeWidth={2.5}
-                aria-label="Mais pesquisado"
+                aria-label={t('dynamicSelector.mostSearched', 'Mais pesquisado')}
               />
             )}
           </Button>

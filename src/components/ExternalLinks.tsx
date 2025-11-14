@@ -9,17 +9,20 @@ import {
 } from '@/components/ui/carousel'
 import { GraduationCap, Headphones } from 'lucide-react'
 import Link from 'next/link'
+import { useTranslation } from '@/i18n/useTranslation'
 
 export function ExternalLinks() {
+  const { t } = useTranslation()
+
   const links = [
     {
       icon: Headphones,
-      label: 'Audioterapia',
+      label: t('externalLinks.audiotherapy', 'Audioterapia'),
       href: 'https://universidadedeterapias.com.br/thank-you-audiotherapy'
     },
     {
       icon: GraduationCap,
-      label: 'Formação',
+      label: t('externalLinks.training', 'Formação'),
       href: 'http://universidadedeterapias.com.br/formacao'
     }
   ]

@@ -1,8 +1,8 @@
-# 🚀 CI/CD Pipeline - meDIZ
+# 🚀 CI/CD Pipeline - ExemploApp
 
 ## 📋 Visão Geral
 
-O projeto meDIZ utiliza GitHub Actions para automatizar todo o processo de integração contínua e deploy contínuo. O pipeline garante qualidade, segurança e deploy automático para diferentes ambientes.
+O projeto ExemploApp utiliza GitHub Actions para automatizar todo o processo de integração contínua e deploy contínuo. O pipeline garante qualidade, segurança e deploy automático para diferentes ambientes.
 
 ## 🔄 Workflows Implementados
 
@@ -75,7 +75,7 @@ DATABASE_URL=postgresql://...
 
 # NextAuth
 NEXTAUTH_SECRET=...
-NEXTAUTH_URL=https://mediz-app.vercel.app
+NEXTAUTH_URL=https://exemplo-app.vercel.app
 
 # Google OAuth
 GOOGLE_CLIENT_ID=...

@@ -6,7 +6,8 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarRail
+  SidebarRail,
+  useSidebar
 } from '@/components/ui/sidebar'
 import { useUser } from '@/contexts/user'
 import { sidebarOptions } from '@/lib/sidebarOptions'
@@ -15,6 +16,12 @@ import { NavOptions } from './nav-options'
 import { NavFolders } from './nav-folders'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { SidebarSkeleton } from './SidebarSkeleton'
+import { useTranslation } from '@/i18n/useTranslation'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from '@/components/ui/tooltip'
 
 type SessionHistoryItem = {
   id: string
@@ -31,12 +38,79 @@ type AppSidebarProps = {
 }
 
 /**
+ * Componente interno para o header da sidebar com avatar
+ * Mostra conteúdo completo quando expandido e avatar compacto quando recolhido
+ */
+function SidebarHeaderContent({
+  sidebarUser,
+  userInitial,
+  displayName,
+  t
+}: {
+  sidebarUser: { image?: string | null; name: string; fullName?: string | null }
+  userInitial: string
+  displayName: string
+  t: (key: string, fallback: string) => string
+}) {
+  const { state, isMobile } = useSidebar()
+  const isCollapsed = state === 'collapsed'
+
+  return (
+    <SidebarHeader className="border-b-2">
+      {/* Conteúdo completo quando expandido */}
+      {!isCollapsed && (
+        <div className="p-4 flex items-center gap-6">
+          <Avatar className="w-16 h-16 border-2 border-indigo-600">
+            <AvatarImage src={sidebarUser.image ? sidebarUser.image : ''} alt="User avatar" />
+            <AvatarFallback>
+              {userInitial}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <h4 className="scroll-m-20 text-xl font-normal tracking-tight">
+              {displayName}
+            </h4>
+            <a href="/myAccount" className="text-primary">
+              {t('navbar.account', 'Conta')}
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* Avatar compacto quando recolhido */}
+      {isCollapsed && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center justify-center p-2">
+              <Avatar className="w-8 h-8 border-2 border-indigo-600">
+                <AvatarImage src={sidebarUser.image ? sidebarUser.image : ''} alt="User avatar" />
+                <AvatarFallback>
+                  {userInitial}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent 
+            side="right" 
+            align="center"
+            hidden={isMobile}
+          >
+            <p>{displayName}</p>
+          </TooltipContent>
+        </Tooltip>
+      )}
+    </SidebarHeader>
+  )
+}
+
+/**
  * O AppSidebar exibe o menu lateral da aplicação:
  * - enquanto carrega user: mostra header de loading
  * - depois que o user está pronto: avatar + nome e opções de navegação
  */
 export function AppSidebar({ history: _history, selectedThread: _selectedThread, onSelectSession: _onSelectSession, onSelectSymptom }: AppSidebarProps) {
   const { sidebarUser, isLoadingSidebar } = useUser()
+  const { t } = useTranslation()
   
   // Debug temporário
   console.log('[AppSidebar] 🔄 Render - isLoadingSidebar:', isLoadingSidebar, 'sidebarUser:', sidebarUser ? {
@@ -66,27 +140,20 @@ export function AppSidebar({ history: _history, selectedThread: _selectedThread,
   }
 
   // Já temos sidebarUser → mostra avatar, nome e menu
+  const userFullName = sidebarUser.fullName ? sidebarUser.fullName : sidebarUser.name
+  const userFirstName = FirstName(userFullName)
+  const userSurName = SurName(userFullName)
+  const userInitial = userFirstName.charAt(0)
+  const displayName = `${userFirstName} ${userSurName}`
+
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b-2">
-        <div className="p-4 flex items-center gap-6">
-          <Avatar className="w-16 h-16 border-2 border-indigo-600">
-            <AvatarImage src={sidebarUser.image ? sidebarUser.image : ''} alt="User avatar" />
-            <AvatarFallback>
-              {FirstName(sidebarUser.fullName ? sidebarUser.fullName : sidebarUser.name).charAt(0)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <h4 className="scroll-m-20 text-xl font-normal tracking-tight">
-              {FirstName(sidebarUser.fullName ? sidebarUser.fullName : sidebarUser.name)}{' '}
-              {SurName(sidebarUser.fullName ? sidebarUser.fullName : sidebarUser.name)}
-            </h4>
-            <a href="/myAccount" className="text-primary">
-              Minha conta
-            </a>
-          </div>
-        </div>
-      </SidebarHeader>
+      <SidebarHeaderContent 
+        sidebarUser={sidebarUser}
+        userInitial={userInitial}
+        displayName={displayName}
+        t={t}
+      />
 
       <SidebarContent>
         <NavOptions options={sidebarOptions} />
@@ -105,8 +172,8 @@ export function AppSidebar({ history: _history, selectedThread: _selectedThread,
         */}
       </SidebarContent>
 
-      <SidebarFooter>
-        {/* <NavUser /> ou outros controles no rodapé */}
+      <SidebarFooter className="border-t px-4 py-6">
+        {/* Seletor de idioma removido - agora está apenas no header do chat */}
       </SidebarFooter>
 
       <SidebarRail />

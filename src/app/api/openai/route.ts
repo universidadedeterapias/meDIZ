@@ -1,22 +1,133 @@
 // app/api/openai/route.ts
+import { randomUUID } from 'crypto'
 import { auth } from '@/auth'
-import {
-  addMessageToThread,
-  createThread,
-  getMessages,
-  runAssistant,
-  waitForRunCompletion
-} from '@/lib/assistant'
+import { getMessages } from '@/lib/assistant'
 import { createChatSessionWithThread } from '@/lib/chatService'
+import { saveChatMessage } from '@/lib/chatMessages'
 import { prisma } from '@/lib/prisma'
 import { getUserLimits, getUserPeriod } from '@/lib/userPeriod'
 import { NextResponse } from 'next/server'
+// Cache desabilitado para evitar problemas com tradução multi-idioma
+import { DEFAULT_LANGUAGE, isSupportedLanguage, getLanguageMapping, type LanguageCode } from '@/i18n/config'
 
-const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID!
+const CHAT_WEBHOOK_URL =
+  process.env.N8N_CHAT_WEBHOOK_URL ?? 'https://uniterapias.app.n8n.cloud/webhook/chat-texto'
 
-// Configuração para aumentar timeout da função no Vercel (requer plano Pro)
-export const config = {
-  maxDuration: 60 // 60 segundos (máximo para Serverless Function no plano Pro)
+async function requestAssistantResponse(
+  threadId: string,
+  message: string,
+  language: LanguageCode
+) {
+  // Obtém mapeamento completo do idioma
+  const langMapping = getLanguageMapping(language)
+  
+  // Ao invés de traduzir, adiciona uma tag de idioma explícita à mensagem
+  // Isso funciona melhor para frases longas e garante que o webhook entenda o idioma desejado
+  let messageWithLanguage = message
+  
+  // Se o idioma não é português, adiciona tag de idioma no início da mensagem
+  if (language !== 'pt-BR' && language !== 'pt-PT') {
+    const languageTag = language === 'en' ? '[english]' : language === 'es' ? '[espanol]' : `[${language}]`
+    messageWithLanguage = `${languageTag} ${message}`
+  }
+  
+  // Envia o idioma em múltiplos formatos para garantir que o n8n entenda
+  const payload = {
+    threadId,
+    sintoma: messageWithLanguage, // Mensagem original com tag de idioma
+    sintomaOriginal: message, // Mantém a mensagem original também
+    // Formatos principais (retrocompatibilidade)
+    language: language,
+    lang: langMapping.iso6391,
+    locale: language,
+    // Formatos alternativos para garantir compatibilidade
+    idioma: langMapping.namePortuguese,
+    idiomaResposta: langMapping.nameNative,
+    responderEm: langMapping.nameNative,
+    // Códigos ISO padrão
+    iso6391: langMapping.iso6391,
+    iso6392: langMapping.iso6392,
+    // Instrução explícita para o agente
+    instrucaoIdioma: langMapping.instruction,
+    languageInstruction: langMapping.instruction,
+    // Nomes em diferentes idiomas
+    languageName: langMapping.nameEnglish,
+    nomeIdioma: langMapping.namePortuguese
+  }
+  
+  const response = await fetch(CHAT_WEBHOOK_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '')
+    throw new Error(
+      `Webhook do n8n retornou ${response.status} - ${response.statusText} ${errorText ? `- ${errorText}` : ''}`
+    )
+  }
+
+  const responseText = await response.text()
+  
+  let assistantReply: string
+  
+  // Tenta parsear como JSON primeiro (webhook pode retornar {"resposta":"..."})
+  try {
+    const jsonResponse = JSON.parse(responseText)
+    
+    // Prioriza campos comuns: resposta, response, message, text, content
+    assistantReply = 
+      jsonResponse.resposta || 
+      jsonResponse.response || 
+      jsonResponse.message || 
+      jsonResponse.text || 
+      jsonResponse.content ||
+      (typeof jsonResponse === 'string' ? jsonResponse : responseText)
+  } catch {
+    // Se não for JSON, usa o texto direto
+    assistantReply = responseText
+  }
+  
+  // Processa apenas o necessário: preserva o formato markdown original
+  let normalized = assistantReply.trim()
+  
+  // Apenas processa escapes de string literal se realmente existirem
+  // Verifica se há escapes antes de processar (evita processar desnecessariamente)
+  if (normalized.includes('\\n') || normalized.includes('\\r') || normalized.includes('\\t')) {
+    // Processa escapes de string literal de forma iterativa (máximo 3 iterações)
+    let previousLength = 0
+    let iterations = 0
+    while (normalized.length !== previousLength && iterations < 3) {
+      previousLength = normalized.length
+      iterations++
+      
+      // Processa escapes na ordem correta (do mais específico para o mais genérico)
+      normalized = normalized
+        .replace(/\\\\n/g, '\n')      // Escape duplo: \\n -> quebra de linha
+        .replace(/\\\\r/g, '')        // Escape duplo: \\r -> remove
+        .replace(/\\\\t/g, ' ')       // Escape duplo: \\t -> espaço
+        .replace(/\\\\"/g, '"')       // Escape duplo: \\" -> "
+        .replace(/\\n/g, '\n')        // Escape simples: \n -> quebra de linha
+        .replace(/\\r/g, '')          // Escape simples: \r -> remove
+        .replace(/\\t/g, ' ')         // Escape simples: \t -> espaço
+        .replace(/\\"/g, '"')         // Escape simples: \" -> "
+    }
+  }
+  
+  // Remove apenas espaços extras no início/fim (preserva formatação interna)
+  normalized = normalized.trim()
+
+  // Remove apenas linhas vazias excessivas no início e fim (preserva estrutura markdown)
+  normalized = normalized.replace(/^\n{3,}/g, '\n\n').replace(/\n{3,}$/g, '\n\n')
+  
+  if (!normalized || normalized.length === 0) {
+    throw new Error('Webhook do n8n retornou resposta vazia após processamento')
+  }
+  
+  return normalized
 }
 
 export async function POST(req: Request) {
@@ -25,7 +136,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
   const userId = session.user.id
-  const { message } = await req.json()
+  const body = await req.json()
+  const rawMessage = typeof body?.message === 'string' ? body.message : ''
+  const message = rawMessage.trim()
+  const requestedLanguage = typeof body?.language === 'string' ? (body.language as string) : undefined
+  const language: LanguageCode = isSupportedLanguage(requestedLanguage)
+    ? (requestedLanguage as LanguageCode)
+    : DEFAULT_LANGUAGE
+
+  if (!message) {
+    return NextResponse.json({ error: 'Mensagem inválida' }, { status: 400 })
+  }
 
   // ── 1) Verifica limite de sessões hoje ─────────────────────────────
   // Início do dia (00:00)
@@ -63,52 +184,91 @@ export async function POST(req: Request) {
       where: { id: userId },
       select: { createdAt: true }
     })
-    
+
     if (!user) {
       return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
     }
-    
+
     // Determina o período e limites do usuário
     const userPeriod = getUserPeriod(user.createdAt)
     const { searchLimit } = getUserLimits(userPeriod)
-    
+
     // Verifica se excedeu o limite baseado no período
     if (todayCount >= searchLimit) {
-      return NextResponse.json({ 
-        limitReached: true,
-        period: userPeriod,
-        searchLimit
-      }, { status: 403 })
+      return NextResponse.json(
+        {
+          limitReached: true,
+          period: userPeriod,
+          searchLimit
+        },
+        { status: 403 }
+      )
     }
   }
 
   try {
-    // ── 4) Cria thread e registra ChatSession ────────────────────────
-    const threadId = await createThread()
-    await createChatSessionWithThread(userId, threadId)
+    // ── 4) Cria identificador local e registra ChatSession ─────────────
+    const threadId = randomUUID()
+    const chatSession = await createChatSessionWithThread(userId, threadId)
 
-    // ── 5) Envia a mensagem ao assistant e aguarda resposta ──────────
-    await addMessageToThread(threadId, message)
-    const runId = await runAssistant(threadId, ASSISTANT_ID)
-    await waitForRunCompletion(threadId, runId)
+    // ── 5) Persiste mensagem do usuário antes de chamar o webhook ─────
+    await saveChatMessage({
+      chatSessionId: chatSession.id,
+      role: 'USER',
+      content: message
+    })
 
-    // ── 6) Busca as mensagens geradas e retorna ao cliente ───────────
+    // ── 6) Chama o webhook diretamente (cache desabilitado para evitar problemas com tradução) ───────────────────
+    let assistantReply = await requestAssistantResponse(threadId, message, language)
+
+    // Garante que não estamos salvando JSON no banco
+    // Se ainda for JSON, tenta extrair novamente
+    if (assistantReply.trim().startsWith('{')) {
+      try {
+        const jsonParsed = JSON.parse(assistantReply)
+        assistantReply = jsonParsed.resposta || jsonParsed.response || jsonParsed.message || assistantReply
+      } catch {
+        // Erro silencioso - continua com o valor original
+      }
+    }
+
+    // Garante que estamos salvando apenas markdown puro
+    if (assistantReply) {
+      // Remove qualquer JSON wrapper que possa ter sobrado
+      const finalContent = assistantReply.trim().startsWith('{') 
+        ? (() => {
+            try {
+              const parsed = JSON.parse(assistantReply)
+              return parsed.resposta || parsed.response || parsed.message || assistantReply
+            } catch {
+              return assistantReply
+            }
+          })()
+        : assistantReply
+      
+      await saveChatMessage({
+        chatSessionId: chatSession.id,
+        role: 'ASSISTANT',
+        content: finalContent
+      })
+    }
+
+    // ── 7) Busca as mensagens geradas e retorna ao cliente ───────────
     const responses = await getMessages(threadId)
-    
-    // ── 7) Se não tiver assinatura, inclui informações do período na resposta ───
+
+    // ── 8) Se não tiver assinatura, inclui informações do período na resposta ───
     if (!hasActiveSubscription) {
-      // Busca informações do usuário para determinar o período
       const user = await prisma.user.findUnique({
         where: { id: userId },
         select: { createdAt: true }
       })
-      
+
       if (user) {
         const userPeriod = getUserPeriod(user.createdAt)
         const { fullVisualization } = getUserLimits(userPeriod)
-        
-        return NextResponse.json({ 
-          responses, 
+
+        return NextResponse.json({
+          responses,
           threadId,
           userPeriod,
           fullVisualization,
@@ -116,13 +276,24 @@ export async function POST(req: Request) {
         })
       }
     }
-    
+
     return NextResponse.json({ responses, threadId })
   } catch (err) {
-    console.error('[API OpenAI] Erro:', err)
-    return NextResponse.json(
-      { error: 'Erro ao processar assistant' },
-      { status: 500 }
-    )
+    // Retorna mensagem de erro mais específica
+    const errorMessage = err instanceof Error ? err.message : String(err)
+    let errorResponse = 'Erro ao processar assistant'
+    
+    if (errorMessage.includes('Webhook do n8n')) {
+      errorResponse = 'Erro ao comunicar com o serviço de IA. Tente novamente em alguns instantes.'
+    } else if (errorMessage.includes('resposta vazia')) {
+      errorResponse = 'O serviço de IA não retornou uma resposta válida. Tente novamente.'
+    } else if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('ENOTFOUND')) {
+      errorResponse = 'Não foi possível conectar ao serviço. Verifique sua conexão.'
+    }
+    
+    return NextResponse.json({ 
+      error: errorResponse,
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    }, { status: 500 })
   }
 }

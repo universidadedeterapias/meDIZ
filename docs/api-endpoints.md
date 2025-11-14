@@ -1,10 +1,10 @@
-# 📡 URLs de API - meDIZ
+# 📡 URLs de API - ExemploApp
 
 Documentação completa de todos os endpoints da aplicação.
 
 **Base URL:**
 - **Desenvolvimento:** `http://localhost:3000`
-- **Produção:** `https://mediz-app.vercel.app` (ou seu domínio customizado)
+- **Produção:** `https://exemplo-app.vercel.app` (ou seu domínio customizado)
 
 ---
 
@@ -189,12 +189,12 @@ GET /api/plans
 
 ---
 
-## 🔔 Hotmart (Webhooks)
+## 🔔 Plataforma de Pagamento (Webhooks)
 
 ```
 POST /api/hotmart
 ```
-- Webhook do Hotmart para eventos de afiliados
+- Webhook da plataforma de pagamento para eventos de afiliados
 
 ---
 
@@ -461,7 +461,7 @@ PUT /api/admin/requests
 ### Autenticação
 - Endpoints de **Admin** (`/api/admin/*`) requerem:
   - Sessão autenticada
-  - Email terminando em `@mediz.com` OU campo `isAdmin: true`
+  - Email terminando em `@exemplo.com` OU campo `isAdmin: true`
 
 - Endpoints de **Usuário** requerem:
   - Sessão autenticada (NextAuth)

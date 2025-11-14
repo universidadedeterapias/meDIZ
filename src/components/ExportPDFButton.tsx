@@ -12,6 +12,7 @@ import { UpgradeModal } from '@/components/UpgradeModal'
 import { PDFConfigModal } from '@/components/PDFConfigModal'
 import { useSubscriptionStatus } from '@/hooks/use-subscription-status'
 import { FileText, Loader2 } from 'lucide-react'
+import { useTranslation } from '@/i18n/useTranslation'
 
 interface ExportPDFButtonProps {
   question: string
@@ -31,6 +32,7 @@ export function ExportPDFButton({
   className = ''
 }: ExportPDFButtonProps) {
   const { isPremium, isLoading } = useSubscriptionStatus()
+  const { t } = useTranslation()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [showConfigModal, setShowConfigModal] = useState(false)
 
@@ -60,7 +62,7 @@ export function ExportPDFButton({
           <span className="text-sm font-medium">PDF</span>
         </div>
         <div className="absolute -top-4 -right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-bold animate-pulse shadow-lg z-10">
-          NOVO
+          {t('pdf.button.new', 'NOVO')}
         </div>
       </Button>
     )
@@ -82,15 +84,15 @@ export function ExportPDFButton({
                 <span className="text-sm font-medium">PDF</span>
               </div>
               <div className="absolute -top-4 -right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-bold animate-pulse shadow-lg z-10">
-                NOVO
+                {t('pdf.button.new', 'NOVO')}
               </div>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
             <p>
               {isPremium 
-                ? '✨ Nova funcionalidade! Exportar como PDF' 
-                : '✨ Nova funcionalidade! Disponível para plano profissional'
+                ? t('pdf.button.tooltip.premium', '✨ Nova funcionalidade! Exportar como PDF')
+                : t('pdf.button.tooltip.free', '✨ Nova funcionalidade! Disponível para plano profissional')
               }
             </p>
           </TooltipContent>

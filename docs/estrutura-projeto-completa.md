@@ -1,7 +1,7 @@
-# 📁 Estrutura Completa do Projeto meDIZ
+# 📁 Estrutura Completa do Projeto ExemploApp
 
 ## 🎯 Visão Geral
-O meDIZ é uma plataforma de IA para saúde e bem-estar que conecta usuários a profissionais de saúde através de chat conversacional. Esta documentação explica cada pasta e arquivo do projeto.
+O ExemploApp é uma plataforma de IA para saúde e bem-estar que conecta usuários a profissionais de saúde através de chat conversacional. Esta documentação explica cada pasta e arquivo do projeto.
 
 ---
 
@@ -170,7 +170,7 @@ O meDIZ é uma plataforma de IA para saúde e bem-estar que conecta usuários a 
 - `update-popular/route.ts` - Atualização de popularidade
 
 #### **🔗 Integrações**
-- `hotmart/route.ts` - Webhook Hotmart
+- `plataforma-pagamento/route.ts` - Webhook PlataformaPagamento
 - `plans/route.ts` - Planos de assinatura
 
 ### **🧩 `src/components/` - Componentes React**
@@ -236,7 +236,7 @@ O meDIZ é uma plataforma de IA para saúde e bem-estar que conecta usuários a 
 - `User.ts` - Tipos de usuário
 - `next-auth.d.ts` - Extensões NextAuth
 - `openaiMessage.ts` - Tipos de mensagens IA
-- `hotmart.ts` - Tipos Hotmart
+- `plataforma-pagamento.ts` - Tipos PlataformaPagamento
 
 ### **🔧 `src/scripts/` - Scripts de Desenvolvimento**
 **Propósito:** Scripts auxiliares (33 arquivos)
@@ -351,7 +351,7 @@ git push origin main # Deploy automático
 - **Google OAuth** - Login social
 - **Cloudinary** - Upload de imagens
 - **WhatsApp** - Notificações
-- **Hotmart** - Webhooks de afiliados
+- **PlataformaPagamento** - Webhooks de afiliados
 
 ---
 
@@ -427,7 +427,7 @@ git push origin main # Deploy automático
 
 ## 🎉 Conclusão
 
-O meDIZ é uma aplicação completa e bem estruturada que combina:
+O ExemploApp é uma aplicação completa e bem estruturada que combina:
 - **Frontend moderno** com Next.js 15
 - **Backend robusto** com API Routes
 - **Banco de dados** bem modelado com Prisma
