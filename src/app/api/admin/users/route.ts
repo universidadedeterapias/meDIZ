@@ -77,15 +77,24 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Filtro por data de criação de assinatura ativa
+    // 🔍 DEBUG: Log dos filtros recebidos
+    console.log('[ADMIN USERS API] 🔍 Filtros recebidos:', {
+      search,
+      planFilter,
+      roleFilter,
+      subscriptionDateStart,
+      subscriptionDateEnd,
+      page,
+      limit
+    })
+
+    // Filtro por data de criação de assinatura (ativa OU expirada)
+    // ⚠️ CORREÇÃO: Incluir assinaturas expiradas para não excluir usuários da busca
     if (subscriptionDateStart || subscriptionDateEnd) {
       const subscriptionFilter: Record<string, unknown> = {
-        status: {
-          in: ['active', 'ACTIVE', 'cancel_at_period_end']
-        },
-        currentPeriodEnd: {
-          gte: new Date() // Apenas assinaturas ativas
-        }
+        // Incluir TODOS os status possíveis (não apenas ativos)
+        // Isso permite encontrar usuários mesmo que suas assinaturas tenham expirado
+        // Removemos o filtro de status para incluir expired, canceled, etc
       }
 
       // Filtro por data de criação (createdAt da Subscription)
@@ -111,6 +120,8 @@ export async function GET(req: NextRequest) {
       whereClause.subscriptions = {
         some: subscriptionFilter
       }
+
+      console.log('[ADMIN USERS API] 🔍 Filtro de assinatura aplicado:', JSON.stringify(subscriptionFilter, null, 2))
     }
 
     // Busca todos os usuários ordenados por data de criação (mais recentes primeiro)
@@ -166,13 +177,38 @@ export async function GET(req: NextRequest) {
     // Conta total para paginação
     const totalUsers = await prisma.user.count({ where: whereClause })
 
+    // 🔍 DEBUG: Log da busca
+    console.log('[ADMIN USERS API] 🔍 Usuários encontrados na query:', allUsers.length)
+    console.log('[ADMIN USERS API] 🔍 Usuários após paginação:', users.length)
+
     // Processa os dados dos usuários
     const processedUsers = await Promise.all(users.map(async user => {
+      // 🔍 DEBUG: Log de cada usuário processado
+      console.log(`[ADMIN USERS API] 🔍 Processando usuário: ${user.email}`, {
+        totalSubscriptions: user.subscriptions.length,
+        subscriptions: user.subscriptions.map(sub => ({
+          id: sub.id,
+          status: sub.status,
+          currentPeriodEnd: sub.currentPeriodEnd.toISOString(),
+          isExpired: sub.currentPeriodEnd < new Date()
+        }))
+      })
+
       // Determina se tem subscription ativa usando fonte de verdade
       const activeSubscription = user.subscriptions.find(sub => 
         ['active', 'ACTIVE', 'cancel_at_period_end'].includes(sub.status) &&
         sub.currentPeriodEnd >= new Date()
       )
+
+      // 🔍 DEBUG: Verificar se há assinaturas expiradas
+      const expiredSubscriptions = user.subscriptions.filter(sub => 
+        sub.currentPeriodEnd < new Date() && 
+        ['active', 'ACTIVE', 'expired'].includes(sub.status)
+      )
+      
+      if (expiredSubscriptions.length > 0) {
+        console.log(`[ADMIN USERS API] ⚠️ Usuário ${user.email} tem ${expiredSubscriptions.length} assinatura(s) expirada(s)`)
+      }
 
       // Determina o plano baseado na fonte de verdade
       const plan = activeSubscription ? 'premium' : 'free'
@@ -211,6 +247,14 @@ export async function GET(req: NextRequest) {
           currentPeriodEnd: activeSubscription.currentPeriodEnd.toISOString(),
           currentPeriodStart: activeSubscription.currentPeriodStart.toISOString()
         } : null,
+        // 🔍 DEBUG: Adicionar informações sobre assinaturas expiradas
+        expiredSubscriptions: expiredSubscriptions.length > 0 ? expiredSubscriptions.map(sub => ({
+          id: sub.id,
+          planName: getCorrectPlanName(sub.plan.stripePriceId, sub.plan.interval, sub.plan.name),
+          status: sub.status,
+          currentPeriodEnd: sub.currentPeriodEnd.toISOString(),
+          currentPeriodStart: sub.currentPeriodStart.toISOString()
+        })) : [],
         totalSubscriptions: user.subscriptions.length,
         providers: user.accounts.map(acc => acc.provider)
       }

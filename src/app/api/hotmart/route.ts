@@ -554,7 +554,44 @@ export async function POST(req: NextRequest) {
 
     // 5) Subscrição (idempotente por transaction)
     const syntheticId = buildSyntheticSubId(parsed)
-    log('Subscription ID sintético:', syntheticId)
+    const transactionId = parsed.data.purchase.transaction || parsed.id
+    log('🔍 DEBUG: Informações da transação:', {
+      transactionId,
+      syntheticId,
+      event: parsed.event,
+      purchaseStatus: parsed.data.purchase?.status,
+      subscriptionId: parsed.data.subscription?.id
+    })
+
+    // 🔍 DEBUG: Verificar se já existe assinatura com este syntheticId
+    const existingBySyntheticId = await prisma.subscription.findUnique({
+      where: { stripeSubscriptionId: syntheticId }
+    })
+    log('🔍 DEBUG: Assinatura existente por syntheticId:', {
+      encontrada: !!existingBySyntheticId,
+      id: existingBySyntheticId?.id,
+      status: existingBySyntheticId?.status,
+      currentPeriodEnd: existingBySyntheticId?.currentPeriodEnd?.toISOString()
+    })
+
+    // 🔍 DEBUG: Verificar assinaturas existentes do usuário
+    const existingSubscriptions = await prisma.subscription.findMany({
+      where: {
+        userId: user.id,
+        stripeSubscriptionId: { startsWith: 'hotmart_' }
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+    log('🔍 DEBUG: Assinaturas existentes do usuário:', {
+      total: existingSubscriptions.length,
+      detalhes: existingSubscriptions.map(sub => ({
+        id: sub.id,
+        syntheticId: sub.stripeSubscriptionId,
+        status: sub.status,
+        currentPeriodEnd: sub.currentPeriodEnd.toISOString(),
+        createdAt: sub.createdAt.toISOString()
+      }))
+    })
 
     const now = new Date()
     const start = now
@@ -567,33 +604,108 @@ export async function POST(req: NextRequest) {
       periodo: `${start.toISOString()} até ${end.toISOString()}`
     })
 
-    const subscription = await prisma.subscription.upsert({
-      where: { stripeSubscriptionId: syntheticId },
-      create: {
-        userId: user.id,
-        planId: plan.id,
-        stripeSubscriptionId: syntheticId,
-        status: 'active',
-        currentPeriodStart: start,
-        currentPeriodEnd: end
-      },
-      update: {
-        status: 'active',
-        currentPeriodStart: start,
-        currentPeriodEnd: end
+    // 🎯 ESTRATÉGIA: Se já existe assinatura com este syntheticId, atualizar
+    // Caso contrário, verificar se é renovação (usuário já tem assinatura ativa/expirada)
+    let subscription
+    let isRenewal = false
+
+    if (existingBySyntheticId) {
+      // Caso 1: Assinatura com mesmo syntheticId existe (idempotência)
+      log('✅ Assinatura existente encontrada por syntheticId, atualizando...')
+      subscription = await prisma.subscription.update({
+        where: { id: existingBySyntheticId.id },
+        data: {
+          status: 'active',
+          currentPeriodStart: start,
+          currentPeriodEnd: end
+        }
+      })
+      log('✅ Assinatura atualizada:', { id: subscription.id })
+    } else {
+      // Caso 2: Verificar se é renovação (usuário já tem assinatura Hotmart)
+      // Considera renovação se:
+      // - Status ativo, OU
+      // - Status não cancelado e expirou recentemente (últimos 90 dias para cobrir anuais)
+      const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+      const existingActiveOrRecent = existingSubscriptions.find(sub => {
+        const isActive = sub.status === 'active' || sub.status === 'ACTIVE'
+        const isNotCanceled = sub.status !== 'canceled' && sub.status !== 'CANCELED'
+        const expiredRecently = sub.currentPeriodEnd >= ninetyDaysAgo
+        return isActive || (isNotCanceled && expiredRecently)
+      })
+
+      if (existingActiveOrRecent) {
+        // É uma renovação - atualizar a assinatura existente
+        isRenewal = true
+        log('🔄 RENOVAÇÃO DETECTADA: Assinatura existente encontrada, atualizando ao invés de criar nova')
+        log('📋 Detalhes da assinatura existente:', {
+          id: existingActiveOrRecent.id,
+          syntheticIdAntigo: existingActiveOrRecent.stripeSubscriptionId,
+          statusAntigo: existingActiveOrRecent.status,
+          syntheticIdNovo: syntheticId
+        })
+
+        // Atualizar a assinatura existente com novos dados
+        subscription = await prisma.subscription.update({
+          where: { id: existingActiveOrRecent.id },
+          data: {
+            stripeSubscriptionId: syntheticId, // Atualizar com novo transaction ID
+            status: 'active',
+            currentPeriodStart: start,
+            currentPeriodEnd: end,
+            planId: plan.id // Atualizar plano caso tenha mudado
+          }
+        })
+        log('✅ Assinatura renovada/atualizada:', { id: subscription.id })
+
+        // Cancelar outras assinaturas ativas do mesmo usuário (evitar duplicatas)
+        const otherActiveSubs = existingSubscriptions.filter(sub => 
+          sub.id !== existingActiveOrRecent.id && 
+          (sub.status === 'active' || sub.status === 'ACTIVE')
+        )
+        
+        if (otherActiveSubs.length > 0) {
+          log(`⚠️ Cancelando ${otherActiveSubs.length} assinatura(s) duplicada(s) do usuário`)
+          await prisma.subscription.updateMany({
+            where: {
+              id: { in: otherActiveSubs.map(s => s.id) }
+            },
+            data: {
+              status: 'canceled'
+            }
+          })
+          log('✅ Assinaturas duplicadas canceladas')
+        }
+      } else {
+        // Caso 3: Nova assinatura (primeira compra)
+        log('🆕 NOVA ASSINATURA: Criando nova assinatura para o usuário')
+        subscription = await prisma.subscription.create({
+          data: {
+            userId: user.id,
+            planId: plan.id,
+            stripeSubscriptionId: syntheticId,
+            status: 'active',
+            currentPeriodStart: start,
+            currentPeriodEnd: end
+          }
+        })
+        log('✅ Nova assinatura criada:', { id: subscription.id })
       }
-    })
+    }
 
     const duration = Date.now() - startTime
     log('✅✅✅ WEBHOOK PROCESSADO COM SUCESSO ✅✅✅')
     log('Subscription ID:', subscription.id)
+    log('Tipo de operação:', isRenewal ? 'RENOVAÇÃO' : 'NOVA ASSINATURA')
     log('Tempo total:', `${duration}ms`)
     log('==========================================')
 
     return NextResponse.json({ 
       received: true, 
       success: true,
-      subscriptionId: subscription.id 
+      subscriptionId: subscription.id,
+      isRenewal,
+      action: isRenewal ? 'renewed' : 'created'
     })
 
   } catch (err) {

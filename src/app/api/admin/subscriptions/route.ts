@@ -33,7 +33,67 @@ export async function GET(req: Request) {
       }
     })
 
-    return NextResponse.json(subscriptions)
+    // 🔧 CORREÇÃO: Calcular status real baseado na data de expiração
+    // e corrigir assinaturas expiradas que ainda estão marcadas como "active"
+    const now = new Date()
+    const subscriptionsWithCorrectStatus = await Promise.all(
+      subscriptions.map(async (sub) => {
+        const isExpired = sub.currentPeriodEnd < now
+        const shouldBeExpired = isExpired && (sub.status === 'active' || sub.status === 'ACTIVE')
+        
+        // Se está expirada mas marcada como ativa, corrigir automaticamente
+        if (shouldBeExpired) {
+          console.log(`[ADMIN SUBSCRIPTIONS] 🔧 Corrigindo assinatura expirada: ${sub.id} (usuário: ${userId})`)
+          await prisma.subscription.update({
+            where: { id: sub.id },
+            data: { status: 'expired' }
+          })
+          return { ...sub, status: 'expired', _corrected: true }
+        }
+        
+        return { ...sub, _corrected: false }
+      })
+    )
+
+    // 🔧 CORREÇÃO: Cancelar duplicatas - manter apenas a assinatura mais recente ativa
+    const activeSubscriptions = subscriptionsWithCorrectStatus.filter(
+      sub => (sub.status === 'active' || sub.status === 'ACTIVE') && sub.currentPeriodEnd >= now
+    )
+
+    if (activeSubscriptions.length > 1) {
+      console.log(`[ADMIN SUBSCRIPTIONS] ⚠️ Usuário ${userId} tem ${activeSubscriptions.length} assinaturas ativas - cancelando duplicatas`)
+      
+      // Ordenar por data de término (mais recente primeiro) - manter a que expira mais tarde
+      // Se empate, usar data de criação (mais recente primeiro)
+      activeSubscriptions.sort((a, b) => {
+        const endDiff = new Date(b.currentPeriodEnd).getTime() - new Date(a.currentPeriodEnd).getTime()
+        if (endDiff !== 0) return endDiff
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      })
+      
+      // Manter apenas a que expira mais tarde (ou mais recente se empate), cancelar as outras
+      const toCancel = activeSubscriptions.slice(1)
+      for (const sub of toCancel) {
+        console.log(`[ADMIN SUBSCRIPTIONS] 🔧 Cancelando assinatura duplicada: ${sub.id}`)
+        await prisma.subscription.update({
+          where: { id: sub.id },
+          data: { status: 'canceled' }
+        })
+      }
+      
+      // Atualizar status nas subscriptions retornadas
+      subscriptionsWithCorrectStatus.forEach(sub => {
+        if (toCancel.some(canceled => canceled.id === sub.id)) {
+          sub.status = 'canceled'
+          sub._corrected = true
+        }
+      })
+    }
+
+    // Remover campos de debug antes de retornar
+    const cleanedSubscriptions = subscriptionsWithCorrectStatus.map(({ _corrected, ...sub }) => sub)
+
+    return NextResponse.json(cleanedSubscriptions)
 
   } catch (error) {
     console.error('Erro ao buscar assinaturas:', error)
