@@ -46,6 +46,13 @@ interface User {
     currentPeriodEnd: string
     currentPeriodStart: string
   } | null
+  expiredSubscriptions?: Array<{
+    id: string
+    planName: string
+    status: string
+    currentPeriodEnd: string
+    currentPeriodStart: string
+  }>
   totalSubscriptions?: number
   providers?: string[]
 }
