@@ -1,6 +1,7 @@
 'use client'
 
 import { LoginForm } from '@/components/login-form'
+import { LanguageSwitcher } from '@/components/language-switcher'
 
 export default function LoginPage() {
   return (
@@ -8,8 +9,14 @@ export default function LoginPage() {
       className="flex flex-col justify-center items-center
                   min-w-screen min-h-screen p-8 pb-20 gap-16 sm:p-20
                   font-[family-name:var(--font-geist-sans)]
-                  bg-gradient-to-br from-indigo-600 to-purple-600"
+                  bg-gradient-to-br from-indigo-600 to-purple-600
+                  relative"
     >
+      {/* Seletor de idioma no canto superior direito */}
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10">
+        <LanguageSwitcher showLabel={false} className="min-w-[120px] sm:min-w-[160px]" />
+      </div>
+
       <div className="flex w-full max-w-sm flex-col gap-6">
         <LoginForm />
       </div>

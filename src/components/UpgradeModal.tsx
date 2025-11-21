@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/dialog'
 import { Crown, ExternalLink } from 'lucide-react'
 import { useTranslation } from '@/i18n/useTranslation'
+import { useLanguage } from '@/i18n/useLanguage'
+import { getUpgradeLink } from '@/lib/upgradeLinks'
 
 interface UpgradeModalProps {
   open: boolean
@@ -22,10 +24,12 @@ interface UpgradeModalProps {
  */
 export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
   const { t } = useTranslation()
+  const { language } = useLanguage()
   
   const handleUpgrade = () => {
-    // Redireciona para a página de upgrade (Hotmart)
-    window.open('https://go.hotmart.com/N101121884P', '_blank')
+    // Redireciona para a página de upgrade baseado no idioma
+    const upgradeLink = getUpgradeLink(language)
+    window.open(upgradeLink, '_blank')
     onOpenChange(false)
   }
 

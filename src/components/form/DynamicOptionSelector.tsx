@@ -67,16 +67,17 @@ export default function DynamicOptionSelector({
   return (
     <div className="flex flex-wrap gap-2 justify-center pt-2">
       {options.map(option => {
-        const isSelected = option.sintoma === value
-        const isMostPopular = option.sintoma === sintomaMaisPopular?.sintoma && option.quantidade > 0
         const translatedSymptom = translateSymptom(option.sintoma, t)
+        // Compara tanto o sintoma original quanto o traduzido para detectar seleção
+        const isSelected = option.sintoma === value || translatedSymptom === value
+        const isMostPopular = option.sintoma === sintomaMaisPopular?.sintoma && option.quantidade > 0
 
         return (
           <Button
             key={option.sintoma}
             type="button"
             variant="outline"
-            onClick={() => onChange(option.sintoma)}
+            onClick={() => onChange(translatedSymptom)}
             className={`
               rounded-full px-4 py-2 text-base font-normal relative
               overflow-visible

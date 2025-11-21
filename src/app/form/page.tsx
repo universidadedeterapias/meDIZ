@@ -6,6 +6,7 @@ import Step3 from '@/components/form/steps/Step3'
 import Step4 from '@/components/form/steps/Step4'
 import Stepper from '@/components/form/steps/Stepper'
 import SuccessStep from '@/components/form/steps/SuccessStep'
+import { LanguageSwitcher } from '@/components/language-switcher'
 import { UserFormProvider, useUserForm } from '@/hooks/use-form-data'
 
 export default function FormPage() {
@@ -14,8 +15,11 @@ export default function FormPage() {
       <div
         className="flex flex-col justify-start items-center
                   min-w-screen min-h-screen gap-10
-                  font-[family-name:var(--font-geist-sans)] bg-zinc-100"
+                  font-[family-name:var(--font-geist-sans)] bg-zinc-100 relative"
       >
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10">
+          <LanguageSwitcher showLabel={false} className="min-w-[120px] sm:min-w-[160px]" />
+        </div>
         <div className="w-full h-auto flex align-middle justify-center bg-zinc-50 shadow-sm py-4">
           <p className="text-primary font-bold text-3xl">
             me

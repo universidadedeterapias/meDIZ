@@ -53,8 +53,7 @@ export function SignupForm({
   )
 
   const form = useForm<SignupData>({
-    // @ts-expect-error - zodResolver type inference issue with refine
-    resolver: zodResolver(signupSchema)
+    resolver: zodResolver(signupSchema) as any // Type inference issue with refine - safe cast
   })
 
   const {
@@ -63,7 +62,7 @@ export function SignupForm({
     formState: { errors, isSubmitting }
   } = form
 
-  const onSubmit = async (data: SignupData) => {
+  const onSubmit = async (data: SignupData): Promise<void> => {
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -107,7 +106,7 @@ export function SignupForm({
         </CardHeader>
 
         <CardContent className="space-y-6">
-          <form onSubmit={handleSubmit(onSubmit as any)} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
             <div>
               <Input {...register('email')} type="email" placeholder={t('signup.email', 'E-mail')} />
               {errors.email && (

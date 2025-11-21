@@ -14,6 +14,7 @@
     "create-admin": "tsx src/scripts/create-admin.ts",
     "ensure-admin": "node src/scripts/ensure-admin.js",
     "seed-popup": "tsx src/scripts/seed-popup-data.ts",
+    "sync-hotmart-plans": "tsx src/scripts/sync-hotmart-plans.ts",
     "check-subscriptions": "tsx src/scripts/check-subscriptions.ts",
     "test-periods": "tsx src/scripts/test-user-periods.ts",
     "create-test-users": "tsx src/scripts/create-test-users.ts",

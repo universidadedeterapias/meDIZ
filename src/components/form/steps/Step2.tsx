@@ -14,9 +14,11 @@ import { Slider } from '@/components/ui/slider'
 import { useUserForm } from '@/hooks/use-form-data'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import OptionSelector from '../OptionSelector'
+import { useTranslation } from '@/i18n/useTranslation'
 
 export default function Step2() {
   const { form, nextStep, prevStep } = useUserForm()
+  const { t } = useTranslation()
 
   const handleStep2Submit = async () => {
     const isValid = await form.trigger(['age', 'gender', 'profession'])
@@ -27,10 +29,10 @@ export default function Step2() {
     <div>
       <div className="flex flex-col items-center justify-center w-full gap-4">
         <p className="text-indigo-600 text-2xl font-bold">
-          Informações pessoais
+          {t('form.step2.title', 'Informações pessoais')}
         </p>
         <p className="text-zinc-600 font-light text-center">
-          Conte-nos um pouco mais sobre você
+          {t('form.step2.subtitle', 'Conte-nos um pouco mais sobre você')}
         </p>
       </div>
       <Form {...form}>
@@ -48,7 +50,7 @@ export default function Step2() {
             render={({ field }) => (
               <FormItem className="w-full p">
                 <FormLabel className="text-base">
-                  Idade: {field.value} anos
+                  {`${t('form.step2.ageLabel', 'Idade')}: ${field.value} ${t('form.step2.ageUnit', 'anos')}`}
                 </FormLabel>
                 <FormControl>
                   <div className="w-full px-6 pt-4">
@@ -76,17 +78,17 @@ export default function Step2() {
             name="gender"
             render={({ field }) => (
               <FormItem className="w-full">
-                <FormLabel className="text-base">Gênero</FormLabel>
+                <FormLabel className="text-base">{t('form.step2.gender', 'Gênero')}</FormLabel>
                 <FormControl>
                   <OptionSelector
                     value={field.value}
                     onChange={field.onChange}
                     options={[
-                      { label: 'Masculino', value: 'MALE' },
-                      { label: 'Feminino', value: 'FEMALE' },
-                      { label: 'Não-binário', value: 'NON_BINARY' },
+                      { label: t('form.step2.gender.male', 'Masculino'), value: 'MALE' },
+                      { label: t('form.step2.gender.female', 'Feminino'), value: 'FEMALE' },
+                      { label: t('form.step2.gender.nonBinary', 'Não-binário'), value: 'NON_BINARY' },
                       {
-                        label: 'Prefiro não informar',
+                        label: t('form.step2.gender.preferNot', 'Prefiro não informar'),
                         value: 'PREFER_NOT_TO_SAY'
                       }
                     ]}
@@ -103,11 +105,11 @@ export default function Step2() {
             name="profession"
             render={({ field }) => (
               <FormItem className="w-full">
-                <FormLabel className="text-base">Profissão</FormLabel>
+                <FormLabel className="text-base">{t('form.step2.profession', 'Profissão')}</FormLabel>
                 <FormControl>
                   <Input
                     className="min-h-14 text-base placeholder:text-base bg-zinc-50 border-2 border-zinc-300"
-                    placeholder="Ex: Desenvolvedor, Vendedor..."
+                    placeholder={t('form.step2.profession.placeholder', 'Ex: Desenvolvedor, Vendedor...')}
                     {...field}
                   />
                 </FormControl>
@@ -124,10 +126,10 @@ export default function Step2() {
               variant="outline"
               onClick={prevStep}
             >
-              <ArrowLeft /> Voltar
+              <ArrowLeft /> {t('form.navigation.back', 'Voltar')}
             </Button>
             <Button className="w-1/3 min-h-14" type="submit">
-              Próximo <ArrowRight />
+              {t('form.navigation.next', 'Próximo')} <ArrowRight />
             </Button>
           </div>
         </form>

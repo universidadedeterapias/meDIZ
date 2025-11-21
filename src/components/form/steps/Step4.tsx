@@ -13,9 +13,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { useUserForm } from '@/hooks/use-form-data'
 import { ArrowLeft, Check } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from '@/i18n/useTranslation'
 
 export default function Step4() {
   const { form, prevStep, handleFinalSubmit } = useUserForm()
+  const { t } = useTranslation()
   const [charCount, setCharCount] = useState(0)
 
   const handleChange = (value: string) => {
@@ -27,11 +29,13 @@ export default function Step4() {
     <div>
       <div className="flex flex-col items-center justify-center w-full gap-4">
         <p className="text-indigo-600 text-2xl font-bold text-center">
-          Como o meDIZ! pode ajudar você?
+          {t('form.step4.title', 'Como o meDIZ! pode ajudar você?')}
         </p>
         <p className="text-zinc-600 font-light text-center">
-          Conte-nos como você acredita que entender a origem emocional pode
-          beneficiar sua vida
+          {t(
+            'form.step4.subtitle',
+            'Conte-nos como você acredita que entender a origem emocional pode beneficiar sua vida'
+          )}
         </p>
       </div>
       <Form {...form}>
@@ -46,12 +50,17 @@ export default function Step4() {
             render={({ field }) => (
               <FormItem className="w-full">
                 <FormLabel className="text-base">
-                  Descreva como você espera que o meDIZ! possa ajudar você a
-                  entender melhor suas emoções:
+                  {t(
+                    'form.step4.description.label',
+                    'Descreva como você espera que o meDIZ! possa ajudar você a entender melhor suas emoções:'
+                  )}
                 </FormLabel>
                 <FormControl>
                   <Textarea
-                    placeholder="Compartilhe suas expectativas, desafios emocionais que gostaria de resolver, ou como você acha que o autoconhecimento emocional pode transformar sua vida…"
+                    placeholder={t(
+                      'form.step4.description.placeholder',
+                      'Compartilhe suas expectativas, desafios emocionais que gostaria de resolver, ou como você acha que o autoconhecimento emocional pode transformar sua vida…'
+                    )}
                     className="min-h-32 text-base placeholder:text-base placeholder:text-zinc-500 bg-zinc-50 border-2 border-zinc-300"
                     maxLength={500}
                     value={field.value}
@@ -59,7 +68,7 @@ export default function Step4() {
                   />
                 </FormControl>
                 <div className="text-right text-sm text-zinc-500">
-                  {charCount}/500 caracteres
+                  {charCount}/500 {t('form.step4.description.charSuffix', 'caracteres')}
                 </div>
                 <FormMessage />
               </FormItem>
@@ -74,13 +83,13 @@ export default function Step4() {
               variant="outline"
               onClick={prevStep}
             >
-              <ArrowLeft /> Voltar
+              <ArrowLeft /> {t('form.navigation.back', 'Voltar')}
             </Button>
             <Button
               className="w-1/3 min-h-14 bg-green-500 text-white hover:bg-green-600"
               type="submit"
             >
-              Enviar <Check />
+              {t('form.step4.submit', 'Enviar')} <Check />
             </Button>
           </div>
         </form>

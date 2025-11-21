@@ -33,6 +33,8 @@ import { useForm } from 'react-hook-form'
 import { FaWhatsapp } from 'react-icons/fa'
 import MyAccountSkeleton from './skeleton'
 import { useTranslation } from '@/i18n/useTranslation'
+import { useLanguage } from '@/i18n/useLanguage'
+import { getUpgradeLink } from '@/lib/upgradeLinks'
 
 type SubscriptionAPI = {
   status: 'active' | 'trialing' | 'cancel_at_period_end' | 'canceled'
@@ -50,6 +52,7 @@ export default function MyAccountPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { user, setUser } = useUser()
   const { t } = useTranslation()
+  const { language } = useLanguage()
 
   const [editing, setEditing] = useState(false)
   const [subscription, setSubscription] = useState<SubscriptionAPI | null>(null)
@@ -264,12 +267,15 @@ export default function MyAccountPage() {
             </CardHeader>
             <CardContent className="pt-0">
               <Button
-                asChild
                 variant="secondary"
                 size="lg"
                 className="w-full tracking-wide bg-yellow-400 text-yellow-900"
+                onClick={() => {
+                  const upgradeLink = getUpgradeLink(language)
+                  window.open(upgradeLink, '_blank')
+                }}
               >
-                <Link href="/assinatura-plus">{t('account.subscription.subscribeNow', 'Assine Agora 🚀')}</Link>
+                {t('account.subscription.subscribeNow', 'Assine Agora 🚀')}
               </Button>
             </CardContent>
           </Card>

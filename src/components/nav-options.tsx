@@ -14,6 +14,8 @@ import {
 import { useUser } from '@/contexts/user'
 import { IconType } from 'react-icons/lib'
 import { useTranslation } from '@/i18n/useTranslation'
+import { useLanguage } from '@/i18n/useLanguage'
+import { getUpgradeLink } from '@/lib/upgradeLinks'
 
 type SubscriptionAPI = {
   status: 'active' | 'trialing' | 'cancel_at_period_end' | 'canceled'
@@ -36,6 +38,7 @@ export function NavOptions({ options }: NavOptionsProps) {
   const { user } = useUser()
   const [subscription, setSubscription] = useState<SubscriptionAPI | null>(null)
   const { t } = useTranslation()
+  const { language } = useLanguage()
 
   // Carrega status da assinatura
   useEffect(() => {
@@ -81,6 +84,9 @@ export function NavOptions({ options }: NavOptionsProps) {
           const label = item.translationKey
             ? t(item.translationKey, item.name)
             : t(item.name, item.name)
+          
+          // Para a primeira opção (assinatura), usar link baseado no idioma
+          const itemUrl = idx === 0 ? getUpgradeLink(language) : item.url
 
           if (idx === 0 && !isSubscribed) {
             return (
@@ -90,7 +96,9 @@ export function NavOptions({ options }: NavOptionsProps) {
                   className="px-4 py-6 bg-yellow-100 rounded-lg border border-yellow-300 border-l-4"
                 >
                   <a
-                    href={item.url}
+                    href={itemUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex items-center gap-4 text-yellow-800 font-semibold text-lg group-data-[collapsed=true]:hidden"
                   >
                     <item.icon
@@ -117,7 +125,7 @@ export function NavOptions({ options }: NavOptionsProps) {
             <SidebarMenuItem key={item.name}>
               <SidebarMenuButton asChild className="px-4 py-6">
                 <a
-                  href={item.url}
+                  href={itemUrl}
                   className="flex items-center gap-4 text-zinc-800 text-lg group-data-[collapsed=true]:hidden"
                   {...(isExternal
                     ? { target: '_blank', rel: 'noopener noreferrer' }

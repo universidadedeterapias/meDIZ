@@ -7,7 +7,6 @@ import { useEffect, useState } from 'react'
 
 import { AppSidebar } from '@/components/app-sidebar'
 import { ClientOnly } from '@/components/ClientOnly'
-import { LanguageSwitcher } from '@/components/language-switcher'
 import { ExternalLinks } from '@/components/ExternalLinks'
 import { Footer } from '@/components/Footer'
 import OptionSelector from '@/components/form/OptionSelector'
@@ -28,6 +27,7 @@ import { useUser } from '@/contexts/user'
 import { useTranslation } from '@/i18n/useTranslation'
 import { UserPeriod } from '@/lib/userPeriod'
 import { FirstName } from '@/lib/utils'
+import { getUpgradeLink } from '@/lib/upgradeLinks'
 import { User } from '@/types/User'
 import { Result } from './result'
 
@@ -312,7 +312,8 @@ export default function Page() {
   
   // Função para lidar com clique no botão de assinatura
   const handleSubscribe = () => {
-    window.location.href = 'https://go.hotmart.com/N101121884P'
+    const upgradeLink = getUpgradeLink(language)
+    window.location.href = upgradeLink
   }
 
   // Loading enquanto checa o perfil
@@ -336,7 +337,8 @@ export default function Page() {
   }
 
   if (limitReached) {
-    window.location.href = 'https://go.hotmart.com/N101121884P'
+    const upgradeLink = getUpgradeLink(language)
+    window.location.href = upgradeLink
   }
 
   // Layout principal do chat
@@ -377,7 +379,6 @@ export default function Page() {
                 </div>
               </div>
               <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-                <LanguageSwitcher showLabel={false} className="min-w-[120px] sm:min-w-[160px]" />
                 <Bell className="mr-2" />
               </div>
             </div>
