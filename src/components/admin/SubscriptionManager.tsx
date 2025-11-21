@@ -34,8 +34,10 @@ interface Plan {
   id: string
   name: string
   amount: number
-  interval: string
-  currency: string
+  interval: string | null
+  currency: string | null
+  trialPeriodDays?: number | null
+  hotmartOfferKey?: string | null
 }
 
 interface SubscriptionManagerProps {
@@ -264,9 +266,12 @@ export function SubscriptionManager({ userId, userName, userEmail }: Subscriptio
                     <SelectContent>
                       {plans.map((plan) => {
                         const price = plan.amount ? (plan.amount / 100).toFixed(2) : '0.00'
+                        const currency = plan.currency?.toUpperCase() || 'BRL'
+                        const interval = plan.interval?.toLowerCase() || 'mês'
+                        const trialInfo = plan.trialPeriodDays ? ` (${plan.trialPeriodDays}D trial)` : ''
                         return (
                           <SelectItem key={plan.id} value={plan.id}>
-                            {plan.name} - {plan.currency?.toUpperCase() || 'BRL'} {price}/{plan.interval}
+                            {plan.name} - {currency} {price}/{interval}{trialInfo}
                           </SelectItem>
                         )
                       })}

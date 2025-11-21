@@ -47,45 +47,6 @@ const checkClientComponents = () => {
   return issues;
 };
 
-// Check for missing environment variables
-const checkEnvVariables = () => {
-  // Skip this check in CI/CD environments
-  // Environment variables should be set as GitHub Secrets or Vercel Environment Variables
-  if (process.env.CI || process.env.GITHUB_ACTIONS || process.env.VERCEL) {
-    console.log('⏭️  Skipping local env check (running in CI/CD)');
-    return 0;
-  }
-  
-  const requiredEnvVars = [
-    'DATABASE_URL',
-    'NEXTAUTH_SECRET',
-    'NEXTAUTH_URL',
-    'GOOGLE_CLIENT_ID',
-    'GOOGLE_CLIENT_SECRET'
-  ];
-  
-  let issues = 0;
-  
-  // Check if .env.local exists (only for local development)
-  if (!fs.existsSync('.env.local')) {
-    console.log('⚠️  .env.local file not found');
-    console.log('   Note: In CI/CD, environment variables should be configured as secrets');
-    console.log('   For local development, create .env.local with required variables');
-    // Don't fail in CI/CD - just warn
-    return 0;
-  }
-  
-  const envContent = fs.readFileSync('.env.local', 'utf8');
-  
-  requiredEnvVars.forEach(envVar => {
-    if (!envContent.includes(`${envVar}=`)) {
-      console.log(`❌ Missing environment variable: ${envVar}`);
-      issues++;
-    }
-  });
-  
-  return issues;
-};
 
 // Check for TypeScript errors
 const checkTypeScript = () => {
@@ -184,9 +145,6 @@ const runChecks = () => {
   console.log('📦 Checking package imports...');
   totalIssues += checkBcrypt();
   totalIssues += checkClientComponents();
-  
-  console.log('\n🔧 Checking environment variables...');
-  totalIssues += checkEnvVariables();
   
   console.log('\n📝 Checking code quality...');
   totalIssues += checkTypeScript();

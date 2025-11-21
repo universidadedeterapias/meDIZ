@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { sendSignupConfirmation, isWhatsAppConfigured, simulateWhatsAppSend } from '@/lib/whatsappService'
 import { randomUUID } from 'crypto'
 import { handleApiError } from '@/lib/errorHandler'
+import { getCurrentLanguage } from '@/i18n/server'
 
 export async function POST(req: NextRequest) {
   try {
@@ -64,13 +65,20 @@ export async function POST(req: NextRequest) {
 
     // Enviar via WhatsApp
     const userName = user.fullName || user.name || 'Usuário'
+    const language = await getCurrentLanguage() // Obter idioma do cookie/header
     let sent = false
 
     if (isWhatsAppConfigured()) {
-      sent = await sendSignupConfirmation(user.whatsapp, userName, confirmationUrl)
+      sent = await sendSignupConfirmation(user.whatsapp, userName, confirmationUrl, language)
     } else {
-      // Modo de desenvolvimento - simular envio
-      simulateWhatsAppSend(user.whatsapp, `Link de confirmação: ${confirmationUrl}`)
+      // Modo de desenvolvimento - simular envio com mensagem traduzida
+      const messages: Record<string, string> = {
+        'pt-BR': `Link de confirmação: ${confirmationUrl}`,
+        'pt-PT': `Ligação de confirmação: ${confirmationUrl}`,
+        'en': `Confirmation link: ${confirmationUrl}`,
+        'es': `Enlace de confirmación: ${confirmationUrl}`
+      }
+      simulateWhatsAppSend(user.whatsapp, messages[language] || messages['pt-BR'])
       sent = true
     }
 

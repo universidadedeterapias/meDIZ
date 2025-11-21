@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from '@/i18n/useTranslation'
 
 const API_RESET_URL = '/api/reset-password' // ajuste se estiver diferente
 
@@ -19,6 +20,7 @@ function scorePassword(pw: string) {
 }
 
 export default function ResetFormClient() {
+  const { t } = useTranslation()
   const params = useSearchParams()
   const router = useRouter()
 
@@ -36,9 +38,9 @@ export default function ResetFormClient() {
   useEffect(() => {
     setReady(true)
     if (!email || !token) {
-      setErr('Link inválido. Solicite um novo reset.')
+      setErr(t('reset.error.invalidLink', 'Link inválido. Solicite um novo reset.'))
     }
-  }, [email, token])
+  }, [email, token, t])
 
   const strength = useMemo(() => scorePassword(password), [password])
   const passwordOk =
@@ -69,16 +71,16 @@ export default function ResetFormClient() {
           url.searchParams.delete('token')
           window.history.replaceState({}, '', url.toString())
         }
-        setMsg('Senha alterada com sucesso! Redirecionando para o login…')
+        setMsg(t('reset.success', 'Senha alterada com sucesso! Redirecionando para o login…'))
         setTimeout(() => router.push('/login'), 1500)
       } else {
         const data = await res.json().catch(() => ({}))
         setErr(
-          data?.error ?? 'Não foi possível redefinir a senha. Tente novamente.'
+          data?.error ?? t('reset.error.generic', 'Não foi possível redefinir a senha. Tente novamente.')
         )
       }
     } catch {
-      setErr('Falha de rede ao enviar sua solicitação.')
+      setErr(t('reset.error.network', 'Falha de rede ao enviar sua solicitação.'))
     } finally {
       setSubmitting(false)
     }
@@ -87,38 +89,44 @@ export default function ResetFormClient() {
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-6">
       <div className="w-full max-w-md bg-white border border-zinc-200 rounded-lg p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold mb-1">Definir nova senha</h1>
+        <h1 className="text-2xl font-semibold mb-1">
+          {t('reset.title', 'Definir nova senha')}
+        </h1>
         <p className="text-sm text-zinc-600 mb-6">
           {email ? (
             <>
-              Para a conta <b>{email}</b>
+              {t('reset.subtitle.account', 'Para a conta')} <b>{email}</b>
             </>
           ) : (
-            'Informe uma nova senha.'
+            t('reset.subtitle.default', 'Informe uma nova senha.')
           )}
         </p>
 
         {!ready ? (
-          <p>Carregando…</p>
+          <p>{t('reset.loading', 'Carregando…')}</p>
         ) : err && !msg ? (
           <>
             <p className="text-sm text-red-600 mb-4">{err}</p>
             <div className="flex gap-2">
               <Link href="/login">
-                <Button variant="outline">Voltar ao login</Button>
+                <Button variant="outline">
+                  {t('reset.backToLogin', 'Voltar ao login')}
+                </Button>
               </Link>
             </div>
           </>
         ) : (
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Nova senha</label>
+              <label className="text-sm font-medium">
+                {t('reset.password.label', 'Nova senha')}
+              </label>
               <div className="flex gap-2">
                 <Input
                   type={showPw ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder={t('reset.password.placeholder', 'Mínimo 8 caracteres')}
                   required
                 />
                 <Button
@@ -126,7 +134,9 @@ export default function ResetFormClient() {
                   variant="outline"
                   onClick={() => setShowPw(s => !s)}
                 >
-                  {showPw ? 'Ocultar' : 'Mostrar'}
+                  {showPw
+                    ? t('reset.password.hide', 'Ocultar')
+                    : t('reset.password.show', 'Mostrar')}
                 </Button>
               </div>
 
@@ -145,14 +155,19 @@ export default function ResetFormClient() {
                 />
               </div>
               <ul className="text-xs text-zinc-600 list-disc ml-4 mt-1">
-                <li>Mínimo 8 caracteres</li>
-                <li>Letra maiúscula, minúscula e número</li>
+                <li>{t('reset.password.requirements.min', 'Mínimo 8 caracteres')}</li>
+                <li>
+                  {t(
+                    'reset.password.requirements.chars',
+                    'Letra maiúscula, minúscula e número'
+                  )}
+                </li>
               </ul>
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                Confirmar nova senha
+                {t('reset.confirm.label', 'Confirmar nova senha')}
               </label>
               <Input
                 type={showPw ? 'text' : 'password'}
@@ -161,7 +176,9 @@ export default function ResetFormClient() {
                 required
               />
               {confirm && confirm !== password && (
-                <p className="text-xs text-red-600">As senhas não conferem.</p>
+                <p className="text-xs text-red-600">
+                  {t('reset.confirm.mismatch', 'As senhas não conferem.')}
+                </p>
               )}
             </div>
 
@@ -170,11 +187,13 @@ export default function ResetFormClient() {
 
             <div className="flex items-center gap-2 pt-2">
               <Button type="submit" disabled={!canSubmit}>
-                {submitting ? 'Salvando…' : 'Salvar nova senha'}
+                {submitting
+                  ? t('reset.submit.loading', 'Salvando…')
+                  : t('reset.submit', 'Salvar nova senha')}
               </Button>
               <Link href="/login">
                 <Button type="button" variant="outline">
-                  Cancelar
+                  {t('reset.cancel', 'Cancelar')}
                 </Button>
               </Link>
             </div>

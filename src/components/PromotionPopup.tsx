@@ -1,11 +1,13 @@
 'use client'
 
 import { X } from 'lucide-react'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog-mobile'
 import { useTranslation } from '@/i18n/useTranslation'
+import { useLanguage } from '@/i18n/useLanguage'
+import { getUpgradeLink } from '@/lib/upgradeLinks'
 
 interface PopupConfig {
   id: string
@@ -27,44 +29,60 @@ export default function PromotionPopup({
   onSubscribe
 }: PromotionPopupProps) {
   const { t } = useTranslation()
+  const { language } = useLanguage()
   const [popupConfig, setPopupConfig] = useState<PopupConfig | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const fetchPopupConfig = useCallback(async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/popup')
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          onOpenChange(false)
-          return
-        }
-        throw new Error('popup_config_error')
-      }
-
-      const data = await response.json()
-      setPopupConfig(data)
-      setError(null)
-    } catch (err) {
-      setError(t('popup.error.loading', 'Não foi possível carregar o conteúdo promocional'))
-      console.error('Erro ao buscar popup:', err)
-    } finally {
-      setLoading(false)
-    }
-  }, [onOpenChange, t])
+  const hasFetchedRef = useRef(false)
+  const isFetchingRef = useRef(false)
 
   useEffect(() => {
-    if (open) {
-      fetchPopupConfig()
+    // Reset quando o popup fecha
+    if (!open) {
+      hasFetchedRef.current = false
+      setPopupConfig(null)
+      setError(null)
+      setLoading(false)
+      isFetchingRef.current = false
+      return
     }
-  }, [open, fetchPopupConfig])
+
+    // Busca apenas uma vez quando o popup abre
+    if (open && !hasFetchedRef.current && !isFetchingRef.current) {
+      isFetchingRef.current = true
+      setLoading(true)
+      
+      fetch('/api/popup')
+        .then(async (response) => {
+          if (!response.ok) {
+            if (response.status === 404) {
+              onOpenChange(false)
+              return
+            }
+            throw new Error('popup_config_error')
+          }
+
+          const data = await response.json()
+          setPopupConfig(data)
+          setError(null)
+          hasFetchedRef.current = true
+        })
+        .catch((err) => {
+          setError(t('popup.error.loading', 'Não foi possível carregar o conteúdo promocional'))
+          console.error('Erro ao buscar popup:', err)
+          onOpenChange(false)
+        })
+        .finally(() => {
+          setLoading(false)
+          isFetchingRef.current = false
+        })
+    }
+  }, [open, t, onOpenChange]) // Dependências necessárias
 
   const handleSubscribe = () => {
-    if (popupConfig?.subscribeLink) {
-      window.open(popupConfig.subscribeLink, '_blank')
-    }
+    // Sempre usar link baseado no idioma atual, ignorar link da API
+    const upgradeLink = getUpgradeLink(language)
+    window.open(upgradeLink, '_blank')
     onSubscribe()
     onOpenChange(false)
   }

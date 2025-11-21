@@ -1,6 +1,8 @@
 import { auth } from '@/auth'
 import { isUserPremium } from '@/lib/premiumUtils'
 import { NextRequest, NextResponse } from 'next/server'
+import { getCurrentLanguage } from '@/i18n/server'
+import { getUpgradeLink } from '@/lib/upgradeLinks'
 
 /**
  * Endpoint para verificar se usuário pode exportar PDF
@@ -21,10 +23,14 @@ export async function POST(_req: NextRequest) {
     const isPremium = await isUserPremium(session.user.id)
     
     if (!isPremium) {
+      // Obter idioma do usuário e retornar link de upgrade apropriado
+      const language = await getCurrentLanguage()
+      const upgradeUrl = getUpgradeLink(language)
+      
       return NextResponse.json(
         { 
           error: 'Função disponível apenas para assinantes',
-          upgradeUrl: 'https://go.hotmart.com/N101121884P'
+          upgradeUrl
         },
         { status: 403 }
       )

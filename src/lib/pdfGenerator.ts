@@ -107,6 +107,8 @@ function processAnswerContent(htmlContent: string, language: LanguageCode = 'pt-
   let result = ''
   let currentSection = ''
   let currentSectionPtTitle = '' // Título em PT (padrão)
+  let contentBeforeFirstSection = '' // Conteúdo antes da primeira seção detectada
+  let hasFoundFirstSection = false // Flag para saber se já encontramos a primeira seção
   
   // Flags para evitar duplicar Contexto Geral e Impacto Biológico
   let hasAddedContextoGeral = false
@@ -120,10 +122,18 @@ function processAnswerContent(htmlContent: string, language: LanguageCode = 'pt-
       // Verificação especial para "LATERALIDADE DEPENDE..." - deve ser tratado como conteúdo
       const cleanLine = line.replace(/\*\*/g, '').replace(/\*/g, '').trim().toUpperCase()
       if (cleanLine.includes('LATERALIDADE') && cleanLine.includes('DEPENDE')) {
-        if (currentSection) {
-          currentSection += '\n' + line
+        if (hasFoundFirstSection) {
+          if (currentSection) {
+            currentSection += '\n' + line
+          } else {
+            currentSection = line
+          }
         } else {
-          currentSection = line
+          if (contentBeforeFirstSection) {
+            contentBeforeFirstSection += '\n' + line
+          } else {
+            contentBeforeFirstSection = line
+          }
         }
         continue
       }
@@ -136,21 +146,39 @@ function processAnswerContent(htmlContent: string, language: LanguageCode = 'pt-
       
       // Se for Contexto Geral ou Impacto Biológico e já extraímos separadamente, pula
       if (matchedPtTitle === 'Contexto Geral' && contextoGeral && !hasAddedContextoGeral) {
-        // Adiciona Contexto Geral extraído separadamente
-        result += createSectionHTML('Contexto Geral', contextoGeral.content, language)
+        // Se havia conteúdo antes, adiciona à seção de Contexto Geral
+        if (contentBeforeFirstSection.trim()) {
+          result += createSectionHTML('Contexto Geral', contentBeforeFirstSection.trim() + '\n\n' + contextoGeral.content, language)
+        } else {
+          result += createSectionHTML('Contexto Geral', contextoGeral.content, language)
+        }
         hasAddedContextoGeral = true
+        hasFoundFirstSection = true
+        contentBeforeFirstSection = ''
         currentSection = ''
         currentSectionPtTitle = ''
         continue
       }
       
       if (matchedPtTitle === 'Impacto Biológico' && impactoBiologico && !hasAddedImpactoBiologico) {
-        // Adiciona Impacto Biológico extraído separadamente
+        // Se havia conteúdo antes, adiciona à seção anterior ou cria uma seção genérica
+        if (contentBeforeFirstSection.trim() && !hasFoundFirstSection) {
+          result += createSectionHTML('RESPOSTA', contentBeforeFirstSection.trim(), language)
+          contentBeforeFirstSection = ''
+        }
         result += createSectionHTML('Impacto Biológico', impactoBiologico.content, language)
         hasAddedImpactoBiologico = true
+        hasFoundFirstSection = true
         currentSection = ''
         currentSectionPtTitle = ''
         continue
+      }
+      
+      // Se é a primeira seção encontrada e há conteúdo antes, adiciona como seção genérica
+      if (!hasFoundFirstSection && contentBeforeFirstSection.trim()) {
+        result += createSectionHTML('RESPOSTA', contentBeforeFirstSection.trim(), language)
+        contentBeforeFirstSection = ''
+        hasFoundFirstSection = true
       }
       
       // Salva seção anterior se tiver conteúdo
@@ -161,17 +189,26 @@ function processAnswerContent(htmlContent: string, language: LanguageCode = 'pt-
       // Inicia nova seção
       currentSectionPtTitle = matchedPtTitle || cleanTitle // Usa PT se encontrou match, senão usa o original
       currentSection = ''
+      hasFoundFirstSection = true
       
       // Pula apenas barras horizontais que aparecem logo após o título
       if (i + 1 < lines.length && /^[-=_]{2,}$/.test(lines[i + 1].trim())) {
         i++ // Pula a barra horizontal
       }
     } else {
-      // Adiciona conteúdo à seção atual
-      if (currentSection) {
-        currentSection += '\n' + line
+      // Adiciona conteúdo à seção atual ou ao conteúdo antes da primeira seção
+      if (hasFoundFirstSection) {
+        if (currentSection) {
+          currentSection += '\n' + line
+        } else {
+          currentSection = line
+        }
       } else {
-        currentSection = line
+        if (contentBeforeFirstSection) {
+          contentBeforeFirstSection += '\n' + line
+        } else {
+          contentBeforeFirstSection = line
+        }
       }
     }
   }
@@ -182,6 +219,9 @@ function processAnswerContent(htmlContent: string, language: LanguageCode = 'pt-
   } else if (currentSection.trim()) {
     // Se não tem título mas tem conteúdo, cria seção geral
     result += createSectionHTML('RESPOSTA', currentSection.trim(), language)
+  } else if (contentBeforeFirstSection.trim() && !hasFoundFirstSection) {
+    // Se não encontrou nenhuma seção mas tem conteúdo, cria seção genérica
+    result += createSectionHTML('RESPOSTA', contentBeforeFirstSection.trim(), language)
   }
 
   // Se não gerou nada, pelo menos mostra o conteúdo original
@@ -321,6 +361,28 @@ const PDF_SECTION_TRANSLATIONS: Record<LanguageCode, { symptom: string; response
     patient: 'Paciente:',
     date: 'Fecha:',
     time: 'Hora:'
+  }
+}
+
+/**
+ * Mapeamento de tradução do footer do PDF (disclaimer e copyright)
+ */
+const PDF_FOOTER_TRANSLATIONS: Record<LanguageCode, { disclaimer: string; copyright: string }> = {
+  'pt-BR': {
+    disclaimer: '⚠️ Importante: Sempre consulte um profissional de saúde qualificado antes de tomar decisões relacionadas à sua saúde.',
+    copyright: 'Relatório de Origem Emocional'
+  },
+  'pt-PT': {
+    disclaimer: '⚠️ Importante: Consulte sempre um profissional de saúde qualificado antes de tomar decisões relacionadas à sua saúde.',
+    copyright: 'Relatório de Origem Emocional'
+  },
+  en: {
+    disclaimer: '⚠️ Important: Always consult a qualified health professional before making decisions related to your health.',
+    copyright: 'Emotional Origin Report'
+  },
+  es: {
+    disclaimer: '⚠️ Importante: Siempre consulte a un profesional de salud cualificado antes de tomar decisiones relacionadas con su salud.',
+    copyright: 'Informe de Origen Emocional'
   }
 }
 
@@ -507,17 +569,32 @@ function processMarkdownForPDF(content: string): string {
     .replace(/\(lightning bolt icon\)/g, '⚡')
   
   // 2. Processa emojis separadores - adiciona quebra de parágrafo ANTES do emoji
+  // Mas apenas se o emoji não estiver já no início de uma linha ou após uma quebra de linha
   PARAGRAPH_SEPARATORS.forEach(emoji => {
     // Adiciona quebra de linha dupla ANTES do emoji (se não estiver no início já)
+    // Mas evita criar quebras duplas desnecessárias
     processed = processed.replace(
-      new RegExp(`([^\\n])(\\s*)(${escapeRegex(emoji)}\\s)`, 'g'),
-      `$1\n\n$3`
+      new RegExp(`([^\\n\\r])(\\s*)(${escapeRegex(emoji)}\\s)`, 'g'),
+      (match, before, spaces, emojiWithSpace) => {
+        // Se já há quebra de linha antes, não adiciona outra
+        if (before.endsWith('\n') || before.endsWith('\r')) {
+          return match
+        }
+        return `${before}\n\n${emojiWithSpace}`
+      }
     )
     
     // Se emoji está no início da linha mas logo após texto na mesma linha, adiciona quebra
+    // Mas apenas se não estiver já após uma quebra de linha
     processed = processed.replace(
       new RegExp(`([^\\n\\r])(\\s*)(${escapeRegex(emoji)})`, 'g'),
-      `$1\n\n$3`
+      (match, before, spaces, emoji) => {
+        // Se já há quebra de linha antes, não adiciona outra
+        if (before.endsWith('\n') || before.endsWith('\r')) {
+          return match
+        }
+        return `${before}\n\n${emoji}`
+      }
     )
   })
 
@@ -1007,10 +1084,10 @@ function createPDFHTML(data: PDFData): string {
             me<span class="highlight">DIZ</span>!
           </div>
           <div class="disclaimer">
-            <strong>⚠️ Importante:</strong> Sempre consulte um profissional de saúde qualificado antes de tomar decisões relacionadas à sua saúde.
+            ${PDF_FOOTER_TRANSLATIONS[language]?.disclaimer || PDF_FOOTER_TRANSLATIONS['pt-BR'].disclaimer}
           </div>
           <div style="margin-top: 12px;">
-            © ${new Date().getFullYear()} Relatório de Origem Emocional
+            © ${new Date().getFullYear()} ${PDF_FOOTER_TRANSLATIONS[language]?.copyright || PDF_FOOTER_TRANSLATIONS['pt-BR'].copyright}
           </div>
         </div>
       </div>

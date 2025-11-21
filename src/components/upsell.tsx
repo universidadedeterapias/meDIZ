@@ -14,6 +14,8 @@ import {
   ArrowRight,
   X
 } from 'lucide-react'
+import { useLanguage } from '@/i18n/useLanguage'
+import { getUpgradeLink } from '@/lib/upgradeLinks'
 
 interface UpsellProps {
   onClose: () => void
@@ -22,6 +24,13 @@ interface UpsellProps {
 
 export function Upsell({ onClose, onSubscribe }: UpsellProps) {
   const [selectedPlan, setSelectedPlan] = useState<'mensal' | 'anual'>('anual')
+  const { language } = useLanguage()
+  
+  const handleSubscribe = () => {
+    const upgradeLink = getUpgradeLink(language)
+    window.open(upgradeLink, '_blank')
+    onSubscribe(selectedPlan)
+  }
 
   const features = [
     {
@@ -175,7 +184,7 @@ export function Upsell({ onClose, onSubscribe }: UpsellProps) {
             </div>
             
             <Button
-              onClick={() => onSubscribe(selectedPlan)}
+              onClick={handleSubscribe}
               className="w-full bg-primary hover:bg-primary/90 text-white py-3 text-lg font-semibold"
               size="lg"
             >

@@ -17,6 +17,7 @@ import { useUserForm } from '@/hooks/use-form-data'
 import { formatPhone } from '@/lib/formatPhone'
 import { ArrowRight } from 'lucide-react'
 import Image from 'next/image'
+import { useTranslation } from '@/i18n/useTranslation'
 
 interface UserApiResponse {
   fullName: string
@@ -27,6 +28,7 @@ interface UserApiResponse {
 
 export default function Step1() {
   const { form, nextStep } = useUserForm()
+  const { t } = useTranslation()
   const [userImage, setUserImage] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string>('')
   const [isLoading, setIsLoading] = useState<boolean>(true)
@@ -56,10 +58,10 @@ export default function Step1() {
     <div>
       <div className="flex flex-col items-center justify-center w-full gap-4">
         <p className="text-indigo-600 text-2xl font-bold">
-          Bem-vindo ao meDIZ!
+          {t('form.step1.title', 'Bem-vindo ao meDIZ!')}
         </p>
         <p className="text-zinc-600 font-light text-center">
-          Vamos começar com algumas informações básicas
+          {t('form.step1.subtitle', 'Vamos começar com algumas informações básicas')}
         </p>
       </div>
       <Form {...form}>
@@ -87,12 +89,14 @@ export default function Step1() {
             name="fullName"
             render={({ field }) => (
               <FormItem className="w-full">
-                <FormLabel className="text-base">Nome completo</FormLabel>
+                <FormLabel className="text-base">
+                  {t('form.step1.fullName', 'Nome completo')}
+                </FormLabel>
                 <FormControl>
                   <Input
                     {...field}
                     disabled={isLoading}
-                    placeholder="Digite seu nome completo"
+                    placeholder={t('form.step1.fullName.placeholder', 'Digite seu nome completo')}
                     className="min-h-14 text-base placeholder:text-base bg-zinc-50 border-2 border-zinc-300"
                   />
                 </FormControl>
@@ -102,7 +106,7 @@ export default function Step1() {
           />
 
           <FormItem className="w-full">
-            <FormLabel className="text-base">Email</FormLabel>
+            <FormLabel className="text-base">{t('form.step1.email', 'Email')}</FormLabel>
             <FormControl>
               {isLoading ? (
                 <Skeleton className="h-14 w-full rounded-md" />
@@ -121,14 +125,14 @@ export default function Step1() {
             name="whatsapp"
             render={({ field }) => (
               <FormItem className="w-full">
-                <FormLabel className="text-base">WhatsApp</FormLabel>
+                <FormLabel className="text-base">{t('form.step1.whatsapp', 'WhatsApp')}</FormLabel>
                 <FormControl>
                   <Input
                     {...field}
                     disabled={isLoading}
                     value={field.value}
                     onChange={e => field.onChange(formatPhone(e.target.value))}
-                    placeholder="(00) 00000-0000"
+                    placeholder={t('form.step1.whatsapp.placeholder', '(00) 00000-0000')}
                     className="min-h-14 text-base placeholder:text-base bg-zinc-50 border-2 border-zinc-300"
                   />
                 </FormControl>
@@ -139,7 +143,7 @@ export default function Step1() {
 
           <div className="w-full flex items-center justify-end fixed bottom-4 left-0 right-0 px-4">
             <Button type="submit" className="w-1/3 min-h-14">
-              Próximo <ArrowRight />
+              {t('form.navigation.next', 'Próximo')} <ArrowRight />
             </Button>
           </div>
         </form>

@@ -145,10 +145,10 @@ Se você não solicitou este código, ignore esta mensagem.`
 }
 
 /**
- * Envia link de confirmação de cadastro
+ * Mensagens de confirmação de cadastro por idioma
  */
-export async function sendSignupConfirmation(phone: string, userName: string, confirmationUrl: string): Promise<boolean> {
-  const message = `Olá ${userName}! 👋
+const SIGNUP_CONFIRMATION_MESSAGES: Record<string, (userName: string, confirmationUrl: string) => string> = {
+  'pt-BR': (userName, confirmationUrl) => `Olá ${userName}! 👋
 
 Bem-vindo(a) ao meDIZ! 
 
@@ -158,8 +158,55 @@ ${confirmationUrl}
 
 ⚠️ IMPORTANTE: Para que o link funcione corretamente, você precisa adicionar este número aos seus contatos do WhatsApp antes de clicar no link.
 
-Após adicionar o contato, clique no link acima para confirmar seu cadastro.`
+Após adicionar o contato, clique no link acima para confirmar seu cadastro.`,
+  'pt-PT': (userName, confirmationUrl) => `Olá ${userName}! 👋
 
+Bem-vindo(a) ao meDIZ! 
+
+Para confirmar o seu registo e ativar a sua conta, clique no link abaixo:
+
+${confirmationUrl}
+
+⚠️ IMPORTANTE: Para que o link funcione corretamente, precisa adicionar este número aos seus contactos do WhatsApp antes de clicar no link.
+
+Após adicionar o contacto, clique no link acima para confirmar o seu registo.`,
+  'en': (userName, confirmationUrl) => `Hello ${userName}! 👋
+
+Welcome to meDIZ! 
+
+To confirm your registration and activate your account, click the link below:
+
+${confirmationUrl}
+
+⚠️ IMPORTANT: For the link to work correctly, you need to add this number to your WhatsApp contacts before clicking the link.
+
+After adding the contact, click the link above to confirm your registration.`,
+  'es': (userName, confirmationUrl) => `¡Hola ${userName}! 👋
+
+¡Bienvenido(a) a meDIZ! 
+
+Para confirmar tu registro y activar tu cuenta, haz clic en el enlace a continuación:
+
+${confirmationUrl}
+
+⚠️ IMPORTANTE: Para que el enlace funcione correctamente, necesitas agregar este número a tus contactos de WhatsApp antes de hacer clic en el enlace.
+
+Después de agregar el contacto, haz clic en el enlace de arriba para confirmar tu registro.`
+}
+
+/**
+ * Envia link de confirmação de cadastro
+ */
+export async function sendSignupConfirmation(
+  phone: string, 
+  userName: string, 
+  confirmationUrl: string,
+  language: string = 'pt-BR'
+): Promise<boolean> {
+  // Usa pt-BR como fallback se o idioma não for suportado
+  const lang = language in SIGNUP_CONFIRMATION_MESSAGES ? language : 'pt-BR'
+  const message = SIGNUP_CONFIRMATION_MESSAGES[lang](userName, confirmationUrl)
+  
   return await sendWhatsAppText(phone, message)
 }
 

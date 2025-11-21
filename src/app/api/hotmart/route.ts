@@ -400,13 +400,12 @@ export async function POST(req: NextRequest) {
     })
 
     // ⚠️ IMPORTANTE: O offer.code do Hotmart (ex: "jcuheq2m") é um código interno da Hotmart
-    // e NÃO corresponde aos stripePriceId dos nossos planos no banco.
-    // 
-    // APENAS 2 planos válidos no banco:
-    // - price_hotmart_mensal (mensal)
-    // - price_hotmart_anual (anual)
+    // que agora pode ser mapeado diretamente para nossos planos através do campo hotmartOfferKey
     //
-    // ESTRATÉGIA: Inferir periodicidade pelo subscription.plan.name e buscar pelo código correspondente
+    // ESTRATÉGIA DE BUSCA (em ordem de prioridade):
+    // 1. Buscar por hotmartOfferKey (mais preciso)
+    // 2. Buscar por periodicidade + códigos conhecidos (compatibilidade)
+    // 3. Buscar por intervalo (fallback)
     
     let plan = null
     const offerCode = parsed.data.purchase.offer?.code
@@ -418,39 +417,49 @@ export async function POST(req: NextRequest) {
       priceValue: parsed.data.purchase.price.value
     })
 
-    // PRIORIDADE 1: Buscar plano por periodicidade + códigos conhecidos dos 4 planos
-    // A periodicidade já foi inferida acima pela função inferPeriodicity()
-    
-    // ⚠️ APENAS 2 planos válidos: price_hotmart_mensal e price_hotmart_anual
-    const monthlyCodes = ['price_hotmart_mensal']
-    const yearlyCodes = ['price_hotmart_anual']
-    
-    const codesToTry = periodicity === 'year' ? yearlyCodes : monthlyCodes
-
-    log('🔍 Buscando plano por periodicidade:', {
-      periodicity,
-      codesToTry,
-      monthlyCodes,
-      yearlyCodes,
-      subscriptionPlanName: parsed.data.subscription?.plan?.name
-    })
-
-    // Tentar buscar plano por qualquer um dos códigos da periodicidade
-    // Ordem: primeiro tenta variável de ambiente, depois os códigos fixos
-    for (const code of codesToTry) {
+    // PRIORIDADE 1: Buscar plano por hotmartOfferKey (mais preciso)
+    if (offerCode) {
       plan = await prisma.plan.findUnique({
-        where: { stripePriceId: code }
+        where: { hotmartOfferKey: offerCode }
       })
       if (plan) {
-        log(`✅ Plano encontrado: ${code} -> ${plan.name} (${plan.interval})`)
-        break
+        log(`✅ Plano encontrado por offerKey: ${offerCode} -> ${plan.name} (${plan.interval})`)
       } else {
-        log(`   ⏭️ Código ${code} não encontrado no banco`)
+        log(`   ⏭️ OfferKey ${offerCode} não encontrado no banco, tentando outras estratégias...`)
       }
     }
 
-    // PRIORIDADE 2: Se ainda não encontrou, buscar planos por intervalo
-    // mas priorizar apenas os 2 códigos conhecidos
+    // PRIORIDADE 2: Se não encontrou por offerKey, buscar por periodicidade + códigos conhecidos
+    // A periodicidade já foi inferida acima pela função inferPeriodicity()
+    // Definir códigos no escopo mais amplo para uso em logs de erro
+    const monthlyCodes = ['price_hotmart_mensal']
+    const yearlyCodes = ['price_hotmart_anual']
+    const codesToTry = periodicity === 'year' ? yearlyCodes : monthlyCodes
+
+    if (!plan) {
+      log('🔍 Buscando plano por periodicidade:', {
+        periodicity,
+        codesToTry,
+        monthlyCodes,
+        yearlyCodes,
+        subscriptionPlanName: parsed.data.subscription?.plan?.name
+      })
+
+      // Tentar buscar plano por qualquer um dos códigos da periodicidade
+      for (const code of codesToTry) {
+        plan = await prisma.plan.findUnique({
+          where: { stripePriceId: code }
+        })
+        if (plan) {
+          log(`✅ Plano encontrado: ${code} -> ${plan.name} (${plan.interval})`)
+          break
+        } else {
+          log(`   ⏭️ Código ${code} não encontrado no banco`)
+        }
+      }
+    }
+
+    // PRIORIDADE 3: Se ainda não encontrou, buscar planos por intervalo
     if (!plan) {
       log('⚠️ Nenhum plano encontrado pelos códigos conhecidos, buscando por intervalo...')
       const plansByInterval = await prisma.plan.findMany({
@@ -462,27 +471,15 @@ export async function POST(req: NextRequest) {
       })
       
       if (plansByInterval.length > 0) {
-        // Priorizar planos que tenham códigos conhecidos (os 2 planos válidos)
-        const preferredPlan = plansByInterval.find(p => 
-          codesToTry.includes(p.stripePriceId)
-        )
-        
-        if (preferredPlan) {
-          plan = preferredPlan
-          log(`✅ Plano encontrado por intervalo com código conhecido: ${plan.stripePriceId} (${plan.name})`)
-        } else {
-          // Se não encontrou nenhum dos códigos conhecidos, avisar e pegar o primeiro
-          plan = plansByInterval[0]
-          log(`⚠️ ATENÇÃO: Nenhum dos 2 planos conhecidos encontrado!`)
-          log(`⚠️ Códigos procurados: ${codesToTry.join(', ')}`)
-          log(`⚠️ Usando primeiro plano do intervalo: ${plan.stripePriceId} (${plan.name})`)
-          log(`⚠️ Total de planos no intervalo ${periodicity}: ${plansByInterval.length}`)
-          log(`⚠️ Todos os planos disponíveis: ${plansByInterval.map(p => `${p.stripePriceId} (${p.name})`).join(', ')}`)
-        }
+        // Priorizar planos sem trial (planos base) quando houver múltiplos
+        const preferredPlan = plansByInterval.find(p => !p.trialPeriodDays) || plansByInterval[0]
+        plan = preferredPlan
+        log(`✅ Plano encontrado por intervalo: ${plan.stripePriceId} (${plan.name})`)
+        log(`⚠️ Total de planos no intervalo ${periodicity}: ${plansByInterval.length}`)
       }
     }
     
-    // PRIORIDADE 3: Se ainda não encontrou, erro crítico
+    // PRIORIDADE 4: Se ainda não encontrou, erro crítico
     if (!plan) {
       const allPlans = await prisma.plan.findMany({
         select: { stripePriceId: true, name: true, interval: true, active: true }

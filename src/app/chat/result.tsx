@@ -34,6 +34,7 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useLanguage } from '@/i18n/useLanguage'
 import type { LanguageCode } from '@/i18n/config'
+import { getUpgradeLink } from '@/lib/upgradeLinks'
 
 // Mapa de string → componente, mantém tudo num lugar
 const ICON_MAP: Record<
@@ -135,7 +136,7 @@ export function Result({
   markdown, 
   elapsedMs, 
   fullVisualization = true,
-  onSubscribe = () => window.location.href = 'https://go.hotmart.com/N101121884P',
+  onSubscribe,
   userQuestion,
   sessionId
 }: ResultProps) {
@@ -147,6 +148,14 @@ export function Result({
   const [baseUrl, setBaseUrl] = useState('')
   const { t } = useTranslation()
   const { language } = useLanguage()
+  
+  // Função padrão de subscribe baseada no idioma
+  const defaultOnSubscribe = () => {
+    const upgradeLink = getUpgradeLink(language)
+    window.location.href = upgradeLink
+  }
+  
+  const handleSubscribe = onSubscribe || defaultOnSubscribe
   
   // Determina se deve mostrar o conteúdo completo ou parcial
   const showFullContent = fullVisualization
@@ -267,7 +276,7 @@ export function Result({
                 </AccordionTrigger>
                 <AccordionContent className="prose prose-sm max-w-none p-3 text-left">
                   {shouldBlur ? (
-                    <BlurredAccordionContent onSubscribe={onSubscribe}>
+                    <BlurredAccordionContent onSubscribe={handleSubscribe}>
                       {/* <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{

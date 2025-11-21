@@ -3,9 +3,11 @@
 import { Button } from '@/components/ui/button'
 import { ArrowRight, CheckCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useTranslation } from '@/i18n/useTranslation'
 
 export default function SuccessStep() {
   const router = useRouter()
+  const { t } = useTranslation()
 
   const handleStart = () => {
     // Exemplo: Redirecionar para a dashboard ou página inicial
@@ -17,19 +19,21 @@ export default function SuccessStep() {
       <CheckCircle size={72} className="text-green-500" />
 
       <h2 className="text-2xl font-bold text-green-600">
-        Cadastro concluído com sucesso!
+        {t('form.success.title', 'Cadastro concluído com sucesso!')}
       </h2>
 
       <p className="text-base text-zinc-500 max-w-md">
-        Estamos muito felizes em ter você conosco. Prepare-se para uma jornada
-        de autoconhecimento e transformação.
+        {t(
+          'form.success.description',
+          'Estamos muito felizes em ter você conosco. Prepare-se para uma jornada de autoconhecimento e transformação.'
+        )}
       </p>
 
       <Button
         className="mt-4 bg-indigo-600 text-white px-6 py-3 rounded-xl text-base hover:bg-indigo-700 min-h-14"
         onClick={handleStart}
       >
-        Começar agora <ArrowRight />
+        {t('form.success.button', 'Começar agora')} <ArrowRight />
       </Button>
     </div>
   )

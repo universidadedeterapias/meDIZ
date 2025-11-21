@@ -4,6 +4,7 @@ import { hash } from 'bcryptjs'
 import { NextResponse } from 'next/server'
 import { sendSignupConfirmation, isWhatsAppConfigured, simulateWhatsAppSend } from '@/lib/whatsappService'
 import { randomUUID } from 'crypto'
+import { getCurrentLanguage } from '@/i18n/server'
 
 const prisma = new PrismaClient()
 
@@ -72,11 +73,18 @@ export async function POST(request: Request) {
 
         // Enviar via WhatsApp
         const userName = email.split('@')[0] // Usar parte antes do @ como nome
+        const language = await getCurrentLanguage() // Obter idioma do cookie/header
         if (isWhatsAppConfigured()) {
-          whatsappSent = await sendSignupConfirmation(whatsapp, userName, confirmationUrl)
+          whatsappSent = await sendSignupConfirmation(whatsapp, userName, confirmationUrl, language)
         } else {
-          // Modo de desenvolvimento - simular envio
-          simulateWhatsAppSend(whatsapp, `Link de confirmação: ${confirmationUrl}`)
+          // Modo de desenvolvimento - simular envio com mensagem traduzida
+          const messages: Record<string, string> = {
+            'pt-BR': `Link de confirmação: ${confirmationUrl}`,
+            'pt-PT': `Ligação de confirmação: ${confirmationUrl}`,
+            'en': `Confirmation link: ${confirmationUrl}`,
+            'es': `Enlace de confirmación: ${confirmationUrl}`
+          }
+          simulateWhatsAppSend(whatsapp, messages[language] || messages['pt-BR'])
           whatsappSent = true
         }
       } catch (whatsappError) {

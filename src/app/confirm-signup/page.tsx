@@ -6,12 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle, XCircle, Loader2, Smartphone } from 'lucide-react'
+import { useTranslation } from '@/i18n/useTranslation'
+import { LanguageSwitcher } from '@/components/language-switcher'
 
 export default function ConfirmSignupPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { t } = useTranslation()
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'expired' | 'waiting'>('loading')
-  const [message, setMessage] = useState('')
   const [mounted, setMounted] = useState(false)
 
   const token = searchParams.get('token')
@@ -36,23 +38,19 @@ export default function ConfirmSignupPage() {
 
       if (response.ok) {
         setStatus('success')
-        setMessage(data.message || 'Cadastro confirmado com sucesso!')
-        
         // Redirecionar para login após 3 segundos
         setTimeout(() => {
           router.push('/login')
         }, 3000)
       } else {
-        if (data.error?.includes('expirado')) {
+        if (data.error?.includes('expirado') || data.error?.toLowerCase().includes('expired')) {
           setStatus('expired')
         } else {
           setStatus('error')
         }
-        setMessage(data.error || 'Erro ao confirmar cadastro')
       }
     } catch {
       setStatus('error')
-      setMessage('Erro de conexão. Tente novamente.')
     }
   }, [token, email, router])
 
@@ -61,7 +59,6 @@ export default function ConfirmSignupPage() {
       if (sent && email) {
         // Se foi enviado automaticamente, mostrar mensagem de espera
         setStatus('waiting')
-        setMessage('Link de confirmação enviado para seu WhatsApp!')
       } else if (token && email) {
         // Se tem token, confirmar automaticamente
         confirmSignup()
@@ -69,10 +66,25 @@ export default function ConfirmSignupPage() {
         router.replace('/confirm-signup?sent=true&email=' + encodeURIComponent(email))
       } else {
         setStatus('error')
-        setMessage('Token ou email não encontrado')
       }
     }
   }, [mounted, token, email, sent, confirmSignup, router])
+
+  // Calcular mensagem dinamicamente baseada no status e idioma atual
+  const getMessage = () => {
+    switch (status) {
+      case 'waiting':
+        return t('confirmSignup.waiting.message', 'Link de confirmação enviado para seu WhatsApp!')
+      case 'success':
+        return t('confirmSignup.success.message', 'Cadastro confirmado com sucesso! Você já pode fazer login.')
+      case 'expired':
+        return t('confirmSignup.expired.message', 'Este link de confirmação expirou. Solicite um novo link.')
+      case 'error':
+        return t('confirmSignup.error.message', 'Erro ao confirmar cadastro')
+      default:
+        return ''
+    }
+  }
 
   const resendConfirmation = async () => {
     if (!email) return
@@ -86,15 +98,13 @@ export default function ConfirmSignupPage() {
         body: JSON.stringify({ email })
       })
 
-      const data = await response.json()
-
       if (response.ok) {
-        setMessage('Novo link de confirmação enviado via WhatsApp!')
+        setStatus('waiting')
       } else {
-        setMessage(data.error || 'Erro ao reenviar confirmação')
+        setStatus('error')
       }
     } catch {
-      setMessage('Erro de conexão. Tente novamente.')
+      setStatus('error')
     }
   }
 
@@ -107,15 +117,20 @@ export default function ConfirmSignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 relative">
+      {/* Seletor de idioma no canto superior direito */}
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10">
+        <LanguageSwitcher showLabel={false} className="min-w-[120px] sm:min-w-[160px]" />
+      </div>
+      
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100">
             <Smartphone className="h-6 w-6 text-indigo-600" />
           </div>
-          <CardTitle className="text-2xl">Confirmação de Cadastro</CardTitle>
+          <CardTitle className="text-2xl">{t('confirmSignup.title', 'Confirmação de Cadastro')}</CardTitle>
           <CardDescription>
-            Verificando seu cadastro via WhatsApp
+            {t('confirmSignup.subtitle', 'Verificando seu cadastro via WhatsApp')}
           </CardDescription>
         </CardHeader>
         
@@ -128,11 +143,11 @@ export default function ConfirmSignupPage() {
               <Alert>
                 <Smartphone className="h-4 w-4" />
                 <AlertDescription>
-                  {message}
+                  {getMessage()}
                 </AlertDescription>
               </Alert>
               <p className="text-sm text-gray-600">
-                Verifique se digitou o número corretamente.
+                {t('confirmSignup.waiting.hint', 'Verifique se digitou o número corretamente.')}
               </p>
               <div className="space-y-2">
                 <Button 
@@ -140,13 +155,13 @@ export default function ConfirmSignupPage() {
                   variant="outline"
                   className="w-full"
                 >
-                  Reenviar Link
+                  {t('confirmSignup.waiting.resend', 'Reenviar Link')}
                 </Button>
                 <Button 
                   onClick={() => router.push('/login')}
                   className="w-full"
                 >
-                  Ir para Login
+                  {t('confirmSignup.waiting.goToLogin', 'Ir para Login')}
                 </Button>
               </div>
             </div>
@@ -157,7 +172,7 @@ export default function ConfirmSignupPage() {
               <div className="flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
               </div>
-              <p className="text-gray-600">Confirmando seu cadastro...</p>
+              <p className="text-gray-600">{t('confirmSignup.loading', 'Confirmando seu cadastro...')}</p>
             </div>
           )}
 
@@ -169,17 +184,17 @@ export default function ConfirmSignupPage() {
               <Alert>
                 <CheckCircle className="h-4 w-4" />
                 <AlertDescription>
-                  {message}
+                  {getMessage()}
                 </AlertDescription>
               </Alert>
               <p className="text-sm text-gray-600">
-                Redirecionando para o login em 3 segundos...
+                {t('confirmSignup.success.redirecting', 'Redirecionando para o login em 3 segundos...')}
               </p>
               <Button 
                 onClick={() => router.push('/login')}
                 className="w-full"
               >
-                Ir para Login
+                {t('confirmSignup.success.goToLogin', 'Ir para Login')}
               </Button>
             </div>
           )}
@@ -192,7 +207,7 @@ export default function ConfirmSignupPage() {
               <Alert variant="destructive">
                 <XCircle className="h-4 w-4" />
                 <AlertDescription>
-                  {message}
+                  {getMessage()}
                 </AlertDescription>
               </Alert>
               <div className="space-y-2">
@@ -201,13 +216,13 @@ export default function ConfirmSignupPage() {
                   variant="outline"
                   className="w-full"
                 >
-                  Reenviar Confirmação
+                  {t('confirmSignup.error.resend', 'Reenviar Confirmação')}
                 </Button>
                 <Button 
                   onClick={() => router.push('/login')}
                   className="w-full"
                 >
-                  Ir para Login
+                  {t('confirmSignup.success.goToLogin', 'Ir para Login')}
                 </Button>
               </div>
             </div>
@@ -221,7 +236,7 @@ export default function ConfirmSignupPage() {
               <Alert variant="destructive">
                 <XCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Este link de confirmação expirou. Solicite um novo link.
+                  {t('confirmSignup.expired.message', 'Este link de confirmação expirou. Solicite um novo link.')}
                 </AlertDescription>
               </Alert>
               <div className="space-y-2">
@@ -229,22 +244,22 @@ export default function ConfirmSignupPage() {
                   onClick={resendConfirmation}
                   className="w-full"
                 >
-                  Solicitar Novo Link
+                  {t('confirmSignup.expired.requestNew', 'Solicitar Novo Link')}
                 </Button>
                 <Button 
                   onClick={() => router.push('/login')}
                   variant="outline"
                   className="w-full"
                 >
-                  Ir para Login
+                  {t('confirmSignup.success.goToLogin', 'Ir para Login')}
                 </Button>
               </div>
             </div>
           )}
 
           <div className="text-center text-sm text-gray-500">
-            <p>Não recebeu o link?</p>
-            <p>Verifique se digitou o número correto.</p>
+            <p>{t('confirmSignup.footer.notReceived', 'Não recebeu o link?')}</p>
+            <p>{t('confirmSignup.footer.checkNumber', 'Verifique se digitou o número correto.')}</p>
           </div>
         </CardContent>
       </Card>
