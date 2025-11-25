@@ -138,7 +138,21 @@ function buildSyntheticSubId(p: HotmartPayload): string {
 
 type Periodicity = 'month' | 'year'
 
-function inferPeriodicity(p: HotmartPayload): Periodicity {
+type PeriodicityResult = {
+  value: Periodicity
+  reason: string
+}
+
+function buildPeriodicityResult(
+  value: Periodicity,
+  reason: string,
+  extra?: Record<string, unknown>
+): PeriodicityResult {
+  log(`✅ Periodicidade inferida: ${value.toUpperCase()} (${reason})`, extra)
+  return { value, reason }
+}
+
+function inferPeriodicity(p: HotmartPayload): PeriodicityResult {
   // Log detalhado para debug
   const offer = p.data.purchase.offer?.code?.toLowerCase()
   const offerName = p.data.purchase.offer?.name?.toLowerCase()
@@ -161,12 +175,14 @@ function inferPeriodicity(p: HotmartPayload): Periodicity {
     const yearlyKeywords = ['anual', 'annual', 'y', 'year', 'y01', 'y-', '_y', 'ano', 'yearly']
     
     if (monthlyKeywords.some(s => offer.includes(s))) {
-      log('✅ Periodicidade inferida: MONTH (via offer code)')
-      return 'month'
+      return buildPeriodicityResult('month', 'offer code keywords', {
+        offer
+      })
     }
     if (yearlyKeywords.some(s => offer.includes(s))) {
-      log('✅ Periodicidade inferida: YEAR (via offer code)')
-      return 'year'
+      return buildPeriodicityResult('year', 'offer code keywords', {
+        offer
+      })
     }
   }
 
@@ -176,12 +192,14 @@ function inferPeriodicity(p: HotmartPayload): Periodicity {
     const yearlyKeywords = ['anual', 'annual', 'ano', 'yearly']
     
     if (monthlyKeywords.some(s => offerDescription.includes(s))) {
-      log('✅ Periodicidade inferida: MONTH (via offer description)')
-      return 'month'
+      return buildPeriodicityResult('month', 'offer description keywords', {
+        offerDescription
+      })
     }
     if (yearlyKeywords.some(s => offerDescription.includes(s))) {
-      log('✅ Periodicidade inferida: YEAR (via offer description)')
-      return 'year'
+      return buildPeriodicityResult('year', 'offer description keywords', {
+        offerDescription
+      })
     }
   }
 
@@ -191,12 +209,14 @@ function inferPeriodicity(p: HotmartPayload): Periodicity {
     const yearlyKeywords = ['anual', 'annual', 'ano', 'yearly']
     
     if (monthlyKeywords.some(s => subscriptionPlanName.includes(s))) {
-      log('✅ Periodicidade inferida: MONTH (via subscription plan name)')
-      return 'month'
+      return buildPeriodicityResult('month', 'subscription plan name keywords', {
+        subscriptionPlanName
+      })
     }
     if (yearlyKeywords.some(s => subscriptionPlanName.includes(s))) {
-      log('✅ Periodicidade inferida: YEAR (via subscription plan name)')
-      return 'year'
+      return buildPeriodicityResult('year', 'subscription plan name keywords', {
+        subscriptionPlanName
+      })
     }
   }
 
@@ -206,12 +226,14 @@ function inferPeriodicity(p: HotmartPayload): Periodicity {
     const yearlyKeywords = ['anual', 'annual', 'ano', 'yearly']
     
     if (monthlyKeywords.some(s => offerName.includes(s))) {
-      log('✅ Periodicidade inferida: MONTH (via offer name)')
-      return 'month'
+      return buildPeriodicityResult('month', 'offer name keywords', {
+        offerName
+      })
     }
     if (yearlyKeywords.some(s => offerName.includes(s))) {
-      log('✅ Periodicidade inferida: YEAR (via offer name)')
-      return 'year'
+      return buildPeriodicityResult('year', 'offer name keywords', {
+        offerName
+      })
     }
   }
 
@@ -219,12 +241,14 @@ function inferPeriodicity(p: HotmartPayload): Periodicity {
   const productName = p.data.product?.name?.toLowerCase()
   if (productName) {
     if (productName.includes('anual') || productName.includes('annual') || productName.includes('yearly')) {
-      log('✅ Periodicidade inferida: YEAR (via product name)')
-      return 'year'
+      return buildPeriodicityResult('year', 'product name keywords', {
+        productName
+      })
     }
     if (productName.includes('mensal') || productName.includes('monthly')) {
-      log('✅ Periodicidade inferida: MONTH (via product name)')
-      return 'month'
+      return buildPeriodicityResult('month', 'product name keywords', {
+        productName
+      })
     }
   }
 
@@ -236,19 +260,23 @@ function inferPeriodicity(p: HotmartPayload): Periodicity {
   // IMPORTANTE: value está em reais, não centavos! No payload exemplo: 39.9 = R$ 39,90
   const valueInCents = Math.round(value * 100) // Converter para centavos se necessário
   if (valueInCents >= 15000) { // R$ 150.00 ou mais = provavelmente anual
-      log(`✅ Periodicidade inferida: YEAR (via price value ${value} = ${valueInCents} cents >= 15000)`)
-      return 'year'
+      return buildPeriodicityResult('year', 'price threshold', {
+        value,
+        valueInCents
+      })
   }
   
   // Valores muito pequenos (menos de R$ 50) são provavelmente mensais
   if (valueInCents < 5000) {
-      log(`✅ Periodicidade inferida: MONTH (via price value ${value} = ${valueInCents} cents < 5000)`)
-      return 'month'
+      return buildPeriodicityResult('month', 'price threshold', {
+        value,
+        valueInCents
+      })
   }
   
   // Por padrão, assumir mensal se não conseguir inferir
   log('⚠️ Não foi possível inferir periodicidade, usando padrão: MONTH')
-  return 'month'
+  return { value: 'month', reason: 'fallback default' }
 }
 
 function addMonths(date: Date, n: number): Date {
@@ -392,33 +420,49 @@ export async function POST(req: NextRequest) {
     log('✅ Produto correto (Mediz)')
 
     // 3) Periodicidade → plano
-    const periodicity = inferPeriodicity(parsed)
-    log('Periodicidade inferida:', periodicity)
+    const periodicityResult = inferPeriodicity(parsed)
+    const periodicity = periodicityResult.value
+    log('Periodicidade inferida:', periodicity, { reason: periodicityResult.reason })
     log('Dados usados para inferência:', {
       offerCode: parsed.data.purchase.offer?.code,
       priceValue: parsed.data.purchase.price.value
     })
 
-    // ⚠️ IMPORTANTE: O offer.code do Hotmart (ex: "jcuheq2m") é um código interno da Hotmart
-    // que agora pode ser mapeado diretamente para nossos planos através do campo hotmartOfferKey
+    // ⚠️ IMPORTANTE: O webhook da Hotmart traz dois identificadores:
+    // 1. subscription.plan.id (ID numérico: 1115304, 1115305, etc) - MAIS CONFIÁVEL
+    // 2. purchase.offer.code (código alfanumérico: "jcuheq2m", etc)
     //
     // ESTRATÉGIA DE BUSCA (em ordem de prioridade):
-    // 1. Buscar por hotmartOfferKey (mais preciso)
-    // 2. Buscar por periodicidade + códigos conhecidos (compatibilidade)
-    // 3. Buscar por intervalo (fallback)
+    // 1. Buscar por hotmartId (ID numérico - mais confiável e estável)
+    // 2. Buscar por hotmartOfferKey (código alfanumérico - fallback)
+    // 3. Buscar por periodicidade + códigos conhecidos (compatibilidade)
+    // 4. Buscar por intervalo (último recurso)
     
     let plan = null
+    const hotmartPlanId = parsed.data.subscription?.plan?.id
     const offerCode = parsed.data.purchase.offer?.code
     
     log('📋 Informações do payload:', {
+      hotmartPlanId: hotmartPlanId || 'não disponível',
       offerCode: offerCode || 'não disponível',
       subscriptionPlanName: parsed.data.subscription?.plan?.name,
-      subscriptionPlanId: parsed.data.subscription?.plan?.id,
       priceValue: parsed.data.purchase.price.value
     })
 
-    // PRIORIDADE 1: Buscar plano por hotmartOfferKey (mais preciso)
-    if (offerCode) {
+    // PRIORIDADE 1: Buscar plano por hotmartId (ID numérico - mais confiável)
+    if (hotmartPlanId) {
+      plan = await prisma.plan.findUnique({
+        where: { hotmartId: hotmartPlanId }
+      })
+      if (plan) {
+        log(`✅ Plano encontrado por hotmartId: ${hotmartPlanId} -> ${plan.name} (${plan.interval})`)
+      } else {
+        log(`   ⏭️ hotmartId ${hotmartPlanId} não encontrado no banco, tentando outras estratégias...`)
+      }
+    }
+
+    // PRIORIDADE 2: Buscar plano por hotmartOfferKey (código alfanumérico - fallback)
+    if (!plan && offerCode) {
       plan = await prisma.plan.findUnique({
         where: { hotmartOfferKey: offerCode }
       })
@@ -429,7 +473,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // PRIORIDADE 2: Se não encontrou por offerKey, buscar por periodicidade + códigos conhecidos
+    // PRIORIDADE 3: Se não encontrou por ID ou offerKey, buscar por periodicidade + códigos conhecidos
     // A periodicidade já foi inferida acima pela função inferPeriodicity()
     // Definir códigos no escopo mais amplo para uso em logs de erro
     const monthlyCodes = ['price_hotmart_mensal']
@@ -459,7 +503,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // PRIORIDADE 3: Se ainda não encontrou, buscar planos por intervalo
+    // PRIORIDADE 4: Se ainda não encontrou, buscar planos por intervalo
     if (!plan) {
       log('⚠️ Nenhum plano encontrado pelos códigos conhecidos, buscando por intervalo...')
       const plansByInterval = await prisma.plan.findMany({
@@ -479,7 +523,7 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    // PRIORIDADE 4: Se ainda não encontrou, erro crítico
+    // PRIORIDADE 5: Se ainda não encontrou, erro crítico
     if (!plan) {
       const allPlans = await prisma.plan.findMany({
         select: { stripePriceId: true, name: true, interval: true, active: true }
@@ -487,10 +531,11 @@ export async function POST(req: NextRequest) {
       
       logError('❌ Plano Hotmart não encontrado no DB', undefined, '[hotmart]', {
         periodicity,
+        hotmartPlanId,
+        offerCode,
         codesToTry,
         monthlyCodes,
         yearlyCodes,
-        offerCode,
         availablePlans: allPlans.map(p => ({
           stripePriceId: p.stripePriceId,
           name: p.name,
