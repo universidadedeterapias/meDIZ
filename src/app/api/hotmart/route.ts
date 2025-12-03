@@ -422,138 +422,204 @@ export async function POST(req: NextRequest) {
     // 3) Periodicidade → plano
     const periodicityResult = inferPeriodicity(parsed)
     const periodicity = periodicityResult.value
-    log('Periodicidade inferida:', periodicity, { reason: periodicityResult.reason })
+    log('Periodicidade inferida:', { periodicity, reason: periodicityResult.reason })
     log('Dados usados para inferência:', {
       offerCode: parsed.data.purchase.offer?.code,
       priceValue: parsed.data.purchase.price.value
     })
 
-    // ⚠️ IMPORTANTE: O webhook da Hotmart traz dois identificadores:
-    // 1. subscription.plan.id (ID numérico: 1115304, 1115305, etc) - MAIS CONFIÁVEL
-    // 2. purchase.offer.code (código alfanumérico: "jcuheq2m", etc)
-    //
-    // ESTRATÉGIA DE BUSCA (em ordem de prioridade):
-    // 1. Buscar por hotmartId (ID numérico - mais confiável e estável)
-    // 2. Buscar por hotmartOfferKey (código alfanumérico - fallback)
-    // 3. Buscar por periodicidade + códigos conhecidos (compatibilidade)
-    // 4. Buscar por intervalo (último recurso)
+    // ⚠️ IMPORTANTE: O webhook da Hotmart traz o ID do plano em subscription.plan.id
+    // Este é o identificador mais confiável e deve ser usado como fonte única de verdade
+    // 
+    // ESTRATÉGIA: Usar APENAS hotmartId (ID numérico) como fonte de verdade
+    // Se não encontrar por hotmartId, retornar erro ao invés de usar fallbacks que podem causar erros
     
     let plan = null
-    const hotmartPlanId = parsed.data.subscription?.plan?.id
-    const offerCode = parsed.data.purchase.offer?.code
+    const hotmartPlanIdRaw = parsed.data.subscription?.plan?.id
+    const offerCode = parsed.data.purchase.offer?.code // Apenas para logs
     
     log('📋 Informações do payload:', {
-      hotmartPlanId: hotmartPlanId || 'não disponível',
+      hotmartPlanIdRaw: hotmartPlanIdRaw || 'não disponível',
       offerCode: offerCode || 'não disponível',
       subscriptionPlanName: parsed.data.subscription?.plan?.name,
-      priceValue: parsed.data.purchase.price.value
+      priceValue: parsed.data.purchase.price.value,
+      currency: parsed.data.purchase.price.currency_value || 'não disponível',
+      // Log completo do subscription.plan para debug
+      subscriptionPlan: parsed.data.subscription?.plan ? {
+        id: parsed.data.subscription.plan.id,
+        name: parsed.data.subscription.plan.name,
+        // Outros campos que possam existir
+      } : 'não disponível',
+      // Log completo do purchase.offer para debug
+      purchaseOffer: parsed.data.purchase.offer ? {
+        code: parsed.data.purchase.offer.code,
+        name: parsed.data.purchase.offer.name,
+        description: parsed.data.purchase.offer.description
+      } : 'não disponível'
     })
 
-    // PRIORIDADE 1: Buscar plano por hotmartId (ID numérico - mais confiável)
-    if (hotmartPlanId) {
-      plan = await prisma.plan.findUnique({
-        where: { hotmartId: hotmartPlanId }
-      })
-      if (plan) {
-        log(`✅ Plano encontrado por hotmartId: ${hotmartPlanId} -> ${plan.name} (${plan.interval})`)
-      } else {
-        log(`   ⏭️ hotmartId ${hotmartPlanId} não encontrado no banco, tentando outras estratégias...`)
-      }
-    }
-
-    // PRIORIDADE 2: Buscar plano por hotmartOfferKey (código alfanumérico - fallback)
-    if (!plan && offerCode) {
-      plan = await prisma.plan.findUnique({
-        where: { hotmartOfferKey: offerCode }
-      })
-      if (plan) {
-        log(`✅ Plano encontrado por offerKey: ${offerCode} -> ${plan.name} (${plan.interval})`)
-      } else {
-        log(`   ⏭️ OfferKey ${offerCode} não encontrado no banco, tentando outras estratégias...`)
-      }
-    }
-
-    // PRIORIDADE 3: Se não encontrou por ID ou offerKey, buscar por periodicidade + códigos conhecidos
-    // A periodicidade já foi inferida acima pela função inferPeriodicity()
-    // Definir códigos no escopo mais amplo para uso em logs de erro
-    const monthlyCodes = ['price_hotmart_mensal']
-    const yearlyCodes = ['price_hotmart_anual']
-    const codesToTry = periodicity === 'year' ? yearlyCodes : monthlyCodes
-
-    if (!plan) {
-      log('🔍 Buscando plano por periodicidade:', {
-        periodicity,
-        codesToTry,
-        monthlyCodes,
-        yearlyCodes,
-        subscriptionPlanName: parsed.data.subscription?.plan?.name
-      })
-
-      // Tentar buscar plano por qualquer um dos códigos da periodicidade
-      for (const code of codesToTry) {
-        plan = await prisma.plan.findUnique({
-          where: { stripePriceId: code }
-        })
-        if (plan) {
-          log(`✅ Plano encontrado: ${code} -> ${plan.name} (${plan.interval})`)
-          break
-        } else {
-          log(`   ⏭️ Código ${code} não encontrado no banco`)
-        }
-      }
-    }
-
-    // PRIORIDADE 4: Se ainda não encontrou, buscar planos por intervalo
-    if (!plan) {
-      log('⚠️ Nenhum plano encontrado pelos códigos conhecidos, buscando por intervalo...')
-      const plansByInterval = await prisma.plan.findMany({
-        where: {
-          interval: periodicity === 'year' ? 'YEAR' : 'MONTH',
-          active: true
-        },
-        orderBy: { createdAt: 'desc' }
-      })
-      
-      if (plansByInterval.length > 0) {
-        // Priorizar planos sem trial (planos base) quando houver múltiplos
-        const preferredPlan = plansByInterval.find(p => !p.trialPeriodDays) || plansByInterval[0]
-        plan = preferredPlan
-        log(`✅ Plano encontrado por intervalo: ${plan.stripePriceId} (${plan.name})`)
-        log(`⚠️ Total de planos no intervalo ${periodicity}: ${plansByInterval.length}`)
-      }
-    }
+    // Obter moeda do payload para validação
+    const currencyFromPayload = parsed.data.purchase.price.currency_value
     
-    // PRIORIDADE 5: Se ainda não encontrou, erro crítico
-    if (!plan) {
-      const allPlans = await prisma.plan.findMany({
-        select: { stripePriceId: true, name: true, interval: true, active: true }
-      })
-      
-      logError('❌ Plano Hotmart não encontrado no DB', undefined, '[hotmart]', {
-        periodicity,
-        hotmartPlanId,
-        offerCode,
-        codesToTry,
-        monthlyCodes,
-        yearlyCodes,
-        availablePlans: allPlans.map(p => ({
-          stripePriceId: p.stripePriceId,
-          name: p.name,
-          interval: p.interval,
-          active: p.active
-        }))
+    // ⚠️ FONTE ÚNICA DE VERDADE: Buscar plano APENAS por hotmartId
+    if (!hotmartPlanIdRaw) {
+      logError('❌ ERRO CRÍTICO: hotmartId não encontrado no payload!', undefined, '[hotmart]', {
+        subscriptionData: parsed.data.subscription,
+        purchaseData: parsed.data.purchase
       })
       return NextResponse.json(
-        { error: 'Plan not found', periodicity, codesToTry, received: true },
+        { 
+          error: 'hotmartId missing in payload', 
+          received: true 
+        },
         { status: 200 } // Retorna 200 para evitar retry desnecessário
       )
     }
+    
+    // ⚠️ NORMALIZAÇÃO: Converter hotmartId para número inteiro
+    // O webhook pode enviar como string com pontuação (ex: "1.115.304")
+    // Precisamos remover a pontuação e converter para número (1115304)
+    let hotmartPlanId: number
+    try {
+      if (typeof hotmartPlanIdRaw === 'number') {
+        hotmartPlanId = hotmartPlanIdRaw
+      } else if (typeof hotmartPlanIdRaw === 'string') {
+        // Remover todos os caracteres não numéricos (pontos, vírgulas, etc)
+        const cleanedId = String(hotmartPlanIdRaw).replace(/[^\d]/g, '')
+        hotmartPlanId = parseInt(cleanedId, 10)
+        
+        if (isNaN(hotmartPlanId)) {
+          throw new Error(`Não foi possível converter hotmartId para número: ${hotmartPlanIdRaw}`)
+        }
+        
+        log('🔄 [NORMALIZAÇÃO] hotmartId normalizado:', {
+          original: hotmartPlanIdRaw,
+          normalizado: hotmartPlanId,
+          tipoOriginal: typeof hotmartPlanIdRaw
+        })
+      } else {
+        throw new Error(`Tipo de hotmartId não suportado: ${typeof hotmartPlanIdRaw}`)
+      }
+    } catch (normalizationError) {
+      logError('❌ ERRO ao normalizar hotmartId:', normalizationError, '[hotmart]', {
+        hotmartPlanIdRaw,
+        tipo: typeof hotmartPlanIdRaw
+      })
+      return NextResponse.json(
+        { 
+          error: 'Invalid hotmartId format', 
+          hotmartId: hotmartPlanIdRaw,
+          received: true 
+        },
+        { status: 200 }
+      )
+    }
+    
+    // Buscar plano por hotmartId normalizado (fonte única de verdade)
+    plan = await prisma.plan.findUnique({
+      where: { hotmartId: hotmartPlanId }
+    })
+    
+    if (!plan) {
+      logError('❌ ERRO CRÍTICO: Plano não encontrado no banco pelo hotmartId!', undefined, '[hotmart]', {
+        hotmartIdOriginal: hotmartPlanIdRaw,
+        hotmartIdNormalizado: hotmartPlanId,
+        offerCode: offerCode,
+        subscriptionPlanName: parsed.data.subscription?.plan?.name
+      })
+      logError('💡 Execute: npm run sync-hotmart-plans para sincronizar os planos', undefined, '[hotmart]')
+      return NextResponse.json(
+        { 
+          error: 'Plan not found by hotmartId', 
+          hotmartIdOriginal: hotmartPlanIdRaw,
+          hotmartIdNormalizado: hotmartPlanId,
+          received: true 
+        },
+        { status: 200 } // Retorna 200 para evitar retry desnecessário
+      )
+    }
+    
+    log(`✅ Plano encontrado por hotmartId: ${hotmartPlanId} (original: ${hotmartPlanIdRaw}) -> ${plan.name} (${plan.interval})`)
+    
+    // 🔍 DEBUG: Comparar nome do payload com nome no banco
+    const planNameFromPayload = parsed.data.subscription?.plan?.name
+    log('🔍 [DEBUG] Comparação de nomes:', {
+      nomeNoBanco: plan.name,
+      nomeNoPayload: planNameFromPayload || 'não disponível',
+      saoIguais: planNameFromPayload ? plan.name === planNameFromPayload : 'não comparável'
+    })
+    
+    // ⚠️ ATUALIZAÇÃO AUTOMÁTICA: Se o nome do payload for diferente do nome no banco, atualizar
+    if (planNameFromPayload && planNameFromPayload.trim() !== '' && plan.name !== planNameFromPayload) {
+      log('🔄 [ATUALIZAÇÃO] Nome do plano diferente detectado. Atualizando nome no banco...', {
+        nomeAntigo: plan.name,
+        nomeNovo: planNameFromPayload,
+        hotmartId: hotmartPlanId
+      })
+      
+      try {
+        plan = await prisma.plan.update({
+          where: { id: plan.id },
+          data: { name: planNameFromPayload }
+        })
+        log('✅ [ATUALIZAÇÃO] Nome do plano atualizado com sucesso:', {
+          id: plan.id,
+          nomeAtualizado: plan.name
+        })
+      } catch (updateError) {
+        logError('❌ [ATUALIZAÇÃO] Erro ao atualizar nome do plano:', updateError, '[hotmart]', {
+          planId: plan.id,
+          nomeTentado: planNameFromPayload
+        })
+        // Não falhar o webhook por causa disso, apenas logar o erro
+      }
+    }
+    
+    // ⚠️ VALIDAÇÃO CRÍTICA: Verificar se a moeda corresponde
+    // 🔍 DEBUG: Log detalhado da moeda antes da validação
+    log('🔍 [DEBUG] Validação de moeda:', {
+      moedaPayload: currencyFromPayload || 'não disponível',
+      moedaPlano: plan.currency || 'não definida',
+      hotmartId: hotmartPlanId,
+      nomePlano: plan.name,
+      priceValue: parsed.data.purchase.price.value,
+      offerCode: offerCode || 'não disponível'
+    })
+    
+    if (currencyFromPayload && plan.currency && 
+        plan.currency.toUpperCase() !== currencyFromPayload.toUpperCase()) {
+      logError('🚨 ERRO CRÍTICO: Plano encontrado por hotmartId tem moeda diferente do payload!', undefined, '[hotmart]', {
+        hotmartId: hotmartPlanId,
+        moedaPayload: currencyFromPayload,
+        moedaPlano: plan.currency,
+        planoNome: plan.name,
+        planoId: plan.id,
+        priceValue: parsed.data.purchase.price.value,
+        offerCode: offerCode || 'não disponível',
+        subscriptionPlanName: parsed.data.subscription?.plan?.name,
+        // Log completo do payload para debug
+        payloadData: {
+          subscription: parsed.data.subscription,
+          purchase: parsed.data.purchase
+        }
+      })
+      // ⚠️ IMPORTANTE: Não rejeitar o webhook, apenas logar o erro
+      // Isso permite que o webhook continue sendo processado mesmo com inconsistência de moeda
+      // O problema pode ser na Hotmart enviando dados incorretos
+      logError('⚠️ Continuando processamento apesar da inconsistência de moeda...', undefined, '[hotmart]')
+    }
+
+    // ⚠️ NOTA: Removidos todos os fallbacks. Agora usamos APENAS hotmartId como fonte de verdade.
+    // Se o plano não foi encontrado acima, já retornamos erro.
     
     log('✅ Plano encontrado:', { 
       id: plan.id, 
       name: plan.name, 
       interval: plan.interval,
       stripePriceId: plan.stripePriceId,
+      currency: plan.currency || 'NÃO DEFINIDA',
+      hotmartId: plan.hotmartId || 'NÃO DEFINIDO',
+      hotmartOfferKey: plan.hotmartOfferKey || 'NÃO DEFINIDO',
       periodicityInferida: periodicity
     })
     

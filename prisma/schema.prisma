@@ -5,7 +5,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  shadowDatabaseUrl = env("DATABASE_URL") // Usa o mesmo banco como shadow (evita erro de conexão)
 }
 
 model User {

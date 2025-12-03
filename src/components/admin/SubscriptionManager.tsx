@@ -27,6 +27,8 @@ interface Subscription {
   plan: {
     id: string
     name: string
+    interval?: string | null
+    provider?: 'Stripe' | 'Hotmart' | null
   }
 }
 
@@ -65,17 +67,35 @@ export function SubscriptionManager({ userId, userName, userEmail }: Subscriptio
       setLoading(true)
       setError(null)
 
+      console.log('[SubscriptionManager] 🔍 Buscando assinaturas e planos...')
       const [subscriptionsResponse, plansResponse] = await Promise.all([
         fetch(`/api/admin/subscriptions?userId=${userId}`),
         fetch('/api/admin/plans')
       ])
       
+      console.log('[SubscriptionManager] 📊 Status das respostas:', {
+        subscriptions: subscriptionsResponse.status,
+        plans: plansResponse.status
+      })
+
       if (!subscriptionsResponse.ok) {
-        throw new Error('Erro ao carregar assinaturas')
+        const errorData = await subscriptionsResponse.json().catch(() => ({}))
+        console.error('[SubscriptionManager] ❌ Erro ao carregar assinaturas:', {
+          status: subscriptionsResponse.status,
+          statusText: subscriptionsResponse.statusText,
+          error: errorData
+        })
+        throw new Error(`Erro ao carregar assinaturas: ${subscriptionsResponse.status} ${subscriptionsResponse.statusText}`)
       }
 
       if (!plansResponse.ok) {
-        throw new Error('Erro ao carregar planos')
+        const errorData = await plansResponse.json().catch(() => ({}))
+        console.error('[SubscriptionManager] ❌ Erro ao carregar planos:', {
+          status: plansResponse.status,
+          statusText: plansResponse.statusText,
+          error: errorData
+        })
+        throw new Error(`Erro ao carregar planos: ${plansResponse.status} ${plansResponse.statusText} - ${errorData.error || errorData.message || 'Erro desconhecido'}`)
       }
 
       const [subscriptionsData, plansData] = await Promise.all([
@@ -83,11 +103,17 @@ export function SubscriptionManager({ userId, userName, userEmail }: Subscriptio
         plansResponse.json()
       ])
       
+      console.log('[SubscriptionManager] ✅ Dados carregados:', {
+        subscriptions: subscriptionsData.length,
+        plans: plansData.length
+      })
+      
       setSubscriptions(subscriptionsData)
       setPlans(plansData)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro desconhecido')
-      console.error('Erro ao buscar dados:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
+      setError(errorMessage)
+      console.error('[SubscriptionManager] ❌ Erro ao buscar dados:', err)
     } finally {
       setLoading(false)
     }
@@ -353,6 +379,25 @@ export function SubscriptionManager({ userId, userName, userEmail }: Subscriptio
                     <div>
                       <div className="flex items-center space-x-2">
                         <h3 className="font-medium">{subscription.plan.name}</h3>
+                        {subscription.plan.interval && (
+                          <Badge variant="outline" className="text-xs">
+                            {subscription.plan.interval === 'YEAR' ? 'Anual' : 
+                             subscription.plan.interval === 'MONTH' ? 'Mensal' : 
+                             subscription.plan.interval}
+                          </Badge>
+                        )}
+                        {subscription.plan.provider && (
+                          <Badge 
+                            variant="outline" 
+                            className={`text-xs ${
+                              subscription.plan.provider === 'Hotmart' 
+                                ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                                : 'bg-purple-50 text-purple-700 border-purple-200'
+                            }`}
+                          >
+                            {subscription.plan.provider}
+                          </Badge>
+                        )}
                         <Badge className={getStatusBadgeColor(subscription.status)}>
                           {subscription.status}
                         </Badge>

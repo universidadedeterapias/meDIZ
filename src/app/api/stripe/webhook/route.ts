@@ -10,7 +10,8 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
 // Helper para coletar o raw body como Buffer
 // No App Router, req.body é um ReadableStream
-async function buffer(readable: ReadableStream<Uint8Array> | null) {
+// eslint-disable-next-line no-undef
+async function buffer(readable: ReadableStream<Uint8Array> | null): Promise<Buffer> {
   if (!readable) {
     throw new Error('Request body is null')
   }
@@ -53,11 +54,19 @@ export async function POST(req: NextRequest) {
         const sub = event.data.object as Stripe.Subscription
         const item = sub.items.data[0] as Stripe.SubscriptionItem
 
+        // Acessar propriedades de período de forma segura
+        const periodStart = 'current_period_start' in sub && typeof sub.current_period_start === 'number' 
+          ? sub.current_period_start 
+          : null
+        const periodEnd = 'current_period_end' in sub && typeof sub.current_period_end === 'number'
+          ? sub.current_period_end
+          : null
+
         console.log('🔍 [STRIPE WEBHOOK] Subscription ID:', sub.id)
         console.log('🔍 [STRIPE WEBHOOK] Customer ID:', sub.customer)
         console.log('🔍 [STRIPE WEBHOOK] Status:', sub.status)
-        console.log('🔍 [STRIPE WEBHOOK] Current Period Start:', sub.current_period_start)
-        console.log('🔍 [STRIPE WEBHOOK] Current Period End:', sub.current_period_end)
+        console.log('🔍 [STRIPE WEBHOOK] Current Period Start:', periodStart || 'N/A')
+        console.log('🔍 [STRIPE WEBHOOK] Current Period End:', periodEnd || 'N/A')
 
         // 1a) Busca o usuário pelo stripeCustomerId
         const customerId = sub.customer as string
@@ -75,7 +84,7 @@ export async function POST(req: NextRequest) {
         const priceId =
           typeof item.price === 'string' ? item.price : item.price.id
         console.log('🔍 [STRIPE WEBHOOK] Buscando plano com stripePriceId:', priceId)
-        const plan = await prisma.plan.findUnique({
+        let plan = await prisma.plan.findUnique({
           where: { stripePriceId: priceId }
         })
         if (!plan) {
@@ -83,6 +92,40 @@ export async function POST(req: NextRequest) {
           break
         }
         console.log('✅ [STRIPE WEBHOOK] Plano encontrado:', plan.id, plan.name)
+
+        // 🔄 ATUALIZAÇÃO AUTOMÁTICA: Buscar nome do produto no Stripe e atualizar se diferente
+        try {
+          const price = typeof item.price === 'string' 
+            ? await stripe.prices.retrieve(item.price)
+            : item.price
+          
+          if (price.product) {
+            const productId = typeof price.product === 'string' ? price.product : price.product.id
+            const product = await stripe.products.retrieve(productId)
+            const productName = product.name || product.id
+            
+            // Se o nome do produto no Stripe for diferente do nome no banco, atualizar
+            if (productName && productName.trim() !== '' && plan.name !== productName) {
+              console.log('🔄 [STRIPE WEBHOOK] Nome do produto diferente detectado. Atualizando nome no banco...', {
+                nomeAntigo: plan.name,
+                nomeNovo: productName,
+                priceId: priceId
+              })
+              
+              plan = await prisma.plan.update({
+                where: { id: plan.id },
+                data: { name: productName }
+              })
+              console.log('✅ [STRIPE WEBHOOK] Nome do plano atualizado com sucesso:', {
+                id: plan.id,
+                nomeAtualizado: plan.name
+              })
+            }
+          }
+        } catch (updateError) {
+          console.error('⚠️ [STRIPE WEBHOOK] Erro ao atualizar nome do plano (não crítico):', updateError)
+          // Não falhar o webhook por causa disso, apenas logar o erro
+        }
 
         // 2) Determina o status a gravar
         //    Se o Stripe indicar cancel_at_period_end, usamos nosso status customizado
@@ -93,10 +136,12 @@ export async function POST(req: NextRequest) {
 
         // 3) Upsert na subscription
         // CORREÇÃO: current_period_start e current_period_end estão em 'sub', não em 'item'
-        const periodStart = new Date(sub.current_period_start * 1000)
-        const periodEnd = new Date(sub.current_period_end * 1000)
-        console.log('📅 [STRIPE WEBHOOK] Period Start:', periodStart.toISOString())
-        console.log('📅 [STRIPE WEBHOOK] Period End:', periodEnd.toISOString())
+        const periodStartNum = periodStart || Math.floor(Date.now() / 1000)
+        const periodEndNum = periodEnd || Math.floor(Date.now() / 1000)
+        const periodStartDate = new Date(periodStartNum * 1000)
+        const periodEndDate = new Date(periodEndNum * 1000)
+        console.log('📅 [STRIPE WEBHOOK] Period Start:', periodStartDate.toISOString())
+        console.log('📅 [STRIPE WEBHOOK] Period End:', periodEndDate.toISOString())
 
         const subscription = await prisma.subscription.upsert({
           where: { stripeSubscriptionId: sub.id },
@@ -105,13 +150,13 @@ export async function POST(req: NextRequest) {
             planId: plan.id,
             stripeSubscriptionId: sub.id,
             status: newStatus,
-            currentPeriodStart: periodStart,
-            currentPeriodEnd: periodEnd
+            currentPeriodStart: periodStartDate,
+            currentPeriodEnd: periodEndDate
           },
           update: {
             status: newStatus,
-            currentPeriodStart: periodStart,
-            currentPeriodEnd: periodEnd
+            currentPeriodStart: periodStartDate,
+            currentPeriodEnd: periodEndDate
           }
         })
         console.log('✅ [STRIPE WEBHOOK] Assinatura salva/atualizada no DB:', subscription.id)

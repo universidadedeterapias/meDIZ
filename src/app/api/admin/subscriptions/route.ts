@@ -24,7 +24,12 @@ export async function GET(req: Request) {
       include: {
         plan: {
           select: {
-            name: true
+            id: true,
+            name: true,
+            hotmartId: true,
+            hotmartOfferKey: true,
+            stripePriceId: true,
+            interval: true
           }
         }
       },
@@ -90,8 +95,21 @@ export async function GET(req: Request) {
       })
     }
 
-    // Remover campos de debug antes de retornar
-    const cleanedSubscriptions = subscriptionsWithCorrectStatus.map(({ _corrected, ...sub }) => sub)
+    // Remover campos de debug e adicionar informação do provedor antes de retornar
+    const cleanedSubscriptions = subscriptionsWithCorrectStatus.map(({ _corrected, ...sub }) => {
+      const plan = sub.plan as { id: string; name: string; hotmartId: number | null; hotmartOfferKey: string | null; stripePriceId: string | null; interval: string | null }
+      return {
+        ...sub,
+        plan: {
+          ...plan,
+          provider: plan.hotmartId || plan.hotmartOfferKey 
+            ? 'Hotmart' 
+            : plan.stripePriceId?.startsWith('price_') 
+              ? 'Stripe' 
+              : null
+        }
+      }
+    })
 
     return NextResponse.json(cleanedSubscriptions)
 

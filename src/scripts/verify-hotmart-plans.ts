@@ -7,6 +7,7 @@ async function verifyPlans() {
   try {
     console.log('🔍 Verificando planos Hotmart no banco de dados...\n')
 
+    // Buscar planos sem usar hotmartId (caso o campo ainda não exista no banco)
     const allPlans = await prisma.plan.findMany({
       where: {
         OR: [

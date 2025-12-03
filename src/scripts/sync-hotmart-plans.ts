@@ -115,13 +115,24 @@ async function syncPlans() {
   try {
     console.log('🔄 Iniciando sincronização de planos Hotmart...\n')
 
-    // Verificar planos existentes
+    // Verificar planos existentes (sem usar hotmartId para evitar erro se campo não existir)
     const existingPlans = await prisma.plan.findMany({
       where: {
         OR: [
           { stripePriceId: { contains: 'hotmart' } },
           { hotmartOfferKey: { not: null } }
         ]
+      },
+      select: {
+        id: true,
+        name: true,
+        stripePriceId: true,
+        hotmartOfferKey: true,
+        currency: true,
+        interval: true,
+        amount: true,
+        trialPeriodDays: true,
+        active: true
       }
     })
 
@@ -181,7 +192,7 @@ async function syncPlans() {
           data: {
             name: planData.name,
             stripePriceId: planData.stripePriceId,
-            hotmartId: planData.hotmartId, // Adicionar hotmartId se não tinha
+            hotmartId: planData.hotmartId, // ⚠️ CRÍTICO: Sempre atualizar hotmartId
             amount: planData.amount,
             currency: planData.currency,
             interval: planData.interval, // ⚠️ CRÍTICO: Garantir que interval está correto
@@ -204,7 +215,7 @@ async function syncPlans() {
           data: {
             name: planData.name,
             hotmartOfferKey: planData.hotmartOfferKey,
-            hotmartId: planData.hotmartId, // Adicionar hotmartId se não tinha
+            hotmartId: planData.hotmartId, // ⚠️ CRÍTICO: Sempre atualizar hotmartId
             amount: planData.amount,
             currency: planData.currency,
             interval: planData.interval, // ⚠️ CRÍTICO: Garantir que interval está correto
