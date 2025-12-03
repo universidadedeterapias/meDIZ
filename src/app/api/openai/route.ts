@@ -11,7 +11,7 @@ import { NextResponse } from 'next/server'
 import { DEFAULT_LANGUAGE, isSupportedLanguage, getLanguageMapping, type LanguageCode } from '@/i18n/config'
 
 const CHAT_WEBHOOK_URL =
-  process.env.N8N_CHAT_WEBHOOK_URL ?? 'https://uniterapias.app.n8n.cloud/webhook/chat-texto'
+  process.env.N8N_CHAT_WEBHOOK_URL ?? 'https://mediz-n8n.gjhi7d.easypanel.host/webhook/chat-texto'
 
 async function requestAssistantResponse(
   threadId: string,
