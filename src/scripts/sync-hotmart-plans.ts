@@ -4,14 +4,15 @@ import { PrismaClient, PlanInterval } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-// Definição dos planos baseada nos IDs fornecidos
+// Definição dos planos baseada nos dados fornecidos pela Hotmart API
+// Dados atualizados em: 2025-01-XX
 const hotmartPlans = [
   // Planos BRL - Mensais
   {
     hotmartId: 1115304,
     name: 'Plano Profissional | Mensal',
     description: 'Assinatura Mensal',
-    stripePriceId: 'price_hotmart_mensal',
+    stripePriceId: '9dv1fqir', // Usando offerKey como stripePriceId para facilitar busca
     hotmartOfferKey: '9dv1fqir',
     amount: 3990, // R$ 39.90 em centavos
     currency: 'BRL',
@@ -25,7 +26,7 @@ const hotmartPlans = [
     hotmartId: 1115305,
     name: 'PLANO PROFISSIONAL - MENSAL c/ 30D Experiência',
     description: 'Assinatura Mensal c/ 30D Gratuito',
-    stripePriceId: 'price_hotmart_mensal_trial',
+    stripePriceId: '5zwrxs0n',
     hotmartOfferKey: '5zwrxs0n',
     amount: 3990, // R$ 39.90 em centavos
     currency: 'BRL',
@@ -39,7 +40,7 @@ const hotmartPlans = [
     hotmartId: 1163392,
     name: 'Plano 1 Real',
     description: 'Campanha de Captação',
-    stripePriceId: 'price_hotmart_mensal_campaign',
+    stripePriceId: 'b24v0i4q',
     hotmartOfferKey: 'b24v0i4q',
     amount: 3990, // R$ 39.90 em centavos
     currency: 'BRL',
@@ -49,16 +50,16 @@ const hotmartPlans = [
     trialPeriodDays: 30,
     active: true
   },
-  // Planos BRL - Anuais
+  // Planos BRL - Anuais (CRÍTICO: interval = YEAR)
   {
     hotmartId: 1115306,
     name: 'PLANO PROFISSIONAL - ANUAL',
     description: 'Assinatura Anual c/ 25% DESCONTO',
-    stripePriceId: 'price_hotmart_anual',
+    stripePriceId: 'jcuheq2m',
     hotmartOfferKey: 'jcuheq2m',
     amount: 35880, // R$ 358.80 em centavos
     currency: 'BRL',
-    interval: PlanInterval.YEAR,
+    interval: PlanInterval.YEAR, // ⚠️ CRÍTICO: Deve ser YEAR, não MONTH
     intervalCount: 1,
     frequencyRecurrenceDays: 360,
     trialPeriodDays: null,
@@ -68,11 +69,11 @@ const hotmartPlans = [
     hotmartId: 1115307,
     name: 'PLANO PROFISSIONAL | ANUAL | C/ 30D GRATUITOS',
     description: 'Assinatura Anual c/ 30D Gratuitos',
-    stripePriceId: 'price_hotmart_anual_trial',
+    stripePriceId: '2icona9m',
     hotmartOfferKey: '2icona9m',
     amount: 35880, // R$ 358.80 em centavos
     currency: 'BRL',
-    interval: PlanInterval.YEAR,
+    interval: PlanInterval.YEAR, // ⚠️ CRÍTICO: Deve ser YEAR, não MONTH
     intervalCount: 1,
     frequencyRecurrenceDays: 360,
     trialPeriodDays: 30,
@@ -83,7 +84,7 @@ const hotmartPlans = [
     hotmartId: 1197626,
     name: 'Plano Mensal - Dólar',
     description: 'Cancela cuando quieras',
-    stripePriceId: 'price_hotmart_mensal_usd',
+    stripePriceId: 'qhs594oc',
     hotmartOfferKey: 'qhs594oc',
     amount: 990, // $ 9.90 em centavos
     currency: 'USD',
@@ -93,16 +94,16 @@ const hotmartPlans = [
     trialPeriodDays: null,
     active: true
   },
-  // Planos USD - Anuais
+  // Planos USD - Anuais (CRÍTICO: interval = YEAR)
   {
     hotmartId: 1197627,
     name: 'Plano Anual - Dólar',
     description: 'Mejor economía',
-    stripePriceId: 'price_hotmart_anual_usd',
+    stripePriceId: 'i7m8kqyw',
     hotmartOfferKey: 'i7m8kqyw',
     amount: 9700, // $ 97.00 em centavos
     currency: 'USD',
-    interval: PlanInterval.YEAR,
+    interval: PlanInterval.YEAR, // ⚠️ CRÍTICO: Deve ser YEAR, não MONTH
     intervalCount: 1,
     frequencyRecurrenceDays: 360,
     trialPeriodDays: null,
@@ -114,13 +115,24 @@ async function syncPlans() {
   try {
     console.log('🔄 Iniciando sincronização de planos Hotmart...\n')
 
-    // Verificar planos existentes
+    // Verificar planos existentes (sem usar hotmartId para evitar erro se campo não existir)
     const existingPlans = await prisma.plan.findMany({
       where: {
         OR: [
           { stripePriceId: { contains: 'hotmart' } },
           { hotmartOfferKey: { not: null } }
         ]
+      },
+      select: {
+        id: true,
+        name: true,
+        stripePriceId: true,
+        hotmartOfferKey: true,
+        currency: true,
+        interval: true,
+        amount: true,
+        trialPeriodDays: true,
+        active: true
       }
     })
 
@@ -142,45 +154,84 @@ async function syncPlans() {
           })
         : null
 
-      if (existingByPriceId) {
-        // Atualizar plano existente
+      // Prioridade 1: Buscar por hotmartId (mais confiável - ID numérico da Hotmart)
+      const existingById = planData.hotmartId
+        ? await prisma.plan.findUnique({
+            where: { hotmartId: planData.hotmartId }
+          })
+        : null
+
+      if (existingById) {
+        // Atualizar plano existente pelo hotmartId
+        await prisma.plan.update({
+          where: { id: existingById.id },
+          data: {
+            name: planData.name,
+            stripePriceId: planData.stripePriceId,
+            hotmartOfferKey: planData.hotmartOfferKey,
+            amount: planData.amount,
+            currency: planData.currency,
+            interval: planData.interval, // ⚠️ CRÍTICO: Garantir que interval está correto
+            intervalCount: planData.intervalCount,
+            trialPeriodDays: planData.trialPeriodDays,
+            active: planData.active
+          }
+        })
+        console.log(`✅ Atualizado (por hotmartId): ${planData.name}`)
+        console.log(`   hotmartId: ${planData.hotmartId}`)
+        console.log(`   OfferKey: ${planData.hotmartOfferKey}`)
+        console.log(`   Interval: ${planData.interval}`)
+        if (planData.trialPeriodDays) {
+          console.log(`   Trial: ${planData.trialPeriodDays} dias`)
+        }
+        updated++
+      } else if (planData.hotmartOfferKey && existingByOfferKey) {
+        // Prioridade 2: Buscar por hotmartOfferKey (fallback)
+        await prisma.plan.update({
+          where: { id: existingByOfferKey.id },
+          data: {
+            name: planData.name,
+            stripePriceId: planData.stripePriceId,
+            hotmartId: planData.hotmartId, // ⚠️ CRÍTICO: Sempre atualizar hotmartId
+            amount: planData.amount,
+            currency: planData.currency,
+            interval: planData.interval, // ⚠️ CRÍTICO: Garantir que interval está correto
+            intervalCount: planData.intervalCount,
+            trialPeriodDays: planData.trialPeriodDays,
+            active: planData.active
+          }
+        })
+        console.log(`✅ Atualizado (por offerKey): ${planData.name}`)
+        console.log(`   OfferKey: ${planData.hotmartOfferKey}`)
+        console.log(`   Interval: ${planData.interval}`)
+        if (planData.trialPeriodDays) {
+          console.log(`   Trial: ${planData.trialPeriodDays} dias`)
+        }
+        updated++
+      } else if (existingByPriceId) {
+        // Prioridade 3: Atualizar plano existente pelo stripePriceId
         await prisma.plan.update({
           where: { id: existingByPriceId.id },
           data: {
             name: planData.name,
             hotmartOfferKey: planData.hotmartOfferKey,
+            hotmartId: planData.hotmartId, // ⚠️ CRÍTICO: Sempre atualizar hotmartId
             amount: planData.amount,
             currency: planData.currency,
-            interval: planData.interval,
+            interval: planData.interval, // ⚠️ CRÍTICO: Garantir que interval está correto
             intervalCount: planData.intervalCount,
             trialPeriodDays: planData.trialPeriodDays,
             active: planData.active
           }
         })
-        console.log(`✅ Atualizado: ${planData.name} (${planData.stripePriceId})`)
+        console.log(`✅ Atualizado (por stripePriceId): ${planData.name} (${planData.stripePriceId})`)
         if (planData.hotmartOfferKey) {
           console.log(`   OfferKey: ${planData.hotmartOfferKey}`)
         }
+        console.log(`   Interval: ${planData.interval}`)
         if (planData.trialPeriodDays) {
           console.log(`   Trial: ${planData.trialPeriodDays} dias`)
         }
-        updated++
-      } else if (existingByOfferKey && existingByOfferKey.stripePriceId !== planData.stripePriceId) {
-        // Se existe pelo offerKey mas com stripePriceId diferente, atualizar
-        await prisma.plan.update({
-          where: { id: existingByOfferKey.id },
-          data: {
-            stripePriceId: planData.stripePriceId,
-            name: planData.name,
-            amount: planData.amount,
-            currency: planData.currency,
-            interval: planData.interval,
-            intervalCount: planData.intervalCount,
-            trialPeriodDays: planData.trialPeriodDays,
-            active: planData.active
-          }
-        })
-        console.log(`✅ Atualizado (por offerKey): ${planData.name} (${planData.stripePriceId})`)
         updated++
       } else {
         // Criar novo plano
@@ -189,6 +240,7 @@ async function syncPlans() {
             name: planData.name,
             stripePriceId: planData.stripePriceId,
             hotmartOfferKey: planData.hotmartOfferKey,
+            hotmartId: planData.hotmartId,
             amount: planData.amount,
             currency: planData.currency,
             interval: planData.interval,
@@ -197,10 +249,16 @@ async function syncPlans() {
             active: planData.active
           }
         })
-        console.log(`➕ Criado: ${planData.name} (${planData.stripePriceId})`)
+        console.log(`➕ Criado: ${planData.name}`)
+        console.log(`   stripePriceId: ${planData.stripePriceId}`)
+        if (planData.hotmartId) {
+          console.log(`   hotmartId: ${planData.hotmartId}`)
+        }
         if (planData.hotmartOfferKey) {
           console.log(`   OfferKey: ${planData.hotmartOfferKey}`)
         }
+        console.log(`   Interval: ${planData.interval}`)
+        console.log(`   Amount: ${planData.amount} ${planData.currency}`)
         if (planData.trialPeriodDays) {
           console.log(`   Trial: ${planData.trialPeriodDays} dias`)
         }

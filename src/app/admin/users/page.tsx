@@ -42,6 +42,7 @@ interface User {
     id: string
     planName: string
     planInterval?: string | null
+    planProvider?: 'Stripe' | 'Hotmart' | null
     status: string
     currentPeriodEnd: string
     currentPeriodStart: string
@@ -49,6 +50,7 @@ interface User {
   expiredSubscriptions?: Array<{
     id: string
     planName: string
+    planProvider?: 'Stripe' | 'Hotmart' | null
     status: string
     currentPeriodEnd: string
     currentPeriodStart: string
@@ -81,6 +83,10 @@ export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterPlan, setFilterPlan] = useState<'all' | 'free' | 'premium'>('all')
   const [filterRole, setFilterRole] = useState<'all' | 'admin' | 'user'>('all')
+  const [filterProvider, setFilterProvider] = useState<'all' | 'stripe' | 'hotmart'>('all')
+  const [filterPlanName, setFilterPlanName] = useState<string>('')
+  const [planNames, setPlanNames] = useState<string[]>([])
+  const [loadingPlanNames, setLoadingPlanNames] = useState(false)
   const [subscriptionDateStart, setSubscriptionDateStart] = useState('')
   const [subscriptionDateEnd, setSubscriptionDateEnd] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -139,8 +145,13 @@ export default function UsersPage() {
         limit: '50',
         search: searchDebounce,
         plan: filterPlan,
-        role: filterRole
+        role: filterRole,
+        provider: filterProvider
       })
+      
+      if (filterPlanName) {
+        params.append('planName', filterPlanName)
+      }
       
       if (subscriptionDateStart) {
         params.append('subscriptionDateStart', subscriptionDateStart)
@@ -156,16 +167,50 @@ export default function UsersPage() {
       }
 
       const data = await response.json()
+      console.log('[ADMIN USERS PAGE] 📊 Dados recebidos da API:', {
+        usersCount: data.users?.length || 0,
+        stats: data.stats,
+        pagination: data.pagination,
+        hasStats: !!data.stats
+      })
       setUsers(data.users)
       setStats(data.stats)
       setPagination(data.pagination)
+      console.log('[ADMIN USERS PAGE] ✅ Estado atualizado:', {
+        usersCount: data.users?.length || 0,
+        statsSet: !!data.stats
+      })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro desconhecido')
-      console.error('Erro ao buscar usuários:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
+      console.error('[ADMIN USERS PAGE] ❌ Erro ao buscar usuários:', err)
+      console.error('[ADMIN USERS PAGE] ❌ Detalhes do erro:', {
+        message: errorMessage,
+        stack: err instanceof Error ? err.stack : 'N/A'
+      })
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
-  }, [currentPage, searchDebounce, filterPlan, filterRole, subscriptionDateStart, subscriptionDateEnd])
+  }, [currentPage, searchDebounce, filterPlan, filterRole, filterProvider, filterPlanName, subscriptionDateStart, subscriptionDateEnd])
+
+  // Função para buscar nomes de planos disponíveis
+  const fetchPlanNames = useCallback(async () => {
+    try {
+      setLoadingPlanNames(true)
+      const response = await fetch('/api/admin/plans/names')
+      
+      if (!response.ok) {
+        throw new Error('Erro ao carregar nomes de planos')
+      }
+
+      const data = await response.json()
+      setPlanNames(data.planNames || [])
+    } catch (err) {
+      console.error('[ADMIN USERS PAGE] ❌ Erro ao buscar nomes de planos:', err)
+    } finally {
+      setLoadingPlanNames(false)
+    }
+  }, [])
 
   // Função para buscar dados de crescimento
   const fetchGrowthData = useCallback(async () => {
@@ -197,11 +242,17 @@ export default function UsersPage() {
   // Executa busca quando searchDebounce muda ou outros filtros
   useEffect(() => {
     fetchUsers()
-  }, [searchDebounce, currentPage, filterPlan, filterRole, subscriptionDateStart, subscriptionDateEnd, fetchUsers])
+  }, [searchDebounce, currentPage, filterPlan, filterRole, filterProvider, subscriptionDateStart, subscriptionDateEnd, fetchUsers])
 
   useEffect(() => {
     fetchGrowthData()
   }, [fetchGrowthData])
+
+  // Buscar nomes de planos ao montar o componente
+  useEffect(() => {
+    fetchPlanNames()
+  }, [fetchPlanNames])
+
   const handleCreateUser = async () => {
     if (!newUserData.name || !newUserData.email || !newUserData.password) {
       alert('Por favor, preencha todos os campos')
@@ -449,19 +500,21 @@ export default function UsersPage() {
               <CardTitle>Filtros e Busca</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
+              <div className="flex flex-col gap-4">
+                {/* Campo de busca - maior e mais destacado */}
+                <div className="w-full">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                     <Input
                       placeholder="Buscar por nome ou email..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
+                      className="pl-12 h-12 text-base w-full"
                     />
                   </div>
                 </div>
                 
+                {/* Filtros em linha separada */}
                 <div className="flex gap-2 flex-wrap">
                   <select
                     value={filterPlan}
@@ -482,6 +535,51 @@ export default function UsersPage() {
                     <option value="admin">Administradores</option>
                     <option value="user">Usuários</option>
                   </select>
+                  
+                  <select
+                    value={filterProvider}
+                    onChange={(e) => {
+                      setFilterProvider(e.target.value as 'all' | 'stripe' | 'hotmart')
+                      setCurrentPage(1) // Resetar página ao mudar filtro
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="all">Todos os provedores</option>
+                    <option value="hotmart">Hotmart</option>
+                    <option value="stripe">Stripe</option>
+                  </select>
+                  
+                  <select
+                    value={filterPlanName}
+                    onChange={(e) => {
+                      setFilterPlanName(e.target.value)
+                      setCurrentPage(1) // Resetar página ao mudar filtro
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-md min-w-[200px]"
+                    disabled={loadingPlanNames}
+                    title="Filtrar por nome específico do plano (apenas assinaturas ativas)"
+                  >
+                    <option value="">Todos os planos</option>
+                    {planNames.map((planName) => (
+                      <option key={planName} value={planName}>
+                        {planName}
+                      </option>
+                    ))}
+                  </select>
+                  
+                  {filterPlanName && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setFilterPlanName('')
+                        setCurrentPage(1)
+                      }}
+                      className="px-3 py-2"
+                    >
+                      Limpar
+                    </Button>
+                  )}
                   
                   <div className="flex flex-col">
                     <label className="text-xs text-gray-500 mb-1">Data inicial</label>
@@ -595,6 +693,18 @@ export default function UsersPage() {
                                       {user.subscriptionDetails.planInterval === 'YEAR' ? 'Anual' : 
                                        user.subscriptionDetails.planInterval === 'MONTH' ? 'Mensal' : 
                                        user.subscriptionDetails.planInterval}
+                                    </Badge>
+                                  )}
+                                  {user.subscriptionDetails.planProvider && (
+                                    <Badge 
+                                      variant="outline" 
+                                      className={`ml-1 text-xs ${
+                                        user.subscriptionDetails.planProvider === 'Hotmart' 
+                                          ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                                          : 'bg-purple-50 text-purple-700 border-purple-200'
+                                      }`}
+                                    >
+                                      {user.subscriptionDetails.planProvider}
                                     </Badge>
                                   )}
                                 </span>

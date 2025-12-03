@@ -8,40 +8,56 @@ import { hash } from 'bcryptjs'
 import { logUserAction, AuditActions } from '@/lib/auditLogger'
 
 /**
- * Retorna o nome correto do plano baseado no stripePriceId
- * Normaliza nomes antigos para os nomes corretos
+ * Retorna o nome do plano para exibição
+ * REGRA: SEMPRE usar o nome do banco de dados quando disponível
+ * - Para planos Hotmart: O nome do banco foi atualizado pelo webhook da Hotmart
+ * - Para planos Stripe: Usar o nome do banco ou fallback genérico
  */
-function getCorrectPlanName(stripePriceId: string, interval: string | null, currentName?: string): string {
-  // Se já tem o nome correto, retornar
-  if (currentName === 'Assinatura mensal hotmart' || currentName === 'Assinatura anual hotmart') {
+function getCorrectPlanName(
+  stripePriceId: string, 
+  interval: string | null, 
+  currentName?: string,
+  hotmartId?: number | null,
+  _currency?: string | null
+): string {
+  // ⚠️ REGRA PRINCIPAL: Se tem nome no banco, SEMPRE usar (especialmente para Hotmart)
+  // O nome do banco já foi atualizado pelo webhook da Hotmart para corresponder ao nome real
+  if (currentName && currentName.trim() !== '') {
     return currentName
   }
   
-  // Mapear códigos conhecidos para nomes corretos
-  if (stripePriceId === 'price_hotmart_mensal' || 
-      stripePriceId === 'price_1RcsjzA' || 
-      stripePriceId.includes('mensal') ||
-      (interval === 'MONTH' && stripePriceId.includes('hotmart'))) {
-    return 'Assinatura mensal hotmart'
+  // Se não tem nome no banco, apenas para planos Stripe criar nome genérico
+  const isStripePlan = stripePriceId.startsWith('price_') && 
+                       !stripePriceId.includes('hotmart') && 
+                       !hotmartId
+  
+  if (isStripePlan) {
+    if (interval === 'MONTH') {
+      return 'Assinatura mensal Stripe'
+    }
+    if (interval === 'YEAR') {
+      return 'Assinatura anual Stripe'
+    }
+    return 'Assinatura Stripe'
   }
   
-  if (stripePriceId === 'price_hotmart_anual' || 
-      stripePriceId === 'price_1Rd9st' || 
-      stripePriceId.includes('anual') ||
-      (interval === 'YEAR' && stripePriceId.includes('hotmart'))) {
-    return 'Assinatura anual hotmart'
-  }
-  
-  // Para outros planos, retornar o nome original (caso existam outros tipos)
-  // Mas isso não deve acontecer com os 2 planos válidos
-  return currentName || stripePriceId
+  // Para planos Hotmart sem nome (caso raro - não deveria acontecer se webhook funcionou)
+  // Usar stripePriceId como último recurso
+  return stripePriceId
 }
 
 export async function GET(req: NextRequest) {
   try {
+    console.log('[ADMIN USERS API] 🔍 ====== INÍCIO DA REQUISIÇÃO ======')
     const session = await auth()
+    console.log('[ADMIN USERS API] 🔍 Sessão:', {
+      hasSession: !!session,
+      email: session?.user?.email || 'não disponível',
+      isAdmin: session?.user?.email?.includes('@mediz.com') || false
+    })
 
     if (!session?.user?.email || !session.user.email.includes('@mediz.com')) {
+      console.log('[ADMIN USERS API] ❌ Acesso negado - não é admin')
       return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
     }
 
@@ -51,6 +67,8 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search') || ''
     const planFilter: 'all' | 'free' | 'premium' = (searchParams.get('plan') as 'all' | 'free' | 'premium') || 'all'
     const roleFilter: 'all' | 'admin' | 'user' = (searchParams.get('role') as 'all' | 'admin' | 'user') || 'all'
+    const providerFilter: 'all' | 'stripe' | 'hotmart' = (searchParams.get('provider') as 'all' | 'stripe' | 'hotmart') || 'all'
+    const planNameFilter = searchParams.get('planName') || null
     const subscriptionDateStart = searchParams.get('subscriptionDateStart') || null
     const subscriptionDateEnd = searchParams.get('subscriptionDateEnd') || null
 
@@ -77,16 +95,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 🔍 DEBUG: Log dos filtros recebidos
-    console.log('[ADMIN USERS API] 🔍 Filtros recebidos:', {
-      search,
-      planFilter,
-      roleFilter,
-      subscriptionDateStart,
-      subscriptionDateEnd,
-      page,
-      limit
-    })
 
     // Filtro por data de criação de assinatura (ativa OU expirada)
     // ⚠️ CORREÇÃO: Incluir assinaturas expiradas para não excluir usuários da busca
@@ -133,10 +141,14 @@ export async function GET(req: NextRequest) {
           include: {
             plan: {
               select: {
+                id: true,
                 name: true,
                 interval: true,
                 intervalCount: true,
-                stripePriceId: true
+                stripePriceId: true,
+                hotmartOfferKey: true,
+                hotmartId: true,
+                currency: true
               }
             }
           },
@@ -171,18 +183,15 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    // Aplica paginação após ordenação
-    const users = allUsers.slice(skip, skip + limit)
-
-    // Conta total para paginação
-    const totalUsers = await prisma.user.count({ where: whereClause })
+    // ⚠️ NOTA: Paginação será aplicada APÓS os filtros (plano e provedor)
+    // Por isso processamos TODOS os usuários primeiro
 
     // 🔍 DEBUG: Log da busca
     console.log('[ADMIN USERS API] 🔍 Usuários encontrados na query:', allUsers.length)
-    console.log('[ADMIN USERS API] 🔍 Usuários após paginação:', users.length)
+    console.log('[ADMIN USERS API] 🔍 Where clause aplicado:', JSON.stringify(whereClause, null, 2))
 
-    // Processa os dados dos usuários
-    const processedUsers = await Promise.all(users.map(async user => {
+    // Processa os dados dos usuários (TODOS, antes dos filtros)
+    const processedUsers = await Promise.all(allUsers.map(async user => {
       // 🔍 DEBUG: Log de cada usuário processado
       console.log(`[ADMIN USERS API] 🔍 Processando usuário: ${user.email}`, {
         totalSubscriptions: user.subscriptions.length,
@@ -241,8 +250,19 @@ export async function GET(req: NextRequest) {
         hasActiveSubscription: !!activeSubscription,
         subscriptionDetails: activeSubscription ? {
           id: activeSubscription.id,
-          planName: getCorrectPlanName(activeSubscription.plan.stripePriceId, activeSubscription.plan.interval, activeSubscription.plan.name),
+          planName: getCorrectPlanName(
+            activeSubscription.plan.stripePriceId, 
+            activeSubscription.plan.interval, 
+            activeSubscription.plan.name,
+            activeSubscription.plan.hotmartId || null,
+            activeSubscription.plan.currency
+          ),
           planInterval: activeSubscription.plan.interval, // Adicionar intervalo do plano
+          planProvider: activeSubscription.plan.hotmartId || activeSubscription.plan.hotmartOfferKey 
+            ? 'Hotmart' 
+            : activeSubscription.plan.stripePriceId?.startsWith('price_') 
+              ? 'Stripe' 
+              : null, // Provedor do plano (Hotmart ou Stripe)
           status: activeSubscription.status,
           currentPeriodEnd: activeSubscription.currentPeriodEnd.toISOString(),
           currentPeriodStart: activeSubscription.currentPeriodStart.toISOString()
@@ -250,7 +270,18 @@ export async function GET(req: NextRequest) {
         // 🔍 DEBUG: Adicionar informações sobre assinaturas expiradas
         expiredSubscriptions: expiredSubscriptions.length > 0 ? expiredSubscriptions.map(sub => ({
           id: sub.id,
-          planName: getCorrectPlanName(sub.plan.stripePriceId, sub.plan.interval, sub.plan.name),
+          planName: getCorrectPlanName(
+            sub.plan.stripePriceId, 
+            sub.plan.interval, 
+            sub.plan.name,
+            sub.plan.hotmartId || null,
+            sub.plan.currency
+          ),
+          planProvider: sub.plan.hotmartId || sub.plan.hotmartOfferKey 
+            ? 'Hotmart' 
+            : sub.plan.stripePriceId?.startsWith('price_') 
+              ? 'Stripe' 
+              : null,
           status: sub.status,
           currentPeriodEnd: sub.currentPeriodEnd.toISOString(),
           currentPeriodStart: sub.currentPeriodStart.toISOString()
@@ -263,7 +294,76 @@ export async function GET(req: NextRequest) {
     // Filtra por plano se especificado
     let filteredUsers = processedUsers
     if (planFilter !== 'all') {
-      filteredUsers = processedUsers.filter(user => user.plan === planFilter)
+      filteredUsers = filteredUsers.filter(user => user.plan === planFilter)
+    }
+
+    // Filtra por provedor (Stripe/Hotmart) se especificado
+    if (providerFilter !== 'all') {
+      const filterValueLower = String(providerFilter).toLowerCase().trim()
+      
+      filteredUsers = filteredUsers.filter(user => {
+        // Coletar todos os provedores de todas as assinaturas (ativas e expiradas)
+        const allProviders: string[] = []
+        
+        // Adicionar provedor da assinatura ativa (se existir)
+        if (user.subscriptionDetails?.planProvider) {
+          const activeProvider = String(user.subscriptionDetails.planProvider).toLowerCase().trim()
+          if (activeProvider && !allProviders.includes(activeProvider)) {
+            allProviders.push(activeProvider)
+          }
+        }
+        
+        // Adicionar provedores das assinaturas expiradas (se existirem)
+        if (user.expiredSubscriptions && user.expiredSubscriptions.length > 0) {
+          user.expiredSubscriptions.forEach(expiredSub => {
+            if (expiredSub.planProvider) {
+              const expiredProvider = String(expiredSub.planProvider).toLowerCase().trim()
+              if (expiredProvider && !allProviders.includes(expiredProvider)) {
+                allProviders.push(expiredProvider)
+              }
+            }
+          })
+        }
+        
+        // Se o usuário não tem nenhuma assinatura (nem ativa nem expirada), não passa pelo filtro
+        if (allProviders.length === 0) {
+          return false
+        }
+        
+        // Verificar se o provedor do filtro está presente em qualquer assinatura
+        const matches = allProviders.some(provider => provider === filterValueLower)
+        
+        return matches
+      })
+    }
+
+    // Filtra por nome do plano (ativas e inativas) se especificado
+    if (planNameFilter) {
+      const filterPlanNameLower = String(planNameFilter).toLowerCase().trim()
+      
+      filteredUsers = filteredUsers.filter(user => {
+        // Verificar assinatura ativa primeiro
+        if (user.hasActiveSubscription && user.subscriptionDetails) {
+          const planName = user.subscriptionDetails.planName || ''
+          const planNameLower = planName.toLowerCase().trim()
+          if (planNameLower === filterPlanNameLower) {
+            return true
+          }
+        }
+        
+        // Se não encontrou na ativa, verificar nas expiradas
+        if (user.expiredSubscriptions && user.expiredSubscriptions.length > 0) {
+          return user.expiredSubscriptions.some(expiredSub => {
+            const planName = expiredSub.planName || ''
+            const planNameLower = planName.toLowerCase().trim()
+            return planNameLower === filterPlanNameLower
+          })
+        }
+        
+        return false
+      })
+      
+      console.log('[ADMIN USERS API] 🔍 Filtro por nome do plano aplicado:', planNameFilter)
     }
 
     // Estatísticas gerais usando fonte de verdade
@@ -293,24 +393,51 @@ export async function GET(req: NextRequest) {
       }
     })
     
+    // ⚠️ IMPORTANTE: Aplicar paginação APÓS os filtros
+    const paginatedUsers = filteredUsers.slice(skip, skip + limit)
+    
+    // Total de usuários após filtros (para paginação e estatísticas)
+    const totalFilteredUsers = filteredUsers.length
+
     const stats = {
-      totalUsers,
+      totalUsers: totalFilteredUsers, // Usar total filtrado
       premiumUsers: premiumUsersCount,
-      freeUsers: totalUsers - premiumUsersCount,
+      freeUsers: totalFilteredUsers - premiumUsersCount,
       adminUsers: adminUsersCount,
       activeUsers: activeUsersCount
     }
 
-    return NextResponse.json({
-      users: filteredUsers,
+    // 🔍 DEBUG: Log das estatísticas antes de retornar
+    console.log('[ADMIN USERS API] 📊 Estatísticas calculadas:', {
+      totalUsers: totalFilteredUsers,
+      premiumUsers: premiumUsersCount,
+      freeUsers: totalFilteredUsers - premiumUsersCount,
+      adminUsers: adminUsersCount,
+      activeUsers: activeUsersCount,
+      filteredUsersCount: filteredUsers.length,
+      paginatedUsersCount: paginatedUsers.length,
+      allProcessedUsersCount: processedUsers.length,
+      providerFilter
+    })
+
+    const response = {
+      users: paginatedUsers, // Usar usuários paginados após filtros
       pagination: {
         page,
         limit,
-        total: totalUsers,
-        totalPages: Math.ceil(totalUsers / limit)
+        total: totalFilteredUsers, // Total após filtros
+        totalPages: Math.ceil(totalFilteredUsers / limit)
       },
       stats
+    }
+
+    console.log('[ADMIN USERS API] ✅ ====== FIM DA REQUISIÇÃO ======')
+    console.log('[ADMIN USERS API] ✅ Retornando:', {
+      usersCount: filteredUsers.length,
+      stats: response.stats
     })
+
+    return NextResponse.json(response)
 
   } catch (error) {
     console.error('Erro ao buscar usuários:', error)

@@ -107,6 +107,7 @@ model Plan {
   stripeProductId String?
   trialPeriodDays Int?
   hotmartOfferKey String?        @unique
+  hotmartId       Int?           @unique
   subscriptions   Subscription[]
 }
 

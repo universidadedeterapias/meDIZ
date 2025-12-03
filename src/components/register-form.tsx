@@ -16,13 +16,6 @@ import * as z from 'zod'
 import GoogleIcon from './icons/Google'
 import { useTranslation } from '@/i18n/useTranslation'
 
-type SignupData = {
-  email: string
-  password: string
-  confirm: string
-  whatsapp: string
-}
-
 export function SignupForm({
   className,
   ...props
@@ -52,8 +45,16 @@ export function SignupForm({
     [t]
   )
 
+  type SignupData = z.infer<typeof signupSchema>
+
   const form = useForm<SignupData>({
-    resolver: zodResolver(signupSchema) as any // Type inference issue with refine - safe cast
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      confirm: '',
+      whatsapp: ''
+    }
   })
 
   const {
