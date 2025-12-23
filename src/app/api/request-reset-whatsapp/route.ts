@@ -41,9 +41,10 @@ export async function POST(req: Request) {
 
     const { email } = body ?? {}
     if (!email || typeof email !== 'string') {
-      console.error('reset-password-whatsapp: missing or invalid email', {
-        email
-      })
+      // Não logar email por segurança
+      if (process.env.NODE_ENV === 'development') {
+        console.error('reset-password-whatsapp: missing or invalid email')
+      }
       return NextResponse.json(
         { error: 'Email is required and must be a string' },
         { status: 400 }
@@ -56,8 +57,10 @@ export async function POST(req: Request) {
     let maskedPhone: string | null = null
 
     if (!user) {
-      // não revelar se o email existe — retornamos ok, mas logamos para diagnóstico
-      console.warn(`reset-password-whatsapp: user not found for email=${email}`)
+      // não revelar se o email existe — retornamos ok, mas logamos para diagnóstico (apenas em dev)
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('reset-password-whatsapp: user not found')
+      }
       return NextResponse.json({ ok: true, maskedPhone: null })
     }
 

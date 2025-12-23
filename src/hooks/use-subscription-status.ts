@@ -46,18 +46,36 @@ export function useSubscriptionStatus(): SubscriptionStatus {
         }
 
         // Busca status atual do servidor
+        console.log('[useSubscriptionStatus] 🔍 Buscando status da assinatura do servidor...')
         const response = await fetch('/api/stripe/subscription')
         
         if (!response.ok) {
+          console.error('[useSubscriptionStatus] ❌ Erro na resposta:', response.status, response.statusText)
           throw new Error('Erro ao verificar assinatura')
         }
 
         const data = await response.json()
+        console.log('[useSubscriptionStatus] 📦 Dados recebidos do servidor:', {
+          status: data.status,
+          currentPeriodEnd: data.currentPeriodEnd,
+          currentPeriodStart: data.currentPeriodStart
+        })
         
         // Verifica se a assinatura está ativa e não expirou
-        const isActive = data.status === 'active' || data.status === 'ACTIVE' || data.status === 'cancel_at_period_end'
+        const statusLower = data.status?.toLowerCase() || ''
+        const isActive = statusLower === 'active' || statusLower === 'cancel_at_period_end'
         const notExpired = data.currentPeriodEnd ? new Date(data.currentPeriodEnd) > new Date() : false
         const isPremium = isActive && notExpired
+
+        console.log('[useSubscriptionStatus] 🔍 Análise do status:', {
+          statusOriginal: data.status,
+          statusLowercase: statusLower,
+          isActive,
+          notExpired,
+          isPremium,
+          currentPeriodEnd: data.currentPeriodEnd,
+          now: new Date().toISOString()
+        })
 
         if (!cancelled) {
           setStatus({

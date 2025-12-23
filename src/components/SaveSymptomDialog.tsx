@@ -14,6 +14,13 @@ import {
   DialogFooter
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Folder, Save, Plus } from 'lucide-react'
 import { useSubscriptionStatus } from '@/hooks/use-subscription-status'
 import { UpgradeModal } from '@/components/UpgradeModal'
@@ -46,6 +53,11 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved, triggerClassName
   const [newFolderNotes, setNewFolderNotes] = useState('')
   const [creatingFolder, setCreatingFolder] = useState(false)
   const [openUpgradeModal, setOpenUpgradeModal] = useState(false)
+  
+  // Novos campos do sintoma
+  const [symptomStartPeriod, setSymptomStartPeriod] = useState('')
+  const [emotionalHistory, setEmotionalHistory] = useState('')
+  const [copingStrategy, setCopingStrategy] = useState<string>('')
 
   const { isPremium, isLoading: isLoadingPremium } = useSubscriptionStatus()
 
@@ -68,7 +80,15 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved, triggerClassName
       console.log('[SaveSymptomDialog] Pastas carregadas:', data)
       setFolders(data)
     } catch (error) {
-      console.error('[SaveSymptomDialog] Erro ao carregar pastas:', error)
+      // Evita logar objetos Event diretamente
+      if (error instanceof Error) {
+        console.error('[SaveSymptomDialog] Erro ao carregar pastas:', {
+          name: error.name,
+          message: error.message
+        })
+      } else {
+        console.error('[SaveSymptomDialog] Erro ao carregar pastas:', error)
+      }
     } finally {
       setLoading(false)
     }
@@ -125,14 +145,24 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved, triggerClassName
 
     setSaving(true)
     try {
-      console.log('[SaveSymptomDialog] Salvando sintoma:', { folderId: selectedFolderId, symptom, threadId })
+      console.log('[SaveSymptomDialog] Salvando sintoma:', { 
+        folderId: selectedFolderId, 
+        symptom, 
+        threadId,
+        symptomStartPeriod,
+        emotionalHistory,
+        copingStrategy
+      })
       const res = await fetch('/api/symptoms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           folderId: selectedFolderId,
           symptom,
-          threadId
+          threadId,
+          symptomStartPeriod: symptomStartPeriod.trim() || null,
+          emotionalHistory: emotionalHistory.trim() || null,
+          copingStrategy: copingStrategy || null
         })
       })
 
@@ -141,6 +171,10 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved, triggerClassName
         console.log('[SaveSymptomDialog] Sintoma salvo:', saved)
         setOpen(false)
         setSelectedFolderId(null)
+        // Limpar campos
+        setSymptomStartPeriod('')
+        setEmotionalHistory('')
+        setCopingStrategy('')
         
         // Callback para atualizar a sidebar
         if (onSaved) {
@@ -154,8 +188,22 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved, triggerClassName
         alert(`❌ Erro: ${data.error || 'Não foi possível salvar o sintoma'}`)
       }
     } catch (error) {
-      console.error('[SaveSymptomDialog] Erro ao salvar sintoma:', error)
-      alert('❌ Erro ao salvar sintoma. Tente novamente.')
+      // Evita logar objetos Event diretamente
+      if (error instanceof Error) {
+        console.error('[SaveSymptomDialog] Erro ao salvar sintoma:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        })
+        alert(`❌ Erro ao salvar sintoma: ${error.message}`)
+      } else if (error && typeof error === 'object' && 'type' in error) {
+        // Pode ser um Event object
+        console.error('[SaveSymptomDialog] Erro (tipo: Event):', (error as { type?: string }).type || 'Unknown')
+        alert('❌ Erro ao salvar sintoma. Tente novamente.')
+      } else {
+        console.error('[SaveSymptomDialog] Erro ao salvar sintoma:', error)
+        alert('❌ Erro ao salvar sintoma. Tente novamente.')
+      }
     } finally {
       setSaving(false)
     }
@@ -369,12 +417,80 @@ export function SaveSymptomDialog({ symptom, threadId, onSaved, triggerClassName
                   </Button>
                 ))}
               </div>
+              
+              {/* Campos adicionais do sintoma */}
+              {selectedFolderId && (
+                <div className="space-y-4 mt-4 pt-4 border-t">
+                  <div>
+                    <Label htmlFor="symptom-start-period">
+                      {t('symptom.startPeriod', 'Desde quando sente esse sintoma?')}
+                    </Label>
+                    <Input
+                      id="symptom-start-period"
+                      value={symptomStartPeriod}
+                      onChange={e => setSymptomStartPeriod(e.target.value)}
+                      placeholder={t('symptom.startPeriodPlaceholder', 'Ex: há 2 semanas, desde janeiro')}
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="emotional-history">
+                      {t('symptom.emotionalHistory', 'Histórico emocional do sintoma')}
+                    </Label>
+                    <Textarea
+                      id="emotional-history"
+                      value={emotionalHistory}
+                      onChange={e => setEmotionalHistory(e.target.value)}
+                      placeholder={t('symptom.emotionalHistoryPlaceholder', 'Descreva como você se sentiu em relação a este sintoma...')}
+                      rows={3}
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="coping-strategy">
+                      {t('symptom.copingStrategy', 'Como você encarou a situação?')}
+                    </Label>
+                    <Select value={copingStrategy} onValueChange={setCopingStrategy}>
+                      <SelectTrigger id="coping-strategy" className="mt-1">
+                        <SelectValue placeholder={t('symptom.copingStrategyPlaceholder', 'Selecione uma opção...')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ACCEPTED_AND_SOUGHT_HELP">
+                          {t('symptom.coping.accepted', 'Aceitei e busquei ajuda')}
+                        </SelectItem>
+                        <SelectItem value="DENIED_INITIALLY">
+                          {t('symptom.coping.denied', 'Neguei inicialmente')}
+                        </SelectItem>
+                        <SelectItem value="IGNORED_SYMPTOM">
+                          {t('symptom.coping.ignored', 'Ignorei o sintoma')}
+                        </SelectItem>
+                        <SelectItem value="SOUGHT_INFO_ALONE">
+                          {t('symptom.coping.infoAlone', 'Busquei informações sozinho')}
+                        </SelectItem>
+                        <SelectItem value="SHARED_WITH_FAMILY_FRIENDS">
+                          {t('symptom.coping.shared', 'Compartilhei com familiares/amigos')}
+                        </SelectItem>
+                        <SelectItem value="OTHER">
+                          {t('symptom.coping.other', 'Outro')}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
         {!showCreateFolder && (
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
+            <Button variant="outline" onClick={() => {
+              setOpen(false)
+              setSymptomStartPeriod('')
+              setEmotionalHistory('')
+              setCopingStrategy('')
+            }}>
               Cancelar
             </Button>
             <Button 

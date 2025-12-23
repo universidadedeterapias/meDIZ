@@ -49,31 +49,13 @@ if (!packageJson.scripts['check:deploy']) {
 
 console.log('✅ Scripts de CI/CD configurados no package.json');
 
-// Verificar se o arquivo .env.local existe
-if (!fs.existsSync('.env.local')) {
-    console.log('⚠️  Arquivo .env.local não encontrado');
-    console.log('Crie o arquivo .env.local com as variáveis necessárias:');
-    console.log('');
-    console.log('DATABASE_URL=postgresql://...');
-    console.log('NEXTAUTH_SECRET=...');
-    console.log('NEXTAUTH_URL=http://localhost:3000');
-    console.log('GOOGLE_CLIENT_ID=...');
-    console.log('GOOGLE_CLIENT_SECRET=...');
-    console.log('');
-}
-
 console.log('');
 console.log('🔧 Próximos passos para configurar CI/CD:');
 console.log('==========================================');
 console.log('');
 console.log('1. 📝 Configure os secrets no GitHub:');
 console.log('   - Acesse: Settings → Secrets and variables → Actions');
-console.log('   - Adicione os seguintes secrets:');
-console.log('     • DATABASE_URL');
-console.log('     • NEXTAUTH_SECRET');
-console.log('     • NEXTAUTH_URL');
-console.log('     • GOOGLE_CLIENT_ID');
-console.log('     • GOOGLE_CLIENT_SECRET');
+console.log('   - Adicione os secrets necessários para o seu projeto');
 console.log('     • VERCEL_TOKEN');
 console.log('     • VERCEL_ORG_ID');
 console.log('     • VERCEL_PROJECT_ID');

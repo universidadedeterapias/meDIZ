@@ -174,7 +174,239 @@ const SYMPTOM_TRANSLATIONS: Record<string, Record<LanguageCode, string>> = {
     'pt-PT': 'tontura',
     en: 'dizziness',
     es: 'mareo'
+  },
+  // Sintomas adicionais comuns
+  'fibromialgia': {
+    'pt-BR': 'fibromialgia',
+    'pt-PT': 'fibromialgia',
+    en: 'fibromyalgia',
+    es: 'fibromialgia'
+  },
+  'gripe': {
+    'pt-BR': 'gripe',
+    'pt-PT': 'gripe',
+    en: 'flu',
+    es: 'gripe'
+  },
+  'aftas': {
+    'pt-BR': 'aftas',
+    'pt-PT': 'aftas',
+    en: 'canker sores',
+    es: 'aftas'
+  },
+  'tornozelo': {
+    'pt-BR': 'tornozelo',
+    'pt-PT': 'tornozelo',
+    en: 'ankle',
+    es: 'tobillo'
+  },
+  'coceira nas axilas': {
+    'pt-BR': 'coceira nas axilas',
+    'pt-PT': 'comichão nas axilas',
+    en: 'itchy armpits',
+    es: 'picazón en las axilas'
+  },
+  'infarto': {
+    'pt-BR': 'infarto',
+    'pt-PT': 'enfarte',
+    en: 'heart attack',
+    es: 'infarto'
+  },
+  'pressão baixa': {
+    'pt-BR': 'pressão baixa',
+    'pt-PT': 'tensão arterial baixa',
+    en: 'low blood pressure',
+    es: 'presión arterial baja'
+  },
+  'dor nas pernas': {
+    'pt-BR': 'dor nas pernas',
+    'pt-PT': 'dor nas pernas',
+    en: 'leg pain',
+    es: 'dolor en las piernas'
+  },
+  'erisipela': {
+    'pt-BR': 'erisipela',
+    'pt-PT': 'erisipela',
+    en: 'erysipelas',
+    es: 'erisipela'
+  },
+  'linfoma de hodgkin': {
+    'pt-BR': 'linfoma de hodgkin',
+    'pt-PT': 'linfoma de hodgkin',
+    en: 'hodgkin lymphoma',
+    es: 'linfoma de hodgkin'
+  },
+  'anxiety': {
+    'pt-BR': 'ansiedade',
+    'pt-PT': 'ansiedade',
+    en: 'anxiety',
+    es: 'ansiedad'
+  },
+  'back pain': {
+    'pt-BR': 'dor nas costas',
+    'pt-PT': 'dor nas costas',
+    en: 'back pain',
+    es: 'dolor de espalda'
+  },
+  'high blood pressure': {
+    'pt-BR': 'pressão alta',
+    'pt-PT': 'tensão arterial alta',
+    en: 'high blood pressure',
+    es: 'presión arterial alta'
+  },
+  'migraine': {
+    'pt-BR': 'enxaqueca',
+    'pt-PT': 'enxaqueca',
+    en: 'migraine',
+    es: 'migraña'
+  },
+  'fibromyalgia': {
+    'pt-BR': 'fibromialgia',
+    'pt-PT': 'fibromialgia',
+    en: 'fibromyalgia',
+    es: 'fibromialgia'
+  },
+  'insomnia': {
+    'pt-BR': 'insônia',
+    'pt-PT': 'insónia',
+    en: 'insomnia',
+    es: 'insomnio'
+  },
+  'flu': {
+    'pt-BR': 'gripe',
+    'pt-PT': 'gripe',
+    en: 'flu',
+    es: 'gripe'
+  },
+  'headache': {
+    'pt-BR': 'dor de cabeça',
+    'pt-PT': 'dor de cabeça',
+    en: 'headache',
+    es: 'dolor de cabeza'
+  },
+  'knee pain': {
+    'pt-BR': 'dor no joelho',
+    'pt-PT': 'dor no joelho',
+    en: 'knee pain',
+    es: 'dolor de rodilla'
+  },
+  'fatigue': {
+    'pt-BR': 'cansaço',
+    'pt-PT': 'cansaço',
+    en: 'fatigue',
+    es: 'cansancio'
+  },
+  'hodgkin lymphoma': {
+    'pt-BR': 'linfoma de hodgkin',
+    'pt-PT': 'linfoma de hodgkin',
+    en: 'hodgkin lymphoma',
+    es: 'linfoma de hodgkin'
+  },
+  'canker sores': {
+    'pt-BR': 'aftas',
+    'pt-PT': 'aftas',
+    en: 'canker sores',
+    es: 'aftas'
+  },
+  'ankle': {
+    'pt-BR': 'tornozelo',
+    'pt-PT': 'tornozelo',
+    en: 'ankle',
+    es: 'tobillo'
+  },
+  'itchy armpits': {
+    'pt-BR': 'coceira nas axilas',
+    'pt-PT': 'comichão nas axilas',
+    en: 'itchy armpits',
+    es: 'picazón en las axilas'
+  },
+  'pain': {
+    'pt-BR': 'dor',
+    'pt-PT': 'dor',
+    en: 'pain',
+    es: 'dolor'
+  },
+  'heart attack': {
+    'pt-BR': 'infarto',
+    'pt-PT': 'enfarte',
+    en: 'heart attack',
+    es: 'infarto'
+  },
+  'low blood pressure': {
+    'pt-BR': 'pressão baixa',
+    'pt-PT': 'tensão arterial baixa',
+    en: 'low blood pressure',
+    es: 'presión arterial baja'
+  },
+  'leg pain': {
+    'pt-BR': 'dor nas pernas',
+    'pt-PT': 'dor nas pernas',
+    en: 'leg pain',
+    es: 'dolor en las piernas'
+  },
+  'erysipelas': {
+    'pt-BR': 'erisipela',
+    'pt-PT': 'erisipela',
+    en: 'erysipelas',
+    es: 'erisipela'
   }
+}
+
+/**
+ * Traduz um sintoma de outro idioma para português (tradução reversa)
+ * Busca no dicionário por valor ao invés de chave
+ */
+function translateToPortuguese(symptom: string): string {
+  if (!symptom || !symptom.trim()) {
+    return symptom
+  }
+
+  const normalized = symptom.toLowerCase().trim()
+  let translated = symptom
+  
+  // Ordena por tamanho (maior primeiro) para priorizar sintomas compostos
+  const sortedEntries = Object.entries(SYMPTOM_TRANSLATIONS).sort((a, b) => {
+    const aEn = a[1].en?.toLowerCase() || ''
+    const aEs = a[1].es?.toLowerCase() || ''
+    const bEn = b[1].en?.toLowerCase() || ''
+    const bEs = b[1].es?.toLowerCase() || ''
+    const aMax = Math.max(aEn.length, aEs.length)
+    const bMax = Math.max(bEn.length, bEs.length)
+    return bMax - aMax
+  })
+  
+  // Busca reversa: procura o sintoma como valor nas traduções
+  for (const [ptKey, translations] of sortedEntries) {
+    const ptBR = translations['pt-BR'] || ptKey
+    const en = translations.en?.toLowerCase() || ''
+    const es = translations.es?.toLowerCase() || ''
+    
+    // Match exato em inglês
+    if (en && normalized === en) {
+      return ptBR
+    }
+    
+    // Match exato em espanhol
+    if (es && normalized === es) {
+      return ptBR
+    }
+    
+    // Match parcial (para sintomas compostos) - apenas se o termo tem mais de 4 caracteres
+    if (en && en.length > 4 && normalized.includes(en)) {
+      const regex = new RegExp(`\\b${en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi')
+      translated = translated.replace(regex, ptBR)
+      continue
+    }
+    
+    if (es && es.length > 4 && normalized.includes(es)) {
+      const regex = new RegExp(`\\b${es.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi')
+      translated = translated.replace(regex, ptBR)
+      continue
+    }
+  }
+  
+  // Se houve alguma substituição, retorna traduzido, senão retorna original
+  return translated !== symptom ? translated : symptom
 }
 
 /**
@@ -194,8 +426,22 @@ export function translateSymptom(
     return symptom
   }
 
-  // Se o idioma alvo é português, não precisa traduzir
+  // Se o idioma alvo é português, tenta traduzir de volta se estiver em outro idioma
   if (targetLanguage === 'pt-BR' || targetLanguage === 'pt-PT') {
+    // Detecta se o sintoma está em outro idioma
+    const hasPortugueseChars = /[áàâãéêíóôõúç]/i.test(symptom)
+    const hasSpanishChars = /[ñáéíóúü]/i.test(symptom)
+    const hasOnlyEnglish = /^[a-z0-9\s.,!?;:'"()-]+$/i.test(symptom) && !hasPortugueseChars && !hasSpanishChars
+    
+    // Se parece estar em inglês ou espanhol, tenta traduzir para português
+    if (hasOnlyEnglish || (hasSpanishChars && !hasPortugueseChars)) {
+      const translated = translateToPortuguese(symptom)
+      if (translated !== symptom) {
+        return translated
+      }
+    }
+    
+    // Se já está em português, retorna como está
     return symptom
   }
 

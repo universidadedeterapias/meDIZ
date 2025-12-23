@@ -17,11 +17,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: 'Funcionalidade disponível apenas para usuários premium' }, { status: 403 })
   }
 
-  const { folderId } = await req.json()
+  const { 
+    folderId, 
+    symptomStartPeriod, 
+    emotionalHistory, 
+    copingStrategy 
+  } = await req.json()
   const resolvedParams = await params
 
-  if (!folderId) {
-    return NextResponse.json({ error: 'folderId é obrigatório' }, { status: 400 })
+  // Se não há nada para atualizar, retorna erro
+  if (!folderId && symptomStartPeriod === undefined && emotionalHistory === undefined && copingStrategy === undefined) {
+    return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 })
   }
 
   // Verificar se o sintoma existe e pertence a uma pasta do usuário
@@ -56,9 +62,25 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
   }
 
+  // Construir objeto de atualização apenas com os campos fornecidos
+  const updateData: Record<string, unknown> = {}
+
+  if (folderId) {
+    updateData.folderId = folderId
+  }
+  if (symptomStartPeriod !== undefined) {
+    updateData.symptomStartPeriod = symptomStartPeriod?.trim() || null
+  }
+  if (emotionalHistory !== undefined) {
+    updateData.emotionalHistory = emotionalHistory?.trim() || null
+  }
+  if (copingStrategy !== undefined) {
+    updateData.copingStrategy = copingStrategy || null
+  }
+
   const updated = await prisma.savedSymptom.update({
     where: { id: resolvedParams.id },
-    data: { folderId }
+    data: updateData
   })
 
   return NextResponse.json(updated)

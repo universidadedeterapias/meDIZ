@@ -17,7 +17,14 @@ export async function GET() {
       include: {
         symptoms: {
           orderBy: { createdAt: 'desc' },
-          select: { id: true, symptom: true, threadId: true }
+          select: { 
+            id: true, 
+            symptom: true, 
+            threadId: true,
+            symptomStartPeriod: true,
+            emotionalHistory: true,
+            copingStrategy: true
+          }
         }
       },
       orderBy: { createdAt: 'desc' }

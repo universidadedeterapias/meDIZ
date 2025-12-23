@@ -2,6 +2,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { UserProvider } from '@/contexts/user'
 import SessionProvider from '@/components/SessionProvider'
 import { HydrationBoundary } from '@/components/hydration-boundary'
+import { GlobalErrorHandler } from '@/components/GlobalErrorHandler'
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { LanguageProvider } from '@/i18n/LanguageProvider'
@@ -42,6 +43,7 @@ export default async function RootLayout({
         data-language={language}
       >
         <HydrationBoundary>
+          <GlobalErrorHandler />
           <LanguageProvider initialLanguage={language}>
             <ThemeProvider
               attribute="class"

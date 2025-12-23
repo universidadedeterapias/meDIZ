@@ -112,16 +112,8 @@ export function AppSidebar({ history: _history, selectedThread: _selectedThread,
   const { sidebarUser, isLoadingSidebar } = useUser()
   const { t } = useTranslation()
   
-  // Debug temporário
-  console.log('[AppSidebar] 🔄 Render - isLoadingSidebar:', isLoadingSidebar, 'sidebarUser:', sidebarUser ? {
-    id: sidebarUser.id,
-    name: sidebarUser.name,
-    email: sidebarUser.email
-  } : null)
-  
   // Loading inicial - usa dados otimizados da sidebar
   if (isLoadingSidebar || !sidebarUser) {
-    console.log('[AppSidebar] 💀 Mostrando skeleton - isLoadingSidebar:', isLoadingSidebar, 'sidebarUser:', sidebarUser)
     return (
       <Sidebar collapsible="icon">
         <SidebarHeader className="border-b-2">

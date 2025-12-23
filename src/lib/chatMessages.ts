@@ -70,6 +70,7 @@ export async function getThreadMessages(threadId: string): Promise<ThreadMessage
 }
 
 export async function getThreadUserMessages(threadId: string) {
+  
   const chatSessionId = await getChatSessionIdByThread(threadId)
 
   if (!chatSessionId) {
