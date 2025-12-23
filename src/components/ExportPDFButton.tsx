@@ -36,6 +36,18 @@ export function ExportPDFButton({
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [showConfigModal, setShowConfigModal] = useState(false)
 
+  // Log de debug para verificar dados recebidos
+  console.log('[ExportPDFButton] Dados recebidos:', {
+    question: question?.substring(0, 50) || 'SEM PERGUNTA',
+    answerLength: answer?.length || 0,
+    hasAnswer: !!answer,
+    answerPreview: answer?.substring(0, 100) || 'VAZIO',
+    answerType: typeof answer,
+    sessionId,
+    isPremium,
+    isLoading
+  })
+
   const handleExport = async () => {
     if (isLoading) return
 
