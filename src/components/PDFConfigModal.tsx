@@ -73,6 +73,19 @@ export function PDFConfigModal({
   const handleExport = async () => {
     setIsGenerating(true)
     
+    // Logs de debug para rastrear o problema
+    console.log('[PDFConfigModal] handleExport - Dados antes de gerar PDF:', {
+      question: question?.substring(0, 50) || 'SEM PERGUNTA',
+      answerLength: answer?.length || 0,
+      hasAnswer: !!answer,
+      answerPreview: answer?.substring(0, 100) || 'VAZIO',
+      answerType: typeof answer,
+      sessionId,
+      patientName: patientName.trim() || undefined,
+      therapistName: therapistName.trim() || undefined,
+      language
+    })
+    
     try {
       await generateChatPDF({
         question,
@@ -83,9 +96,17 @@ export function PDFConfigModal({
         therapistName: therapistName.trim() || undefined,
         language
       })
+      console.log('[PDFConfigModal] ✅ PDF gerado com sucesso')
       onOpenChange(false)
     } catch (error) {
-      console.error('Erro ao exportar PDF:', error)
+      console.error('[PDFConfigModal] ❌ Erro ao exportar PDF:', {
+        error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        question: question?.substring(0, 50),
+        answerLength: answer?.length || 0,
+        hasAnswer: !!answer
+      })
     } finally {
       setIsGenerating(false)
     }

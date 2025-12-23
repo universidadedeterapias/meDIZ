@@ -18,6 +18,17 @@ interface PDFData {
  */
 export async function generateChatPDF(data: PDFData): Promise<void> {
   try {
+    // Logs que funcionam em produção também
+    console.log('[PDF Generator] 🔍 Dados recebidos:', {
+      question: data.question?.substring(0, 50) || 'SEM PERGUNTA',
+      answerLength: data.answer?.length || 0,
+      hasAnswer: !!data.answer,
+      answerPreview: data.answer?.substring(0, 100) || 'VAZIO',
+      timestamp: data.timestamp.toISOString(),
+      environment: typeof window !== 'undefined' ? 'client' : 'server',
+      nodeEnv: process.env.NODE_ENV
+    })
+    
     logger.debug('🔍 Debug PDF - Dados recebidos', '[pdfGenerator]', {
       question: data.question,
       answerLength: data.answer?.length || 0,
@@ -30,27 +41,61 @@ export async function generateChatPDF(data: PDFData): Promise<void> {
     logger.debug('🔍 Debug PDF - Answer contains IMPACTO BIOLÓGICO', '[pdfGenerator]', { contains: data.answer?.includes('IMPACTO BIOLÓGICO') })
     logger.debug('🔍 Debug PDF - Answer contains **IMPACTO BIOLÓGICO**', '[pdfGenerator]', { contains: data.answer?.includes('**IMPACTO BIOLÓGICO**') })
 
+    // Validação crítica: verifica se answer existe
+    if (!data.answer || data.answer.trim().length === 0) {
+      console.error('[PDF Generator] ❌ ERRO CRÍTICO: Answer está vazio ou undefined!', {
+        answer: data.answer,
+        answerType: typeof data.answer,
+        answerLength: data.answer?.length
+      })
+      throw new Error('Answer está vazio - não é possível gerar PDF sem conteúdo')
+    }
+
     // Cria o HTML que será convertido para PDF
     const htmlContent = createPDFHTML(data)
+    
+    console.log('[PDF Generator] 🔍 HTML gerado:', {
+      htmlLength: htmlContent?.length || 0,
+      hasAnswerContent: htmlContent?.includes('answer-content') || false,
+      hasProcessedAnswer: htmlContent?.includes('RESPOSTA') || htmlContent?.includes('Response') || false,
+      answerContentPreview: htmlContent?.substring(htmlContent.indexOf('answer-content'), htmlContent.indexOf('answer-content') + 500) || 'NÃO ENCONTRADO'
+    })
     
     logger.debug('🔍 Debug PDF - HTML gerado', '[pdfGenerator]', {
       htmlLength: htmlContent?.length || 0,
       hasContent: htmlContent?.includes('answer-content') || false
     })
     
-    // Configurações do PDF otimizadas
+    // Configurações do PDF otimizadas para produção
     const language = data.language || 'pt-BR'
     const filenamePrefix = REPORT_FILENAME_TRANSLATIONS[language] || REPORT_FILENAME_TRANSLATIONS['pt-BR']
+    
+    // Configurações otimizadas do html2canvas para produção
+    // useCORS: false em produção pode ajudar com problemas de CORS
+    // logging: false reduz logs desnecessários em produção
+    const isProduction = process.env.NODE_ENV === 'production'
+    
     const options = {
       margin: [0.3, 0.3, 0.3, 0.3] as [number, number, number, number],
       filename: `${filenamePrefix}-${formatDateForFilename(data.timestamp)}.pdf`,
       image: { type: 'jpeg' as const, quality: 0.98 },
       html2canvas: { 
         scale: 2,
-        useCORS: true,
+        useCORS: !isProduction, // Em produção, tenta sem CORS primeiro
         letterRendering: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff'
+        allowTaint: isProduction, // Em produção, permite taint para evitar problemas de CORS
+        backgroundColor: '#ffffff',
+        logging: !isProduction, // Desabilita logs em produção
+        windowWidth: typeof window !== 'undefined' ? window.innerWidth : 1200,
+        windowHeight: typeof window !== 'undefined' ? window.innerHeight : 1600,
+        // Configurações adicionais para produção
+        removeContainer: true,
+        imageTimeout: 15000, // Timeout maior para imagens em produção
+        onclone: (clonedDoc: Document) => {
+          // Garante que o HTML clonado tenha todas as fontes carregadas
+          console.log('[PDF Generator] html2canvas - Clonando documento para renderização')
+          return clonedDoc
+        }
       },
       jsPDF: { 
         unit: 'in', 
@@ -59,13 +104,74 @@ export async function generateChatPDF(data: PDFData): Promise<void> {
         compress: true
       }
     }
+    
+    console.log('[PDF Generator] 🔍 Configurações do PDF:', {
+      isProduction,
+      useCORS: options.html2canvas.useCORS,
+      allowTaint: options.html2canvas.allowTaint,
+      logging: options.html2canvas.logging
+    })
 
     logger.debug('🔍 Debug PDF - Iniciando geração...')
+    console.log('[PDF Generator] 🔍 Iniciando geração do PDF com html2pdf...', {
+      options: {
+        filename: options.filename,
+        scale: options.html2canvas.scale,
+        useCORS: options.html2canvas.useCORS
+      }
+    })
     
     // Gera e baixa o PDF
-    await html2pdf().set(options).from(htmlContent).save()
-    
-    logger.debug('✅ Debug PDF - PDF gerado com sucesso!')
+    // IMPORTANTE: Em produção, html2pdf pode ter problemas ao renderizar HTML string diretamente
+    // Criamos um elemento DOM temporário para garantir renderização correta
+    try {
+      if (typeof window === 'undefined') {
+        throw new Error('generateChatPDF deve ser executado no cliente (browser)')
+      }
+
+      // Cria um elemento temporário para renderizar o HTML
+      const tempDiv = document.createElement('div')
+      tempDiv.style.position = 'absolute'
+      tempDiv.style.left = '-9999px'
+      tempDiv.style.top = '-9999px'
+      tempDiv.style.width = '210mm' // Largura A4
+      tempDiv.style.padding = '20px'
+      tempDiv.innerHTML = htmlContent
+      
+      // Adiciona ao DOM temporariamente
+      document.body.appendChild(tempDiv)
+      
+      console.log('[PDF Generator] 🔍 Elemento temporário criado:', {
+        hasElement: !!tempDiv,
+        innerHTMLLength: tempDiv.innerHTML.length,
+        hasAnswerContent: tempDiv.innerHTML.includes('answer-content')
+      })
+
+      try {
+        // Renderiza o elemento DOM ao invés do HTML string
+        await html2pdf()
+          .set(options)
+          .from(tempDiv)
+          .save()
+        
+        console.log('[PDF Generator] ✅ PDF gerado com sucesso!')
+        logger.debug('✅ Debug PDF - PDF gerado com sucesso!')
+      } finally {
+        // Remove o elemento temporário
+        document.body.removeChild(tempDiv)
+        console.log('[PDF Generator] 🔍 Elemento temporário removido')
+      }
+    } catch (html2pdfError) {
+      console.error('[PDF Generator] ❌ Erro ao gerar PDF com html2pdf:', {
+        error: html2pdfError,
+        errorMessage: html2pdfError instanceof Error ? html2pdfError.message : String(html2pdfError),
+        errorStack: html2pdfError instanceof Error ? html2pdfError.stack : undefined,
+        htmlLength: htmlContent.length,
+        hasAnswerContent: htmlContent.includes('answer-content'),
+        isClient: typeof window !== 'undefined'
+      })
+      throw html2pdfError
+    }
   } catch (error) {
     logger.error('❌ Erro ao gerar PDF:', error)
     throw new Error('Falha na geração do PDF')
@@ -77,8 +183,17 @@ export async function generateChatPDF(data: PDFData): Promise<void> {
  * Versão simplificada e robusta para evitar seções vazias
  */
 function processAnswerContent(htmlContent: string, language: LanguageCode = 'pt-BR'): string {
+  // Log que funciona em produção
+  console.log('[PDF Generator] processAnswerContent - Iniciando processamento:', {
+    contentLength: htmlContent?.length || 0,
+    hasContent: !!htmlContent && htmlContent.trim().length > 0,
+    contentPreview: htmlContent?.substring(0, 200) || 'VAZIO',
+    language
+  })
+  
   // Se o conteúdo estiver vazio, retorna uma mensagem padrão
   if (!htmlContent || htmlContent.trim().length === 0) {
+    console.warn('[PDF Generator] processAnswerContent - ⚠️ Conteúdo vazio, retornando mensagem padrão')
     return '<p style="margin-bottom: 10px; text-align: justify; line-height: 1.5;">Conteúdo não disponível.</p>'
   }
 
@@ -234,8 +349,15 @@ function processAnswerContent(htmlContent: string, language: LanguageCode = 'pt-
 
   // Se não gerou nada, pelo menos mostra o conteúdo original (já limpo)
   if (result.trim().length === 0) {
+    console.warn('[PDF Generator] processAnswerContent - ⚠️ Resultado vazio após processamento, usando conteúdo limpo')
     result = createSectionHTML('RESPOSTA', cleanedContent.trim(), language)
   }
+
+  console.log('[PDF Generator] processAnswerContent - Processamento concluído:', {
+    resultLength: result?.length || 0,
+    hasResult: result.trim().length > 0,
+    resultPreview: result?.substring(0, 200) || 'VAZIO'
+  })
 
   return result
 }
@@ -716,6 +838,14 @@ function createPDFHTML(data: PDFData): string {
   const formattedDate = formatDate(data.timestamp)
   const formattedTime = formatTime(data.timestamp)
   
+  // Logs que funcionam em produção
+  console.log('[PDF Generator] createPDFHTML - Iniciando criação do HTML:', {
+    answerLength: data.answer?.length || 0,
+    hasAnswer: !!data.answer,
+    answerPreview: data.answer?.substring(0, 300) || 'VAZIO',
+    language: data.language || 'pt-BR'
+  })
+  
   // DEBUG: Log do conteúdo antes de processar
   if (process.env.NODE_ENV === 'development') {
     logger.debug('[pdfGenerator] createPDFHTML - Answer length', '[pdfGenerator]', { length: data.answer?.length || 0 })
@@ -725,6 +855,12 @@ function createPDFHTML(data: PDFData): string {
   // Processa o conteúdo da resposta para melhor organização
   const language = data.language || 'pt-BR'
   const processedAnswer = processAnswerContent(data.answer, language)
+  
+  console.log('[PDF Generator] createPDFHTML - Resposta processada:', {
+    processedAnswerLength: processedAnswer?.length || 0,
+    hasProcessedAnswer: processedAnswer.trim().length > 0,
+    processedAnswerPreview: processedAnswer?.substring(0, 300) || 'VAZIO'
+  })
   
   // DEBUG: Log do conteúdo processado
   if (process.env.NODE_ENV === 'development') {
