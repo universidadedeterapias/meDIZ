@@ -82,6 +82,14 @@ function processAnswerContent(htmlContent: string, language: LanguageCode = 'pt-
     return '<p style="margin-bottom: 10px; text-align: justify; line-height: 1.5;">Conteúdo não disponível.</p>'
   }
 
+  // DEBUG: Log em desenvolvimento para rastrear conteúdo problemático
+  if (process.env.NODE_ENV === 'development' && (htmlContent.includes('sandbox') || htmlContent.includes('<iframe'))) {
+    logger.debug('[pdfGenerator] processAnswerContent - Conteúdo contém HTML literal:', htmlContent.substring(0, 200))
+  }
+
+  // PRIMEIRO: Limpa HTML literal problemático antes de processar
+  const cleanedContent = cleanHtmlLiteralsForPDF(htmlContent)
+
   // Primeiro, tenta extrair "Contexto Geral" e "Impacto Biológico" usando a mesma lógica do parseResponse
   // Essas seções podem aparecer com dois pontos após o título
   function findField(fieldNames: string[]): { title: string; content: string } | null {
@@ -89,7 +97,7 @@ function processAnswerContent(htmlContent: string, language: LanguageCode = 'pt-
       const escaped = fieldName.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')
       // Procura por **Título:** ou **Título** seguido de conteúdo
       const pattern = new RegExp(`\\*\\*${escaped}:?\\*\\*:?\\s*([\\s\\S]*?)(?=\\r?\\n\\*\\*|$)`, 'i')
-      const match = htmlContent.match(pattern)
+      const match = cleanedContent.match(pattern)
       if (match && match[1]?.trim()) {
         return { title: fieldName, content: match[1].trim() }
       }
@@ -102,7 +110,7 @@ function processAnswerContent(htmlContent: string, language: LanguageCode = 'pt-
   const impactoBiologico = findField(['Impacto Biológico', 'Biological Impact'])
 
   // Versão simplificada: divide por quebras de linha e processa cada parte
-  const lines = htmlContent.split('\n').map(line => line.trim()).filter(line => line.length > 0)
+  const lines = cleanedContent.split('\n').map(line => line.trim()).filter(line => line.length > 0)
   
   let result = ''
   let currentSection = ''
@@ -224,9 +232,9 @@ function processAnswerContent(htmlContent: string, language: LanguageCode = 'pt-
     result += createSectionHTML('RESPOSTA', contentBeforeFirstSection.trim(), language)
   }
 
-  // Se não gerou nada, pelo menos mostra o conteúdo original
+  // Se não gerou nada, pelo menos mostra o conteúdo original (já limpo)
   if (result.trim().length === 0) {
-    result = createSectionHTML('RESPOSTA', htmlContent.trim(), language)
+    result = createSectionHTML('RESPOSTA', cleanedContent.trim(), language)
   }
 
   return result
@@ -539,12 +547,53 @@ function isSectionTitle(line: string): boolean {
 }
 
 /**
+ * Limpa HTML literal problemático do conteúdo antes de processar markdown para PDF
+ * Remove atributos HTML e tags que não devem aparecer como texto
+ */
+function cleanHtmlLiteralsForPDF(text: string): string {
+  // Lista de padrões HTML problemáticos que devem ser removidos
+  // Estes padrões aparecem como texto literal na página e devem ser removidos
+  const problematicPatterns = [
+    /sandbox="[^"]*"/gi,           // sandbox="allow-scripts..."
+    /sandbox='[^']*'/gi,            // sandbox='allow-scripts...'
+    /<iframe[^>]*>/gi,               // <iframe ...>
+    /<\/iframe>/gi,                  // </iframe>
+    /<script[^>]*>[\s\S]*?<\/script>/gi, // <script>...</script>
+    /on\w+\s*=\s*["'][^"']*["']/gi, // Event handlers como onclick="..."
+  ]
+  
+  let cleaned = text
+  
+  // Remove padrões problemáticos
+  problematicPatterns.forEach(pattern => {
+    const beforeLength = cleaned.length
+    cleaned = cleaned.replace(pattern, '')
+    
+    // Log apenas em desenvolvimento se algo foi removido
+    if (process.env.NODE_ENV === 'development' && cleaned.length < beforeLength) {
+      logger.debug('[pdfGenerator] Removido padrão HTML problemático do PDF:', pattern.toString())
+    }
+  })
+  
+  return cleaned
+}
+
+/**
  * Processa conteúdo markdown para PDF (versão com estilos inline)
  */
 function processMarkdownForPDF(content: string): string {
   if (!content || content.trim().length === 0) {
     return ''
   }
+
+  // DEBUG: Log em desenvolvimento para rastrear conteúdo problemático
+  if (process.env.NODE_ENV === 'development' && (content.includes('sandbox') || content.includes('<iframe'))) {
+    logger.debug('[pdfGenerator] Conteúdo contém HTML literal antes de processar PDF:', content.substring(0, 200))
+  }
+
+  // 0. PRIMEIRO: Limpa HTML literal problemático que pode estar no conteúdo
+  // Isso evita que HTML literal apareça como texto no PDF
+  const cleanedContent = cleanHtmlLiteralsForPDF(content)
 
   // Lista de emojis separadores
   const PARAGRAPH_SEPARATORS = ['🌀', '📍', '💡', '🔍', '📌', '✨', '🔑', '⚡', '🌟', '🎯', '📊', '💭', '🧠', '🛡️', '⏳']
@@ -554,7 +603,7 @@ function processMarkdownForPDF(content: string): string {
   }
 
   // 1. Primeiro converte markdown básico para HTML
-  let processed = content
+  let processed = cleanedContent
     // Negrito (dois asteriscos) - substituir por placeholder temporário
     .replace(/\*\*(.+?)\*\*/g, '___STRONG_START___$1___STRONG_END___')
     // Itálico (um asterisco)
@@ -667,9 +716,21 @@ function createPDFHTML(data: PDFData): string {
   const formattedDate = formatDate(data.timestamp)
   const formattedTime = formatTime(data.timestamp)
   
+  // DEBUG: Log do conteúdo antes de processar
+  if (process.env.NODE_ENV === 'development') {
+    logger.debug('[pdfGenerator] createPDFHTML - Answer length', '[pdfGenerator]', { length: data.answer?.length || 0 })
+    logger.debug('[pdfGenerator] createPDFHTML - Answer preview', '[pdfGenerator]', { preview: data.answer?.substring(0, 300) || 'vazio' })
+  }
+  
   // Processa o conteúdo da resposta para melhor organização
   const language = data.language || 'pt-BR'
   const processedAnswer = processAnswerContent(data.answer, language)
+  
+  // DEBUG: Log do conteúdo processado
+  if (process.env.NODE_ENV === 'development') {
+    logger.debug('[pdfGenerator] createPDFHTML - Processed answer length', '[pdfGenerator]', { length: processedAnswer?.length || 0 })
+    logger.debug('[pdfGenerator] createPDFHTML - Processed answer preview', '[pdfGenerator]', { preview: processedAnswer?.substring(0, 300) || 'vazio' })
+  }
   
   return `
     <!DOCTYPE html>
