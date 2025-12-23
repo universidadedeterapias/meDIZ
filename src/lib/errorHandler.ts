@@ -6,7 +6,21 @@ import { NextResponse } from 'next/server'
  * Trata erros de forma consistente e retorna respostas apropriadas
  */
 export function handleApiError(error: unknown, context: string = 'API'): NextResponse {
-  console.error(`[${context}] Erro detalhado:`, error)
+  // Evita logar objetos Event diretamente
+  if (error instanceof Error) {
+    console.error(`[${context}] Erro detalhado:`, {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    })
+  } else if (error && typeof error === 'object' && 'type' in error) {
+    // Pode ser um Event object
+    console.error(`[${context}] Erro (tipo: ${(error as { type?: string }).type}):`, 
+      error instanceof Event ? 'Event object capturado' : error
+    )
+  } else {
+    console.error(`[${context}] Erro detalhado:`, error)
+  }
   
   if (error instanceof Error) {
     console.error(`[${context}] Stack trace:`, error.stack)

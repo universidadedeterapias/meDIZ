@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { Folder, Plus, Trash2, Edit2, Archive, GripVertical, FileText, X } from 'lucide-react'
+import { Folder, Plus, Trash2, Edit2, Archive, GripVertical, FileText, X, ChevronDown, Activity } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +31,7 @@ import {
 import { useSubscriptionStatus } from '@/hooks/use-subscription-status'
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { useTranslation } from '@/i18n/useTranslation'
+import { useRouter } from 'next/navigation'
 import {
   DndContext,
   DragOverlay,
@@ -56,6 +57,9 @@ type SavedSymptom = {
   id: string
   symptom: string
   threadId: string | null
+  symptomStartPeriod?: string | null
+  emotionalHistory?: string | null
+  copingStrategy?: string | null
 }
 
 type SymptomFolder = {
@@ -78,7 +82,17 @@ type DraggedItem = {
 }
 
 // Componente para o item de sintoma arrastável
-function DraggableSymptomItem({ symptom, onSelect }: { symptom: SavedSymptom; onSelect?: (text: string) => void }) {
+function DraggableSymptomItem({ 
+  symptom, 
+  onSelect, 
+  isExpanded,
+  onToggleExpand 
+}: { 
+  symptom: SavedSymptom
+  onSelect?: (text: string) => void
+  isExpanded?: boolean
+  onToggleExpand?: () => void
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: symptom.id
   })
@@ -89,31 +103,85 @@ function DraggableSymptomItem({ symptom, onSelect }: { symptom: SavedSymptom; on
     opacity: isDragging ? 0.5 : 1
   }
 
+  const hasAdditionalInfo = symptom.symptomStartPeriod || symptom.emotionalHistory || symptom.copingStrategy
+
   return (
     <SidebarMenuSubItem 
       ref={setNodeRef} 
       style={style}
       className="group/symptom"
     >
-      <div className="flex items-center gap-1.5 w-full p-1.5 rounded-md hover:bg-accent/50 transition-colors duration-150">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-5 w-5 cursor-grab active:cursor-grabbing p-0 text-muted-foreground hover:text-foreground opacity-60 group-hover/symptom:opacity-100 transition-opacity"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="h-3.5 w-3.5" />
-        </Button>
-        <SidebarMenuSubButton
-          onClick={() => onSelect?.(symptom.symptom)}
-          title={symptom.symptom}
-          className="flex-1 text-left rounded-md hover:bg-accent/80 transition-all duration-150 hover:shadow-sm"
-        >
-          <div className="truncate text-sm font-medium text-foreground group-hover/symptom:text-indigo-600 dark:group-hover/symptom:text-indigo-400 transition-colors">
-            {symptom.symptom}
+      <div className="w-full">
+        <div className="flex items-center gap-1.5 w-full p-1.5 rounded-md hover:bg-accent/50 transition-colors duration-150">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5 cursor-grab active:cursor-grabbing p-0 text-muted-foreground hover:text-foreground opacity-60 group-hover/symptom:opacity-100 transition-opacity"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </Button>
+          <SidebarMenuSubButton
+            onClick={() => onSelect?.(symptom.symptom)}
+            title={symptom.symptom}
+            className="flex-1 text-left rounded-md hover:bg-accent/80 transition-all duration-150 hover:shadow-sm"
+          >
+            <div className="truncate text-sm font-medium text-foreground group-hover/symptom:text-indigo-600 dark:group-hover/symptom:text-indigo-400 transition-colors">
+              {symptom.symptom}
+            </div>
+          </SidebarMenuSubButton>
+          {hasAdditionalInfo && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 p-0"
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleExpand?.()
+              }}
+            >
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+            </Button>
+          )}
+        </div>
+        
+        {/* Campos adicionais expandidos */}
+        {isExpanded && hasAdditionalInfo && (
+          <div className="px-2 py-2 mt-1 space-y-2 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-md border border-indigo-200/50 dark:border-indigo-900/30">
+            {symptom.symptomStartPeriod && (
+              <div>
+                <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 mb-0.5">
+                  Desde quando:
+                </p>
+                <p className="text-xs text-foreground/80">{symptom.symptomStartPeriod}</p>
+              </div>
+            )}
+            {symptom.emotionalHistory && (
+              <div>
+                <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 mb-0.5">
+                  Histórico emocional:
+                </p>
+                <p className="text-xs text-foreground/80 whitespace-pre-wrap">{symptom.emotionalHistory}</p>
+              </div>
+            )}
+            {symptom.copingStrategy && (
+              <div>
+                <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 mb-0.5">
+                  Como encarou:
+                </p>
+                <p className="text-xs text-foreground/80">
+                  {symptom.copingStrategy === 'ACCEPTED_AND_SOUGHT_HELP' && 'Aceitei e busquei ajuda'}
+                  {symptom.copingStrategy === 'DENIED_INITIALLY' && 'Neguei inicialmente'}
+                  {symptom.copingStrategy === 'IGNORED_SYMPTOM' && 'Ignorei o sintoma'}
+                  {symptom.copingStrategy === 'SOUGHT_INFO_ALONE' && 'Busquei informações sozinho'}
+                  {symptom.copingStrategy === 'SHARED_WITH_FAMILY_FRIENDS' && 'Compartilhei com familiares/amigos'}
+                  {symptom.copingStrategy === 'OTHER' && 'Outro'}
+                </p>
+              </div>
+            )}
           </div>
-        </SidebarMenuSubButton>
+        )}
       </div>
     </SidebarMenuSubItem>
   )
@@ -132,14 +200,19 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
   const [editingFolderNotes, setEditingFolderNotes] = useState<string | null>(null)
   const [editingNotes, setEditingNotes] = useState('')
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
+  const [expandedSymptoms, setExpandedSymptoms] = useState<Set<string>>(new Set())
+  const [showAllFolders, setShowAllFolders] = useState(false)
   const [_activeId, setActiveId] = useState<UniqueIdentifier | null>(null)
   const [draggedItem, setDraggedItem] = useState<DraggedItem | null>(null)
+  const router = useRouter()
   
   const { isPremium, isLoading: isLoadingPremium } = useSubscriptionStatus()
   
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[NavFolders] Component loaded')
-  }
+  // Limitar visualização a 5 pastas inicialmente
+  const MAX_VISIBLE_FOLDERS = 5
+  const visibleFolders = showAllFolders ? folders : folders.slice(0, MAX_VISIBLE_FOLDERS)
+  const hasMoreFolders = folders.length > MAX_VISIBLE_FOLDERS
+  
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -155,9 +228,22 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
 
   // Ouvir evento de atualização quando um sintoma é salvo
   useEffect(() => {
-    const handleFoldersUpdated = () => {
-      if (process.env.NODE_ENV !== 'production') console.log('[NavFolders] foldersUpdated → reload')
-      loadFolders()
+    const handleFoldersUpdated = (event?: Event) => {
+      try {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[NavFolders] foldersUpdated → reload', event?.type || '')
+        }
+        loadFolders()
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error('[NavFolders] Erro em handleFoldersUpdated:', {
+            name: error.name,
+            message: error.message
+          })
+        } else {
+          console.error('[NavFolders] Erro em handleFoldersUpdated:', error)
+        }
+      }
     }
 
     window.addEventListener('foldersUpdated', handleFoldersUpdated)
@@ -186,7 +272,16 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
       if (process.env.NODE_ENV !== 'production') console.log('[NavFolders] Pastas carregadas:', data)
       setFolders(Array.isArray(data) ? data : [])
     } catch (error) {
-      console.error('[NavFolders] Erro ao carregar pastas:', error)
+      // Evita logar objetos Event diretamente
+      if (error instanceof Error) {
+        console.error('[NavFolders] Erro ao carregar pastas:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        })
+      } else {
+        console.error('[NavFolders] Erro ao carregar pastas:', error)
+      }
       // Define pastas vazias em caso de erro para não travar a UI
       setFolders([])
     } finally {
@@ -209,15 +304,15 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
         name: newFolderName.trim(),
         notes: newFolderNotes.trim() || null
       }
-      console.log('[NavFolders] Criando pasta:', folderData)
-      
       const res = await fetch('/api/folders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(folderData)
       })
 
-      console.log('[NavFolders] Response status:', res.status)
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[NavFolders] Response status:', res.status)
+      }
 
       if (res.ok) {
         const _created = await res.json()
@@ -233,7 +328,15 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
         alert(`❌ Erro ao criar pasta: ${errorData.error || 'Erro desconhecido'}`)
       }
     } catch (error) {
-      console.error('[NavFolders] Erro ao criar pasta:', error)
+      // Evita logar objetos Event diretamente
+      if (error instanceof Error) {
+        console.error('[NavFolders] Erro ao criar pasta:', {
+          name: error.name,
+          message: error.message
+        })
+      } else {
+        console.error('[NavFolders] Erro ao criar pasta:', error)
+      }
       alert('❌ Erro ao criar pasta. Tente novamente.')
     }
   }
@@ -289,9 +392,18 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
         }
       }
     } catch (error) {
-      console.error('[NavFolders] Erro completo ao atualizar notas:', error)
-      console.error('[NavFolders] Stack trace:', error instanceof Error ? error.stack : 'N/A')
-      alert(`❌ Erro ao salvar observações: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
+      // Evita logar objetos Event diretamente
+      if (error instanceof Error) {
+        console.error('[NavFolders] Erro completo ao atualizar notas:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        })
+        alert(`❌ Erro ao salvar observações: ${error.message}`)
+      } else {
+        console.error('[NavFolders] Erro completo ao atualizar notas:', error)
+        alert('❌ Erro ao salvar observações: Erro desconhecido')
+      }
     }
   }
 
@@ -307,7 +419,15 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
         await loadFolders()
       }
     } catch (error) {
-      console.error('Erro ao excluir pasta:', error)
+      // Evita logar objetos Event diretamente
+      if (error instanceof Error) {
+        console.error('Erro ao excluir pasta:', {
+          name: error.name,
+          message: error.message
+        })
+      } else {
+        console.error('Erro ao excluir pasta:', error)
+      }
     }
   }
 
@@ -338,7 +458,15 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
       // Recarregar para garantir sincronização
       await loadFolders()
     } catch (error) {
-      console.error('Erro ao mover sintoma:', error)
+      // Evita logar objetos Event diretamente
+      if (error instanceof Error) {
+        console.error('Erro ao mover sintoma:', {
+          name: error.name,
+          message: error.message
+        })
+      } else {
+        console.error('Erro ao mover sintoma:', error)
+      }
       // Recarregar em caso de erro
       await loadFolders()
     }
@@ -361,40 +489,94 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
   }
 
   function handleDragStart(event: DragStartEvent) {
-    const { active } = event
-    setActiveId(active.id)
+    try {
+      const { active } = event
+      setActiveId(active.id)
 
-    // Encontrar o sintoma e a pasta
-    for (const folder of folders) {
-      const symptom = folder.symptoms.find(s => s.id === active.id.toString())
-      if (symptom) {
-        setDraggedItem({
-          type: 'symptom',
-          folderId: folder.id,
-          symptom
+      // Encontrar o sintoma e a pasta
+      for (const folder of folders) {
+        const symptom = folder.symptoms.find(s => s.id === active.id.toString())
+        if (symptom) {
+          setDraggedItem({
+            type: 'symptom',
+            folderId: folder.id,
+            symptom
+          })
+          break
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error('[NavFolders] Erro em handleDragStart:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
         })
-        break
+      } else {
+        console.error('[NavFolders] Erro em handleDragStart:', error)
       }
     }
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    setActiveId(null)
-    setDraggedItem(null)
+    try {
+      const { active, over } = event
+      
+      // Capturar o draggedItem ANTES de limpar
+      const currentDraggedItem = draggedItem
+      
+      // Limpar estados
+      setActiveId(null)
+      setDraggedItem(null)
 
-    if (!over || !draggedItem) return
+      if (!over || !currentDraggedItem) return
 
-    const overFolderId = over.id.toString()
+      const overFolderId = over.id.toString()
 
-    // Se estiver sobre uma pasta diferente
-    if (overFolderId !== draggedItem.folderId && folders.find(f => f.id === overFolderId)) {
-      handleMoveSymptom(active.id.toString(), draggedItem.folderId, overFolderId)
+      // Se estiver sobre uma pasta diferente
+      if (overFolderId !== currentDraggedItem.folderId && folders.find(f => f.id === overFolderId)) {
+        // handleMoveSymptom é assíncrono, mas não precisamos aguardar
+        handleMoveSymptom(active.id.toString(), currentDraggedItem.folderId, overFolderId).catch((error) => {
+          if (error instanceof Error) {
+            console.error('[NavFolders] Erro ao mover sintoma em handleDragEnd:', {
+              name: error.name,
+              message: error.message
+            })
+          } else {
+            console.error('[NavFolders] Erro ao mover sintoma em handleDragEnd:', error)
+          }
+        })
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error('[NavFolders] Erro em handleDragEnd:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        })
+      } else {
+        console.error('[NavFolders] Erro em handleDragEnd:', error)
+      }
+      // Garantir que os estados sejam limpos mesmo em caso de erro
+      setActiveId(null)
+      setDraggedItem(null)
     }
   }
 
   function handleDragOver(_event: DragOverEvent) {
-    // Opcional: adicionar feedback visual
+    try {
+      // Opcional: adicionar feedback visual
+      // Por enquanto, apenas previne erros silenciosos
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error('[NavFolders] Erro em handleDragOver:', {
+          name: error.name,
+          message: error.message
+        })
+      } else {
+        console.error('[NavFolders] Erro em handleDragOver:', error)
+      }
+    }
   }
 
   // Coletar todos os IDs de sintomas para o SortableContext
@@ -420,8 +602,7 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
     )
   }
 
-      if (process.env.NODE_ENV !== 'production') console.log('[NavFolders] Renderizando', folders.length)
-  
+
   return (
     <DndContext
       sensors={sensors}
@@ -463,7 +644,7 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
                   <Plus className="h-4 w-4" />
                 </Button>
                 <div className="absolute -top-3 -right-3 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold animate-pulse shadow-lg z-10 whitespace-nowrap">
-                  NOVO
+                  {t('badge.new', 'NOVO')}
                 </div>
               </div>
             </DialogTrigger>
@@ -479,7 +660,23 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
                     value={newFolderName}
                     onChange={e => setNewFolderName(e.target.value)}
                     placeholder={t('folders.folderNamePlaceholder', 'Ex: João Silva')}
-                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleCreateFolder()}
+                    onKeyDown={e => {
+                      try {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          handleCreateFolder()
+                        }
+                      } catch (error) {
+                        if (error instanceof Error) {
+                          console.error('[NavFolders] Erro em onKeyDown:', {
+                            name: error.name,
+                            message: error.message
+                          })
+                        } else {
+                          console.error('[NavFolders] Erro em onKeyDown:', error)
+                        }
+                      }
+                    }}
                   />
                 </div>
                 <div>
@@ -533,8 +730,9 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
                 </div>
               </div>
             </SidebarMenuItem>
-          ) : (
-            folders.map(folder => (
+          ) : folders.length > 0 ? (
+            <>
+              {visibleFolders.map(folder => (
               <SidebarMenuItem key={folder.id} className="group">
                 <div className="flex items-center w-full gap-1">
                   <SidebarMenuButton
@@ -691,6 +889,16 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
                             key={symptom.id}
                             symptom={symptom}
                             onSelect={onSelectSymptom}
+                            isExpanded={expandedSymptoms.has(symptom.id)}
+                            onToggleExpand={() => {
+                              const newExpanded = new Set(expandedSymptoms)
+                              if (newExpanded.has(symptom.id)) {
+                                newExpanded.delete(symptom.id)
+                              } else {
+                                newExpanded.add(symptom.id)
+                              }
+                              setExpandedSymptoms(newExpanded)
+                            }}
                           />
                         ))}
                       </SortableContext>
@@ -698,9 +906,63 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
                   </SidebarMenuSub>
                 )}
               </SidebarMenuItem>
-            ))
-          )}
+              ))}
+              
+              {/* Botão para ver mais pastas */}
+              {hasMoreFolders && !showAllFolders && (
+                <SidebarMenuItem>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-center text-sm text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowAllFolders(true)}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Ver mais ({folders.length - MAX_VISIBLE_FOLDERS} pastas)
+                  </Button>
+                </SidebarMenuItem>
+              )}
+              
+              {/* Botão para ver menos pastas */}
+              {showAllFolders && hasMoreFolders && (
+                <SidebarMenuItem>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-center text-sm text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowAllFolders(false)}
+                  >
+                    Ver menos
+                  </Button>
+                </SidebarMenuItem>
+              )}
+            </>
+          ) : null}
         </SidebarMenu>
+
+        {/* Link para Dashboard de Sintomas */}
+        <div className="mt-4 pt-4 border-t border-indigo-200/50 dark:border-indigo-900/30 group-data-[collapsed=true]:hidden">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <div className="relative">
+                <SidebarMenuButton
+                  onClick={() => {
+                    if (!isPremium) {
+                      setOpenUpgradeModal(true)
+                      return
+                    }
+                    router.push('/symptoms-dashboard')
+                  }}
+                  className="w-full justify-start bg-gradient-to-r from-indigo-500/10 to-purple-500/10 hover:from-indigo-500/20 hover:to-purple-500/20 border border-indigo-300/50 dark:border-indigo-700/50 transition-all duration-200"
+                >
+                  <Activity className="h-4 w-4 mr-2 text-indigo-600 dark:text-indigo-400" />
+                  <span className="flex-1 text-left font-medium text-indigo-700 dark:text-indigo-300">{t('dashboard.symptoms.title', 'Dashboard de Sintomas')}</span>
+                </SidebarMenuButton>
+                <div className="absolute -top-3 -right-3 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold animate-pulse shadow-lg z-10 whitespace-nowrap">
+                  {t('badge.new', 'NOVO')}
+                </div>
+              </div>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </div>
 
         <DragOverlay>
           {draggedItem && (

@@ -84,27 +84,10 @@ const checkESLint = () => {
 const checkPrisma = () => {
   console.log('🔍 Checking Prisma schema...');
   
-  // Em CI/CD, usar DATABASE_URL dummy (o workflow já fornece)
-  // Em ambiente local, usar dummy apenas para validação do schema
-  const isCI = process.env.CI || process.env.GITHUB_ACTIONS || process.env.VERCEL;
-  
-  if (!isCI && !process.env.DATABASE_URL) {
-    console.log('⚠️  DATABASE_URL não encontrada no ambiente local');
-    console.log('   Configure DATABASE_URL no arquivo .env ou .env.local');
-    console.log('   Em CI/CD, a variável é fornecida automaticamente pelo workflow');
-    console.log('   Usando valor dummy apenas para validação do schema Prisma...');
-  }
-  
   try {
     const { execSync } = require('child_process');
-    // Usar dummy se não estiver definida (apenas para validação do schema, não para uso real)
-    const env = {
-      ...process.env,
-      DATABASE_URL: process.env.DATABASE_URL || 'postgresql://user:pass@localhost:5432/test'
-    };
     execSync('npx prisma validate', { 
-      stdio: 'pipe',
-      env: env
+      stdio: 'pipe'
     });
     console.log('✅ Prisma schema is valid');
     return 0;

@@ -36,7 +36,9 @@ export async function GET() {
       }
     })
 
-    console.log('[API /user/sidebar] Usuário encontrado:', user ? { id: user.id, name: user.name, email: user.email } : 'null')
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[API /user/sidebar] Usuário encontrado:', user ? { id: user.id, name: user.name } : 'null')
+    }
 
     if (!user) {
       console.log('[API /user/sidebar] ❌ Usuário não encontrado no banco')

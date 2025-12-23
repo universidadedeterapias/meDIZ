@@ -78,7 +78,9 @@ export async function POST(req: NextRequest) {
           console.warn(`⚠️ [STRIPE WEBHOOK] Usuário Stripe ${customerId} não encontrado no DB`)
           break
         }
-        console.log('✅ [STRIPE WEBHOOK] Usuário encontrado:', user.id, user.email)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ [STRIPE WEBHOOK] Usuário encontrado:', user.id)
+        }
 
         // 1b) Busca o plano pelo stripePriceId
         const priceId =
@@ -159,7 +161,17 @@ export async function POST(req: NextRequest) {
             currentPeriodEnd: periodEndDate
           }
         })
-        console.log('✅ [STRIPE WEBHOOK] Assinatura salva/atualizada no DB:', subscription.id)
+        console.log('✅ [STRIPE WEBHOOK] Assinatura salva/atualizada no DB:', {
+          subscriptionId: subscription.id,
+          userId: subscription.userId,
+          planId: subscription.planId,
+          status: subscription.status,
+          statusLowercase: subscription.status.toLowerCase(),
+          currentPeriodStart: subscription.currentPeriodStart.toISOString(),
+          currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
+          isExpired: subscription.currentPeriodEnd < new Date(),
+          isActive: ['active', 'ACTIVE', 'cancel_at_period_end'].includes(subscription.status.toLowerCase()) && subscription.currentPeriodEnd >= new Date()
+        })
         break
       }
 

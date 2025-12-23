@@ -1,7 +1,7 @@
 // src/app/chat/page.tsx
 'use client'
 
-import { Bell, Search } from 'lucide-react'
+import { Bell, Search, MessageSquarePlus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -15,6 +15,7 @@ import { LoadingPlaceholder } from '@/components/LoadingPlaceholder'
 import PromotionPopup from '@/components/PromotionPopup'
 import Spinner from '@/components/Spinner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -129,7 +130,15 @@ export default function Page() {
           setSymptomsLoaded(true)
         }
       } catch (error) {
-        console.error('Erro ao carregar sintomas dinâmicos:', error)
+        // Evita logar objetos Event diretamente
+        if (error instanceof Error) {
+          console.error('Erro ao carregar sintomas dinâmicos:', {
+            name: error.name,
+            message: error.message
+          })
+        } else {
+          console.error('Erro ao carregar sintomas dinâmicos:', error)
+        }
         // Fallback para sintomas fixos
         setSymptomsLoaded(true)
       }
@@ -297,11 +306,20 @@ export default function Page() {
       const t1 = performance.now()
       setElapsedMs(t1 - t0)
     } catch (err) {
-      console.error('[Chat] Erro ao enviar mensagem:', err)
-      // Mostra erro ao usuário
+      // Evita logar objetos Event diretamente
       if (err instanceof Error) {
+        console.error('[Chat] Erro ao enviar mensagem:', {
+          name: err.name,
+          message: err.message,
+          stack: err.stack
+        })
         alert(`${t('chat.error.prefix', 'Erro ao processar sua mensagem')}: ${err.message}`)
+      } else if (err && typeof err === 'object' && 'type' in err) {
+        // Pode ser um Event object
+        console.error('[Chat] Erro (tipo: Event):', (err as { type?: string }).type || 'Unknown')
+        alert(t('chat.error.generic', 'Erro ao processar sua mensagem. Tente novamente.'))
       } else {
+        console.error('[Chat] Erro ao enviar mensagem:', err)
         alert(t('chat.error.generic', 'Erro ao processar sua mensagem. Tente novamente.'))
       }
     } finally {
@@ -379,6 +397,25 @@ export default function Page() {
                 </div>
               </div>
               <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+                <div className="relative group cursor-pointer" onClick={() => router.push('/suggestion')}>
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      router.push('/suggestion')
+                    }}
+                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 group-hover:scale-105"
+                    size="default"
+                  >
+                    <MessageSquarePlus className="h-4 w-4" />
+                    <span className="hidden sm:inline">{t('sidebar.suggestion.button', 'Sugestão')}</span>
+                  </Button>
+                  <Badge 
+                    className="absolute -top-2 -left-2 bg-green-500 hover:bg-green-600 text-white border-none shadow-lg animate-pulse cursor-pointer z-10"
+                  >
+                    <span className="relative z-10">{t('badge.new.lowercase', 'Novo')}</span>
+                    <span className="absolute inset-0 bg-green-400 rounded-md animate-ping opacity-75"></span>
+                  </Badge>
+                </div>
                 <Bell className="mr-2" />
               </div>
             </div>

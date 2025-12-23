@@ -44,6 +44,8 @@ export default [
         // Event globals
         Event: 'readonly',
         CustomEvent: 'readonly',
+        ErrorEvent: 'readonly',
+        PromiseRejectionEvent: 'readonly',
         
         // SVG globals
         SVGSVGElement: 'readonly',

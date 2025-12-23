@@ -225,13 +225,16 @@ model SymptomFolder {
 }
 
 model SavedSymptom {
-  id        String        @id @default(uuid())
-  folderId  String
-  symptom   String
-  threadId  String?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  folder    SymptomFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  id                String         @id @default(uuid())
+  folderId          String
+  symptom           String
+  threadId          String?
+  symptomStartPeriod String?       // Período aproximado (ex: "há 2 semanas", "desde janeiro")
+  emotionalHistory  String?        // Histórico emocional (texto livre)
+  copingStrategy    CopingStrategy? // Como encarou a situação (opções pré-definidas)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  folder            SymptomFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
 
   @@index([folderId])
   @@index([createdAt])
@@ -284,4 +287,13 @@ enum AdminRequestStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum CopingStrategy {
+  ACCEPTED_AND_SOUGHT_HELP      // Aceitei e busquei ajuda
+  DENIED_INITIALLY              // Neguei inicialmente
+  IGNORED_SYMPTOM               // Ignorei o sintoma
+  SOUGHT_INFO_ALONE             // Busquei informações sozinho
+  SHARED_WITH_FAMILY_FRIENDS    // Compartilhei com familiares/amigos
+  OTHER                         // Outro
 }

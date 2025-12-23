@@ -48,12 +48,12 @@ export function LanguageSwitcher({ showLabel = true, className }: LanguageSwitch
         onValueChange={handleChange}
         disabled={isPending}
       >
-        <SelectTrigger className="h-9 w-full bg-background/80 backdrop-blur">
+        <SelectTrigger className="h-8 sm:h-9 w-full bg-background/90 backdrop-blur text-xs sm:text-sm">
           <SelectValue placeholder={LANGUAGE_OPTIONS[language].label} />
         </SelectTrigger>
         <SelectContent>
           {SUPPORTED_LANGUAGES.map(code => (
-            <SelectItem key={code} value={code}>
+            <SelectItem key={code} value={code} className="text-xs sm:text-sm">
               {LANGUAGE_OPTIONS[code].label}
             </SelectItem>
           ))}

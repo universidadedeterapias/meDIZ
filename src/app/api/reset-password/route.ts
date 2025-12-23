@@ -53,7 +53,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Reset password error:', error)
+    // Não logar detalhes do erro para evitar vazamento de informações sensíveis
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Reset password error:', error instanceof Error ? error.message : 'Unknown error')
+    }
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

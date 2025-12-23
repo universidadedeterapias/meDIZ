@@ -11,7 +11,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
 
-  const { folderId, symptom, threadId } = await req.json()
+  const { 
+    folderId, 
+    symptom, 
+    threadId, 
+    symptomStartPeriod, 
+    emotionalHistory, 
+    copingStrategy 
+  } = await req.json()
 
   if (!folderId || !symptom) {
     return NextResponse.json({ error: 'folderId e symptom são obrigatórios' }, { status: 400 })
@@ -41,7 +48,10 @@ export async function POST(req: Request) {
     data: {
       folderId,
       symptom: symptom.trim(),
-      threadId: threadId || null
+      threadId: threadId || null,
+      symptomStartPeriod: symptomStartPeriod?.trim() || null,
+      emotionalHistory: emotionalHistory?.trim() || null,
+      copingStrategy: copingStrategy || null
     }
   })
 

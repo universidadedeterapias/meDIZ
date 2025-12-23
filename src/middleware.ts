@@ -7,7 +7,9 @@ export async function middleware(request: NextRequest) {
   // Aplicar apenas a rotas do admin - otimização de performance
   // EXCLUIR /admin-login para evitar loop infinito
   if (request.nextUrl.pathname.startsWith('/admin') && request.nextUrl.pathname !== '/admin-login') {
-    console.log(`[Middleware] Acessando: ${request.nextUrl.pathname}`)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Middleware] Acessando: ${request.nextUrl.pathname}`)
+    }
     
     try {
       // Verificar se NEXTAUTH_SECRET está configurado
@@ -25,25 +27,31 @@ export async function middleware(request: NextRequest) {
           : 'authjs.session-token'
       })
       
-      // Registrar informações para diagnóstico
-      if (token?.email) {
-        console.log(`[Middleware] Usuário autenticado: ${token.email}`)
-        console.log(`[Middleware] Admin: ${token.email.includes('@mediz.com') ? 'Sim' : 'Não'}`)
-        console.log(`[Middleware] Token expira em: ${token.exp ? new Date(token.exp * 1000).toLocaleString() : 'Desconhecido'}`)
-      } else {
-        console.log('[Middleware] Usuário não autenticado')
+      // Registrar informações para diagnóstico (apenas em desenvolvimento)
+      if (process.env.NODE_ENV === 'development') {
+        if (token?.email) {
+          console.log(`[Middleware] Usuário autenticado: ${token.email}`)
+          console.log(`[Middleware] Admin: ${token.email.includes('@mediz.com') ? 'Sim' : 'Não'}`)
+          console.log(`[Middleware] Token expira em: ${token.exp ? new Date(token.exp * 1000).toLocaleString() : 'Desconhecido'}`)
+        } else {
+          console.log('[Middleware] Usuário não autenticado')
+        }
       }
       
       // Se não houver token, redirecionar para login admin
       if (!token?.email) {
-        console.log('[Middleware] Redirecionando para login admin - sem token')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Middleware] Redirecionando para login admin - sem token')
+        }
         const loginUrl = new URL('/admin-login', request.url)
         return NextResponse.redirect(loginUrl)
       }
       
       // Verificar se o token não expirou
       if (token.exp && token.exp < Date.now() / 1000) {
-        console.log('[Middleware] Token expirado, redirecionando para login')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Middleware] Token expirado, redirecionando para login')
+        }
         const loginUrl = new URL('/admin-login', request.url)
         loginUrl.searchParams.set('error', 'session_expired')
         return NextResponse.redirect(loginUrl)
@@ -54,14 +62,18 @@ export async function middleware(request: NextRequest) {
       const isAdmin = userEmail.includes('@mediz.com')
       
       if (!isAdmin) {
-        console.log('[Middleware] Acesso negado: não é admin')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Middleware] Acesso negado: não é admin')
+        }
         // Não é admin - redirecionar para login admin com mensagem
         const loginUrl = new URL('/admin-login', request.url)
         loginUrl.searchParams.set('error', 'not_admin')
         return NextResponse.redirect(loginUrl)
       }
       
-      console.log('[Middleware] Admin autenticado - acesso permitido')
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Middleware] Admin autenticado - acesso permitido')
+      }
       return NextResponse.next()
     } catch (error) {
       console.error('[Middleware] Erro:', error)

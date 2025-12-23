@@ -7,14 +7,16 @@ export async function GET(_req: NextRequest) {
   console.log('[Dashboard API] Iniciando requisição GET')
   try {
     const session = await auth()
-    console.log('[Dashboard API] Sessão obtida:', session ? 'Sim' : 'Não')
-    console.log('[Dashboard API] Email do usuário:', session?.user?.email)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Dashboard API] Sessão obtida:', session ? 'Sim' : 'Não')
+      console.log('[Dashboard API] User ID:', session?.user?.id)
+    }
     
     // Verificar se é admin
     if (!session?.user?.email || !session.user.email.includes('@mediz.com')) {
-      console.log('[Dashboard API] Usuário não autorizado - não é admin')
-      console.log('[Dashboard API] Email recebido:', session?.user?.email)
-      console.log('[Dashboard API] Contém @mediz.com:', session?.user?.email?.includes('@mediz.com'))
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Dashboard API] Usuário não autorizado - não é admin')
+      }
       return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
     }
     
