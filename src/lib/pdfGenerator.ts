@@ -91,7 +91,7 @@ export async function generateChatPDF(data: PDFData): Promise<void> {
         // Configurações adicionais para produção
         removeContainer: true,
         imageTimeout: 15000, // Timeout maior para imagens em produção
-        onclone: (clonedDoc: Document) => {
+        onclone: (clonedDoc: any) => {
           // Garante que o HTML clonado tenha todas as fontes carregadas
           console.log('[PDF Generator] html2canvas - Clonando documento para renderização')
           return clonedDoc
@@ -197,13 +197,60 @@ function processAnswerContent(htmlContent: string, language: LanguageCode = 'pt-
     return '<p style="margin-bottom: 10px; text-align: justify; line-height: 1.5;">Conteúdo não disponível.</p>'
   }
 
+  // CRÍTICO: Extrai conteúdo do iframe srcdoc antes de limpar
+  // O conteúdo real está dentro do atributo srcdoc do iframe
+  let extractedContent = htmlContent
+  
+  // Tenta encontrar iframe com srcdoc (pode ter aspas simples ou duplas)
+  const iframePatterns = [
+    /<iframe[^>]*srcdoc=["']([^"']*)["'][^>]*>/i,
+    /<iframe[^>]*srcdoc=([^\s>]+)[^>]*>/i
+  ]
+  
+  for (const pattern of iframePatterns) {
+    const match = htmlContent.match(pattern)
+    if (match && match[1]) {
+      let srcdocContent = match[1]
+      
+      // Remove aspas do início e fim se existirem
+      srcdocContent = srcdocContent.replace(/^["']|["']$/g, '')
+      
+      // Decodifica entidades HTML comuns
+      srcdocContent = srcdocContent
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+      
+      // Tenta decodificar URI se necessário
+      try {
+        const decoded = decodeURIComponent(srcdocContent)
+        extractedContent = decoded
+        break
+      } catch {
+        // Se falhar, usa o conteúdo já processado
+        extractedContent = srcdocContent
+        break
+      }
+    }
+  }
+  
+  // Se não encontrou iframe, usa o conteúdo original
+  // Mas verifica se há conteúdo útil (não apenas tags vazias)
+  if (extractedContent === htmlContent && htmlContent.includes('<iframe')) {
+    // Se ainda tem iframe mas não extraiu, tenta método alternativo
+    // Remove apenas as tags iframe mas mantém qualquer conteúdo interno
+    extractedContent = htmlContent.replace(/<iframe[^>]*>([\s\S]*?)<\/iframe>/gi, '$1')
+  }
+
   // DEBUG: Log em desenvolvimento para rastrear conteúdo problemático
   if (process.env.NODE_ENV === 'development' && (htmlContent.includes('sandbox') || htmlContent.includes('<iframe'))) {
     logger.debug('[pdfGenerator] processAnswerContent - Conteúdo contém HTML literal:', htmlContent.substring(0, 200))
   }
 
   // PRIMEIRO: Limpa HTML literal problemático antes de processar
-  const cleanedContent = cleanHtmlLiteralsForPDF(htmlContent)
+  const cleanedContent = cleanHtmlLiteralsForPDF(extractedContent)
 
   // Primeiro, tenta extrair "Contexto Geral" e "Impacto Biológico" usando a mesma lógica do parseResponse
   // Essas seções podem aparecer com dois pontos após o título
@@ -671,15 +718,20 @@ function isSectionTitle(line: string): boolean {
 /**
  * Limpa HTML literal problemático do conteúdo antes de processar markdown para PDF
  * Remove atributos HTML e tags que não devem aparecer como texto
+ * IMPORTANTE: Esta função é chamada APÓS extrair o conteúdo do srcdoc do iframe
  */
 function cleanHtmlLiteralsForPDF(text: string): string {
+  // Se o texto já foi extraído do iframe, não deve mais conter tags iframe
+  // Mas ainda pode conter outros elementos problemáticos
+  
   // Lista de padrões HTML problemáticos que devem ser removidos
   // Estes padrões aparecem como texto literal na página e devem ser removidos
   const problematicPatterns = [
     /sandbox="[^"]*"/gi,           // sandbox="allow-scripts..."
     /sandbox='[^']*'/gi,            // sandbox='allow-scripts...'
-    /<iframe[^>]*>/gi,               // <iframe ...>
-    /<\/iframe>/gi,                  // </iframe>
+    /<iframe[^>]*>[\s\S]*?<\/iframe>/gi, // <iframe>...</iframe> completo (caso ainda exista)
+    /<iframe[^>]*>/gi,               // <iframe ...> (tag de abertura)
+    /<\/iframe>/gi,                  // </iframe> (tag de fechamento)
     /<script[^>]*>[\s\S]*?<\/script>/gi, // <script>...</script>
     /on\w+\s*=\s*["'][^"']*["']/gi, // Event handlers como onclick="..."
   ]
