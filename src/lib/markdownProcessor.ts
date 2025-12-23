@@ -9,6 +9,38 @@
 const PARAGRAPH_SEPARATORS = ['🌀', '📍', '💡', '🔍', '📌', '✨', '🔑', '⚡', '🌟', '🎯', '📊', '💭', '🧠', '🛡️', '⏳']
 
 /**
+ * Limpa HTML literal problemático do conteúdo antes de processar markdown
+ * Remove atributos HTML e tags que não devem aparecer como texto
+ */
+function cleanHtmlLiterals(text: string): string {
+  // Lista de padrões HTML problemáticos que devem ser removidos
+  // Estes padrões aparecem como texto literal na página e devem ser removidos
+  const problematicPatterns = [
+    /sandbox="[^"]*"/gi,           // sandbox="allow-scripts..."
+    /sandbox='[^']*'/gi,            // sandbox='allow-scripts...'
+    /<iframe[^>]*>/gi,               // <iframe ...>
+    /<\/iframe>/gi,                  // </iframe>
+    /<script[^>]*>[\s\S]*?<\/script>/gi, // <script>...</script>
+    /on\w+\s*=\s*["'][^"']*["']/gi, // Event handlers como onclick="..."
+  ]
+  
+  let cleaned = text
+  
+  // Remove padrões problemáticos
+  problematicPatterns.forEach(pattern => {
+    const beforeLength = cleaned.length
+    cleaned = cleaned.replace(pattern, '')
+    
+    // Log apenas em desenvolvimento se algo foi removido
+    if (process.env.NODE_ENV === 'development' && cleaned.length < beforeLength) {
+      console.warn('[markdownProcessor] Removido padrão HTML problemático:', pattern.toString())
+    }
+  })
+  
+  return cleaned
+}
+
+/**
  * Processa conteúdo markdown/texto e retorna HTML formatado com parágrafos adequados
  */
 export function processMarkdownContent(content: string): string {
@@ -16,9 +48,18 @@ export function processMarkdownContent(content: string): string {
     return ''
   }
 
+  // DEBUG: Log em desenvolvimento para rastrear conteúdo problemático
+  if (process.env.NODE_ENV === 'development' && (content.includes('sandbox') || content.includes('<iframe'))) {
+    console.warn('[markdownProcessor] Conteúdo contém HTML literal:', content.substring(0, 200))
+  }
+
+  // 0. PRIMEIRO: Limpa HTML literal problemático que pode estar no conteúdo
+  // Isso evita que HTML literal apareça como texto na página
+  const contentToProcess = cleanHtmlLiterals(content)
+
   // 1. Primeiro converte markdown básico para HTML
   // IMPORTANTE: Processar negrito ANTES de itálico para evitar conflitos
-  let processed = content
+  let processed = contentToProcess
     // Negrito (dois asteriscos) - substituir por placeholder temporário
     .replace(/\*\*(.+?)\*\*/g, '___STRONG_START___$1___STRONG_END___')
     // Itálico (um asterisco)
