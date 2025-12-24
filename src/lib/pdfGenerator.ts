@@ -104,11 +104,10 @@ export async function generateChatPDF(data: PDFData): Promise<void> {
  */
 function sanitizeHTMLForPDF(html: string): string {
   if (!html) return ''
-  
-  // PRIMEIRO: Normaliza escapes incorretos (\" -> ")
-  // Isso previne que o HTML quebre por causa de escapes de JavaScript
+
+  // PRIMEIRO: normaliza escapes de string JS para entidades HTML (seguro)
   const normalized = normalizeHtmlEscapes(html)
-  
+
   // DEBUG: Log em desenvolvimento para rastrear conteúdo problemático
   if (process.env.NODE_ENV === 'development') {
     const hasIframe = /<iframe/i.test(normalized)
@@ -116,7 +115,7 @@ function sanitizeHTMLForPDF(html: string): string {
     const hasObject = /<object/i.test(normalized)
     const hasScript = /<script/i.test(normalized)
     const hasIncorrectEscape = /\\"/.test(html)
-    
+
     if (hasIframe || hasEmbed || hasObject || hasScript || hasIncorrectEscape) {
       console.warn('[pdfGenerator] Conteúdo contém elementos perigosos antes da sanitização:', {
         hasIframe,
@@ -128,51 +127,55 @@ function sanitizeHTMLForPDF(html: string): string {
       })
     }
   }
-  
+
   let sanitized = normalized
-  
-  // Remove iframes completamente (incluindo conteúdo dentro)
+
+  /**
+   * 🔥 CRÍTICO: remover IFRAME mesmo que esteja malformado e sem </iframe>
+   * (isso é exatamente o caso que faz "vazar" style="..." como texto)
+   */
+  sanitized = sanitized.replace(/<iframe\b[^>]*\/?>/gi, '')
+  sanitized = sanitized.replace(/<\/iframe\s*>/gi, '')
+
+  // Remove iframes com conteúdo (caso exista fechamento correto)
   sanitized = sanitized.replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '')
-  
-  // Remove tags de fechamento de iframe soltas
-  sanitized = sanitized.replace(/<\/iframe>/gi, '')
-  
+
   // Remove embeds
-  sanitized = sanitized.replace(/<embed[^>]*>/gi, '')
-  sanitized = sanitized.replace(/<\/embed>/gi, '')
-  
+  sanitized = sanitized.replace(/<embed\b[^>]*\/?>/gi, '')
+  sanitized = sanitized.replace(/<\/embed\s*>/gi, '')
+
   // Remove objects (que podem conter embeds)
   sanitized = sanitized.replace(/<object[^>]*>[\s\S]*?<\/object>/gi, '')
-  sanitized = sanitized.replace(/<\/object>/gi, '')
-  
+  sanitized = sanitized.replace(/<\/object\s*>/gi, '')
+
   // Remove scripts
   sanitized = sanitized.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-  sanitized = sanitized.replace(/<\/script>/gi, '')
-  
+  sanitized = sanitized.replace(/<\/script\s*>/gi, '')
+
   // Remove event handlers (onclick, onload, etc.)
   sanitized = sanitized.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
   sanitized = sanitized.replace(/\s*on\w+\s*=\s*[^\s>]*/gi, '')
-  
-  // Remove atributos sandbox e outros atributos perigosos de iframe
+
+  // Remove atributos sandbox/allow (defensivo)
   sanitized = sanitized.replace(/\s*sandbox\s*=\s*["'][^"']*["']/gi, '')
   sanitized = sanitized.replace(/\s*sandbox\s*=\s*[^\s>]*/gi, '')
   sanitized = sanitized.replace(/\s*allow\s*=\s*["'][^"']*["']/gi, '')
   sanitized = sanitized.replace(/\s*allow\s*=\s*[^\s>]*/gi, '')
-  
+
   // Remove links para iframes/embeds (src com iframe, embed, etc.)
   sanitized = sanitized.replace(/src\s*=\s*["'][^"']*(iframe|embed|object)[^"']*["']/gi, '')
-  
-  // Remove qualquer texto literal que contenha tags HTML problemáticas
+
+  // Remove qualquer texto literal que contenha tags HTML problemáticas escapadas
   sanitized = sanitized.replace(/&lt;iframe[^&]*&gt;/gi, '')
   sanitized = sanitized.replace(/&lt;\/iframe&gt;/gi, '')
   sanitized = sanitized.replace(/&lt;embed[^&]*&gt;/gi, '')
   sanitized = sanitized.replace(/&lt;object[^&]*&gt;/gi, '')
-  
+
   // DEBUG: Log após sanitização
   if (process.env.NODE_ENV === 'development') {
     const stillHasIframe = /<iframe/i.test(sanitized)
     const stillHasEmbed = /<embed/i.test(sanitized)
-    
+
     if (stillHasIframe || stillHasEmbed) {
       console.error('[pdfGenerator] AVISO: Ainda há elementos perigosos após sanitização!', {
         stillHasIframe,
@@ -182,36 +185,12 @@ function sanitizeHTMLForPDF(html: string): string {
       console.log('[pdfGenerator] HTML sanitizado com sucesso - elementos perigosos removidos')
     }
   }
-  
+
   return sanitized
 }
 
 /**
- * Processa conteúdo de Lateralidade com subseções especiais
- */
-function processLateralidadeContent(html: string): string {
-  // Detecta e formata subseções especiais
-  // Lado Direito, Lado Esquerdo, ATENÇÃO!, DICA:
-  html = html.replace(
-    /<p><strong>(Lado Direito|Lado Esquerdo|Right Side|Left Side):?<\/strong><\/p>/gi,
-    '<p class="lateralidade-subsection"><strong>$1:</strong></p>'
-  )
-  
-  html = html.replace(
-    /<p><strong>(ATENÇÃO!|ATTENTION!|⚠️|⚠)<\/strong><\/p>/gi,
-    '<p class="lateralidade-warning"><strong>$1</strong></p>'
-  )
-  
-  html = html.replace(
-    /<p><strong>(DICA:|TIP:|💡):?<\/strong><\/p>/gi,
-    '<p class="lateralidade-tip"><strong>$1</strong></p>'
-  )
-  
-  return html
-}
-
-/**
- * Processa markdown para HTML com seções estruturadas
+ * Processa conteúdo markdown para HTML com seções estruturadas
  */
 function processMarkdownToHTML(content: string, _language: LanguageCode = 'pt-BR'): string {
   if (!content || content.trim().length === 0) {
@@ -236,7 +215,7 @@ function processMarkdownToHTML(content: string, _language: LanguageCode = 'pt-BR
     'Experiencias comunes',
     'Common Experiences',
     'Padrões de comportamento',
-    'Patrones de comportamiento',
+    'Patrones de comportamento',
     'Behavior Patterns',
     'Behavioral Patterns',
     'Impacto Transgeracional',
@@ -277,34 +256,33 @@ function processMarkdownToHTML(content: string, _language: LanguageCode = 'pt-BR
 
   // Extrai apenas as seções principais
   const sections: Array<{ title: string; content: string; index: number }> = []
-  
+
   // Procura por textos em negrito no formato **Título** ou **Título:**
   const boldPattern = /\*\*([^*]+?)\*\*:?\s*\n/g
   const matches = Array.from(content.matchAll(boldPattern))
-  
+
   // Filtra apenas as seções principais
   const mainSectionMatches = matches.filter(match => {
     const title = match[1].trim()
     return isMainSection(title)
   })
-  
+
   // Processa cada seção principal
   for (let i = 0; i < mainSectionMatches.length; i++) {
     const match = mainSectionMatches[i]
     const title = match[1].trim()
     const startIndex = match.index! + match[0].length
-    
+
     // Determina onde termina o conteúdo desta seção (até a próxima seção principal ou fim)
-    const endIndex = i < mainSectionMatches.length - 1 
-      ? mainSectionMatches[i + 1].index! 
-      : content.length
-    
+    const endIndex =
+      i < mainSectionMatches.length - 1 ? mainSectionMatches[i + 1].index! : content.length
+
     // Extrai TODO o conteúdo da seção (incluindo textos em negrito que são parte do conteúdo)
     const sectionContent = content.substring(startIndex, endIndex).trim()
-    
+
     if (sectionContent.length > 0) {
-      sections.push({ 
-        title, 
+      sections.push({
+        title,
         content: sectionContent,
         index: match.index!
       })
@@ -315,72 +293,72 @@ function processMarkdownToHTML(content: string, _language: LanguageCode = 'pt-BR
   sections.sort((a, b) => a.index - b.index)
 
   let html = ''
-  
+
   // Processa cada seção
   for (const section of sections) {
     const titleLower = section.title.toLowerCase()
-    
+
     // Contexto Geral e Impacto Biológico sempre sem listas (apenas parágrafos)
-    const isParagraphOnly = titleLower.includes('contexto geral') ||
-                            titleLower.includes('general context') ||
-                            titleLower.includes('contexto general') ||
-                            titleLower.includes('impacto biológico') ||
-                            titleLower.includes('biological impact')
-    
+    const isParagraphOnly =
+      titleLower.includes('contexto geral') ||
+      titleLower.includes('general context') ||
+      titleLower.includes('contexto general') ||
+      titleLower.includes('impacto biológico') ||
+      titleLower.includes('biological impact')
+
     // Lateralidade precisa de tratamento especial para subseções
-    const isLateralidade = titleLower.includes('lateralidade') ||
-                           titleLower.includes('laterality')
-    
+    const isLateralidade = titleLower.includes('lateralidade') || titleLower.includes('laterality')
+
     // Chave Terapêutica do [RE]Sentir precisa de sanitização especial
-    const isTherapeuticKey = titleLower.includes('chave terapêutica') ||
-                             titleLower.includes('therapeutic key') ||
-                             titleLower.includes('clave terapéutica') ||
-                             titleLower.includes('ressentir') ||
-                             titleLower.includes('refeeling')
-    
+    const isTherapeuticKey =
+      titleLower.includes('chave terapêutica') ||
+      titleLower.includes('therapeutic key') ||
+      titleLower.includes('clave terapéutica') ||
+      titleLower.includes('ressentir') ||
+      titleLower.includes('refeeling')
+
     // DEBUG: Log para rastrear seção Chave Terapêutica
     if (process.env.NODE_ENV === 'development' && isTherapeuticKey) {
       console.log('[pdfGenerator] Processando seção Chave Terapêutica do [RE]Sentir')
       console.log('[pdfGenerator] Conteúdo original (primeiros 300 chars):', section.content.substring(0, 300))
     }
-    
-    // Todas as outras seções podem ter listas (incluindo Chave Terapêutica, Símbolos Biológicos, Fases, etc.)
+
+    // Todas as outras seções podem ter listas
     const allowLists = !isParagraphOnly
-    
+
     // Processa conteúdo com tratamento especial para Lateralidade
     let processedContent = processContentToHTML(section.content, allowLists)
-    
+
     // Tratamento especial para Lateralidade: formata subseções
     if (isLateralidade) {
       processedContent = processLateralidadeContent(processedContent)
     }
-    
+
     // CRÍTICO: Sanitização especial para Chave Terapêutica do [RE]Sentir
-    // Remove iframes, embeds e qualquer HTML perigoso
     if (isTherapeuticKey) {
       if (process.env.NODE_ENV === 'development') {
         console.log('[pdfGenerator] Aplicando sanitização na seção Chave Terapêutica')
         console.log('[pdfGenerator] Conteúdo antes da sanitização (primeiros 300 chars):', processedContent.substring(0, 300))
       }
-      
+
       processedContent = sanitizeHTMLForPDF(processedContent)
-      
+
       if (process.env.NODE_ENV === 'development') {
         console.log('[pdfGenerator] Conteúdo após sanitização (primeiros 300 chars):', processedContent.substring(0, 300))
       }
     }
-    
+
     html += `<div class="content-section">
       <div class="content-section-title">${section.title.toUpperCase()}</div>
       <div class="content-section-body">${processedContent}</div>
     </div>`
   }
-  
+
   // Se não encontrou seções, processa o conteúdo completo
   if (!html) {
     html = `<div class="content-section-body">${processContentToHTML(content, false)}</div>`
   }
-  
+
   return html
 }
 
@@ -391,7 +369,7 @@ function processMarkdownToHTML(content: string, _language: LanguageCode = 'pt-BR
  */
 function processContentToHTML(text: string, allowLists: boolean = true): string {
   if (!text) return ''
-  
+
   // DEBUG: Verifica se há iframes/embeds no conteúdo antes de processar
   if (process.env.NODE_ENV === 'development') {
     const hasIframe = /<iframe/i.test(text) || /iframe/i.test(text)
@@ -404,58 +382,57 @@ function processContentToHTML(text: string, allowLists: boolean = true): string 
       })
     }
   }
-  
-  // PRIMEIRO: Normaliza escapes incorretos (\" -> ")
-  // Isso previne que escapes de JavaScript quebrem o HTML
+
+  // PRIMEIRO: normaliza escapes de string JS para entidades HTML (seguro)
   const normalizedText = normalizeHtmlEscapes(text)
-  
+
   // Remove iframes e embeds do texto ANTES de processar markdown
-  // Isso previne que sejam convertidos em HTML válido
+  // 🔥 CRÍTICO: remove também abertura sem fechamento (iframe malformado)
   const cleanedText = normalizedText
+    .replace(/<iframe\b[^>]*\/?>/gi, '')
+    .replace(/<\/iframe\s*>/gi, '')
     .replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '')
-    .replace(/<\/iframe>/gi, '')
-    .replace(/<embed[^>]*>/gi, '')
-    .replace(/<\/embed>/gi, '')
+    .replace(/<embed\b[^>]*\/?>/gi, '')
+    .replace(/<\/embed\s*>/gi, '')
     .replace(/<object[^>]*>[\s\S]*?<\/object>/gi, '')
-    .replace(/<\/object>/gi, '')
+    .replace(/<\/object\s*>/gi, '')
     .replace(/sandbox\s*=\s*["'][^"']*["']/gi, '')
     .replace(/allow\s*=\s*["'][^"']*["']/gi, '')
-  
+
   // Primeiro processa negrito e itálico
   let html = cleanedText
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
-  
+
   // Se não permite listas, converte tudo em parágrafos preservando quebras de linha
   if (!allowLists) {
     // Remove marcadores de lista
     html = html.replace(/^[-•]\s+/gm, '')
-    
+
     // Normaliza quebras de linha múltiplas (3+ viram 2)
     html = html.replace(/\n{3,}/g, '\n\n')
-    
+
     // Divide por parágrafos duplos (quebras de linha duplas)
     const paragraphs = html.split(/\n\n+/)
-    
+
     return paragraphs
       .map(p => {
         const trimmed = p.trim()
         if (!trimmed) return ''
-        
+
         // Preserva quebras de linha simples dentro do parágrafo
-        // Converte quebras de linha simples em <br /> para manter a formatação original
         const withBreaks = trimmed
           .split('\n')
           .map(line => line.trim())
           .filter(line => line.length > 0)
           .join('<br />')
-        
+
         return `<p>${withBreaks}</p>`
       })
       .filter(p => p.length > 0)
       .join('')
   }
-  
+
   // Se permite listas, processa normalmente preservando quebras de linha
   const lines = html.split('\n')
   const processedLines: string[] = []
@@ -464,11 +441,11 @@ function processContentToHTML(text: string, allowLists: boolean = true): string 
   let inNumberedList = false
   let currentNumberedList: string[] = []
   let currentParagraphLines: string[] = []
-  
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
     const trimmedLine = line.trim()
-    
+
     // Detecta perguntas numeradas (#1, #2, etc.)
     const numberedMatch = trimmedLine.match(/^#(\d+)/)
     if (numberedMatch) {
@@ -477,7 +454,7 @@ function processContentToHTML(text: string, allowLists: boolean = true): string 
         processedLines.push(`<p>${currentParagraphLines.join('<br />')}</p>`)
         currentParagraphLines = []
       }
-      
+
       if (!inNumberedList) {
         inNumberedList = true
         currentNumberedList = []
@@ -493,10 +470,12 @@ function processContentToHTML(text: string, allowLists: boolean = true): string 
       let questionText = trimmedLine.replace(/^#\d+\s*/, '').trim()
       // Preserva quebras de linha dentro da pergunta convertendo em <br />
       questionText = questionText.replace(/\n/g, '<br />')
-      currentNumberedList.push(`<li class="numbered-question" data-number="#${questionNumber}">${questionText}</li>`)
+      currentNumberedList.push(
+        `<li class="numbered-question" data-number="#${questionNumber}">${questionText}</li>`
+      )
       continue
     }
-    
+
     // Verifica se é uma linha de lista (começa com - ou •)
     if (/^[-•]\s+/.test(trimmedLine)) {
       // Fecha parágrafo acumulado se houver
@@ -504,22 +483,20 @@ function processContentToHTML(text: string, allowLists: boolean = true): string 
         processedLines.push(`<p>${currentParagraphLines.join('<br />')}</p>`)
         currentParagraphLines = []
       }
-      
+
       // Fecha lista numerada se estiver aberta
       if (inNumberedList) {
         processedLines.push(`<ol class="numbered-questions">${currentNumberedList.join('')}</ol>`)
         currentNumberedList = []
         inNumberedList = false
       }
-      
+
       if (!inList) {
         inList = true
         currentList = []
       }
       // Remove o marcador e adiciona à lista
-      // Preserva quebras de linha dentro do item da lista
       let listItem = trimmedLine.replace(/^[-•]\s+/, '')
-      // Converte quebras de linha em <br /> para preservar formatação
       listItem = listItem.replace(/\n/g, '<br />')
       currentList.push(`<li>${listItem}</li>`)
     } else if (trimmedLine.length === 0) {
@@ -528,7 +505,7 @@ function processContentToHTML(text: string, allowLists: boolean = true): string 
         processedLines.push(`<p>${currentParagraphLines.join('<br />')}</p>`)
         currentParagraphLines = []
       }
-      
+
       // Fecha listas se estiverem abertas
       if (inNumberedList) {
         processedLines.push(`<ol class="numbered-questions">${currentNumberedList.join('')}</ol>`)
@@ -552,12 +529,12 @@ function processContentToHTML(text: string, allowLists: boolean = true): string 
         currentList = []
         inList = false
       }
-      
+
       // Adiciona linha ao parágrafo atual (preserva quebras de linha)
       currentParagraphLines.push(trimmedLine)
     }
   }
-  
+
   // Fecha listas se ainda estiverem abertas
   if (inNumberedList && currentNumberedList.length > 0) {
     processedLines.push(`<ol class="numbered-questions">${currentNumberedList.join('')}</ol>`)
@@ -565,15 +542,39 @@ function processContentToHTML(text: string, allowLists: boolean = true): string 
   if (inList && currentList.length > 0) {
     processedLines.push(`<ul>${currentList.join('')}</ul>`)
   }
-  
+
   // Fecha último parágrafo se houver
   if (currentParagraphLines.length > 0) {
     processedLines.push(`<p>${currentParagraphLines.join('<br />')}</p>`)
   }
-  
+
   // Junta tudo
   html = processedLines.join('')
-  
+
+  return html
+}
+
+/**
+ * Processa conteúdo de Lateralidade com subseções especiais
+ */
+function processLateralidadeContent(html: string): string {
+  // Detecta e formata subseções especiais
+  // Lado Direito, Lado Esquerdo, ATENÇÃO!, DICA:
+  html = html.replace(
+    /<p><strong>(Lado Direito|Lado Esquerdo|Right Side|Left Side):?<\/strong><\/p>/gi,
+    '<p class="lateralidade-subsection"><strong>$1:</strong></p>'
+  )
+
+  html = html.replace(
+    /<p><strong>(ATENÇÃO!|ATTENTION!|⚠️|⚠)<\/strong><\/p>/gi,
+    '<p class="lateralidade-warning"><strong>$1</strong></p>'
+  )
+
+  html = html.replace(
+    /<p><strong>(DICA:|TIP:|💡):?<\/strong><\/p>/gi,
+    '<p class="lateralidade-tip"><strong>$1</strong></p>'
+  )
+
   return html
 }
 
@@ -584,9 +585,8 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
   const formattedDate = formatDate(data.timestamp)
   const formattedTime = formatTime(data.timestamp)
   let processedAnswer = processMarkdownToHTML(data.answer, language)
-  
-  // CRÍTICO: Normaliza escapes incorretos antes de inserir no HTML
-  // Isso previne que \" (escape JS) quebre o HTML quando inserido no template
+
+  // CRÍTICO: normaliza escapes para entidades HTML (sem quebrar atributos)
   processedAnswer = normalizeHtmlEscapes(processedAnswer)
 
   const translations = getTranslations(language)
@@ -604,7 +604,7 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
           padding: 0;
           box-sizing: border-box;
         }
-        
+
         body {
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
           line-height: 1.6;
@@ -613,159 +613,161 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
           font-size: 14px;
           padding: 20px;
         }
-        
+
         .header {
           text-align: center;
-          margin-bottom: 25px;
-          padding-bottom: 15px;
-          border-bottom: 3px solid #4f46e5;
+          margin-bottom: 30px;
+          padding-bottom: 20px;
+          border-bottom: 1px solid #4f46e5;
         }
-        
+
         .logo {
-          font-size: 24px;
+          font-size: 26px;
           font-weight: bold;
           color: #4f46e5;
-          margin-bottom: 8px;
+          margin-bottom: 10px;
+          letter-spacing: -0.5px;
         }
-        
+
         .logo .highlight {
           color: #fbbf24;
         }
-        
+
         .therapist-name {
-          font-size: 28px;
+          font-size: 30px;
           font-weight: 700;
-          color: #1f2937;
-          margin-top: 12px;
-          margin-bottom: 8px;
+          color: #111827;
+          margin-top: 14px;
+          margin-bottom: 10px;
+          letter-spacing: -0.3px;
         }
-        
+
         .title {
-          font-size: 16px;
+          font-size: 15px;
           color: #6b7280;
           font-weight: 500;
+          margin-top: 4px;
         }
-        
+
         .metadata {
-          background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-          padding: 15px;
-          border-radius: 10px;
-          margin-bottom: 20px;
-          border-left: 5px solid #0ea5e9;
-          width: fit-content;
-        }
-        
-        .metadata-item {
-          font-size: 13px;
-          margin-bottom: 8px;
+          margin-bottom: 24px;
           display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          justify-content: flex-start;
+        }
+
+        .metadata-item {
+          display: flex;
+          gap: 8px;
           align-items: center;
+          font-size: 12px;
+          color: #374151;
+          padding: 10px 14px;
+          background: #f0f9ff;
+          border-radius: 8px;
+          border: 1px solid #e0f2fe;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
-        
-        .metadata-item:last-child {
-          margin-bottom: 0;
-        }
-        
+
         .metadata-label {
           font-weight: 600;
-          color: #0c4a6e;
-          margin-right: 8px;
+          color: #4f46e5;
         }
-        
+
         .metadata-value {
-          color: #0c4a6e;
-        }
-        
-        .question-section {
-          margin-bottom: 20px;
-        }
-        
-        .section-title {
-          font-size: 16px;
-          font-weight: 600;
           color: #1f2937;
+          font-weight: 500;
+        }
+
+        .question-section {
+          margin-top: 20px;
+          margin-bottom: 28px;
+        }
+
+        .section-title {
+          font-size: 13px;
+          font-weight: 700;
+          color: #111827;
           margin-bottom: 12px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
-        
+
         .question-content {
-          background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-          padding: 12px;
-          border-radius: 8px;
-          border-left: 5px solid #0ea5e9;
-          font-size: 14px;
-          font-weight: 500;
-          color: #0c4a6e;
-        }
-        
-        .answer-content {
-          font-size: 13px;
-          line-height: 1.6;
-          color: #1f2937;
-        }
-        
-        .answer-content p {
-          margin-bottom: 14px;
-          text-align: justify;
+          font-size: 15px;
           line-height: 1.7;
+          color: #1f2937;
+          padding: 14px 16px;
+          background: #f0f9ff;
+          border-radius: 8px;
+          border-left: 3px solid #4f46e5;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
-        
-        .answer-content p:last-child {
-          margin-bottom: 0;
+
+        .answer-section {
+          margin-top: 24px;
+          margin-bottom: 32px;
         }
-        
-        .answer-content strong {
-          font-weight: 600;
+
+        .answer-content {
+          margin-top: 12px;
+          font-size: 14px;
+          line-height: 1.75;
           color: #1f2937;
         }
-        
+
+        .answer-content strong {
+          font-weight: 700;
+          color: #111827;
+        }
+
         .answer-content em {
           font-style: italic;
           color: #6b7280;
         }
-        
+
         .content-section {
-          margin-bottom: 30px;
+          margin-bottom: 32px;
         }
-        
+
         .content-section-title {
-          font-size: 16px;
-          font-weight: 600;
-          color: #1f2937;
-          margin-bottom: 14px;
+          font-size: 15px;
+          font-weight: 700;
+          color: #111827;
+          margin-bottom: 16px;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
-          padding-left: 12px;
-          border-left: 4px solid #4f46e5;
+          letter-spacing: 0.8px;
+          padding-left: 14px;
+          border-left: 3px solid #4f46e5;
         }
-        
+
         .content-section-body {
-          padding-left: 16px;
-          margin-top: 10px;
+          padding-left: 18px;
+          margin-top: 12px;
         }
-        
+
         .content-section-body p {
           margin-bottom: 14px;
           text-align: justify;
           line-height: 1.7;
         }
-        
+
         .content-section-body p:last-child {
           margin-bottom: 0;
         }
-        
+
         .content-section-body ul {
           list-style: none;
           padding-left: 0;
           margin-bottom: 16px;
           margin-top: 8px;
         }
-        
+
         .content-section-body ul:last-child {
           margin-bottom: 0;
         }
-        
+
         .content-section-body li {
           margin-bottom: 14px;
           display: flex;
@@ -774,11 +776,11 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
           line-height: 1.8;
           text-align: justify;
         }
-        
+
         .content-section-body li:last-child {
           margin-bottom: 0;
         }
-        
+
         .content-section-body li::before {
           content: '✓';
           font-size: 16px;
@@ -788,18 +790,18 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
           flex-shrink: 0;
           margin-top: 2px;
         }
-        
+
         .content-section-body ol.numbered-questions {
           list-style: none;
           padding-left: 0;
           margin-bottom: 16px;
           margin-top: 8px;
         }
-        
+
         .content-section-body ol.numbered-questions:last-child {
           margin-bottom: 0;
         }
-        
+
         .content-section-body li.numbered-question {
           margin-bottom: 16px;
           font-style: italic;
@@ -808,11 +810,11 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
           padding-left: 24px;
           position: relative;
         }
-        
+
         .content-section-body li.numbered-question:last-child {
           margin-bottom: 0;
         }
-        
+
         .content-section-body li.numbered-question::before {
           content: attr(data-number);
           position: absolute;
@@ -821,17 +823,17 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
           color: #4f46e5;
           font-style: normal;
         }
-        
+
         /* Melhora espaçamento entre parágrafos */
         .content-section-body p + p {
           margin-top: 14px;
         }
-        
+
         /* Melhora quebras de linha dentro de parágrafos */
         .content-section-body p br {
           line-height: 1.8;
         }
-        
+
         /* Estilos para subseções de Lateralidade */
         .content-section-body p.lateralidade-subsection {
           font-weight: 600;
@@ -839,11 +841,11 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
           margin-top: 16px;
           margin-bottom: 8px;
         }
-        
+
         .content-section-body p.lateralidade-subsection:first-child {
           margin-top: 0;
         }
-        
+
         .content-section-body p.lateralidade-warning {
           background: #fef3c7;
           border-left: 4px solid #f59e0b;
@@ -853,7 +855,7 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
           font-weight: 600;
           color: #92400e;
         }
-        
+
         .content-section-body p.lateralidade-tip {
           background: #ecfdf5;
           border-left: 4px solid #10b981;
@@ -863,7 +865,7 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
           font-weight: 600;
           color: #065f46;
         }
-        
+
         .footer {
           margin-top: 30px;
           padding-top: 15px;
@@ -872,18 +874,18 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
           font-size: 10px;
           color: #6b7280;
         }
-        
+
         .footer-logo {
           font-size: 20px;
           font-weight: bold;
           color: #4f46e5;
           margin-bottom: 15px;
         }
-        
+
         .footer-logo .highlight {
           color: #fbbf24;
         }
-        
+
         .disclaimer {
           background: #fef3c7;
           border: 1px solid #f59e0b;
@@ -903,7 +905,7 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
         ${data.therapistName ? `<div class="therapist-name">${escapeHtml(data.therapistName)}</div>` : ''}
         <div class="title">${translations.reportTitle}</div>
       </div>
-      
+
       <div class="metadata">
         ${data.patientName ? `
         <div class="metadata-item">
@@ -920,21 +922,21 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
           <span class="metadata-value">${formattedTime}</span>
         </div>
       </div>
-      
+
       <div class="question-section">
         <div class="section-title">${translations.symptom}</div>
         <div class="question-content">
           ${escapeHtml(data.question)}
         </div>
       </div>
-      
+
       <div class="answer-section">
         <div class="section-title">💡 ${translations.response}</div>
         <div class="answer-content">
           ${processedAnswer || '<p>Conteúdo não disponível.</p>'}
         </div>
       </div>
-      
+
       <div class="footer">
         <div class="footer-logo">
           me<span class="highlight">DIZ</span>!
@@ -1053,26 +1055,26 @@ function formatDateForFilename(date: Date): string {
 
 /**
  * Normaliza escapes incorretos de JavaScript para HTML válido
- * Converte \" (escape JS) para &quot; (escape HTML) em atributos HTML
+ *
+ * ⚠️ IMPORTANTE:
+ * - NÃO faça \\" -> " (isso quebra atributos tipo srcdoc="...").
+ * - Em vez disso, converta para entidades HTML seguras (&quot;).
  */
 function normalizeHtmlEscapes(html: string): string {
   if (!html) return ''
-  
-  // Remove escapes de JavaScript incorretos em atributos HTML
-  // Ex: srcdoc=\"...\" -> srcdoc="..." (depois será removido pela sanitização)
-  // Mas primeiro normaliza para evitar quebra do HTML
+
   let normalized = html
-  
-  // Remove escapes de JavaScript em atributos (\" -> ")
-  // Isso previne que o navegador interprete \" como fim do atributo
-  normalized = normalized.replace(/\\"/g, '"')
-  
-  // Remove escapes de JavaScript em strings literais dentro de atributos
-  normalized = normalized.replace(/\\'/g, "'")
-  
-  // Remove escapes de barra dupla (\\ -> \)
+
+  // Converte aspas escapadas de JS para entidade HTML segura
+  // Ex: srcdoc=\"...\" vira srcdoc=&quot;...&quot; (não quebra o HTML)
+  normalized = normalized.replace(/\\"/g, '&quot;')
+
+  // Converte \' para &#39; (seguro)
+  normalized = normalized.replace(/\\'/g, '&#39;')
+
+  // Converte \\ para \ (mantém)
   normalized = normalized.replace(/\\\\/g, '\\')
-  
+
   return normalized
 }
 
