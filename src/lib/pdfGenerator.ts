@@ -99,6 +99,88 @@ export async function generateChatPDF(data: PDFData): Promise<void> {
 }
 
 /**
+ * Sanitiza HTML removendo iframes, embeds e outros elementos perigosos
+ * Especialmente importante para a seção Chave Terapêutica do [RE]Sentir
+ */
+function sanitizeHTMLForPDF(html: string): string {
+  if (!html) return ''
+  
+  // DEBUG: Log em desenvolvimento para rastrear conteúdo problemático
+  if (process.env.NODE_ENV === 'development') {
+    const hasIframe = /<iframe/i.test(html)
+    const hasEmbed = /<embed/i.test(html)
+    const hasObject = /<object/i.test(html)
+    const hasScript = /<script/i.test(html)
+    
+    if (hasIframe || hasEmbed || hasObject || hasScript) {
+      console.warn('[pdfGenerator] Conteúdo contém elementos perigosos antes da sanitização:', {
+        hasIframe,
+        hasEmbed,
+        hasObject,
+        hasScript,
+        preview: html.substring(0, 200)
+      })
+    }
+  }
+  
+  let sanitized = html
+  
+  // Remove iframes completamente (incluindo conteúdo dentro)
+  sanitized = sanitized.replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '')
+  
+  // Remove tags de fechamento de iframe soltas
+  sanitized = sanitized.replace(/<\/iframe>/gi, '')
+  
+  // Remove embeds
+  sanitized = sanitized.replace(/<embed[^>]*>/gi, '')
+  sanitized = sanitized.replace(/<\/embed>/gi, '')
+  
+  // Remove objects (que podem conter embeds)
+  sanitized = sanitized.replace(/<object[^>]*>[\s\S]*?<\/object>/gi, '')
+  sanitized = sanitized.replace(/<\/object>/gi, '')
+  
+  // Remove scripts
+  sanitized = sanitized.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+  sanitized = sanitized.replace(/<\/script>/gi, '')
+  
+  // Remove event handlers (onclick, onload, etc.)
+  sanitized = sanitized.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
+  sanitized = sanitized.replace(/\s*on\w+\s*=\s*[^\s>]*/gi, '')
+  
+  // Remove atributos sandbox e outros atributos perigosos de iframe
+  sanitized = sanitized.replace(/\s*sandbox\s*=\s*["'][^"']*["']/gi, '')
+  sanitized = sanitized.replace(/\s*sandbox\s*=\s*[^\s>]*/gi, '')
+  sanitized = sanitized.replace(/\s*allow\s*=\s*["'][^"']*["']/gi, '')
+  sanitized = sanitized.replace(/\s*allow\s*=\s*[^\s>]*/gi, '')
+  
+  // Remove links para iframes/embeds (src com iframe, embed, etc.)
+  sanitized = sanitized.replace(/src\s*=\s*["'][^"']*(iframe|embed|object)[^"']*["']/gi, '')
+  
+  // Remove qualquer texto literal que contenha tags HTML problemáticas
+  sanitized = sanitized.replace(/&lt;iframe[^&]*&gt;/gi, '')
+  sanitized = sanitized.replace(/&lt;\/iframe&gt;/gi, '')
+  sanitized = sanitized.replace(/&lt;embed[^&]*&gt;/gi, '')
+  sanitized = sanitized.replace(/&lt;object[^&]*&gt;/gi, '')
+  
+  // DEBUG: Log após sanitização
+  if (process.env.NODE_ENV === 'development') {
+    const stillHasIframe = /<iframe/i.test(sanitized)
+    const stillHasEmbed = /<embed/i.test(sanitized)
+    
+    if (stillHasIframe || stillHasEmbed) {
+      console.error('[pdfGenerator] AVISO: Ainda há elementos perigosos após sanitização!', {
+        stillHasIframe,
+        stillHasEmbed
+      })
+    } else if (html !== sanitized) {
+      console.log('[pdfGenerator] HTML sanitizado com sucesso - elementos perigosos removidos')
+    }
+  }
+  
+  return sanitized
+}
+
+/**
  * Processa conteúdo de Lateralidade com subseções especiais
  */
 function processLateralidadeContent(html: string): string {
@@ -243,6 +325,19 @@ function processMarkdownToHTML(content: string, _language: LanguageCode = 'pt-BR
     const isLateralidade = titleLower.includes('lateralidade') ||
                            titleLower.includes('laterality')
     
+    // Chave Terapêutica do [RE]Sentir precisa de sanitização especial
+    const isTherapeuticKey = titleLower.includes('chave terapêutica') ||
+                             titleLower.includes('therapeutic key') ||
+                             titleLower.includes('clave terapéutica') ||
+                             titleLower.includes('ressentir') ||
+                             titleLower.includes('refeeling')
+    
+    // DEBUG: Log para rastrear seção Chave Terapêutica
+    if (process.env.NODE_ENV === 'development' && isTherapeuticKey) {
+      console.log('[pdfGenerator] Processando seção Chave Terapêutica do [RE]Sentir')
+      console.log('[pdfGenerator] Conteúdo original (primeiros 300 chars):', section.content.substring(0, 300))
+    }
+    
     // Todas as outras seções podem ter listas (incluindo Chave Terapêutica, Símbolos Biológicos, Fases, etc.)
     const allowLists = !isParagraphOnly
     
@@ -252,6 +347,21 @@ function processMarkdownToHTML(content: string, _language: LanguageCode = 'pt-BR
     // Tratamento especial para Lateralidade: formata subseções
     if (isLateralidade) {
       processedContent = processLateralidadeContent(processedContent)
+    }
+    
+    // CRÍTICO: Sanitização especial para Chave Terapêutica do [RE]Sentir
+    // Remove iframes, embeds e qualquer HTML perigoso
+    if (isTherapeuticKey) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[pdfGenerator] Aplicando sanitização na seção Chave Terapêutica')
+        console.log('[pdfGenerator] Conteúdo antes da sanitização (primeiros 300 chars):', processedContent.substring(0, 300))
+      }
+      
+      processedContent = sanitizeHTMLForPDF(processedContent)
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[pdfGenerator] Conteúdo após sanitização (primeiros 300 chars):', processedContent.substring(0, 300))
+      }
     }
     
     html += `<div class="content-section">
@@ -276,8 +386,33 @@ function processMarkdownToHTML(content: string, _language: LanguageCode = 'pt-BR
 function processContentToHTML(text: string, allowLists: boolean = true): string {
   if (!text) return ''
   
+  // DEBUG: Verifica se há iframes/embeds no conteúdo antes de processar
+  if (process.env.NODE_ENV === 'development') {
+    const hasIframe = /<iframe/i.test(text) || /iframe/i.test(text)
+    const hasEmbed = /<embed/i.test(text) || /embed/i.test(text)
+    if (hasIframe || hasEmbed) {
+      console.warn('[pdfGenerator] processContentToHTML: Conteúdo contém iframe/embed antes do processamento:', {
+        hasIframe,
+        hasEmbed,
+        preview: text.substring(0, 200)
+      })
+    }
+  }
+  
+  // Remove iframes e embeds do texto ANTES de processar markdown
+  // Isso previne que sejam convertidos em HTML válido
+  const cleanedText = text
+    .replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '')
+    .replace(/<\/iframe>/gi, '')
+    .replace(/<embed[^>]*>/gi, '')
+    .replace(/<\/embed>/gi, '')
+    .replace(/<object[^>]*>[\s\S]*?<\/object>/gi, '')
+    .replace(/<\/object>/gi, '')
+    .replace(/sandbox\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/allow\s*=\s*["'][^"']*["']/gi, '')
+  
   // Primeiro processa negrito e itálico
-  let html = text
+  let html = cleanedText
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
   
