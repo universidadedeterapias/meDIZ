@@ -105,25 +105,31 @@ export async function generateChatPDF(data: PDFData): Promise<void> {
 function sanitizeHTMLForPDF(html: string): string {
   if (!html) return ''
   
+  // PRIMEIRO: Normaliza escapes incorretos (\" -> ")
+  // Isso previne que o HTML quebre por causa de escapes de JavaScript
+  const normalized = normalizeHtmlEscapes(html)
+  
   // DEBUG: Log em desenvolvimento para rastrear conteúdo problemático
   if (process.env.NODE_ENV === 'development') {
-    const hasIframe = /<iframe/i.test(html)
-    const hasEmbed = /<embed/i.test(html)
-    const hasObject = /<object/i.test(html)
-    const hasScript = /<script/i.test(html)
+    const hasIframe = /<iframe/i.test(normalized)
+    const hasEmbed = /<embed/i.test(normalized)
+    const hasObject = /<object/i.test(normalized)
+    const hasScript = /<script/i.test(normalized)
+    const hasIncorrectEscape = /\\"/.test(html)
     
-    if (hasIframe || hasEmbed || hasObject || hasScript) {
+    if (hasIframe || hasEmbed || hasObject || hasScript || hasIncorrectEscape) {
       console.warn('[pdfGenerator] Conteúdo contém elementos perigosos antes da sanitização:', {
         hasIframe,
         hasEmbed,
         hasObject,
         hasScript,
-        preview: html.substring(0, 200)
+        hasIncorrectEscape,
+        preview: normalized.substring(0, 200)
       })
     }
   }
   
-  let sanitized = html
+  let sanitized = normalized
   
   // Remove iframes completamente (incluindo conteúdo dentro)
   sanitized = sanitized.replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '')
@@ -399,9 +405,13 @@ function processContentToHTML(text: string, allowLists: boolean = true): string 
     }
   }
   
+  // PRIMEIRO: Normaliza escapes incorretos (\" -> ")
+  // Isso previne que escapes de JavaScript quebrem o HTML
+  const normalizedText = normalizeHtmlEscapes(text)
+  
   // Remove iframes e embeds do texto ANTES de processar markdown
   // Isso previne que sejam convertidos em HTML válido
-  const cleanedText = text
+  const cleanedText = normalizedText
     .replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '')
     .replace(/<\/iframe>/gi, '')
     .replace(/<embed[^>]*>/gi, '')
@@ -573,7 +583,11 @@ function processContentToHTML(text: string, allowLists: boolean = true): string 
 function createPDFHTML(data: PDFData, language: LanguageCode): string {
   const formattedDate = formatDate(data.timestamp)
   const formattedTime = formatTime(data.timestamp)
-  const processedAnswer = processMarkdownToHTML(data.answer, language)
+  let processedAnswer = processMarkdownToHTML(data.answer, language)
+  
+  // CRÍTICO: Normaliza escapes incorretos antes de inserir no HTML
+  // Isso previne que \" (escape JS) quebre o HTML quando inserido no template
+  processedAnswer = normalizeHtmlEscapes(processedAnswer)
 
   const translations = getTranslations(language)
 
@@ -1035,6 +1049,31 @@ function formatTime(date: Date): string {
  */
 function formatDateForFilename(date: Date): string {
   return date.toISOString().split('T')[0]
+}
+
+/**
+ * Normaliza escapes incorretos de JavaScript para HTML válido
+ * Converte \" (escape JS) para &quot; (escape HTML) em atributos HTML
+ */
+function normalizeHtmlEscapes(html: string): string {
+  if (!html) return ''
+  
+  // Remove escapes de JavaScript incorretos em atributos HTML
+  // Ex: srcdoc=\"...\" -> srcdoc="..." (depois será removido pela sanitização)
+  // Mas primeiro normaliza para evitar quebra do HTML
+  let normalized = html
+  
+  // Remove escapes de JavaScript em atributos (\" -> ")
+  // Isso previne que o navegador interprete \" como fim do atributo
+  normalized = normalized.replace(/\\"/g, '"')
+  
+  // Remove escapes de JavaScript em strings literais dentro de atributos
+  normalized = normalized.replace(/\\'/g, "'")
+  
+  // Remove escapes de barra dupla (\\ -> \)
+  normalized = normalized.replace(/\\\\/g, '\\')
+  
+  return normalized
 }
 
 /**
