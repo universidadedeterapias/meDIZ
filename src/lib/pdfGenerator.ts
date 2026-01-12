@@ -13,6 +13,61 @@ interface PDFData {
 }
 
 /**
+ * Encontra posições dos títulos de seção para evitar cortá-los
+ * Retorna array de posições Y (em pixels) dos títulos
+ */
+function findSectionTitles(element: HTMLElement): number[] {
+  const titles: number[] = []
+  
+  // Apenas títulos de seção (os mais importantes para não cortar)
+  const titleElements = element.querySelectorAll<HTMLElement>('.content-section-title')
+  
+  titleElements.forEach(el => {
+    const rect = el.getBoundingClientRect()
+    const containerRect = element.getBoundingClientRect()
+    const top = Math.max(0, rect.top - containerRect.top + element.scrollTop)
+    
+    if (top > 0) {
+      titles.push(top)
+    }
+  })
+  
+  return titles.sort((a, b) => a - b)
+}
+
+/**
+ * Encontra posições de parágrafos e elementos de texto para evitar cortá-los
+ * Retorna array de objetos com top e bottom de cada elemento
+ */
+function findTextElements(element: HTMLElement): Array<{ top: number; bottom: number }> {
+  const textElements: Array<{ top: number; bottom: number }> = []
+  
+  // Encontra parágrafos e itens de lista
+  const selectors = [
+    '.content-section-body > p',
+    '.content-section-body > li',
+    '.content-section-body > ul',
+    '.content-section-body > ol'
+  ]
+  
+  selectors.forEach(selector => {
+    const elements = element.querySelectorAll<HTMLElement>(selector)
+    elements.forEach(el => {
+      const rect = el.getBoundingClientRect()
+      const containerRect = element.getBoundingClientRect()
+      const top = Math.max(0, rect.top - containerRect.top + element.scrollTop)
+      const bottom = top + rect.height
+      
+      if (top > 0 && rect.height > 0) {
+        textElements.push({ top, bottom })
+      }
+    })
+  })
+  
+  return textElements.sort((a, b) => a.top - b.top)
+}
+
+/**
  * Gera PDF com o conteúdo da consulta do chat
  */
 export async function generateChatPDF(data: PDFData): Promise<void> {
@@ -24,8 +79,36 @@ export async function generateChatPDF(data: PDFData): Promise<void> {
     throw new Error('Answer está vazio - não é possível gerar PDF sem conteúdo')
   }
 
+  // #region agent log
+  // Verifica se há iframes no conteúdo original ANTES de qualquer processamento
+  const iframeInOriginalAnswer = /<iframe/i.test(data.answer)
+  const embedInOriginalAnswer = /<embed/i.test(data.answer)
+  if (iframeInOriginalAnswer || embedInOriginalAnswer) {
+    fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:78',message:'IFRAME IN ORIGINAL ANSWER',data:{iframeInOriginalAnswer,embedInOriginalAnswer,answerLength:data.answer.length,answerEnd:data.answer.substring(Math.max(0,data.answer.length-1000))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+  }
+  // #endregion
+
   const language = data.language || 'pt-BR'
-  const htmlContent = createPDFHTML(data, language)
+  let htmlContent = createPDFHTML(data, language)
+
+  // #region agent log
+  // Verifica se há iframes no HTML final antes de inserir no DOM
+  const iframeInFinalHTML = /<iframe/i.test(htmlContent)
+  const embedInFinalHTML = /<embed/i.test(htmlContent)
+  if (iframeInFinalHTML || embedInFinalHTML) {
+    fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:88',message:'IFRAME IN FINAL HTML - SANITIZING',data:{iframeInFinalHTML,embedInFinalHTML,htmlContentLength:htmlContent.length,htmlContentEnd:htmlContent.substring(Math.max(0,htmlContent.length-1000))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+    
+    // Sanitização adicional de emergência
+    htmlContent = htmlContent
+      .replace(/<iframe\b[^>]*\/?>/gi, '')
+      .replace(/<\/iframe\s*>/gi, '')
+      .replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '')
+      .replace(/<embed\b[^>]*\/?>/gi, '')
+      .replace(/<\/embed\s*>/gi, '')
+      .replace(/&lt;iframe[^&]*&gt;/gi, '')
+      .replace(/&lt;\/iframe&gt;/gi, '')
+  }
+  // #endregion
 
   // Cria elemento temporário FORA da viewport mas visível para html2canvas
   const tempDiv = document.createElement('div')
@@ -47,10 +130,41 @@ export async function generateChatPDF(data: PDFData): Promise<void> {
   tempDiv.innerHTML = htmlContent
   document.body.appendChild(tempDiv)
 
+  // #region agent log
+  // Verifica se há iframes no DOM após inserção (pode ser inserido dinamicamente)
+  const iframesInDOM = tempDiv.querySelectorAll('iframe')
+  const embedsInDOM = tempDiv.querySelectorAll('embed')
+  const iframeTextInDOM = tempDiv.innerHTML.includes('<iframe') || tempDiv.innerHTML.includes('iframe')
+  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:102',message:'DOM check after HTML insertion',data:{iframesInDOMCount:iframesInDOM.length,embedsInDOMCount:embedsInDOM.length,iframeTextInDOM,htmlContentLength:htmlContent.length,htmlContentPreview:htmlContent.substring(Math.max(0,htmlContent.length-500))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+  // #endregion
+
+  // Remove iframes do DOM se encontrados (defesa adicional)
+  iframesInDOM.forEach(iframe => {
+    iframe.remove()
+  })
+  embedsInDOM.forEach(embed => {
+    embed.remove()
+  })
+
   // Aguarda renderização completa
   await new Promise(resolve => requestAnimationFrame(resolve))
   await new Promise(resolve => requestAnimationFrame(resolve))
   await new Promise(resolve => setTimeout(resolve, 300))
+
+  // #region agent log
+  // Verifica novamente após renderização (pode ter sido inserido dinamicamente)
+  const iframesAfterRender = tempDiv.querySelectorAll('iframe')
+  const embedsAfterRender = tempDiv.querySelectorAll('embed')
+  // Verifica também no DOM global (pode estar fora do tempDiv)
+  const allIframesInDocument = document.querySelectorAll('iframe')
+  const allEmbedsInDocument = document.querySelectorAll('embed')
+  if (iframesAfterRender.length > 0 || embedsAfterRender.length > 0 || allIframesInDocument.length > 0 || allEmbedsInDocument.length > 0) {
+    fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:120',message:'IFRAMES FOUND AFTER RENDER',data:{iframesAfterRenderCount:iframesAfterRender.length,embedsAfterRenderCount:embedsAfterRender.length,allIframesInDocumentCount:allIframesInDocument.length,allEmbedsInDocumentCount:allEmbedsInDocument.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    // Remove novamente
+    iframesAfterRender.forEach(iframe => iframe.remove())
+    embedsAfterRender.forEach(embed => embed.remove())
+  }
+  // #endregion
 
   // Verifica se há conteúdo
   const hasContent = tempDiv.textContent && tempDiv.textContent.trim().length > 0
@@ -60,32 +174,261 @@ export async function generateChatPDF(data: PDFData): Promise<void> {
   }
 
   try {
-    // Usa html2canvas moderno para capturar o elemento
+    // Verificação final antes de capturar: remove qualquer iframe que possa ter sido inserido
+    const finalIframesCheck = tempDiv.querySelectorAll('iframe')
+    const finalEmbedsCheck = tempDiv.querySelectorAll('embed')
+    finalIframesCheck.forEach(iframe => iframe.remove())
+    finalEmbedsCheck.forEach(embed => embed.remove())
+    
+    // #region agent log
+    // Verifica também se há texto de iframe no innerHTML antes de capturar
+    const iframeTextBeforeCapture = tempDiv.innerHTML.includes('<iframe') || tempDiv.innerHTML.includes('iframe')
+    if (finalIframesCheck.length > 0 || finalEmbedsCheck.length > 0 || iframeTextBeforeCapture) {
+      fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:167',message:'IFRAMES BEFORE CAPTURE',data:{finalIframesCheckCount:finalIframesCheck.length,finalEmbedsCheckCount:finalEmbedsCheck.length,iframeTextBeforeCapture,innerHTMLPreview:tempDiv.innerHTML.substring(Math.max(0,tempDiv.innerHTML.length-1000))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+    }
+    // #endregion
+    
+    // Encontra posições dos títulos de seção antes de capturar
+    const sectionTitles = findSectionTitles(tempDiv)
+    
+    // Encontra elementos de texto para verificar cortes
+    const textElements = findTextElements(tempDiv)
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:180',message:'DOM analysis complete',data:{titlesCount:sectionTitles.length,textElementsCount:textElements.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+    
+    // Usa html2canvas com escala maior e configurações otimizadas
+    // IMPORTANTE: ignora elementos fora do elemento para evitar capturar iframes do DOM global
     const canvas = await html2canvas(tempDiv, {
       scale: 2,
       useCORS: true,
       backgroundColor: '#ffffff',
-      windowWidth: 1200,
-      windowHeight: Math.max(3000, tempDiv.scrollHeight + 200),
+      windowWidth: tempDiv.scrollWidth,
+      windowHeight: tempDiv.scrollHeight,
       scrollX: 0,
       scrollY: 0,
-      logging: false
+      logging: false,
+      ignoreElements: (element) => {
+        // Ignora qualquer iframe, embed ou object, mesmo que esteja dentro do tempDiv
+        return element.tagName === 'IFRAME' || 
+               element.tagName === 'EMBED' || 
+               element.tagName === 'OBJECT' ||
+               (element.closest && element.closest('iframe, embed, object') !== null)
+      }
     })
 
-    // Calcula dimensões do PDF (A4 em mm)
-    const pdfWidth = 210 // A4 width in mm
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+    // #region agent log
+    // Verifica se há iframes no DOM global após a captura (pode ter sido capturado pelo html2canvas)
+    const allIframesAfterCapture = document.querySelectorAll('iframe')
+    const allEmbedsAfterCapture = document.querySelectorAll('embed')
+    const allObjectsAfterCapture = document.querySelectorAll('object')
+    if (allIframesAfterCapture.length > 0 || allEmbedsAfterCapture.length > 0 || allObjectsAfterCapture.length > 0) {
+      fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:201',message:'IFRAMES IN GLOBAL DOM AFTER CAPTURE',data:{allIframesAfterCaptureCount:allIframesAfterCapture.length,allEmbedsAfterCaptureCount:allEmbedsAfterCapture.length,allObjectsAfterCaptureCount:allObjectsAfterCapture.length,canvasWidth:canvas.width,canvasHeight:canvas.height},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
+    }
+    // #endregion
 
-    // Cria PDF com jsPDF moderno
+    // Cria PDF com formato A4 padrão (portrait)
     const pdf = new jsPDF({
-      orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape',
+      orientation: 'portrait',
       unit: 'mm',
-      format: [pdfWidth, pdfHeight]
+      format: 'a4'
     })
 
-    // Adiciona a imagem do canvas ao PDF
-    const imgData = canvas.toDataURL('image/jpeg', 0.98)
-    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight)
+    const margin = 0 // Sem margem para usar toda a página
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const contentWidth = pageWidth - margin * 2
+    const contentHeight = pageHeight - margin * 2
+
+    // Converte mm -> px baseado na largura do canvas
+    const pxPerMm = canvas.width / contentWidth
+    const pageHeightPx = Math.floor(contentHeight * pxPerMm)
+
+    // Overlap para evitar gaps por arredondamento
+    const overlapPx = 4
+
+    // Converte posições dos títulos de pixels do DOM para pixels do canvas
+    // Considera a escala do html2canvas
+    const canvasScale = canvas.width / tempDiv.scrollWidth
+    const titlesInPx = sectionTitles.map(px => px * canvasScale)
+    
+    // Converte elementos de texto para pixels do canvas
+    const textElementsInPx = textElements.map(({ top, bottom }) => ({
+      top: top * canvasScale,
+      bottom: bottom * canvasScale
+    }))
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:114',message:'PDF generation start',data:{canvasHeight:canvas.height,canvasWidth:canvas.width,pageHeightPx,pxPerMm,overlapPx,titlesCount:titlesInPx.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+
+    let yPx = 0
+    let page = 0
+
+    while (yPx < canvas.height) {
+      const remainingPx = canvas.height - yPx
+      const pageEndPx = yPx + pageHeightPx
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:129',message:'Page loop start',data:{page,yPx,remainingPx,pageEndPx,pageHeightPx},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+
+      // Verifica se algum título seria cortado nesta página
+      let adjustedHeightPx = pageHeightPx
+
+      for (const titlePx of titlesInPx) {
+        // Se o título começa nesta página mas está muito próximo do final
+        if (titlePx > yPx && titlePx < pageEndPx) {
+          const spaceAfterTitlePx = pageEndPx - titlePx
+          const spaceAfterTitleMm = spaceAfterTitlePx / pxPerMm
+          
+          // Se há menos de 30mm após o título, quebra antes dele
+          if (spaceAfterTitleMm < 30) {
+            const breakBeforeTitlePx = titlePx - yPx
+            const breakBeforeTitleMm = breakBeforeTitlePx / pxPerMm
+            
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:145',message:'Title protection triggered',data:{titlePx,spaceAfterTitleMm,breakBeforeTitleMm,adjustedHeightPx},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
+            
+            // Só ajusta se houver espaço suficiente (pelo menos 50mm na página)
+            if (breakBeforeTitleMm >= 50) {
+              adjustedHeightPx = breakBeforeTitlePx - (5 * pxPerMm)
+              break
+            }
+          }
+        }
+      }
+
+      // Verifica se algum elemento de texto seria cortado
+      const sliceEndPx = yPx + adjustedHeightPx
+      let textCutDetected = false
+      let cutElementInfo = null
+      
+      for (const textElem of textElementsInPx) {
+        // Verifica se o elemento está sendo cortado no meio
+        // Elemento está sendo cortado se: começa antes do fim da fatia E termina depois do fim da fatia
+        const elementStartsBeforeSliceEnd = textElem.top < sliceEndPx
+        const elementEndsAfterSliceEnd = textElem.bottom > sliceEndPx
+        const elementStartsInThisPage = textElem.top >= yPx
+        const elementFitsCompletely = textElem.top >= yPx && textElem.bottom <= sliceEndPx
+        const isCut = elementStartsBeforeSliceEnd && elementEndsAfterSliceEnd && !elementFitsCompletely && elementStartsInThisPage
+        
+        // #region agent log
+        if (elementStartsBeforeSliceEnd && elementEndsAfterSliceEnd) {
+          fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:220',message:'Text element check',data:{textElemTop:textElem.top,textElemBottom:textElem.bottom,yPx,sliceEndPx,elementStartsInThisPage,elementFitsCompletely,isCut},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
+        }
+        // #endregion
+        
+        if (isCut) {
+          textCutDetected = true
+          cutElementInfo = {
+            top: textElem.top,
+            bottom: textElem.bottom,
+            sliceEnd: sliceEndPx,
+            cutAt: sliceEndPx - textElem.top,
+            elementHeight: textElem.bottom - textElem.top
+          }
+          // Ajusta para quebrar antes do elemento (com margem de segurança)
+          const breakBeforePx = textElem.top - yPx
+          const minPageHeight = Math.floor(50 * pxPerMm)
+          if (breakBeforePx >= minPageHeight) {
+            adjustedHeightPx = breakBeforePx - (2 * pxPerMm) // Pequena margem
+          }
+          break
+        }
+      }
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:180',message:'Text cut detection',data:{textCutDetected,cutElementInfo,adjustedHeightPxBefore:pageHeightPx,adjustedHeightPxAfter:adjustedHeightPx},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
+
+      // Garante altura mínima e não ultrapassa o restante
+      let sliceHeightPx = Math.max(
+        Math.floor(50 * pxPerMm), // Mínimo 50mm
+        Math.min(adjustedHeightPx, remainingPx)
+      )
+
+      // Verifica novamente se algum elemento seria cortado com a altura final calculada
+      const finalSliceEndPx = yPx + sliceHeightPx
+      for (const textElem of textElementsInPx) {
+        // Verifica se o elemento está sendo cortado no meio
+        // Elemento está sendo cortado se:
+        // 1. Começa dentro ou antes da fatia atual (top < finalSliceEndPx)
+        // 2. Termina depois do fim da fatia (bottom > finalSliceEndPx)
+        // 3. Não está completamente dentro da fatia (não cabe inteiro)
+        const elementStartsInOrBeforeSlice = textElem.top < finalSliceEndPx
+        const elementEndsAfterSlice = textElem.bottom > finalSliceEndPx
+        const elementFitsCompletely = textElem.top >= yPx && textElem.bottom <= finalSliceEndPx
+        const isCut = elementStartsInOrBeforeSlice && elementEndsAfterSlice && !elementFitsCompletely
+        
+        if (isCut) {
+          // Ajusta para quebrar antes do elemento (se ele começa nesta página)
+          // ou no início do elemento (se ele começa antes)
+          const elementStartInThisPage = textElem.top >= yPx
+          const breakBeforePx = elementStartInThisPage 
+            ? textElem.top - yPx  // Quebra antes do elemento
+            : 0  // Se elemento começa antes, não podemos quebrar (já está na página)
+          
+          const minPageHeight = Math.floor(50 * pxPerMm)
+          if (elementStartInThisPage && breakBeforePx >= minPageHeight) {
+            const oldSliceHeightPx = sliceHeightPx
+            sliceHeightPx = breakBeforePx - (2 * pxPerMm) // Pequena margem
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:270',message:'Final text cut adjustment',data:{textElemTop:textElem.top,textElemBottom:textElem.bottom,yPx,finalSliceEndPx,breakBeforePx,oldSliceHeightPx,newSliceHeightPx:sliceHeightPx,elementStartInThisPage},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
+            break
+          }
+        }
+      }
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:210',message:'Slice calculation final',data:{sliceHeightPx,adjustedHeightPx,remainingPx,yPx,sliceEndPx:yPx+sliceHeightPx},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+
+      // Cria um canvas "fatia" para esta página
+      const sliceCanvas = document.createElement('canvas')
+      sliceCanvas.width = canvas.width
+      sliceCanvas.height = sliceHeightPx
+
+      const ctx = sliceCanvas.getContext('2d')
+      if (ctx) {
+        // Preenche fundo branco
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height)
+
+        // Desenha só o trecho do canvas original
+        ctx.drawImage(
+          canvas,
+          0, yPx, canvas.width, sliceHeightPx,
+          0, 0, canvas.width, sliceHeightPx
+        )
+
+        const sliceImg = sliceCanvas.toDataURL('image/jpeg', 0.95)
+
+        if (page > 0) {
+          pdf.addPage()
+        }
+
+        // Adiciona a fatia no PDF
+        const sliceHeightMm = sliceHeightPx / pxPerMm
+        pdf.addImage(sliceImg, 'JPEG', margin, margin, contentWidth, sliceHeightMm)
+      }
+
+      // #region agent log
+      const nextYPx = yPx + sliceHeightPx - overlapPx
+      fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:192',message:'Page advance calculation',data:{currentYPx:yPx,nextYPx,overlapPx,pageHeightPx,sliceHeightPx,gap:nextYPx-(yPx+sliceHeightPx)},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+
+      // Avança usando a altura real da fatia (não pageHeightPx) com overlap para evitar gaps
+      yPx += sliceHeightPx - overlapPx
+      page++
+    }
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:196',message:'PDF generation complete',data:{totalPages:page,canvasHeight:canvas.height},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
 
     // Salva o PDF
     const filename = `${getFilenamePrefix(language)}-${formatDateForFilename(data.timestamp)}.pdf`
@@ -108,14 +451,20 @@ function sanitizeHTMLForPDF(html: string): string {
   // PRIMEIRO: normaliza escapes de string JS para entidades HTML (seguro)
   const normalized = normalizeHtmlEscapes(html)
 
-  // DEBUG: Log em desenvolvimento para rastrear conteúdo problemático
-  if (process.env.NODE_ENV === 'development') {
-    const hasIframe = /<iframe/i.test(normalized)
-    const hasEmbed = /<embed/i.test(normalized)
-    const hasObject = /<object/i.test(normalized)
-    const hasScript = /<script/i.test(normalized)
-    const hasIncorrectEscape = /\\"/.test(html)
+  // Verifica conteúdo problemático (funciona em produção também)
+  const hasIframe = /<iframe/i.test(normalized)
+  const hasEmbed = /<embed/i.test(normalized)
+  const hasObject = /<object/i.test(normalized)
+  const hasScript = /<script/i.test(normalized)
+  const hasIncorrectEscape = /\\"/.test(html)
 
+  // #region agent log
+  if (hasIframe || hasEmbed || hasObject || hasScript || hasIncorrectEscape) {
+    fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:365',message:'Dangerous content before sanitization',data:{hasIframe,hasEmbed,hasObject,hasScript,hasIncorrectEscape,preview:normalized.substring(0,200),htmlLength:html.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+  }
+  // #endregion
+
+  if (process.env.NODE_ENV === 'development') {
     if (hasIframe || hasEmbed || hasObject || hasScript || hasIncorrectEscape) {
       console.warn('[pdfGenerator] Conteúdo contém elementos perigosos antes da sanitização:', {
         hasIframe,
@@ -171,11 +520,17 @@ function sanitizeHTMLForPDF(html: string): string {
   sanitized = sanitized.replace(/&lt;embed[^&]*&gt;/gi, '')
   sanitized = sanitized.replace(/&lt;object[^&]*&gt;/gi, '')
 
-  // DEBUG: Log após sanitização
-  if (process.env.NODE_ENV === 'development') {
-    const stillHasIframe = /<iframe/i.test(sanitized)
-    const stillHasEmbed = /<embed/i.test(sanitized)
+  // Verifica se ainda há elementos perigosos após sanitização (funciona em produção)
+  const stillHasIframe = /<iframe/i.test(sanitized)
+  const stillHasEmbed = /<embed/i.test(sanitized)
 
+  // #region agent log
+  if (stillHasIframe || stillHasEmbed) {
+    fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:428',message:'Dangerous content AFTER sanitization',data:{stillHasIframe,stillHasEmbed,sanitizedLength:sanitized.length,htmlLength:html.length,preview:sanitized.substring(Math.max(0,sanitized.length-500))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+  }
+  // #endregion
+
+  if (process.env.NODE_ENV === 'development') {
     if (stillHasIframe || stillHasEmbed) {
       console.error('[pdfGenerator] AVISO: Ainda há elementos perigosos após sanitização!', {
         stillHasIframe,
@@ -599,10 +954,25 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>${translations.reportTitle}</title>
       <style>
+        @page {
+          size: A4 portrait;
+          margin: 0;
+        }
+        
+        @media print {
+          body {
+            width: 210mm;
+            height: 297mm;
+            margin: 0;
+            padding: 20mm;
+          }
+        }
         * {
           margin: 0;
           padding: 0;
           box-sizing: border-box;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
         }
 
         body {
@@ -612,6 +982,11 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
           background: white;
           font-size: 14px;
           padding: 20px;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          word-break: break-word;
+          max-width: 210mm;
+          margin: 0 auto;
         }
 
         .header {
@@ -703,6 +1078,9 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
           border-radius: 8px;
           border-left: 3px solid #4f46e5;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          word-break: break-word;
         }
 
         .answer-section {
@@ -715,20 +1093,29 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
           font-size: 14px;
           line-height: 1.75;
           color: #1f2937;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          word-break: break-word;
         }
 
         .answer-content strong {
           font-weight: 700;
           color: #111827;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
         }
 
         .answer-content em {
           font-style: italic;
           color: #6b7280;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
         }
 
         .content-section {
           margin-bottom: 32px;
+          page-break-inside: avoid;
+          break-inside: avoid;
         }
 
         .content-section-title {
@@ -745,12 +1132,20 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
         .content-section-body {
           padding-left: 18px;
           margin-top: 12px;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          word-break: break-word;
         }
 
         .content-section-body p {
           margin-bottom: 14px;
           text-align: justify;
           line-height: 1.7;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          word-break: break-word;
+          page-break-inside: avoid;
+          break-inside: avoid;
         }
 
         .content-section-body p:last-child {
@@ -762,6 +1157,8 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
           padding-left: 0;
           margin-bottom: 16px;
           margin-top: 8px;
+          page-break-inside: avoid;
+          break-inside: avoid;
         }
 
         .content-section-body ul:last-child {
@@ -775,6 +1172,11 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
           gap: 8px;
           line-height: 1.8;
           text-align: justify;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          word-break: break-word;
+          page-break-inside: avoid;
+          break-inside: avoid;
         }
 
         .content-section-body li:last-child {
@@ -809,6 +1211,9 @@ function createPDFHTML(data: PDFData, language: LanguageCode): string {
           line-height: 1.8;
           padding-left: 24px;
           position: relative;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          word-break: break-word;
         }
 
         .content-section-body li.numbered-question:last-child {

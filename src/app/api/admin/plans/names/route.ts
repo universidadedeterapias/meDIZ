@@ -13,11 +13,13 @@ export async function GET() {
     const session = await auth()
 
     if (!session?.user?.email || !session.user.email.includes('@mediz.com')) {
-      console.log('[ADMIN PLANS NAMES API] ❌ Não autorizado:', session?.user?.email)
+      // Não logar email por segurança
+      console.log('[ADMIN PLANS NAMES API] ❌ Não autorizado, User ID:', session?.user?.id)
       return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
     }
 
-    console.log('[ADMIN PLANS NAMES API] ✅ Autenticado:', session.user.email)
+    // Não logar email por segurança
+    console.log('[ADMIN PLANS NAMES API] ✅ Autenticado, User ID:', session.user.id)
 
     // 1. Buscar TODOS os planos cadastrados no banco (independente de terem assinaturas)
     const allPlansInDatabase = await prisma.plan.findMany({

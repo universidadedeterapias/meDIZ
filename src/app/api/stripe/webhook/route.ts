@@ -30,7 +30,9 @@ async function buffer(readable: ReadableStream<Uint8Array> | null): Promise<Buff
 }
 
 export async function POST(req: NextRequest) {
-  console.log('🔔 [STRIPE WEBHOOK] Webhook recebido')
+  const webhookStartTime = Date.now()
+  console.log('🔔 [STRIPE WEBHOOK] ========== WEBHOOK RECEBIDO ==========')
+  console.log('🔔 [STRIPE WEBHOOK] Timestamp:', new Date().toISOString())
   
   // 1) Verifica assinatura do Stripe
   const buf = await buffer(req.body)
@@ -40,6 +42,8 @@ export async function POST(req: NextRequest) {
   try {
     event = stripe.webhooks.constructEvent(buf, sig, webhookSecret)
     console.log('✅ [STRIPE WEBHOOK] Assinatura verificada. Evento:', event.type)
+    console.log('✅ [STRIPE WEBHOOK] Event ID:', event.id)
+    console.log('✅ [STRIPE WEBHOOK] Event Created:', new Date(event.created * 1000).toISOString())
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     console.error('⚠️ [STRIPE WEBHOOK] Webhook signature verification failed.', err.message)
@@ -50,8 +54,16 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
-        console.log('📦 [STRIPE WEBHOOK] Processando subscription:', event.type)
+        console.log('📦 [STRIPE WEBHOOK] ========== PROCESSANDO SUBSCRIPTION ==========')
+        console.log('📦 [STRIPE WEBHOOK] Tipo de evento:', event.type)
         const sub = event.data.object as Stripe.Subscription
+        
+        // Validar se há items na assinatura
+        if (!sub.items || !sub.items.data || sub.items.data.length === 0) {
+          console.error('❌ [STRIPE WEBHOOK] Assinatura sem items:', sub.id)
+          break
+        }
+        
         const item = sub.items.data[0] as Stripe.SubscriptionItem
 
         // Acessar propriedades de período de forma segura
@@ -65,8 +77,22 @@ export async function POST(req: NextRequest) {
         console.log('🔍 [STRIPE WEBHOOK] Subscription ID:', sub.id)
         console.log('🔍 [STRIPE WEBHOOK] Customer ID:', sub.customer)
         console.log('🔍 [STRIPE WEBHOOK] Status:', sub.status)
-        console.log('🔍 [STRIPE WEBHOOK] Current Period Start:', periodStart || 'N/A')
-        console.log('🔍 [STRIPE WEBHOOK] Current Period End:', periodEnd || 'N/A')
+        console.log('🔍 [STRIPE WEBHOOK] Cancel at period end:', sub.cancel_at_period_end)
+        console.log('🔍 [STRIPE WEBHOOK] Current Period Start (timestamp):', periodStart || 'N/A')
+        console.log('🔍 [STRIPE WEBHOOK] Current Period End (timestamp):', periodEnd || 'N/A')
+        if (periodStart) {
+          console.log('🔍 [STRIPE WEBHOOK] Current Period Start (date):', new Date(periodStart * 1000).toISOString())
+        }
+        if (periodEnd) {
+          console.log('🔍 [STRIPE WEBHOOK] Current Period End (date):', new Date(periodEnd * 1000).toISOString())
+        }
+        
+        // Log adicional para debug de renovação
+        const now = Math.floor(Date.now() / 1000)
+        if (periodEnd) {
+          const daysUntilRenewal = Math.floor((periodEnd - now) / 86400)
+          console.log('🔍 [STRIPE WEBHOOK] Dias até renovação:', daysUntilRenewal)
+        }
 
         // 1a) Busca o usuário pelo stripeCustomerId
         const customerId = sub.customer as string
@@ -145,6 +171,23 @@ export async function POST(req: NextRequest) {
         console.log('📅 [STRIPE WEBHOOK] Period Start:', periodStartDate.toISOString())
         console.log('📅 [STRIPE WEBHOOK] Period End:', periodEndDate.toISOString())
 
+        // Buscar assinatura existente para comparar períodos (debug de renovação)
+        const existingSubscription = await prisma.subscription.findUnique({
+          where: { stripeSubscriptionId: sub.id }
+        })
+        
+        if (existingSubscription) {
+          console.log('🔄 [STRIPE WEBHOOK] Assinatura existente encontrada. Comparando períodos:')
+          console.log('🔄 [STRIPE WEBHOOK] Período antigo - Start:', existingSubscription.currentPeriodStart.toISOString())
+          console.log('🔄 [STRIPE WEBHOOK] Período antigo - End:', existingSubscription.currentPeriodEnd.toISOString())
+          console.log('🔄 [STRIPE WEBHOOK] Período novo - Start:', periodStartDate.toISOString())
+          console.log('🔄 [STRIPE WEBHOOK] Período novo - End:', periodEndDate.toISOString())
+          const isRenewal = periodStartDate.getTime() > existingSubscription.currentPeriodStart.getTime()
+          console.log('🔄 [STRIPE WEBHOOK] É renovação?', isRenewal)
+        } else {
+          console.log('🆕 [STRIPE WEBHOOK] Nova assinatura - será criada no banco')
+        }
+
         const subscription = await prisma.subscription.upsert({
           where: { stripeSubscriptionId: sub.id },
           create: {
@@ -172,6 +215,7 @@ export async function POST(req: NextRequest) {
           isExpired: subscription.currentPeriodEnd < new Date(),
           isActive: ['active', 'ACTIVE', 'cancel_at_period_end'].includes(subscription.status.toLowerCase()) && subscription.currentPeriodEnd >= new Date()
         })
+        console.log('✅ [STRIPE WEBHOOK] ========== SUBSCRIPTION PROCESSADA ==========')
         break
       }
 
@@ -188,24 +232,207 @@ export async function POST(req: NextRequest) {
         break
       }
 
-      // Você pode estender com outros eventos, ex:
-      // case 'invoice.payment_succeeded': { ... }
-      // case 'invoice.payment_failed':  { ... }
+      case 'invoice.payment_succeeded': {
+        console.log('💰 [STRIPE WEBHOOK] ========== PROCESSANDO INVOICE.PAYMENT_SUCCEEDED ==========')
+        console.log('💰 [STRIPE WEBHOOK] Este é o evento PRINCIPAL de renovação de assinatura')
+        const invoice = event.data.object as Stripe.Invoice
+        
+        console.log('🔍 [STRIPE WEBHOOK] Invoice ID:', invoice.id)
+        console.log('🔍 [STRIPE WEBHOOK] Customer ID:', invoice.customer)
+        
+        // Acessar subscription de forma segura (pode ser string ou objeto expandido)
+        const subscriptionRef = (invoice as unknown as { subscription?: string | Stripe.Subscription | null }).subscription
+        console.log('🔍 [STRIPE WEBHOOK] Subscription ID:', subscriptionRef || 'N/A')
+        console.log('🔍 [STRIPE WEBHOOK] Amount Paid:', invoice.amount_paid)
+        console.log('🔍 [STRIPE WEBHOOK] Status:', invoice.status)
+        
+        // Verificar se é uma renovação de assinatura (não uma primeira compra)
+        if (!subscriptionRef) {
+          console.log('ℹ️ [STRIPE WEBHOOK] Invoice não está associado a uma assinatura (pode ser pagamento único)')
+          break
+        }
+
+        // Buscar a assinatura atualizada no Stripe para obter os novos períodos
+        const subscriptionId = typeof subscriptionRef === 'string' 
+          ? subscriptionRef 
+          : subscriptionRef.id
+        
+        console.log('🔍 [STRIPE WEBHOOK] Buscando assinatura no Stripe:', subscriptionId)
+        let subscription: Stripe.Subscription
+        try {
+          subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+            expand: ['items.data.price.product']
+          })
+          console.log('✅ [STRIPE WEBHOOK] Assinatura recuperada do Stripe')
+        } catch (stripeError) {
+          console.error('❌ [STRIPE WEBHOOK] Erro ao buscar assinatura no Stripe:', stripeError)
+          break
+        }
+
+        // Extrair períodos atualizados
+        const periodStart = (subscription as unknown as { current_period_start: number }).current_period_start
+        const periodEnd = (subscription as unknown as { current_period_end: number }).current_period_end
+        const periodStartDate = new Date(periodStart * 1000)
+        const periodEndDate = new Date(periodEnd * 1000)
+
+        console.log('📅 [STRIPE WEBHOOK] Períodos atualizados da assinatura:')
+        console.log('📅 [STRIPE WEBHOOK] Period Start:', periodStartDate.toISOString())
+        console.log('📅 [STRIPE WEBHOOK] Period End:', periodEndDate.toISOString())
+
+        // Buscar usuário
+        const customerId = typeof invoice.customer === 'string' 
+          ? invoice.customer 
+          : invoice.customer.id
+        
+        console.log('🔍 [STRIPE WEBHOOK] Buscando usuário com stripeCustomerId:', customerId)
+        const user = await prisma.user.findUnique({
+          where: { stripeCustomerId: customerId }
+        })
+        
+        if (!user) {
+          console.warn(`⚠️ [STRIPE WEBHOOK] Usuário Stripe ${customerId} não encontrado no DB`)
+          break
+        }
+        console.log('✅ [STRIPE WEBHOOK] Usuário encontrado:', user.id)
+
+        // Buscar plano
+        if (!subscription.items || !subscription.items.data || subscription.items.data.length === 0) {
+          console.error('❌ [STRIPE WEBHOOK] Assinatura sem items:', subscription.id)
+          break
+        }
+        
+        const item = subscription.items.data[0]
+        const priceId = typeof item.price === 'string' ? item.price : item.price.id
+        console.log('🔍 [STRIPE WEBHOOK] Buscando plano com stripePriceId:', priceId)
+        
+        const plan = await prisma.plan.findUnique({
+          where: { stripePriceId: priceId }
+        })
+        
+        if (!plan) {
+          console.warn(`⚠️ [STRIPE WEBHOOK] Plano Stripe ${priceId} não encontrado no DB`)
+          console.warn(`⚠️ [STRIPE WEBHOOK] Continuando mesmo assim - assinatura será atualizada sem plano`)
+          // Não quebrar aqui - podemos atualizar a assinatura mesmo sem plano se já existir
+          const existingSub = await prisma.subscription.findUnique({
+            where: { stripeSubscriptionId: subscription.id }
+          })
+          if (existingSub) {
+            // Atualizar apenas os períodos se a assinatura já existe
+            await prisma.subscription.update({
+              where: { stripeSubscriptionId: subscription.id },
+              data: {
+                currentPeriodStart: periodStartDate,
+                currentPeriodEnd: periodEndDate,
+                status: subscription.cancel_at_period_end ? 'cancel_at_period_end' : subscription.status
+              }
+            })
+            console.log('✅ [STRIPE WEBHOOK] Períodos atualizados mesmo sem plano encontrado')
+          }
+          break
+        }
+        console.log('✅ [STRIPE WEBHOOK] Plano encontrado:', plan.id, plan.name)
+
+        // Determinar status
+        const newStatus = subscription.cancel_at_period_end
+          ? 'cancel_at_period_end'
+          : subscription.status
+        console.log('📝 [STRIPE WEBHOOK] Status a gravar:', newStatus)
+
+        // Buscar assinatura existente para verificar se é renovação
+        const existingSubscription = await prisma.subscription.findUnique({
+          where: { stripeSubscriptionId: subscription.id }
+        })
+
+        if (existingSubscription) {
+          console.log('🔄 [STRIPE WEBHOOK] Assinatura existente encontrada - ATUALIZANDO com novos períodos')
+          console.log('🔄 [STRIPE WEBHOOK] Período antigo - End:', existingSubscription.currentPeriodEnd.toISOString())
+          console.log('🔄 [STRIPE WEBHOOK] Período novo - End:', periodEndDate.toISOString())
+          const isRenewal = periodEndDate.getTime() > existingSubscription.currentPeriodEnd.getTime()
+          console.log('🔄 [STRIPE WEBHOOK] É renovação?', isRenewal)
+        } else {
+          console.log('🆕 [STRIPE WEBHOOK] Assinatura não encontrada - será criada')
+        }
+
+        // Atualizar ou criar assinatura com os novos períodos
+        const updatedSubscription = await prisma.subscription.upsert({
+          where: { stripeSubscriptionId: subscription.id },
+          create: {
+            userId: user.id,
+            planId: plan.id,
+            stripeSubscriptionId: subscription.id,
+            status: newStatus,
+            currentPeriodStart: periodStartDate,
+            currentPeriodEnd: periodEndDate
+          },
+          update: {
+            status: newStatus,
+            currentPeriodStart: periodStartDate,
+            currentPeriodEnd: periodEndDate
+          }
+        })
+
+        console.log('✅ [STRIPE WEBHOOK] Assinatura atualizada no DB após pagamento:', {
+          subscriptionId: updatedSubscription.id,
+          status: updatedSubscription.status,
+          currentPeriodStart: updatedSubscription.currentPeriodStart.toISOString(),
+          currentPeriodEnd: updatedSubscription.currentPeriodEnd.toISOString(),
+          isExpired: updatedSubscription.currentPeriodEnd < new Date()
+        })
+        console.log('✅ [STRIPE WEBHOOK] ========== INVOICE.PAYMENT_SUCCEEDED PROCESSADO ==========')
+        break
+      }
+
+      case 'invoice.payment_failed': {
+        console.log('❌ [STRIPE WEBHOOK] ========== PROCESSANDO INVOICE.PAYMENT_FAILED ==========')
+        const invoice = event.data.object as Stripe.Invoice
+        console.log('🔍 [STRIPE WEBHOOK] Invoice ID:', invoice.id)
+        console.log('🔍 [STRIPE WEBHOOK] Customer ID:', invoice.customer)
+        
+        // Acessar subscription de forma segura
+        const subscriptionRef = (invoice as unknown as { subscription?: string | Stripe.Subscription | null }).subscription
+        console.log('🔍 [STRIPE WEBHOOK] Subscription ID:', subscriptionRef || 'N/A')
+        console.log('🔍 [STRIPE WEBHOOK] Amount Due:', invoice.amount_due)
+        console.log('⚠️ [STRIPE WEBHOOK] Pagamento falhou - assinatura pode estar em past_due')
+        
+        if (subscriptionRef) {
+          const subscriptionId = typeof subscriptionRef === 'string' 
+            ? subscriptionRef 
+            : subscriptionRef.id
+          
+          // Atualizar status da assinatura para past_due
+          await prisma.subscription.updateMany({
+            where: { stripeSubscriptionId: subscriptionId },
+            data: { status: 'past_due' }
+          })
+          console.log('✅ [STRIPE WEBHOOK] Status da assinatura atualizado para past_due')
+        }
+        console.log('✅ [STRIPE WEBHOOK] ========== INVOICE.PAYMENT_FAILED PROCESSADO ==========')
+        break
+      }
 
       default:
         console.log('ℹ️ [STRIPE WEBHOOK] Evento não tratado:', event.type)
+        console.log('ℹ️ [STRIPE WEBHOOK] Event data keys:', Object.keys(event.data.object || {}))
         // Eventos que você não quer tratar explicitamente
         break
     }
 
+    const duration = Date.now() - webhookStartTime
     console.log('✅ [STRIPE WEBHOOK] Webhook processado com sucesso')
+    console.log('⏱️ [STRIPE WEBHOOK] Tempo total de processamento:', duration, 'ms')
+    console.log('✅ [STRIPE WEBHOOK] ========== FIM DO WEBHOOK ==========')
     return NextResponse.json({ received: true })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
+    const duration = Date.now() - webhookStartTime
+    console.error('❌ [STRIPE WEBHOOK] ========== ERRO NO WEBHOOK ==========')
     console.error('❌ [STRIPE WEBHOOK] Erro ao processar webhook:', err)
     if (err instanceof Error) {
+      console.error('❌ [STRIPE WEBHOOK] Mensagem:', err.message)
       console.error('❌ [STRIPE WEBHOOK] Stack trace:', err.stack)
     }
+    console.error('⏱️ [STRIPE WEBHOOK] Tempo até erro:', duration, 'ms')
+    console.error('❌ [STRIPE WEBHOOK] ========== FIM DO ERRO ==========')
     return NextResponse.json(
       { error: 'Webhook handler failed' },
       { status: 500 }

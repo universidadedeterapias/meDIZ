@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Geração de PDF</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+    <h1>Teste de Geração de PDF - Continuação entre Páginas</h1>
+    <button id="testBtn" onclick="testPDF()">Gerar PDF de Teste</button>
+    <div id="status"></div>
+
+    <script>
+        // Simula a função generateChatPDF com dados de teste
+        async function testPDF() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = 'Gerando PDF...';
+            
+            try {
+                // Dados de teste com conteúdo longo para forçar múltiplas páginas
+                const testData = {
+                    question: 'Dor nas costas',
+                    answer: `
+**Contexto Geral**
+
+A dor nas costas é uma condição muito comum que afeta milhões de pessoas em todo o mundo. Pode ser causada por uma variedade de fatores, incluindo tensão muscular, lesões, problemas de postura, ou condições médicas subjacentes. A dor pode variar de leve a severa e pode ser aguda ou crônica.
+
+**Impacto Biológico**
+
+A dor nas costas pode ter um impacto significativo na qualidade de vida de uma pessoa. Pode limitar a mobilidade, interferir no sono, e afetar a capacidade de realizar atividades diárias. Em alguns casos, pode levar a problemas emocionais como ansiedade e depressão.
+
+**Símbolos Biológicos**
+
+- Tensão muscular na região lombar
+- Inflamação dos tecidos
+- Compressão nervosa
+- Degeneração dos discos intervertebrais
+
+**Conflito Emocional Subjacente**
+
+A dor nas costas frequentemente está relacionada a conflitos emocionais relacionados a suporte, responsabilidade e sobrecarga. Pode representar a sensação de estar "carregando o mundo nas costas" ou de não ter apoio suficiente.
+
+**Experiências comuns**
+
+- Sensação de peso ou pressão nas costas
+- Rigidez muscular
+- Dificuldade para se mover
+- Dor que piora com certas atividades
+
+**Padrões de comportamento**
+
+- Evitar atividades que causam dor
+- Mudanças na postura para compensar
+- Uso de medicamentos para alívio da dor
+- Busca por tratamentos alternativos
+
+**Impacto Transgeracional**
+
+Padrões de postura e movimento podem ser transmitidos através de gerações. Além disso, crenças familiares sobre dor e sofrimento podem influenciar como uma pessoa lida com a dor nas costas.
+
+**Lateralidade**
+
+- Lado Direito: Relacionado a conflitos com parceiros, colegas de trabalho, ou outras pessoas próximas
+- Lado Esquerdo: Relacionado a conflitos com a mãe, família, ou questões pessoais mais íntimas
+
+**Fases da doença**
+
+1. Fase ativa: Início do conflito emocional
+2. Fase de reparação: Processo de cura e resolução
+3. Fase de cicatrização: Recuperação completa
+
+**Possíveis doenças correlacionadas**
+
+- Hérnia de disco
+- Ciática
+- Espondilose
+- Estenose espinhal
+
+**Perguntas Reflexivas**
+
+#1 Como você se sente em relação ao suporte que recebe na vida?
+#2 Há algo que você sente que está "carregando nas costas"?
+#3 Você sente que tem apoio suficiente das pessoas ao seu redor?
+
+**Chave Terapêutica do [RE]Sentir**
+
+A chave para resolver a dor nas costas está em identificar e resolver os conflitos emocionais subjacentes. É importante reconhecer quando você está se sobrecarregando e aprender a pedir ajuda quando necessário. Trabalhar na autoestima e na capacidade de estabelecer limites saudáveis também pode ser fundamental para a cura.
+                    `.trim(),
+                    timestamp: new Date(),
+                    sessionId: 'test-session-123',
+                    patientName: 'Paciente Teste',
+                    therapistName: 'Terapeuta Teste',
+                    language: 'pt-BR'
+                };
+
+                // Importa a função (simulação)
+                // Em um ambiente real, você importaria do módulo
+                console.log('[Test] Iniciando geração de PDF com dados:', {
+                    questionLength: testData.question.length,
+                    answerLength: testData.answer.length
+                });
+
+                // Para testar, vamos criar um HTML simples e verificar a lógica
+                statusDiv.innerHTML = 'Teste configurado. Verifique o console para logs de debug.';
+                
+                // Nota: Para testar completamente, seria necessário importar o módulo real
+                // Mas podemos validar a lógica através dos logs quando a função for chamada
+                console.log('[Test] ✅ Dados de teste preparados. A função generateChatPDF deve ser chamada com estes dados para validar a correção.');
+                
+            } catch (error) {
+                statusDiv.innerHTML = 'Erro: ' + error.message;
+                console.error('[Test] Erro:', error);
+            }
+        }
+    </script>
+</body>
+</html>

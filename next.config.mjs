@@ -19,8 +19,13 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Desabilita symlinks para evitar problemas no Windows/OneDrive
-  outputFileTracingIncludes: {},
+  // Configurações de API routes
+  experimental: {
+    // Aumenta timeout para API routes que processam muitos dados
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+  },
 };
 
 export default nextConfig;

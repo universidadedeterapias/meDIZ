@@ -32,11 +32,14 @@ model User {
   status_verificacao      StatusVerificacao?
   mensagem_grupo_essencia String?
   preferredLanguage       String?
+  notificationsEnabled    Boolean            @default(false)
   accounts                Account[]
   chatSessions            ChatSession[]
   sessions                Session[]
   subscriptions           Subscription[]
   symptomFolders          SymptomFolder[]
+  pushSubscriptions       PushSubscription[]
+  reminders               Reminder[]
 
   @@index([mensagem_enviada])
   @@index([status_verificacao])
@@ -244,6 +247,41 @@ model n8n_chat_histories {
   id         Int    @id @default(autoincrement())
   session_id String @db.VarChar(255)
   message    Json
+}
+
+model PushSubscription {
+  id          String   @id @default(uuid())
+  userId      String
+  endpoint    String   @unique
+  p256dh      String   // Chave pública
+  auth        String   // Chave de autenticação
+  userAgent   String?  // Navegador/dispositivo
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([endpoint])
+  @@map("push_subscriptions")
+}
+
+model Reminder {
+  id          String   @id @default(uuid())
+  userId      String?  // null = lembrete global (todos os usuários)
+  title       String
+  message     String
+  time        String   // Formato HH:mm (ex: "09:00")
+  daysOfWeek  String   // JSON array com dias da semana [0-6] onde 0 = domingo
+  active      Boolean  @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastSentAt  DateTime? // Última vez que foi enviado
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([active])
+  @@index([time])
+  @@map("reminders")
 }
 
 enum AppUsage {

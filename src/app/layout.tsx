@@ -3,6 +3,8 @@ import { UserProvider } from '@/contexts/user'
 import SessionProvider from '@/components/SessionProvider'
 import { HydrationBoundary } from '@/components/hydration-boundary'
 import { GlobalErrorHandler } from '@/components/GlobalErrorHandler'
+import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
+import PushNotificationBanner from '@/components/PushNotificationBanner'
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { LanguageProvider } from '@/i18n/LanguageProvider'
@@ -25,7 +27,21 @@ export const metadata: Metadata = {
   icons: {
     icon: 'https://mediz.app/imgs/logo192.png',
     apple: 'https://mediz.app/imgs/logo512.png'
-  }
+  },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'meDIZ'
+  },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+    viewportFit: 'cover'
+  },
+  themeColor: '#6366f1'
 }
 
 export default async function RootLayout({
@@ -44,6 +60,7 @@ export default async function RootLayout({
       >
         <HydrationBoundary>
           <GlobalErrorHandler />
+          <ServiceWorkerRegistration />
           <LanguageProvider initialLanguage={language}>
             <ThemeProvider
               attribute="class"
@@ -52,7 +69,10 @@ export default async function RootLayout({
               disableTransitionOnChange
             >
               <SessionProvider>
-                <UserProvider>{children}</UserProvider>
+                <UserProvider>
+                  <PushNotificationBanner />
+                  {children}
+                </UserProvider>
               </SessionProvider>
             </ThemeProvider>
           </LanguageProvider>

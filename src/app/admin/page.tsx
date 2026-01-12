@@ -13,7 +13,8 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle,
-  Activity
+  Activity,
+  Bell
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -269,6 +270,12 @@ export default function ModernDashboard() {
               <a href="/admin/analytics">
                 <TrendingUp className="mr-2 h-4 w-4" />
                 Ver Análises
+              </a>
+            </Button>
+            <Button className="w-full justify-start" variant="outline" asChild>
+              <a href="/admin/reminders">
+                <Bell className="mr-2 h-4 w-4" />
+                Gerenciar Lembretes
               </a>
             </Button>
           </CardContent>
