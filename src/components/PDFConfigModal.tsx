@@ -92,21 +92,24 @@ export function PDFConfigModal({
         answer,
         timestamp: new Date(),
         sessionId,
-        patientName: patientName.trim() || undefined,
-        therapistName: therapistName.trim() || undefined,
-        language
+        patientName: patientName.trim() || undefined
       })
       console.log('[PDFConfigModal] ✅ PDF gerado com sucesso')
       onOpenChange(false)
     } catch (error) {
-      console.error('[PDFConfigModal] ❌ Erro ao exportar PDF:', {
-        error,
-        errorMessage: error instanceof Error ? error.message : String(error),
-        errorStack: error instanceof Error ? error.stack : undefined,
-        question: question?.substring(0, 50),
-        answerLength: answer?.length || 0,
-        hasAnswer: !!answer
-      })
+      // Garante que sempre temos uma mensagem de erro válida
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : String(error) || 'Erro desconhecido ao exportar PDF'
+      const errorStack = error instanceof Error ? error.stack : undefined
+      
+      console.error('[PDFConfigModal] ❌ Erro ao exportar PDF:', errorMessage)
+      if (errorStack) {
+        console.error('Stack trace:', errorStack)
+      }
+      
+      // Mostra erro ao usuário (opcional - pode adicionar toast/notificação aqui)
+      alert(`Erro ao exportar PDF: ${errorMessage}`)
     } finally {
       setIsGenerating(false)
     }

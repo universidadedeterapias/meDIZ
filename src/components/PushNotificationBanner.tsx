@@ -6,6 +6,14 @@ import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { X, Bell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
+// Helper para logs apenas em desenvolvimento
+const isDev = process.env.NODE_ENV === 'development'
+const debugLog = (message: string, data?: unknown) => {
+  if (isDev) {
+    console.log(`[PushNotificationBanner] ${message}`, data || '')
+  }
+}
+
 export default function PushNotificationBanner() {
   const pathname = usePathname()
   const { isSupported, isSubscribed, isLoading, error, subscribe } =
@@ -27,37 +35,25 @@ export default function PushNotificationBanner() {
   const shouldShowBanner = isChatPage || isHomePage
 
   useEffect(() => {
-    const log = (message: string, data?: unknown) => {
-      console.log(`[PushNotificationBanner] ${message}`, data || '')
-    }
 
-    log('🔍 Verificando condições para exibir banner...', {
-      pathname,
-      isChatPage,
-      isHomePage,
-      shouldShowBanner,
-      isSupported,
-      isSubscribed,
-      isLoading,
-      dismissed
-    })
+    debugLog('🔍 Verificando condições para exibir banner...')
 
     // Não mostrar banner se não estiver em página válida
     if (!shouldShowBanner) {
-      log('⏭️ Não está em página válida (chat ou home)')
+      debugLog('⏭️ Não está em página válida (chat ou home)')
       setIsVisible(false)
       return
     }
 
     // Aguardar verificação inicial terminar
     if (isLoading) {
-      log('⏳ Aguardando verificação inicial...')
+      debugLog('⏳ Aguardando verificação inicial...')
       return
     }
 
     // Verificar se já aceitou notificações
     if (isSubscribed) {
-      log('✅ Já está inscrito, não mostrar banner')
+      debugLog('✅ Já está inscrito, não mostrar banner')
       setIsVisible(false)
       setDismissed(true)
       return
@@ -66,13 +62,13 @@ export default function PushNotificationBanner() {
     // Verificar se já foi dispensado nesta sessão
     // Não usar localStorage para permitir reaparecer em nova sessão
     if (dismissed) {
-      log('⏭️ Banner foi dispensado nesta sessão')
+      debugLog('⏭️ Banner foi dispensado nesta sessão')
       return
     }
 
     // Verificar se push é suportado
     if (!isSupported) {
-      log('⏭️ Push não é suportado')
+      debugLog('⏭️ Push não é suportado')
       setIsVisible(false)
       return
     }
@@ -80,7 +76,7 @@ export default function PushNotificationBanner() {
     // IMPORTANTE: Se já está inscrito, garantir que o banner não apareça
     // e marcar como dispensado permanentemente nesta sessão
     if (isSubscribed) {
-      log('✅ Já está inscrito, garantindo que banner não apareça')
+      debugLog('✅ Já está inscrito, garantindo que banner não apareça')
       setIsVisible(false)
       setDismissed(true)
       return
@@ -93,36 +89,26 @@ export default function PushNotificationBanner() {
     // 4. Não foi dispensado
     // 5. Verificação inicial terminou (não está mais carregando)
     if (shouldShowBanner && isSupported && !isSubscribed && !dismissed && !isLoading) {
-      log('✅ Todas as condições atendidas, mostrando banner em 2 segundos...')
+      debugLog('✅ Todas as condições atendidas, mostrando banner em 2 segundos...')
       // Aguardar um pouco antes de mostrar (melhor UX)
       const timer = setTimeout(() => {
         // Verificar novamente antes de mostrar (double-check)
         if (!isSubscribed && !dismissed) {
-          log('👁️ Exibindo banner agora!')
+          debugLog('👁️ Exibindo banner agora!')
           setIsVisible(true)
         } else {
-          log('⏭️ Condições mudaram, não exibindo banner')
+          debugLog('⏭️ Condições mudaram, não exibindo banner')
         }
       }, 2000) // 2 segundos após carregar
 
       return () => clearTimeout(timer)
     } else {
-      log('⏭️ Condições não atendidas para exibir banner', {
-        shouldShowBanner,
-        isSupported,
-        isSubscribed,
-        dismissed,
-        isLoading
-      })
+      debugLog('⏭️ Condições não atendidas para exibir banner')
     }
   }, [shouldShowBanner, isSupported, isSubscribed, dismissed, isLoading, pathname])
 
   const handleDismiss = () => {
-    const log = (message: string) => {
-      console.log(`[PushNotificationBanner] ${message}`)
-    }
-    
-    log('👆 Usuário clicou em "Agora não" - banner dispensado apenas nesta sessão')
+    debugLog('👆 Usuário clicou em "Agora não" - banner dispensado apenas nesta sessão')
     setIsVisible(false)
     setDismissed(true)
     // Não salvar no servidor nem localStorage - permite reaparecer em nova sessão
@@ -130,22 +116,20 @@ export default function PushNotificationBanner() {
   }
 
   const handleSubscribe = async () => {
-    const log = (message: string) => {
-      console.log(`[PushNotificationBanner] ${message}`)
-    }
-    
     try {
-      log('👆 Usuário clicou em "Ativar notificações"')
+      debugLog('👆 Usuário clicou em "Ativar notificações"')
       await subscribe()
       // O hook atualiza isSubscribed após sucesso e salva no servidor
       // Forçar fechamento imediato do banner
       setIsVisible(false)
       setDismissed(true)
-      log('✅ Notificações ativadas com sucesso - banner fechado')
+      debugLog('✅ Notificações ativadas com sucesso - banner fechado')
     } catch (err) {
       // Erro já é tratado pelo hook e exibido no banner
-      log('❌ Erro ao ativar notificações')
-      console.error('Erro ao inscrever:', err)
+      debugLog('❌ Erro ao ativar notificações')
+      if (isDev) {
+        console.error('Erro ao inscrever:', err)
+      }
       // Não fecha o banner em caso de erro para o usuário ver a mensagem
     }
   }

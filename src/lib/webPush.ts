@@ -34,11 +34,14 @@ export async function sendPushNotification(
   userId: string,
   payload: PushNotificationPayload
 ): Promise<{ success: number; failed: number; errors: string[] }> {
+  const isDev = process.env.NODE_ENV === 'development'
   const log = (message: string, data?: unknown) => {
-    console.log(`[WEBPUSH] ${new Date().toISOString()} - ${message}`, data || '')
+    if (isDev) {
+      console.log(`[WEBPUSH] ${new Date().toISOString()} - ${message}`, data || '')
+    }
   }
 
-  log(`========== INÍCIO ENVIO NOTIFICAÇÃO ==========`, { userId, payload })
+  log(`========== INÍCIO ENVIO NOTIFICAÇÃO ==========`, { userId })
 
   if (!vapidPublicKey || !vapidPrivateKey) {
     log('❌ VAPID keys não configuradas', {
@@ -48,21 +51,19 @@ export async function sendPushNotification(
     throw new Error('VAPID keys não configuradas. Configure NEXT_PUBLIC_VAPID_PUBLIC_KEY e VAPID_PRIVATE_KEY')
   }
 
-  log('✅ VAPID keys configuradas (não logadas por segurança)')
+  log('✅ VAPID keys configuradas')
 
   // Buscar todas as subscriptions do usuário
   const subscriptions = await prisma.pushSubscription.findMany({
     where: { userId }
   })
 
-  log(`Subscriptions encontradas para usuário ${userId}`, {
-    total: subscriptions.length,
-    subscriptionIds: subscriptions.map(s => s.id),
-    endpoints: subscriptions.map(s => s.endpoint.substring(0, 50) + '...')
+  log(`Subscriptions encontradas para usuário`, {
+    total: subscriptions.length
   })
 
   if (subscriptions.length === 0) {
-    log(`❌ Usuário ${userId} não tem subscriptions registradas`)
+    log(`❌ Usuário não tem subscriptions registradas`)
     return { success: 0, failed: 0, errors: ['Usuário não tem subscriptions registradas'] }
   }
 
@@ -89,10 +90,7 @@ export async function sendPushNotification(
   // Enviar para cada subscription
   const sendPromises = subscriptions.map(async (subscription) => {
     try {
-      log(`Enviando para subscription ${subscription.id}`, {
-        endpoint: subscription.endpoint.substring(0, 50) + '...',
-        userAgent: subscription.userAgent
-      })
+      log(`Enviando para subscription ${subscription.id}`)
 
       const pushSubscription = {
         endpoint: subscription.endpoint,

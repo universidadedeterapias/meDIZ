@@ -3,6 +3,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 
+// Helper para logs apenas em desenvolvimento
+const isDev = process.env.NODE_ENV === 'development'
+const debugLog = (message: string, data?: unknown) => {
+  if (isDev) {
+    console.log(`[usePushNotifications] ${message}`, data || '')
+  }
+}
 
 interface UsePushNotificationsReturn {
   isSupported: boolean
@@ -23,12 +30,8 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
   // Verificar status da subscription real (não apenas preferência)
   const checkSubscriptionStatus = useCallback(async () => {
-    const log = (message: string, data?: unknown) => {
-      console.log(`[usePushNotifications] ${message}`, data || '')
-    }
-
     try {
-      log('🔍 Verificando status da subscription...')
+      debugLog('🔍 Verificando status da subscription...')
       
       // IMPORTANTE: Marcar como loading durante toda a verificação
       setIsLoading(true)
@@ -42,14 +45,12 @@ export function usePushNotifications(): UsePushNotificationsReturn {
           hasLocalSubscription = !!subscription
           
           if (hasLocalSubscription) {
-            log('✅ Subscription push local encontrada', {
-              endpoint: subscription.endpoint.substring(0, 50) + '...'
-            })
+            debugLog('✅ Subscription push local encontrada')
           } else {
-            log('❌ Nenhuma subscription push local encontrada')
+            debugLog('❌ Nenhuma subscription push local encontrada')
           }
         } catch (err) {
-          log('⚠️ Erro ao verificar subscription local:', err)
+          debugLog('⚠️ Erro ao verificar subscription local:', err)
         }
       }
 
@@ -107,7 +108,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         return
       }
     } catch (err) {
-      log('❌ Erro ao verificar subscription:', err)
+      debugLog('❌ Erro ao verificar subscription:', err)
       setIsSubscribed(false)
       setIsLoading(false)
     }
@@ -130,7 +131,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
           clearTimeout(timer)
         }
       } else {
-        console.log('[usePushNotifications] ⚠️ Push notifications não são suportadas neste navegador')
+        debugLog('⚠️ Push notifications não são suportadas neste navegador')
         setIsLoading(false)
       }
     }
@@ -170,15 +171,11 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
   // Registrar subscription push completa
   const subscribe = useCallback(async () => {
-    const log = (message: string, data?: unknown) => {
-      console.log(`[usePushNotifications] ${message}`, data || '')
-    }
-
     setIsLoading(true)
     setError(null)
 
     try {
-      log('========== INÍCIO REGISTRO DE SUBSCRIPTION ==========')
+      debugLog('========== INÍCIO REGISTRO DE SUBSCRIPTION ==========')
 
       // 1. Verificar suporte
       if (!('Notification' in window)) {
@@ -190,26 +187,26 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       }
 
       // 2. Solicitar permissão de notificação
-      log('1️⃣ Solicitando permissão de notificação...')
+      debugLog('1️⃣ Solicitando permissão de notificação...')
       const permission = await window.Notification.requestPermission()
-      log('📋 Permissão:', permission)
+      debugLog('📋 Permissão:', permission)
 
       if (permission !== 'granted') {
         throw new Error('Permissão de notificação negada')
       }
 
       // 3. Registrar service worker (se necessário)
-      log('2️⃣ Registrando/obtendo service worker...')
+      debugLog('2️⃣ Registrando/obtendo service worker...')
       let registration: globalThis.ServiceWorkerRegistration
 
       // Verificar se já existe um service worker registrado
       const existingRegistration = await navigator.serviceWorker.getRegistration()
       
       if (existingRegistration && existingRegistration.active) {
-        log('✅ Service Worker já está registrado e ativo')
+        debugLog('✅ Service Worker já está registrado e ativo')
         registration = existingRegistration
       } else {
-        log('📝 Registrando novo service worker...')
+        debugLog('📝 Registrando novo service worker...')
         try {
           registration = await navigator.serviceWorker.register('/sw.js', {
             scope: '/'
@@ -217,22 +214,22 @@ export function usePushNotifications(): UsePushNotificationsReturn {
           
           // Aguardar o service worker estar ativo
           if (registration.installing) {
-            log('⏳ Service Worker está instalando...')
+            debugLog('⏳ Service Worker está instalando...')
             await new Promise<void>((resolve) => {
               registration.installing!.addEventListener('statechange', () => {
                 if (registration.installing!.state === 'activated') {
-                  log('✅ Service Worker instalado e ativado')
+                  debugLog('✅ Service Worker instalado e ativado')
                   resolve()
                 }
               })
             })
           } else if (registration.waiting) {
-            log('⏳ Service Worker está aguardando...')
+            debugLog('⏳ Service Worker está aguardando...')
             registration.waiting.postMessage({ type: 'SKIP_WAITING' })
             await new Promise<void>((resolve) => {
               registration.waiting!.addEventListener('statechange', () => {
                 if (registration.waiting!.state === 'activated') {
-                  log('✅ Service Worker ativado')
+                  debugLog('✅ Service Worker ativado')
                   resolve()
                 }
               })
@@ -241,9 +238,9 @@ export function usePushNotifications(): UsePushNotificationsReturn {
           
           // Aguardar estar pronto
           registration = await navigator.serviceWorker.ready
-          log('✅ Service Worker registrado e pronto')
+          debugLog('✅ Service Worker registrado e pronto')
         } catch (err) {
-          log('❌ Erro ao registrar service worker:', err)
+          debugLog('❌ Erro ao registrar service worker:', err)
           throw new Error(`Erro ao registrar service worker: ${err instanceof Error ? err.message : 'Erro desconhecido'}`)
         }
       }
@@ -253,13 +250,10 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         throw new Error('Service Worker não está ativo. Aguarde alguns segundos e tente novamente.')
       }
 
-      log('✅ Service Worker está ativo', {
-        scope: registration.scope,
-        active: !!registration.active
-      })
+      debugLog('✅ Service Worker está ativo')
 
       // 4. Obter chave pública VAPID
-      log('3️⃣ Obtendo chave pública VAPID...')
+      debugLog('3️⃣ Obtendo chave pública VAPID...')
       const vapidResponse = await fetch('/api/push/vapid-public-key')
       
       if (!vapidResponse.ok) {
@@ -268,11 +262,8 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
       const vapidData = await vapidResponse.json()
       const vapidPublicKey = vapidData.publicKey
-      // Não logar chave completa por segurança
-      log('✅ Chave pública VAPID obtida', { 
-        keyLength: vapidPublicKey?.length || 0,
-        keyPrefix: vapidPublicKey ? vapidPublicKey.substring(0, 8) + '...' : 'N/A'
-      })
+      // Não logar informações sobre a chave por segurança
+      debugLog('✅ Chave pública VAPID obtida')
 
       if (!vapidPublicKey) {
         throw new Error('Chave pública VAPID não configurada no servidor')
@@ -283,60 +274,45 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         throw new Error('Push Manager não está disponível no service worker')
       }
 
-      log('✅ Push Manager disponível')
+      debugLog('✅ Push Manager disponível')
 
       // 6. Converter chave para formato Uint8Array
-      log('5️⃣ Convertendo chave VAPID para Uint8Array...')
+      debugLog('5️⃣ Convertendo chave VAPID para Uint8Array...')
       let applicationServerKey: Uint8Array
       
       try {
         applicationServerKey = urlBase64ToUint8Array(vapidPublicKey)
-        log('✅ Chave convertida com sucesso', {
-          length: applicationServerKey.length,
-          firstBytes: Array.from(applicationServerKey.slice(0, 5))
-        })
+        debugLog('✅ Chave convertida com sucesso')
       } catch (err) {
-        log('❌ Erro ao converter chave VAPID:', err)
+        debugLog('❌ Erro ao converter chave VAPID:', err)
         throw new Error(`Erro ao converter chave VAPID: ${err instanceof Error ? err.message : 'Erro desconhecido'}`)
       }
 
       // 7. Obter ou criar subscription push
-      log('6️⃣ Obtendo/criando subscription push...')
+      debugLog('6️⃣ Obtendo/criando subscription push...')
       let subscription: globalThis.PushSubscription | null = null
 
       try {
         subscription = await registration.pushManager.getSubscription()
         if (subscription) {
-          log('✅ Subscription já existe, reutilizando', {
-            endpoint: subscription.endpoint.substring(0, 50) + '...'
-          })
+          debugLog('✅ Subscription já existe, reutilizando')
         }
       } catch (err) {
-        log('⚠️ Erro ao obter subscription existente:', err)
+        debugLog('⚠️ Erro ao obter subscription existente:', err)
         // Continuar para criar nova
       }
 
       if (!subscription) {
-        log('📝 Criando nova subscription...')
+        debugLog('📝 Criando nova subscription...')
         try {
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey
           })
-          log('✅ Nova subscription criada com sucesso', {
-            endpoint: subscription.endpoint.substring(0, 50) + '...',
-            keys: {
-              hasP256dh: !!subscription.getKey('p256dh'),
-              hasAuth: !!subscription.getKey('auth')
-            }
-          })
+          debugLog('✅ Nova subscription criada com sucesso')
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
-          log('❌ ERRO ao criar subscription:', {
-            message: errorMessage,
-            name: err instanceof Error ? err.name : 'Unknown',
-            stack: err instanceof Error ? err.stack?.substring(0, 300) : undefined
-          })
+          debugLog('❌ ERRO ao criar subscription:', errorMessage)
           
           // Mensagens de erro mais amigáveis
           if (errorMessage.includes('push service error') || errorMessage.includes('Registration failed')) {
@@ -348,7 +324,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       }
 
       // 8. Extrair dados da subscription
-      log('7️⃣ Extraindo dados da subscription...')
+      debugLog('7️⃣ Extraindo dados da subscription...')
       const p256dhKey = subscription.getKey('p256dh')
       const authKey = subscription.getKey('auth')
 
@@ -365,16 +341,10 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         userAgent: navigator.userAgent
       }
 
-      log('✅ Dados extraídos', {
-        endpoint: subscriptionData.endpoint.substring(0, 50) + '...',
-        hasP256dh: !!subscriptionData.keys.p256dh,
-        hasAuth: !!subscriptionData.keys.auth,
-        p256dhLength: subscriptionData.keys.p256dh.length,
-        authLength: subscriptionData.keys.auth.length
-      })
+      debugLog('✅ Dados extraídos')
 
       // 9. Registrando subscription no servidor
-      log('8️⃣ Registrando subscription no servidor...')
+      debugLog('8️⃣ Registrando subscription no servidor...')
 
       // 8. Registrar subscription no servidor
       const subscribeResponse = await fetch('/api/push/subscribe', {
@@ -385,22 +355,22 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         body: JSON.stringify(subscriptionData)
       })
 
-      log('📊 Resposta do servidor:', {
+      debugLog('📊 Resposta do servidor:', {
         status: subscribeResponse.status,
         ok: subscribeResponse.ok
       })
 
       if (!subscribeResponse.ok) {
         const errorData = await subscribeResponse.json().catch(() => ({ error: 'Erro desconhecido' }))
-        log('❌ Erro ao registrar subscription:', errorData)
+        debugLog('❌ Erro ao registrar subscription:', errorData.error || 'Erro desconhecido')
         throw new Error(errorData.error || 'Erro ao registrar subscription no servidor')
       }
 
-      const subscribeResult = await subscribeResponse.json()
-      log('✅ Subscription registrada no servidor:', subscribeResult)
+      await subscribeResponse.json()
+      debugLog('✅ Subscription registrada no servidor')
 
       // 10. Salvar preferência no servidor
-      log('9️⃣ Salvando preferência no servidor...')
+      debugLog('9️⃣ Salvando preferência no servidor...')
       const prefResponse = await fetch('/api/user/notifications-preference', {
         method: 'POST',
         headers: {
@@ -410,17 +380,14 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       })
 
       if (!prefResponse.ok) {
-        log('⚠️ Erro ao salvar preferência, mas subscription foi registrada')
-        const errorData = await prefResponse.json().catch(() => ({}))
-        log('Erro:', errorData)
+        debugLog('⚠️ Erro ao salvar preferência, mas subscription foi registrada')
       } else {
-        const prefResult = await prefResponse.json()
-        log('✅ Preferência salva:', prefResult)
+        debugLog('✅ Preferência salva')
       }
 
       // 10. Atualizar estado e reexecutar verificação para garantir sincronização
       setIsSubscribed(true)
-      log('========== REGISTRO CONCLUÍDO COM SUCESSO ==========')
+      debugLog('========== REGISTRO CONCLUÍDO COM SUCESSO ==========')
       
       // Reexecutar verificação após um pequeno delay para garantir que o servidor processou
       setTimeout(() => {
@@ -429,7 +396,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao ativar notificações'
-      log('❌ ERRO:', errorMessage)
+      debugLog('❌ ERRO:', errorMessage)
       setError(errorMessage)
       setIsSubscribed(false)
     } finally {
@@ -480,15 +447,11 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
   // Desativar notificações
   const unsubscribe = useCallback(async () => {
-    const log = (message: string, data?: unknown) => {
-      console.log(`[usePushNotifications] ${message}`, data || '')
-    }
-
     setIsLoading(true)
     setError(null)
 
     try {
-      log('========== INÍCIO DESATIVAÇÃO ==========')
+      debugLog('========== INÍCIO DESATIVAÇÃO ==========')
 
       // 1. Remover subscription do service worker
       if ('serviceWorker' in navigator) {
@@ -497,12 +460,12 @@ export function usePushNotifications(): UsePushNotificationsReturn {
           const subscription = await registration.pushManager.getSubscription()
           
           if (subscription) {
-            log('🗑️ Removendo subscription do service worker...')
+            debugLog('🗑️ Removendo subscription do service worker...')
             await subscription.unsubscribe()
-            log('✅ Subscription removida do service worker')
+            debugLog('✅ Subscription removida do service worker')
           }
         } catch (err) {
-          log('⚠️ Erro ao remover subscription do service worker:', err)
+          debugLog('⚠️ Erro ao remover subscription do service worker:', err)
         }
       }
 
@@ -510,7 +473,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       // Nota: O endpoint /api/push/unsubscribe pode ser usado aqui se existir
 
       // 3. Salvar preferência como desativada
-      log('📝 Salvando preferência como desativada...')
+      debugLog('📝 Salvando preferência como desativada...')
       const response = await fetch('/api/user/notifications-preference', {
         method: 'POST',
         headers: {
@@ -523,13 +486,13 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         throw new Error('Erro ao desativar notificações')
       }
 
-      log('✅ Preferência desativada')
+      debugLog('✅ Preferência desativada')
       setIsSubscribed(false)
-      log('========== DESATIVAÇÃO CONCLUÍDA ==========')
+      debugLog('========== DESATIVAÇÃO CONCLUÍDA ==========')
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao desativar notificações'
-      log('❌ ERRO:', errorMessage)
+      debugLog('❌ ERRO:', errorMessage)
       setError(errorMessage)
     } finally {
       setIsLoading(false)

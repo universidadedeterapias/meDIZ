@@ -8,8 +8,11 @@ import { prisma } from '@/lib/prisma'
  * Não há verificação de assinatura/premium - notificações são para todos
  */
 export async function POST(req: NextRequest) {
+  const isDev = process.env.NODE_ENV === 'development'
   const log = (message: string, data?: unknown) => {
-    console.log(`[PUSH-SUBSCRIBE] ${new Date().toISOString()} - ${message}`, data || '')
+    if (isDev) {
+      console.log(`[PUSH-SUBSCRIBE] ${new Date().toISOString()} - ${message}`, data || '')
+    }
   }
 
   try {
@@ -26,10 +29,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    log('✅ Usuário autenticado', {
-      userId: session.user.id
-      // Não logar email por segurança
-    })
+    log('✅ Usuário autenticado')
 
     // Não há verificação de assinatura/premium aqui
     // Todos os usuários autenticados podem se inscrever em notificações push
@@ -40,13 +40,10 @@ export async function POST(req: NextRequest) {
 
     log('📋 Dados recebidos', {
       hasEndpoint: !!endpoint,
-      endpointLength: endpoint?.length || 0,
-      endpointPrefix: endpoint ? endpoint.substring(0, 20) + '...' : null,
       hasKeys: !!keys,
       hasP256dh: !!keys?.p256dh,
-      hasAuth: !!keys?.auth,
-      userAgent: userAgent || null
-      // Não logar chaves p256dh e auth completas por segurança
+      hasAuth: !!keys?.auth
+      // Não logar endpoint, chaves p256dh e auth por segurança
     })
 
     // Validação
@@ -124,11 +121,8 @@ export async function POST(req: NextRequest) {
     })
 
     log('✅ Nova subscription criada com sucesso', {
-      id: subscription.id,
-      userId: subscription.userId,
-      endpointLength: subscription.endpoint.length,
-      endpointPrefix: subscription.endpoint.substring(0, 20) + '...'
-      // Não logar endpoint completo por segurança
+      id: subscription.id
+      // Não logar userId, endpoint ou chaves por segurança
     })
     log('========== FIM REGISTRO (CRIAÇÃO) ==========')
 
