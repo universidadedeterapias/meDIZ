@@ -1,7 +1,7 @@
 // app/api/openai/route.ts
 import { randomUUID } from 'crypto'
 import { auth } from '@/auth'
-// Removido getMessages - não usamos mais busca do banco, resposta vem direto do webhook
+import { getMessages } from '@/lib/assistant'
 import { createChatSessionWithThread } from '@/lib/chatService'
 import { saveChatMessage } from '@/lib/chatMessages'
 import { prisma } from '@/lib/prisma'
@@ -12,10 +12,6 @@ import { DEFAULT_LANGUAGE, isSupportedLanguage, getLanguageMapping, type Languag
 
 const CHAT_WEBHOOK_URL =
   process.env.N8N_CHAT_WEBHOOK_URL ?? 'https://mediz-n8n.gjhi7d.easypanel.host/webhook/chat-texto'
-
-// Log da URL configurada (sem expor variáveis de ambiente sensíveis)
-console.log('🔧 [API OPENAI] Webhook URL configurada:', CHAT_WEBHOOK_URL)
-console.log('🔧 [API OPENAI] Usando variável de ambiente?', !!process.env.N8N_CHAT_WEBHOOK_URL)
 
 async function requestAssistantResponse(
   threadId: string,
@@ -59,13 +55,6 @@ async function requestAssistantResponse(
     nomeIdioma: langMapping.namePortuguese
   }
   
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'openai/route.ts:58',message:'WEBHOOK REQUEST - URL e Payload',data:{webhookUrl:CHAT_WEBHOOK_URL,payload,threadId,message:message.substring(0,100),language},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
-  // #endregion
-  console.log('🌐 [API OPENAI] ========== CHAMANDO WEBHOOK ==========')
-  console.log('🌐 [API OPENAI] URL:', CHAT_WEBHOOK_URL)
-  console.log('🌐 [API OPENAI] Payload:', JSON.stringify(payload, null, 2))
-  
   const response = await fetch(CHAT_WEBHOOK_URL, {
     method: 'POST',
     headers: {
@@ -73,12 +62,6 @@ async function requestAssistantResponse(
     },
     body: JSON.stringify(payload)
   })
-  
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'openai/route.ts:67',message:'WEBHOOK RESPONSE - Status',data:{status:response.status,statusText:response.statusText,ok:response.ok,url:response.url},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
-  // #endregion
-  console.log('🌐 [API OPENAI] Status da resposta:', response.status, response.statusText)
-  console.log('🌐 [API OPENAI] URL da resposta:', response.url)
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => '')
@@ -88,11 +71,6 @@ async function requestAssistantResponse(
   }
 
   const responseText = await response.text()
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'openai/route.ts:73',message:'WEBHOOK RESPONSE - Raw Text',data:{responseLength:responseText.length,responsePreview:responseText.substring(0,500),isJSON:responseText.trim().startsWith('{')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
-  // #endregion
-  console.log('🌐 [API OPENAI] Resposta RAW do webhook (primeiros 500 chars):', responseText.substring(0, 500))
-  console.log('🌐 [API OPENAI] Tamanho total da resposta:', responseText.length)
   
   let assistantReply: string
   
@@ -100,22 +78,17 @@ async function requestAssistantResponse(
   try {
     const jsonResponse = JSON.parse(responseText)
     
-    // Prioriza campos comuns: output (n8n), resposta, response, message, text, content
+    // Prioriza campos comuns: resposta, response, message, text, content
     assistantReply = 
-      jsonResponse.output ||        // Campo usado pelo n8n ({{ $json.output }})
       jsonResponse.resposta || 
       jsonResponse.response || 
       jsonResponse.message || 
       jsonResponse.text || 
       jsonResponse.content ||
       (typeof jsonResponse === 'string' ? jsonResponse : responseText)
-    
-    console.log('🌐 [API OPENAI] JSON parseado, campos disponíveis:', Object.keys(jsonResponse))
-    console.log('🌐 [API OPENAI] Campo usado:', jsonResponse.output ? 'output' : jsonResponse.resposta ? 'resposta' : jsonResponse.response ? 'response' : 'outro')
   } catch {
     // Se não for JSON, usa o texto direto
     assistantReply = responseText
-    console.log('🌐 [API OPENAI] Resposta não é JSON, usando texto direto')
   }
   
   // Processa apenas o necessário: preserva o formato markdown original
@@ -246,52 +219,42 @@ export async function POST(req: Request) {
     })
 
     // ── 6) Chama o webhook diretamente (cache desabilitado para evitar problemas com tradução) ───────────────────
-    console.log('🤖 [API OPENAI] ========== CHAMANDO WEBHOOK ==========')
-    console.log('🤖 [API OPENAI] Thread ID:', threadId)
-    console.log('🤖 [API OPENAI] Mensagem:', message.substring(0, 100))
-    console.log('🤖 [API OPENAI] Idioma:', language)
-    
-    // Obtém resposta diretamente do webhook (n8n)
-    const webhookResponse = await requestAssistantResponse(threadId, message, language)
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'openai/route.ts:227',message:'Webhook response received',data:{replyLength:webhookResponse.length,replyPreview:webhookResponse.substring(0,200),threadId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-    // #endregion
-    console.log('🤖 [API OPENAI] Resposta recebida do webhook (n8n)')
-    console.log('🤖 [API OPENAI] Tamanho da resposta:', webhookResponse.length)
-    
-    // ── 7) Processa resposta do webhook e salva no banco (apenas para histórico) ───────────
-    // Remove iframes se houver
-    let finalContent = webhookResponse
-    const hasIframe = /<iframe/i.test(finalContent)
-    if (hasIframe) {
-      console.warn('⚠️ [API OPENAI] Iframe detectado, removendo...')
-      finalContent = finalContent
-        .replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '')
-        .replace(/<iframe\b[^>]*\/?>/gi, '')
-        .replace(/<\/iframe\s*>/gi, '')
+    let assistantReply = await requestAssistantResponse(threadId, message, language)
+
+    // Garante que não estamos salvando JSON no banco
+    // Se ainda for JSON, tenta extrair novamente
+    if (assistantReply.trim().startsWith('{')) {
+      try {
+        const jsonParsed = JSON.parse(assistantReply)
+        assistantReply = jsonParsed.resposta || jsonParsed.response || jsonParsed.message || assistantReply
+      } catch {
+        // Erro silencioso - continua com o valor original
+      }
     }
-    
-    // Salva no banco apenas para histórico (não usa para resposta)
-    if (finalContent && finalContent.trim().length > 0) {
+
+    // Garante que estamos salvando apenas markdown puro
+    if (assistantReply) {
+      // Remove qualquer JSON wrapper que possa ter sobrado
+      const finalContent = assistantReply.trim().startsWith('{') 
+        ? (() => {
+            try {
+              const parsed = JSON.parse(assistantReply)
+              return parsed.resposta || parsed.response || parsed.message || assistantReply
+            } catch {
+              return assistantReply
+            }
+          })()
+        : assistantReply
+      
       await saveChatMessage({
         chatSessionId: chatSession.id,
         role: 'ASSISTANT',
-        content: finalContent.trim()
+        content: finalContent
       })
-      console.log('✅ [API OPENAI] Resposta salva no banco (histórico)')
     }
-    
-    // ── 8) Retorna resposta diretamente do webhook (n8n) ───────────
-    // A resposta vem diretamente do webhook, não do banco
-    const responses = {
-      assistant: [webhookResponse.trim()], // Resposta direta do n8n
-      user: [message] // Mensagem do usuário
-    }
-    
-    console.log('📤 [API OPENAI] Retornando resposta do webhook (n8n):', {
-      assistantLength: responses.assistant[0].length,
-      preview: responses.assistant[0].substring(0, 100)
-    })
+
+    // ── 7) Busca as mensagens geradas e retorna ao cliente ───────────
+    const responses = await getMessages(threadId)
 
     // ── 8) Se não tiver assinatura, inclui informações do período na resposta ───
     if (!hasActiveSubscription) {
