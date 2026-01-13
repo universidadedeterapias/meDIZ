@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { sendPushNotification } from '@/lib/webPush'
 
+// Força rota dinâmica (não pré-renderiza)
+export const dynamic = 'force-dynamic'
+
 /**
  * API para enviar notificações push (apenas para admins)
  */

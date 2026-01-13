@@ -297,10 +297,27 @@ export default function Page() {
       }
       
       // Valida e processa as respostas
+      console.log('[Chat] Estrutura da resposta recebida:', {
+        hasResponses: !!data.responses,
+        hasAssistant: !!data.responses?.assistant,
+        isArray: Array.isArray(data.responses?.assistant),
+        assistantLength: data.responses?.assistant?.length || 0,
+        fullData: data
+      })
+      
       if (data.responses?.assistant && Array.isArray(data.responses.assistant) && data.responses.assistant.length > 0) {
         setResponses(data.responses.assistant)
+      } else if (data.responses?.assistant && typeof data.responses.assistant === 'string') {
+        // Fallback: se assistant for uma string ao invés de array
+        console.warn('[Chat] Assistant é string, convertendo para array')
+        setResponses([data.responses.assistant])
       } else {
-        console.error('[Chat] Resposta inválida ou vazia:', data.responses)
+        console.error('[Chat] Resposta inválida ou vazia:', {
+          responses: data.responses,
+          assistant: data.responses?.assistant,
+          type: typeof data.responses?.assistant,
+          isArray: Array.isArray(data.responses?.assistant)
+        })
         throw new Error('Resposta inválida do servidor')
       }
       const t1 = performance.now()

@@ -290,10 +290,37 @@ export async function POST(req: Request) {
         role: 'ASSISTANT',
         content: finalContent
       })
+      console.log('✅ [API OPENAI] Mensagem do assistente salva no banco')
     }
 
     // ── 7) Busca as mensagens geradas e retorna ao cliente ───────────
+    // Adiciona um pequeno delay para garantir que a escrita foi commitada
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
     const responses = await getMessages(threadId)
+    console.log('📋 [API OPENAI] Mensagens recuperadas:', {
+      assistantCount: responses.assistant?.length || 0,
+      userCount: responses.user?.length || 0,
+      hasAssistant: !!(responses.assistant && responses.assistant.length > 0)
+    })
+    
+    // Se não encontrou mensagens do assistente, tenta novamente após um delay maior
+    if (!responses.assistant || responses.assistant.length === 0) {
+      console.warn('⚠️ [API OPENAI] Nenhuma mensagem do assistente encontrada, tentando novamente...')
+      await new Promise(resolve => setTimeout(resolve, 500))
+      const retryResponses = await getMessages(threadId)
+      if (retryResponses.assistant && retryResponses.assistant.length > 0) {
+        console.log('✅ [API OPENAI] Mensagens encontradas no retry')
+        Object.assign(responses, retryResponses)
+      } else {
+        console.error('❌ [API OPENAI] Ainda não encontrou mensagens após retry')
+        // Se ainda não encontrou, retorna a resposta diretamente no formato esperado
+        if (assistantReply) {
+          responses.assistant = [assistantReply]
+          console.log('✅ [API OPENAI] Usando resposta direta do webhook como fallback')
+        }
+      }
+    }
 
     // ── 8) Se não tiver assinatura, inclui informações do período na resposta ───
     if (!hasActiveSubscription) {
