@@ -1,7 +1,7 @@
 // app/api/openai/route.ts
 import { randomUUID } from 'crypto'
 import { auth } from '@/auth'
-import { getMessages } from '@/lib/assistant'
+// Removido getMessages - não usamos mais busca do banco, resposta vem direto do webhook
 import { createChatSessionWithThread } from '@/lib/chatService'
 import { saveChatMessage } from '@/lib/chatMessages'
 import { prisma } from '@/lib/prisma'
@@ -100,17 +100,22 @@ async function requestAssistantResponse(
   try {
     const jsonResponse = JSON.parse(responseText)
     
-    // Prioriza campos comuns: resposta, response, message, text, content
+    // Prioriza campos comuns: output (n8n), resposta, response, message, text, content
     assistantReply = 
+      jsonResponse.output ||        // Campo usado pelo n8n ({{ $json.output }})
       jsonResponse.resposta || 
       jsonResponse.response || 
       jsonResponse.message || 
       jsonResponse.text || 
       jsonResponse.content ||
       (typeof jsonResponse === 'string' ? jsonResponse : responseText)
+    
+    console.log('🌐 [API OPENAI] JSON parseado, campos disponíveis:', Object.keys(jsonResponse))
+    console.log('🌐 [API OPENAI] Campo usado:', jsonResponse.output ? 'output' : jsonResponse.resposta ? 'resposta' : jsonResponse.response ? 'response' : 'outro')
   } catch {
     // Se não for JSON, usa o texto direto
     assistantReply = responseText
+    console.log('🌐 [API OPENAI] Resposta não é JSON, usando texto direto')
   }
   
   // Processa apenas o necessário: preserva o formato markdown original
@@ -246,89 +251,46 @@ export async function POST(req: Request) {
     console.log('🤖 [API OPENAI] Mensagem:', message.substring(0, 100))
     console.log('🤖 [API OPENAI] Idioma:', language)
     
-    let assistantReply = await requestAssistantResponse(threadId, message, language)
+    // Obtém resposta diretamente do webhook (n8n)
+    const webhookResponse = await requestAssistantResponse(threadId, message, language)
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'openai/route.ts:227',message:'Webhook response received',data:{replyLength:assistantReply.length,replyPreview:assistantReply.substring(0,200),threadId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'openai/route.ts:227',message:'Webhook response received',data:{replyLength:webhookResponse.length,replyPreview:webhookResponse.substring(0,200),threadId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
     // #endregion
-    console.log('🤖 [API OPENAI] Resposta recebida do webhook')
-    console.log('🤖 [API OPENAI] Tamanho da resposta:', assistantReply.length)
+    console.log('🤖 [API OPENAI] Resposta recebida do webhook (n8n)')
+    console.log('🤖 [API OPENAI] Tamanho da resposta:', webhookResponse.length)
     
-    // Verificar se há iframe na resposta original
-    const hasIframeInReply = /<iframe/i.test(assistantReply) || /iframe/i.test(assistantReply)
-    if (hasIframeInReply) {
-      console.error('❌ [API OPENAI] IFRAME DETECTADO NA RESPOSTA DO WEBHOOK!')
-      console.error('❌ [API OPENAI] Resposta original (primeiros 1000 chars):', assistantReply.substring(0, 1000))
-      
-      // Extrair trecho do iframe
-      const iframeMatch = assistantReply.match(/<iframe[\s\S]*?<\/iframe>/i) || assistantReply.match(/<iframe[^>]*>/i)
-      if (iframeMatch) {
-        console.error('❌ [API OPENAI] Trecho do iframe:', iframeMatch[0])
-      }
-    }
-
-    // Garante que não estamos salvando JSON no banco
-    // Se ainda for JSON, tenta extrair novamente
-    if (assistantReply.trim().startsWith('{')) {
-      try {
-        const jsonParsed = JSON.parse(assistantReply)
-        assistantReply = jsonParsed.resposta || jsonParsed.response || jsonParsed.message || assistantReply
-        console.log('🤖 [API OPENAI] JSON parseado, extraído conteúdo')
-      } catch {
-        // Erro silencioso - continua com o valor original
-        console.warn('⚠️ [API OPENAI] Erro ao parsear JSON, usando resposta original')
-      }
-    }
-    
-    // Verificar novamente após processamento JSON
-    const stillHasIframe = /<iframe/i.test(assistantReply) || /iframe/i.test(assistantReply)
-    if (stillHasIframe) {
-      console.error('❌ [API OPENAI] IFRAME AINDA PRESENTE APÓS PROCESSAMENTO JSON!')
-      console.error('❌ [API OPENAI] Removendo iframe antes de salvar no banco...')
-      
-      // Remover iframe antes de salvar
-      assistantReply = assistantReply
+    // ── 7) Processa resposta do webhook e salva no banco (apenas para histórico) ───────────
+    // Remove iframes se houver
+    let finalContent = webhookResponse
+    const hasIframe = /<iframe/i.test(finalContent)
+    if (hasIframe) {
+      console.warn('⚠️ [API OPENAI] Iframe detectado, removendo...')
+      finalContent = finalContent
         .replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '')
         .replace(/<iframe\b[^>]*\/?>/gi, '')
         .replace(/<\/iframe\s*>/gi, '')
-        .replace(/iframe/gi, '')
-      
-      console.log('✅ [API OPENAI] Iframe removido da resposta')
     }
-
-    // Garante que estamos salvando apenas markdown puro
-    if (assistantReply) {
-      // Remove qualquer JSON wrapper que possa ter sobrado
-      const finalContent = assistantReply.trim().startsWith('{') 
-        ? (() => {
-            try {
-              const parsed = JSON.parse(assistantReply)
-              return parsed.resposta || parsed.response || parsed.message || assistantReply
-            } catch {
-              return assistantReply
-            }
-          })()
-        : assistantReply
-      
+    
+    // Salva no banco apenas para histórico (não usa para resposta)
+    if (finalContent && finalContent.trim().length > 0) {
       await saveChatMessage({
         chatSessionId: chatSession.id,
         role: 'ASSISTANT',
-        content: finalContent
+        content: finalContent.trim()
       })
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'openai/route.ts:291',message:'Message saved to database',data:{chatSessionId:chatSession.id,contentLength:finalContent.length,contentPreview:finalContent.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-      // #endregion
-      console.log('✅ [API OPENAI] Mensagem do assistente salva no banco')
+      console.log('✅ [API OPENAI] Resposta salva no banco (histórico)')
     }
-
-    // ── 7) Busca as mensagens geradas e retorna ao cliente ───────────
-    const responses = await getMessages(threadId)
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'openai/route.ts:296',message:'getMessages result',data:{assistantCount:responses.assistant?.length||0,userCount:responses.user?.length||0,hasAssistant:!!(responses.assistant&&responses.assistant.length>0),threadId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-    // #endregion
-    console.log('📋 [API OPENAI] Mensagens recuperadas do banco:', {
-      assistantCount: responses.assistant?.length || 0,
-      userCount: responses.user?.length || 0,
-      hasAssistant: !!(responses.assistant && responses.assistant.length > 0)
+    
+    // ── 8) Retorna resposta diretamente do webhook (n8n) ───────────
+    // A resposta vem diretamente do webhook, não do banco
+    const responses = {
+      assistant: [webhookResponse.trim()], // Resposta direta do n8n
+      user: [message] // Mensagem do usuário
+    }
+    
+    console.log('📤 [API OPENAI] Retornando resposta do webhook (n8n):', {
+      assistantLength: responses.assistant[0].length,
+      preview: responses.assistant[0].substring(0, 100)
     })
 
     // ── 8) Se não tiver assinatura, inclui informações do período na resposta ───
