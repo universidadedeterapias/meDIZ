@@ -13,6 +13,10 @@ import { DEFAULT_LANGUAGE, isSupportedLanguage, getLanguageMapping, type Languag
 const CHAT_WEBHOOK_URL =
   process.env.N8N_CHAT_WEBHOOK_URL ?? 'https://mediz-n8n.gjhi7d.easypanel.host/webhook/chat-texto'
 
+// Log da URL configurada (sem expor variáveis de ambiente sensíveis)
+console.log('🔧 [API OPENAI] Webhook URL configurada:', CHAT_WEBHOOK_URL)
+console.log('🔧 [API OPENAI] Usando variável de ambiente?', !!process.env.N8N_CHAT_WEBHOOK_URL)
+
 async function requestAssistantResponse(
   threadId: string,
   message: string,
@@ -55,6 +59,13 @@ async function requestAssistantResponse(
     nomeIdioma: langMapping.namePortuguese
   }
   
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'openai/route.ts:58',message:'WEBHOOK REQUEST - URL e Payload',data:{webhookUrl:CHAT_WEBHOOK_URL,payload,threadId,message:message.substring(0,100),language},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
+  // #endregion
+  console.log('🌐 [API OPENAI] ========== CHAMANDO WEBHOOK ==========')
+  console.log('🌐 [API OPENAI] URL:', CHAT_WEBHOOK_URL)
+  console.log('🌐 [API OPENAI] Payload:', JSON.stringify(payload, null, 2))
+  
   const response = await fetch(CHAT_WEBHOOK_URL, {
     method: 'POST',
     headers: {
@@ -62,6 +73,12 @@ async function requestAssistantResponse(
     },
     body: JSON.stringify(payload)
   })
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'openai/route.ts:67',message:'WEBHOOK RESPONSE - Status',data:{status:response.status,statusText:response.statusText,ok:response.ok,url:response.url},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
+  // #endregion
+  console.log('🌐 [API OPENAI] Status da resposta:', response.status, response.statusText)
+  console.log('🌐 [API OPENAI] URL da resposta:', response.url)
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => '')
@@ -71,6 +88,11 @@ async function requestAssistantResponse(
   }
 
   const responseText = await response.text()
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'openai/route.ts:73',message:'WEBHOOK RESPONSE - Raw Text',data:{responseLength:responseText.length,responsePreview:responseText.substring(0,500),isJSON:responseText.trim().startsWith('{')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
+  // #endregion
+  console.log('🌐 [API OPENAI] Resposta RAW do webhook (primeiros 500 chars):', responseText.substring(0, 500))
+  console.log('🌐 [API OPENAI] Tamanho total da resposta:', responseText.length)
   
   let assistantReply: string
   
@@ -225,7 +247,9 @@ export async function POST(req: Request) {
     console.log('🤖 [API OPENAI] Idioma:', language)
     
     let assistantReply = await requestAssistantResponse(threadId, message, language)
-    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'openai/route.ts:227',message:'Webhook response received',data:{replyLength:assistantReply.length,replyPreview:assistantReply.substring(0,200),threadId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
+    // #endregion
     console.log('🤖 [API OPENAI] Resposta recebida do webhook')
     console.log('🤖 [API OPENAI] Tamanho da resposta:', assistantReply.length)
     
@@ -290,37 +314,22 @@ export async function POST(req: Request) {
         role: 'ASSISTANT',
         content: finalContent
       })
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'openai/route.ts:291',message:'Message saved to database',data:{chatSessionId:chatSession.id,contentLength:finalContent.length,contentPreview:finalContent.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
+      // #endregion
       console.log('✅ [API OPENAI] Mensagem do assistente salva no banco')
     }
 
     // ── 7) Busca as mensagens geradas e retorna ao cliente ───────────
-    // Adiciona um pequeno delay para garantir que a escrita foi commitada
-    await new Promise(resolve => setTimeout(resolve, 100))
-    
     const responses = await getMessages(threadId)
-    console.log('📋 [API OPENAI] Mensagens recuperadas:', {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'openai/route.ts:296',message:'getMessages result',data:{assistantCount:responses.assistant?.length||0,userCount:responses.user?.length||0,hasAssistant:!!(responses.assistant&&responses.assistant.length>0),threadId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
+    console.log('📋 [API OPENAI] Mensagens recuperadas do banco:', {
       assistantCount: responses.assistant?.length || 0,
       userCount: responses.user?.length || 0,
       hasAssistant: !!(responses.assistant && responses.assistant.length > 0)
     })
-    
-    // Se não encontrou mensagens do assistente, tenta novamente após um delay maior
-    if (!responses.assistant || responses.assistant.length === 0) {
-      console.warn('⚠️ [API OPENAI] Nenhuma mensagem do assistente encontrada, tentando novamente...')
-      await new Promise(resolve => setTimeout(resolve, 500))
-      const retryResponses = await getMessages(threadId)
-      if (retryResponses.assistant && retryResponses.assistant.length > 0) {
-        console.log('✅ [API OPENAI] Mensagens encontradas no retry')
-        Object.assign(responses, retryResponses)
-      } else {
-        console.error('❌ [API OPENAI] Ainda não encontrou mensagens após retry')
-        // Se ainda não encontrou, retorna a resposta diretamente no formato esperado
-        if (assistantReply) {
-          responses.assistant = [assistantReply]
-          console.log('✅ [API OPENAI] Usando resposta direta do webhook como fallback')
-        }
-      }
-    }
 
     // ── 8) Se não tiver assinatura, inclui informações do período na resposta ───
     if (!hasActiveSubscription) {
