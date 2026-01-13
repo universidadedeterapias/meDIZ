@@ -10,11 +10,13 @@ export async function GET() {
     const session = await auth()
 
     if (!session?.user?.email || !session.user.email.includes('@mediz.com')) {
-      console.log('[ADMIN PLANS API] ❌ Não autorizado:', session?.user?.email)
+      // Não logar email por segurança
+      console.log('[ADMIN PLANS API] ❌ Não autorizado, User ID:', session?.user?.id)
       return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
     }
 
-    console.log('[ADMIN PLANS API] ✅ Autenticado:', session.user.email)
+    // Não logar email por segurança
+    console.log('[ADMIN PLANS API] ✅ Autenticado, User ID:', session.user.id)
 
     // 1. Buscar planos Hotmart ativos (como antes)
     console.log('[ADMIN PLANS API] 🔍 Buscando planos Hotmart...')

@@ -15,7 +15,8 @@ import {
   TrendingUp,
   Shield,
   FileText,
-  Bell
+  Bell,
+  BellRing
 } from 'lucide-react'
 
 export default function AdminSidebar() {
@@ -52,6 +53,12 @@ export default function AdminSidebar() {
       icon: Users, 
       label: 'Usuários',
       active: pathname === '/admin/users'
+    },
+    { 
+      href: '/admin/reminders', 
+      icon: BellRing, 
+      label: 'Lembretes',
+      active: pathname === '/admin/reminders' || pathname.startsWith('/admin/reminders')
     },
     { 
       href: '/admin/settings', 

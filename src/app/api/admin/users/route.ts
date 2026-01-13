@@ -193,7 +193,8 @@ export async function GET(req: NextRequest) {
     // Processa os dados dos usuários (TODOS, antes dos filtros)
     const processedUsers = await Promise.all(allUsers.map(async user => {
       // 🔍 DEBUG: Log de cada usuário processado
-      console.log(`[ADMIN USERS API] 🔍 Processando usuário: ${user.email}`, {
+      // Não logar email por segurança
+      console.log(`[ADMIN USERS API] 🔍 Processando usuário: ${user.id}`, {
         totalSubscriptions: user.subscriptions.length,
         subscriptions: user.subscriptions.map(sub => ({
           id: sub.id,
@@ -216,7 +217,8 @@ export async function GET(req: NextRequest) {
       )
       
       if (expiredSubscriptions.length > 0) {
-        console.log(`[ADMIN USERS API] ⚠️ Usuário ${user.email} tem ${expiredSubscriptions.length} assinatura(s) expirada(s)`)
+        // Não logar email por segurança
+        console.log(`[ADMIN USERS API] ⚠️ Usuário ${user.id} tem ${expiredSubscriptions.length} assinatura(s) expirada(s)`)
       }
 
       // Determina o plano baseado na fonte de verdade

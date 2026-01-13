@@ -136,18 +136,73 @@ class Logger {
 export const logger = new Logger()
 
 /**
+ * Mascara informações sensíveis em strings e objetos
+ */
+export function maskSensitiveData(value: unknown): unknown {
+  if (typeof value === 'string') {
+    // Mascarar chaves VAPID (geralmente 87 caracteres base64url)
+    if (value.length > 60 && /^[A-Za-z0-9_-]+$/.test(value)) {
+      return value.substring(0, 8) + '...' + value.substring(value.length - 4)
+    }
+    // Mascarar secrets/tokens (geralmente longos)
+    if (value.length > 32) {
+      return value.substring(0, 4) + '***' + value.substring(value.length - 4)
+    }
+    // Mascarar emails parcialmente
+    if (value.includes('@')) {
+      const [local, domain] = value.split('@')
+      if (local && domain) {
+        return local.substring(0, 2) + '***@' + domain
+      }
+    }
+    return value
+  }
+  
+  if (typeof value === 'object' && value !== null) {
+    if (Array.isArray(value)) {
+      return value.map(maskSensitiveData)
+    }
+    
+    const masked: Record<string, unknown> = {}
+    const sensitiveKeys = [
+      'secret', 'key', 'token', 'password', 'vapid', 'private', 
+      'publicKey', 'privateKey', 'auth', 'p256dh', 'endpoint',
+      'cronSecret', 'nextAuthSecret', 'stripeSecret', 'googleSecret'
+    ]
+    
+    for (const [key, val] of Object.entries(value)) {
+      const lowerKey = key.toLowerCase()
+      const isSensitive = sensitiveKeys.some(sk => lowerKey.includes(sk))
+      
+      if (isSensitive && typeof val === 'string' && val.length > 10) {
+        masked[key] = maskSensitiveData(val)
+      } else {
+        masked[key] = maskSensitiveData(val)
+      }
+    }
+    
+    return masked
+  }
+  
+  return value
+}
+
+/**
  * Helpers para facilitar uso
  */
 export function logDebug(message: string, context?: string, data?: Record<string, unknown>) {
-  logger.debug(message, context, data)
+  const maskedData = data ? maskSensitiveData(data) as Record<string, unknown> : undefined
+  logger.debug(message, context, maskedData)
 }
 
 export function logInfo(message: string, context?: string, data?: Record<string, unknown>) {
-  logger.info(message, context, data)
+  const maskedData = data ? maskSensitiveData(data) as Record<string, unknown> : undefined
+  logger.info(message, context, maskedData)
 }
 
 export function logWarn(message: string, context?: string, data?: Record<string, unknown>) {
-  logger.warn(message, context, data)
+  const maskedData = data ? maskSensitiveData(data) as Record<string, unknown> : undefined
+  logger.warn(message, context, maskedData)
 }
 
 export function logError(
@@ -156,5 +211,6 @@ export function logError(
   context?: string, 
   data?: Record<string, unknown>
 ) {
-  logger.error(message, error, context, data)
+  const maskedData = data ? maskSensitiveData(data) as Record<string, unknown> : undefined
+  logger.error(message, error, context, maskedData)
 }

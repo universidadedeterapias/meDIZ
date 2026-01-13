@@ -188,7 +188,8 @@ export async function DELETE(
     const userId = resolvedParams.id
 
     console.log('[DEBUG] Delete User - Tentando excluir usuário:', userId)
-    console.log('[DEBUG] Delete User - Admin:', session.user.email)
+    // Não logar email por segurança
+    console.log('[DEBUG] Delete User - Admin ID:', session.user.id)
 
     // Verificar se o usuário existe
     const userToDelete = await prisma.user.findUnique({
@@ -229,7 +230,8 @@ export async function DELETE(
       where: { id: userId }
     })
 
-    console.log('[DEBUG] Delete User - Usuário excluído com sucesso:', userToDelete.email)
+    // Não logar email por segurança
+    console.log('[DEBUG] Delete User - Usuário excluído com sucesso, ID:', userToDelete.id)
 
     // Registrar exclusão no audit log
     const admin = await prisma.user.findUnique({

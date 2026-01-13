@@ -122,6 +122,27 @@ function translateSectionTitle(title: string, language: LanguageCode): string {
   return SECTION_TITLE_TRANSLATIONS[title]?.[language] || title
 }
 
+// Função para remover iframes e rastros de atributos HTML
+function stripIframesAndArtifacts(html: string): string {
+  return html
+    // remove blocos iframe completos
+    .replace(/<iframe\b[\s\S]*?<\/iframe\s*>/gi, '')
+    // remove iframes auto-fechados
+    .replace(/<iframe\b[\s\S]*?\/\s*>/gi, '')
+    // remove aberturas que ficaram sem fechar
+    .replace(/<iframe\b[\s\S]*?>/gi, '')
+    // remove "rastros" típicos que sobram quando a abertura foi comida
+    .replace(/\ballowtransparency\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/\bstyle\s*=\s*["'][^"']*position[^"']*fixed[^"']*["']/gi, '')
+    .replace(/\bstyle\s*=\s*["'][^"']*width[^"']*100vw[^"']*["']/gi, '')
+    .replace(/\bstyle\s*=\s*["'][^"']*height[^"']*100vh[^"']*["']/gi, '')
+    .replace(/\bstyle\s*=\s*["'][^"']*border[^"']*none[^"']*["']/gi, '')
+    .replace(/\bstyle\s*=\s*["'][^"']*overflow[^"']*auto[^"']*["']/gi, '')
+    .replace(/\bstyle\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/\bsandbox\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/\ballow\s*=\s*["'][^"']*["']/gi, '')
+}
+
 type ResultProps = {
   markdown: string
   elapsedMs: number
@@ -140,9 +161,31 @@ export function Result({
   userQuestion,
   sessionId
 }: ResultProps) {
+  // DEBUG: Verificar se há iframe no markdown original
+  useEffect(() => {
+    if (markdown && (markdown.includes('<iframe') || markdown.includes('iframe'))) {
+      console.error('❌ [RESULT COMPONENT] IFRAME DETECTADO NO MARKDOWN ORIGINAL!')
+      console.error('❌ [RESULT COMPONENT] Markdown (primeiros 1000 chars):', markdown.substring(0, 1000))
+    }
+  }, [markdown])
+  
   // DEBUG: Log do markdown recebido
   const data = useMemo(() => {
+    console.log('📋 [RESULT COMPONENT] Processando markdown...')
     const parsed = parseResponse(markdown)
+    
+    // Verificar se há iframe nos dados parseados
+    const allContent = [
+      parsed.contextoGeral,
+      parsed.impactoBiologico,
+      ...parsed.others.map(o => o.body)
+    ].join(' ')
+    
+    if (allContent.includes('<iframe') || allContent.includes('iframe')) {
+      console.error('❌ [RESULT COMPONENT] IFRAME DETECTADO NOS DADOS PARSEADOS!')
+      console.error('❌ [RESULT COMPONENT] Conteúdo parseado (primeiros 1000 chars):', allContent.substring(0, 1000))
+    }
+    
     return parsed
   }, [markdown])
   const [baseUrl, setBaseUrl] = useState('')
@@ -229,7 +272,15 @@ export function Result({
             {/* <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {data.contextoGeral}
             </ReactMarkdown> */}
-            <div dangerouslySetInnerHTML={{ __html: processMarkdownContent(data.contextoGeral) }} />
+            <div 
+              dangerouslySetInnerHTML={{ 
+                __html: (() => {
+                  const processed = processMarkdownContent(data.contextoGeral)
+                  const safe = stripIframesAndArtifacts(processed)
+                  return safe
+                })()
+              }} 
+            />
           </div>
         </section>
 
@@ -245,7 +296,15 @@ export function Result({
             {/* <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {data.impactoBiologico}
             </ReactMarkdown> */}
-            <div dangerouslySetInnerHTML={{ __html: processMarkdownContent(data.impactoBiologico) }} />
+            <div 
+              dangerouslySetInnerHTML={{ 
+                __html: (() => {
+                  const processed = processMarkdownContent(data.impactoBiologico)
+                  const safe = stripIframesAndArtifacts(processed)
+                  return safe
+                })()
+              }} 
+            />
           </div>
         </section>
 
@@ -287,10 +346,26 @@ export function Result({
                       >
                         {sec.body}
                       </ReactMarkdown> */}
-                      <div dangerouslySetInnerHTML={{ __html: processMarkdownContent(sec.body) }} />
+                      <div 
+                        dangerouslySetInnerHTML={{ 
+                          __html: (() => {
+                            const processed = processMarkdownContent(sec.body)
+                            const safe = stripIframesAndArtifacts(processed)
+                            return safe
+                          })()
+                        }} 
+                      />
                     </BlurredAccordionContent>
                   ) : (
-                    <div dangerouslySetInnerHTML={{ __html: processMarkdownContent(sec.body) }} />
+                    <div 
+                      dangerouslySetInnerHTML={{ 
+                        __html: (() => {
+                          const processed = processMarkdownContent(sec.body)
+                          const safe = stripIframesAndArtifacts(processed)
+                          return safe
+                        })()
+                      }} 
+                    />
                   )}
                 </AccordionContent>
               </AccordionItem>

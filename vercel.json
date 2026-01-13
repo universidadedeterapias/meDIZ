@@ -9,5 +9,11 @@
       "maxDuration": 60
     }
   },
-  "regions": ["iad1"]
+  "regions": ["iad1"],
+  "crons": [
+    {
+      "path": "/api/push/check-reminders",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

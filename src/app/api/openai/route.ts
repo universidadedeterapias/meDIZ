@@ -219,7 +219,28 @@ export async function POST(req: Request) {
     })
 
     // ── 6) Chama o webhook diretamente (cache desabilitado para evitar problemas com tradução) ───────────────────
+    console.log('🤖 [API OPENAI] ========== CHAMANDO WEBHOOK ==========')
+    console.log('🤖 [API OPENAI] Thread ID:', threadId)
+    console.log('🤖 [API OPENAI] Mensagem:', message.substring(0, 100))
+    console.log('🤖 [API OPENAI] Idioma:', language)
+    
     let assistantReply = await requestAssistantResponse(threadId, message, language)
+    
+    console.log('🤖 [API OPENAI] Resposta recebida do webhook')
+    console.log('🤖 [API OPENAI] Tamanho da resposta:', assistantReply.length)
+    
+    // Verificar se há iframe na resposta original
+    const hasIframeInReply = /<iframe/i.test(assistantReply) || /iframe/i.test(assistantReply)
+    if (hasIframeInReply) {
+      console.error('❌ [API OPENAI] IFRAME DETECTADO NA RESPOSTA DO WEBHOOK!')
+      console.error('❌ [API OPENAI] Resposta original (primeiros 1000 chars):', assistantReply.substring(0, 1000))
+      
+      // Extrair trecho do iframe
+      const iframeMatch = assistantReply.match(/<iframe[\s\S]*?<\/iframe>/i) || assistantReply.match(/<iframe[^>]*>/i)
+      if (iframeMatch) {
+        console.error('❌ [API OPENAI] Trecho do iframe:', iframeMatch[0])
+      }
+    }
 
     // Garante que não estamos salvando JSON no banco
     // Se ainda for JSON, tenta extrair novamente
@@ -227,9 +248,27 @@ export async function POST(req: Request) {
       try {
         const jsonParsed = JSON.parse(assistantReply)
         assistantReply = jsonParsed.resposta || jsonParsed.response || jsonParsed.message || assistantReply
+        console.log('🤖 [API OPENAI] JSON parseado, extraído conteúdo')
       } catch {
         // Erro silencioso - continua com o valor original
+        console.warn('⚠️ [API OPENAI] Erro ao parsear JSON, usando resposta original')
       }
+    }
+    
+    // Verificar novamente após processamento JSON
+    const stillHasIframe = /<iframe/i.test(assistantReply) || /iframe/i.test(assistantReply)
+    if (stillHasIframe) {
+      console.error('❌ [API OPENAI] IFRAME AINDA PRESENTE APÓS PROCESSAMENTO JSON!')
+      console.error('❌ [API OPENAI] Removendo iframe antes de salvar no banco...')
+      
+      // Remover iframe antes de salvar
+      assistantReply = assistantReply
+        .replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '')
+        .replace(/<iframe\b[^>]*\/?>/gi, '')
+        .replace(/<\/iframe\s*>/gi, '')
+        .replace(/iframe/gi, '')
+      
+      console.log('✅ [API OPENAI] Iframe removido da resposta')
     }
 
     // Garante que estamos salvando apenas markdown puro

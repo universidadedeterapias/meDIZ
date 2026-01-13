@@ -13,29 +13,105 @@ const PARAGRAPH_SEPARATORS = ['🌀', '📍', '💡', '🔍', '📌', '✨', '�
  * Remove atributos HTML e tags que não devem aparecer como texto
  */
 function cleanHtmlLiterals(text: string): string {
+  const startTime = Date.now()
+  console.log('🔍 [MARKDOWN PROCESSOR] ========== INÍCIO CLEAN HTML ==========')
+  console.log('🔍 [MARKDOWN PROCESSOR] Tamanho do conteúdo original:', text.length)
+  
+  // Verificar se há iframes ANTES da limpeza
+  const hasIframeBefore = /<iframe/i.test(text) || /iframe/i.test(text)
+  const hasIframeTag = /<iframe[^>]*>/i.test(text)
+  const hasIframeClose = /<\/iframe>/i.test(text)
+  const hasIframeAttributes = /(src|style|allowtransparency|sandbox|allow)\s*=/i.test(text)
+  
+  if (hasIframeBefore || hasIframeTag || hasIframeClose || hasIframeAttributes) {
+    console.warn('⚠️ [MARKDOWN PROCESSOR] IFRAME DETECTADO NO CONTEÚDO ORIGINAL!')
+    console.warn('⚠️ [MARKDOWN PROCESSOR] Detalhes:', {
+      hasIframeBefore,
+      hasIframeTag,
+      hasIframeClose,
+      hasIframeAttributes,
+      preview: text.substring(0, 500)
+    })
+    
+    // Extrair trecho completo do iframe para debug
+    const iframeMatch = text.match(/<iframe[\s\S]*?<\/iframe>/i) || text.match(/<iframe[^>]*>/i)
+    if (iframeMatch) {
+      console.warn('⚠️ [MARKDOWN PROCESSOR] Trecho do iframe encontrado:', iframeMatch[0])
+    }
+  }
+  
   // Lista de padrões HTML problemáticos que devem ser removidos
   // Estes padrões aparecem como texto literal na página e devem ser removidos
   const problematicPatterns = [
-    /sandbox="[^"]*"/gi,           // sandbox="allow-scripts..."
-    /sandbox='[^']*'/gi,            // sandbox='allow-scripts...'
-    /<iframe[^>]*>/gi,               // <iframe ...>
-    /<\/iframe>/gi,                  // </iframe>
-    /<script[^>]*>[\s\S]*?<\/script>/gi, // <script>...</script>
-    /on\w+\s*=\s*["'][^"']*["']/gi, // Event handlers como onclick="..."
+    // Remove iframes completos (com fechamento)
+    /<iframe[^>]*>[\s\S]*?<\/iframe>/gi,
+    // Remove iframes auto-fechados ou sem fechamento
+    /<iframe\b[^>]*\/?>/gi,
+    // Remove tags de fechamento de iframe
+    /<\/iframe\s*>/gi,
+    // Remove atributos de iframe que podem aparecer sozinhos
+    /sandbox\s*=\s*["'][^"']*["']/gi,
+    /sandbox\s*=\s*[^\s>]*/gi,
+    /allowtransparency\s*=\s*["'][^"']*["']/gi,
+    /allowtransparency\s*=\s*[^\s>]*/gi,
+    /allow\s*=\s*["'][^"']*["']/gi,
+    /allow\s*=\s*[^\s>]*/gi,
+    // Remove atributos style que podem conter iframe
+    /style\s*=\s*["'][^"']*position[^"']*fixed[^"']*["']/gi,
+    /style\s*=\s*["'][^"']*width[^"']*100vw[^"']*["']/gi,
+    /style\s*=\s*["'][^"']*height[^"']*100vh[^"']*["']/gi,
+    // Remove scripts
+    /<script[^>]*>[\s\S]*?<\/script>/gi,
+    /<\/script\s*>/gi,
+    // Remove event handlers
+    /on\w+\s*=\s*["'][^"']*["']/gi,
+    /on\w+\s*=\s*[^\s>]*/gi,
   ]
   
   let cleaned = text
+  let totalRemoved = 0
   
   // Remove padrões problemáticos
-  problematicPatterns.forEach(pattern => {
+  problematicPatterns.forEach((pattern, index) => {
     const beforeLength = cleaned.length
     cleaned = cleaned.replace(pattern, '')
+    const removed = beforeLength - cleaned.length
     
-    // Log apenas em desenvolvimento se algo foi removido
-    if (process.env.NODE_ENV === 'development' && cleaned.length < beforeLength) {
-      console.warn('[markdownProcessor] Removido padrão HTML problemático:', pattern.toString())
+    if (removed > 0) {
+      totalRemoved += removed
+      console.log(`🔍 [MARKDOWN PROCESSOR] Padrão ${index + 1} removido:`, {
+        pattern: pattern.toString().substring(0, 50),
+        removed: removed,
+        chars: 'caracteres'
+      })
     }
   })
+  
+  // Verificação final: ainda há iframe?
+  const hasIframeAfter = /<iframe/i.test(cleaned) || /iframe/i.test(cleaned)
+  if (hasIframeAfter) {
+    console.error('❌ [MARKDOWN PROCESSOR] AINDA HÁ IFRAME APÓS LIMPEZA!')
+    console.error('❌ [MARKDOWN PROCESSOR] Conteúdo restante (primeiros 500 chars):', cleaned.substring(0, 500))
+    
+    // Tentativa adicional de remoção mais agressiva
+    cleaned = cleaned
+      .replace(/iframe/gi, '')
+      .replace(/src\s*=\s*["'][^"']*["']/gi, '')
+      .replace(/style\s*=\s*["'][^"']*["']/gi, '')
+      .replace(/allowtransparency/gi, '')
+      .replace(/sandbox/gi, '')
+      .replace(/allow/gi, '')
+    
+    console.log('🔍 [MARKDOWN PROCESSOR] Limpeza agressiva aplicada')
+  } else if (totalRemoved > 0) {
+    console.log('✅ [MARKDOWN PROCESSOR] IFRAME removido com sucesso')
+  }
+  
+  const duration = Date.now() - startTime
+  console.log('🔍 [MARKDOWN PROCESSOR] Tamanho após limpeza:', cleaned.length)
+  console.log('🔍 [MARKDOWN PROCESSOR] Total removido:', totalRemoved, 'caracteres')
+  console.log('⏱️ [MARKDOWN PROCESSOR] Tempo de processamento:', duration, 'ms')
+  console.log('🔍 [MARKDOWN PROCESSOR] ========== FIM CLEAN HTML ==========')
   
   return cleaned
 }
@@ -44,18 +120,39 @@ function cleanHtmlLiterals(text: string): string {
  * Processa conteúdo markdown/texto e retorna HTML formatado com parágrafos adequados
  */
 export function processMarkdownContent(content: string): string {
+  const processStartTime = Date.now()
+  console.log('📝 [MARKDOWN PROCESSOR] ========== INÍCIO PROCESSAMENTO ==========')
+  console.log('📝 [MARKDOWN PROCESSOR] Tamanho do conteúdo:', content?.length || 0)
+  
   if (!content || content.trim().length === 0) {
+    console.log('📝 [MARKDOWN PROCESSOR] Conteúdo vazio, retornando string vazia')
     return ''
   }
 
-  // DEBUG: Log em desenvolvimento para rastrear conteúdo problemático
-  if (process.env.NODE_ENV === 'development' && (content.includes('sandbox') || content.includes('<iframe'))) {
-    console.warn('[markdownProcessor] Conteúdo contém HTML literal:', content.substring(0, 200))
+  // DEBUG: Verificação inicial de conteúdo problemático
+  const hasIframe = /<iframe/i.test(content) || /iframe/i.test(content)
+  const hasSandbox = /sandbox/i.test(content)
+  const hasStyleFixed = /style\s*=\s*["'][^"']*position[^"']*fixed/i.test(content)
+  
+  if (hasIframe || hasSandbox || hasStyleFixed) {
+    console.warn('⚠️ [MARKDOWN PROCESSOR] Conteúdo contém elementos suspeitos ANTES do processamento:', {
+      hasIframe,
+      hasSandbox,
+      hasStyleFixed,
+      preview: content.substring(0, 300)
+    })
   }
 
   // 0. PRIMEIRO: Limpa HTML literal problemático que pode estar no conteúdo
   // Isso evita que HTML literal apareça como texto na página
   const contentToProcess = cleanHtmlLiterals(content)
+  
+  // Verificação após limpeza
+  const stillHasIframe = /<iframe/i.test(contentToProcess) || /iframe/i.test(contentToProcess)
+  if (stillHasIframe) {
+    console.error('❌ [MARKDOWN PROCESSOR] IFRAME AINDA PRESENTE APÓS LIMPEZA!')
+    console.error('❌ [MARKDOWN PROCESSOR] Conteúdo processado (primeiros 500 chars):', contentToProcess.substring(0, 500))
+  }
 
   // 1. Primeiro converte markdown básico para HTML
   // IMPORTANTE: Processar negrito ANTES de itálico para evitar conflitos
@@ -95,7 +192,7 @@ export function processMarkdownContent(content: string): string {
     .filter(p => p.length > 0)
 
   // 5. Processa cada parágrafo e cria HTML
-  const paragraphHTML = paragraphs
+  let paragraphHTML = paragraphs
     .map(paragraph => {
       const trimmed = paragraph.trim()
       
@@ -109,6 +206,27 @@ export function processMarkdownContent(content: string): string {
     .filter(p => p.length > 0)
     .join('\n')
 
+  // Verificação final antes de retornar
+  const finalHasIframe = /<iframe/i.test(paragraphHTML) || /iframe/i.test(paragraphHTML)
+  if (finalHasIframe) {
+    console.error('❌ [MARKDOWN PROCESSOR] IFRAME NO HTML FINAL!')
+    console.error('❌ [MARKDOWN PROCESSOR] HTML final (primeiros 500 chars):', paragraphHTML.substring(0, 500))
+    
+    // Remoção de emergência
+    paragraphHTML = paragraphHTML
+      .replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '')
+      .replace(/<iframe\b[^>]*\/?>/gi, '')
+      .replace(/<\/iframe\s*>/gi, '')
+      .replace(/iframe/gi, '')
+    
+    console.log('🔍 [MARKDOWN PROCESSOR] Remoção de emergência aplicada')
+  }
+  
+  const processDuration = Date.now() - processStartTime
+  console.log('📝 [MARKDOWN PROCESSOR] Tamanho do HTML final:', paragraphHTML.length)
+  console.log('⏱️ [MARKDOWN PROCESSOR] Tempo total de processamento:', processDuration, 'ms')
+  console.log('📝 [MARKDOWN PROCESSOR] ========== FIM PROCESSAMENTO ==========')
+  
   return paragraphHTML
 }
 

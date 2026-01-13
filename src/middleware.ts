@@ -30,7 +30,9 @@ export async function middleware(request: NextRequest) {
       // Registrar informações para diagnóstico (apenas em desenvolvimento)
       if (process.env.NODE_ENV === 'development') {
         if (token?.email) {
-          console.log(`[Middleware] Usuário autenticado: ${token.email}`)
+          // Não logar email completo por segurança
+          const emailDomain = token.email.split('@')[1] || 'unknown'
+          console.log(`[Middleware] Usuário autenticado, domínio: @${emailDomain}`)
           console.log(`[Middleware] Admin: ${token.email.includes('@mediz.com') ? 'Sim' : 'Não'}`)
           console.log(`[Middleware] Token expira em: ${token.exp ? new Date(token.exp * 1000).toLocaleString() : 'Desconhecido'}`)
         } else {
