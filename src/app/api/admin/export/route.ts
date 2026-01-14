@@ -14,8 +14,9 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url)
-    const type = searchParams.get('type') || 'users' // 'users' ou 'analytics'
+    const type = searchParams.get('type') || 'users' // 'users', 'analytics' ou 'top-searches'
     const format = searchParams.get('format') || 'csv' // 'csv' ou 'xlsx'
+    const canceledOnly = searchParams.get('canceledOnly') === 'true'
 
     // Buscar admin para registrar no audit log e enviar alerta
     const admin = await prisma.user.findUnique({
@@ -27,9 +28,19 @@ export async function GET(req: NextRequest) {
     let recordCount = 0
     
     if (type === 'users') {
-      result = await exportUsers(format)
+      result = await exportUsers(format, { canceledOnly })
       // Contar registros exportados
-      recordCount = await prisma.user.count()
+      recordCount = canceledOnly
+        ? await prisma.user.count({
+            where: {
+              subscriptions: {
+                some: {
+                  status: { in: ['canceled', 'cancelled', 'cancel_at_period_end'] }
+                }
+              }
+            }
+          })
+        : await prisma.user.count()
       // Registrar exportação no audit log
       if (admin) {
         await logDataExport(admin.id, session.user.email, format.toUpperCase(), recordCount, req)
@@ -68,6 +79,25 @@ export async function GET(req: NextRequest) {
           }
         }
       }
+    } else if (type === 'top-searches') {
+      const topUsers = await exportTopSearches(format)
+      result = topUsers.result
+      recordCount = topUsers.recordCount
+      if (admin) {
+        await logDataExport(admin.id, session.user.email, format.toUpperCase(), recordCount, req)
+        if (admin.whatsapp) {
+          try {
+            await sendDataExportAlert(
+              admin.whatsapp,
+              admin.name || 'Admin',
+              'Top buscas (30 dias)',
+              recordCount
+            )
+          } catch {
+            // Não falhar o fluxo principal se o alerta falhar
+          }
+        }
+      }
     } else {
       return NextResponse.json({ error: 'Tipo de exportação inválido' }, { status: 400 })
     }
@@ -83,9 +113,19 @@ export async function GET(req: NextRequest) {
   }
 }
 
-async function exportUsers(format: string) {
+async function exportUsers(format: string, options: { canceledOnly: boolean }) {
+  const { canceledOnly } = options
   // Busca todos os usuários com suas informações
   const users = await prisma.user.findMany({
+    where: canceledOnly
+      ? {
+          subscriptions: {
+            some: {
+              status: { in: ['canceled', 'cancelled', 'cancel_at_period_end'] }
+            }
+          }
+        }
+      : undefined,
     include: {
       subscriptions: {
         include: {
@@ -122,6 +162,7 @@ async function exportUsers(format: string) {
       ['active', 'ACTIVE', 'cancel_at_period_end'].includes(sub.status) &&
       sub.currentPeriodEnd >= new Date()
     )
+    const latestSubscription = user.subscriptions[0]
 
     return {
       'ID': user.id,
@@ -130,9 +171,9 @@ async function exportUsers(format: string) {
       'Data de Cadastro': user.createdAt.toLocaleDateString('pt-BR'),
       'Email Verificado': user.emailVerified ? 'Sim' : 'Não',
       'Plano': activeSubscription ? 'Premium' : 'Gratuito',
-      'Plano de Assinatura': activeSubscription?.plan.name || 'N/A',
-      'Status da Assinatura': activeSubscription?.status || 'N/A',
-      'Vencimento da Assinatura': activeSubscription?.currentPeriodEnd.toLocaleDateString('pt-BR') || 'N/A',
+      'Plano de Assinatura': activeSubscription?.plan.name || latestSubscription?.plan.name || 'N/A',
+      'Status da Assinatura': activeSubscription?.status || latestSubscription?.status || 'N/A',
+      'Vencimento da Assinatura': activeSubscription?.currentPeriodEnd.toLocaleDateString('pt-BR') || latestSubscription?.currentPeriodEnd?.toLocaleDateString('pt-BR') || 'N/A',
       'Total de Assinaturas': user.subscriptions.length,
       'Total de Pesquisas': user.chatSessions.length,
       'Provedores de Login': user.accounts.map(acc => acc.provider).join(', '),
@@ -146,6 +187,86 @@ async function exportUsers(format: string) {
   } else {
     return generateXLSX(processedData, 'usuarios')
   }
+}
+
+const getSaoPauloNow = () => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).formatToParts(new Date())
+
+  const getPart = (type: string) => parts.find(part => part.type === type)?.value || '00'
+  const year = Number(getPart('year'))
+  const month = Number(getPart('month')) - 1
+  const day = Number(getPart('day'))
+  const hour = Number(getPart('hour'))
+  const minute = Number(getPart('minute'))
+  const second = Number(getPart('second'))
+
+  return new Date(Date.UTC(year, month, day, hour, minute, second))
+}
+
+async function exportTopSearches(format: string) {
+  const endDate = getSaoPauloNow()
+  const startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000)
+
+  const topSearches = await prisma.chatSession.groupBy({
+    by: ['userId'],
+    where: {
+      createdAt: { gte: startDate }
+    },
+    _count: { userId: true },
+    _max: { createdAt: true },
+    orderBy: [
+      { _count: { userId: 'desc' } },
+      { _max: { createdAt: 'desc' } }
+    ],
+    take: 20
+  })
+
+  const userIds = topSearches.map(item => item.userId)
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    include: {
+      subscriptions: {
+        include: {
+          plan: { select: { name: true } }
+        },
+        orderBy: { createdAt: 'desc' }
+      }
+    }
+  })
+
+  const userMap = new Map(users.map(user => [user.id, user]))
+  const processedData = topSearches.map(item => {
+    const user = userMap.get(item.userId)
+    const activeSubscription = user?.subscriptions.find(sub =>
+      ['active', 'ACTIVE', 'cancel_at_period_end'].includes(sub.status) &&
+      sub.currentPeriodEnd >= new Date()
+    )
+    const lastSearchDate = item._max.createdAt
+
+    return {
+      'Nome': user?.name || user?.fullName || 'Sem nome',
+      'Email': user?.email || 'N/A',
+      'Plano': activeSubscription ? 'Premium' : 'Gratuito',
+      'Última Busca': lastSearchDate ? lastSearchDate.toLocaleDateString('pt-BR') : 'N/A',
+      'Data de Cadastro': user?.createdAt.toLocaleDateString('pt-BR') || 'N/A',
+      'Total de Buscas (30 dias)': item._count.userId
+    }
+  })
+
+  const result = format === 'csv'
+    ? generateCSV(processedData, 'top_buscas_30_dias')
+    : generateXLSX(processedData, 'top_buscas_30_dias')
+
+  return { result, recordCount: processedData.length }
 }
 
 async function exportAnalytics(format: string) {

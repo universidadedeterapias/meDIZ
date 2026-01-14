@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { generateChatPDF } from '@/lib/pdfGenerator'
 import { FileText, User, Calendar, MessageSquare } from 'lucide-react'
 import { useLanguage } from '@/i18n/useLanguage'
 import { useTranslation } from '@/i18n/useTranslation'
@@ -87,13 +86,32 @@ export function PDFConfigModal({
     })
     
     try {
-      await generateChatPDF({
-        question,
-        answer,
-        timestamp: new Date(),
-        sessionId,
-        patientName: patientName.trim() || undefined
+      const response = await fetch('/api/chat/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question,
+          answer,
+          patientName: patientName.trim() || undefined,
+          therapistName: therapistName.trim() || undefined,
+          language
+        })
       })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Erro ao gerar PDF')
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `relatorio-mediz-${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
       console.log('[PDFConfigModal] ✅ PDF gerado com sucesso')
       onOpenChange(false)
     } catch (error) {
