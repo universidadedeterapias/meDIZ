@@ -3,6 +3,44 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
+type PlanInterval = 'YEAR' | 'MONTH' | 'WEEK' | 'DAY' | string | null
+
+const normalizeDateOnly = (date: Date) => {
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(date.getUTCDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const calculatePeriodEndUtc = (start: Date, interval: PlanInterval, intervalCount: number) => {
+  const base = new Date(Date.UTC(
+    start.getUTCFullYear(),
+    start.getUTCMonth(),
+    start.getUTCDate(),
+    start.getUTCHours(),
+    start.getUTCMinutes(),
+    start.getUTCSeconds(),
+    start.getUTCMilliseconds()
+  ))
+
+  switch ((interval || '').toUpperCase()) {
+    case 'YEAR':
+      base.setUTCFullYear(base.getUTCFullYear() + intervalCount)
+      return base
+    case 'MONTH':
+      base.setUTCMonth(base.getUTCMonth() + intervalCount)
+      return base
+    case 'WEEK':
+      base.setUTCDate(base.getUTCDate() + intervalCount * 7)
+      return base
+    case 'DAY':
+      base.setUTCDate(base.getUTCDate() + intervalCount)
+      return base
+    default:
+      return null
+  }
+}
+
 // GET - Listar assinaturas de um usuário
 export async function GET(req: Request) {
   try {
@@ -133,6 +171,9 @@ export async function POST(req: Request) {
 
     const body = await req.json()
     const { userId, planId, status, currentPeriodStart, currentPeriodEnd } = body
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin/subscriptions:POST:body',message:'Payload recebido para criar assinatura',data:{userIdSuffix:userId?.slice(-6) || null,planId,status,currentPeriodStart,currentPeriodEnd},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2'})}).catch(()=>{});
+    // #endregion
 
     if (!userId || !planId || !status || !currentPeriodStart || !currentPeriodEnd) {
       return NextResponse.json({ error: 'Campos obrigatórios: userId, planId, status, currentPeriodStart, currentPeriodEnd' }, { status: 400 })
@@ -155,6 +196,21 @@ export async function POST(req: Request) {
     if (!plan) {
       return NextResponse.json({ error: 'Plano não encontrado' }, { status: 404 })
     }
+    if (currentPeriodStart && currentPeriodEnd) {
+      const expectedEnd = calculatePeriodEndUtc(
+        new Date(currentPeriodStart),
+        plan.interval,
+        plan.intervalCount ?? 1
+      )
+      const expectedDateOnly = expectedEnd ? normalizeDateOnly(expectedEnd) : null
+      const providedDateOnly = normalizeDateOnly(new Date(currentPeriodEnd))
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin/subscriptions:POST:compare',message:'Comparando fim esperado vs informado',data:{planId:plan.id,interval:plan.interval || null,intervalCount:plan.intervalCount ?? 1,expectedDateOnly,providedDateOnly},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H5'})}).catch(()=>{});
+      // #endregion
+    }
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin/subscriptions:POST:plan',message:'Plano encontrado para criação',data:{planId:plan.id,interval:plan.interval || null,intervalCount:plan.intervalCount ?? null,trialPeriodDays:plan.trialPeriodDays ?? null},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3'})}).catch(()=>{});
+    // #endregion
 
     const subscription = await prisma.subscription.create({
       data: {
@@ -196,6 +252,9 @@ export async function PUT(req: Request) {
 
     const body = await req.json()
     const { id, planId, status, currentPeriodStart, currentPeriodEnd } = body
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin/subscriptions:PUT:body',message:'Payload recebido para atualizar assinatura',data:{idSuffix:id?.slice(-6) || null,planId,status,currentPeriodStart,currentPeriodEnd},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2'})}).catch(()=>{});
+    // #endregion
 
     if (!id) {
       return NextResponse.json({ error: 'ID da assinatura é obrigatório' }, { status: 400 })
@@ -208,6 +267,23 @@ export async function PUT(req: Request) {
 
     if (!existingSubscription) {
       return NextResponse.json({ error: 'Assinatura não encontrada' }, { status: 404 })
+    }
+    if (planId && (currentPeriodStart || currentPeriodEnd)) {
+      const plan = await prisma.plan.findUnique({
+        where: { id: planId }
+      })
+      if (plan && currentPeriodStart && currentPeriodEnd) {
+        const expectedEnd = calculatePeriodEndUtc(
+          new Date(currentPeriodStart),
+          plan.interval,
+          plan.intervalCount ?? 1
+        )
+        const expectedDateOnly = expectedEnd ? normalizeDateOnly(expectedEnd) : null
+        const providedDateOnly = normalizeDateOnly(new Date(currentPeriodEnd))
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin/subscriptions:PUT:compare',message:'Comparando fim esperado vs informado (update)',data:{planId:plan.id,interval:plan.interval || null,intervalCount:plan.intervalCount ?? 1,expectedDateOnly,providedDateOnly},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H5'})}).catch(()=>{});
+        // #endregion
+      }
     }
 
     // Preparar dados para atualização

@@ -37,6 +37,7 @@ interface Plan {
   name: string
   amount: number
   interval: string | null
+  intervalCount?: number | null
   currency: string | null
   trialPeriodDays?: number | null
   hotmartOfferKey?: string | null
@@ -61,6 +62,43 @@ export function SubscriptionManager({ userId, userName, userEmail }: Subscriptio
     currentPeriodStart: '',
     currentPeriodEnd: ''
   })
+
+  const parseLocalDateInput = (dateInput: string) => {
+    const [year, month, day] = dateInput.split('-').map(Number)
+    return new Date(year, (month || 1) - 1, day || 1)
+  }
+
+  const formatLocalDateInput = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const calculatePeriodEnd = (startDate: string, plan?: Plan | null) => {
+    if (!startDate || !plan?.interval) return null
+    const baseDate = parseLocalDateInput(startDate)
+    const intervalCount = plan.intervalCount ?? 1
+
+    switch (plan.interval.toUpperCase()) {
+      case 'YEAR':
+        baseDate.setFullYear(baseDate.getFullYear() + intervalCount)
+        break
+      case 'MONTH':
+        baseDate.setMonth(baseDate.getMonth() + intervalCount)
+        break
+      case 'WEEK':
+        baseDate.setDate(baseDate.getDate() + intervalCount * 7)
+        break
+      case 'DAY':
+        baseDate.setDate(baseDate.getDate() + intervalCount)
+        break
+      default:
+        return null
+    }
+
+    return formatLocalDateInput(baseDate)
+  }
 
   const fetchSubscriptions = useCallback(async () => {
     try {
@@ -107,6 +145,9 @@ export function SubscriptionManager({ userId, userName, userEmail }: Subscriptio
         subscriptions: subscriptionsData.length,
         plans: plansData.length
       })
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SubscriptionManager.tsx:fetchSubscriptions',message:'Resumo de assinaturas carregadas',data:{subscriptionsCount:subscriptionsData.length,plansCount:plansData.length,subscriptionSamples:subscriptionsData.slice(0,5).map((sub: Subscription) => ({planInterval:sub.plan?.interval || null,currentPeriodStart:sub.currentPeriodStart,currentPeriodEnd:sub.currentPeriodEnd,periodDays:Math.round((new Date(sub.currentPeriodEnd).getTime() - new Date(sub.currentPeriodStart).getTime()) / 86400000)}))},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{});
+      // #endregion
       
       setSubscriptions(subscriptionsData)
       setPlans(plansData)
@@ -126,6 +167,9 @@ export function SubscriptionManager({ userId, userName, userEmail }: Subscriptio
   const handleSave = async () => {
     try {
       setLoading(true)
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SubscriptionManager.tsx:handleSave',message:'Salvando assinatura (admin)',data:{editing:Boolean(editingSubscription),planId:formData.planId,status:formData.status,currentPeriodStart:formData.currentPeriodStart,currentPeriodEnd:formData.currentPeriodEnd},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2'})}).catch(()=>{});
+      // #endregion
 
       if (editingSubscription) {
         // Atualizar subscription existente
@@ -199,6 +243,36 @@ export function SubscriptionManager({ userId, userName, userEmail }: Subscriptio
     }
   }
 
+  const handleRecalculatePeriods = async () => {
+    if (!confirm('Recalcular o fim do período para todas as assinaturas deste usuário?')) {
+      return
+    }
+
+    try {
+      setLoading(true)
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SubscriptionManager.tsx:handleRecalculatePeriods',message:'Iniciando recálculo de períodos',data:{userIdSuffix:userId.slice(-6)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
+      // #endregion
+
+      const response = await fetch('/api/admin/subscriptions/recalculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      })
+
+      if (!response.ok) {
+        throw new Error('Erro ao recalcular períodos')
+      }
+
+      await fetchSubscriptions()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro desconhecido')
+      console.error('Erro ao recalcular períodos:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const openEditDialog = (subscription: Subscription) => {
     setEditingSubscription(subscription)
     setFormData({
@@ -212,12 +286,17 @@ export function SubscriptionManager({ userId, userName, userEmail }: Subscriptio
 
   const openCreateDialog = async () => {
     setEditingSubscription(null)
+    const defaultStart = new Date().toISOString().split('T')[0]
+    const defaultEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     setFormData({
       planId: '',
       status: 'active',
-      currentPeriodStart: new Date().toISOString().split('T')[0],
-      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      currentPeriodStart: defaultStart,
+      currentPeriodEnd: defaultEnd
     })
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SubscriptionManager.tsx:openCreateDialog',message:'Defaults de periodo ao abrir modal',data:{defaultStart,defaultEnd},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
     
     // Recarregar planos quando abrir o modal para garantir dados atualizados
     try {
@@ -266,90 +345,118 @@ export function SubscriptionManager({ userId, userName, userEmail }: Subscriptio
               Gerenciar assinaturas de {userName} ({userEmail})
             </CardDescription>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={openCreateDialog}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Assinatura
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingSubscription ? 'Editar Assinatura' : 'Nova Assinatura'}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="planId">Plano</Label>
-                  <Select
-                    value={formData.planId}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, planId: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um plano" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {plans.map((plan) => {
-                        const price = plan.amount ? (plan.amount / 100).toFixed(2) : '0.00'
-                        const currency = plan.currency?.toUpperCase() || 'BRL'
-                        const interval = plan.interval?.toLowerCase() || 'mês'
-                        const trialInfo = plan.trialPeriodDays ? ` (${plan.trialPeriodDays}D trial)` : ''
-                        return (
-                          <SelectItem key={plan.id} value={plan.id}>
-                            {plan.name} - {currency} {price}/{interval}{trialInfo}
-                          </SelectItem>
-                        )
-                      })}
-                    </SelectContent>
-                  </Select>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleRecalculatePeriods} disabled={loading}>
+              Recalcular períodos
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={openCreateDialog}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nova Assinatura
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingSubscription ? 'Editar Assinatura' : 'Nova Assinatura'}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="planId">Plano</Label>
+                    <Select
+                      value={formData.planId}
+                      onValueChange={(value) => {
+                        const selectedPlan = plans.find(plan => plan.id === value)
+                        const computedEnd = calculatePeriodEnd(formData.currentPeriodStart, selectedPlan)
+                        // #region agent log
+                        fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SubscriptionManager.tsx:onPlanChange',message:'Plano selecionado no modal',data:{planId:value,interval:selectedPlan?.interval || null,intervalCount:selectedPlan?.intervalCount ?? null,trialPeriodDays:selectedPlan?.trialPeriodDays ?? null,currentPeriodEnd:formData.currentPeriodEnd,computedEnd},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{});
+                        // #endregion
+                        setFormData(prev => ({
+                          ...prev,
+                          planId: value,
+                          currentPeriodEnd: computedEnd || prev.currentPeriodEnd
+                        }))
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um plano" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {plans.map((plan) => {
+                          const price = plan.amount ? (plan.amount / 100).toFixed(2) : '0.00'
+                          const currency = plan.currency?.toUpperCase() || 'BRL'
+                          const interval = plan.interval?.toLowerCase() || 'mês'
+                          const trialInfo = plan.trialPeriodDays ? ` (${plan.trialPeriodDays}D trial)` : ''
+                          return (
+                            <SelectItem key={plan.id} value={plan.id}>
+                              {plan.name} - {currency} {price}/{interval}{trialInfo}
+                            </SelectItem>
+                          )
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="status">Status</Label>
+                    <Select
+                      value={formData.status}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Ativa</SelectItem>
+                        <SelectItem value="canceled">Cancelada</SelectItem>
+                        <SelectItem value="cancel_at_period_end">Cancelar no fim do período</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="currentPeriodStart">Início do Período</Label>
+                    <Input
+                      id="currentPeriodStart"
+                      type="date"
+                      value={formData.currentPeriodStart}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        const selectedPlan = plans.find(plan => plan.id === formData.planId)
+                        const computedEnd = calculatePeriodEnd(value, selectedPlan)
+                        // #region agent log
+                        fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SubscriptionManager.tsx:onStartChange',message:'Início do período alterado',data:{planId:formData.planId || null,interval:selectedPlan?.interval || null,intervalCount:selectedPlan?.intervalCount ?? null,start:value,computedEnd},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{});
+                        // #endregion
+                        setFormData(prev => ({
+                          ...prev,
+                          currentPeriodStart: value,
+                          currentPeriodEnd: computedEnd || prev.currentPeriodEnd
+                        }))
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="currentPeriodEnd">Fim do Período</Label>
+                    <Input
+                      id="currentPeriodEnd"
+                      type="date"
+                      value={formData.currentPeriodEnd}
+                      onChange={(e) => setFormData(prev => ({ ...prev, currentPeriodEnd: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleSave} disabled={loading}>
+                      {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      {editingSubscription ? 'Atualizar' : 'Criar'}
+                    </Button>
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Ativa</SelectItem>
-                      <SelectItem value="canceled">Cancelada</SelectItem>
-                      <SelectItem value="cancel_at_period_end">Cancelar no fim do período</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="currentPeriodStart">Início do Período</Label>
-                  <Input
-                    id="currentPeriodStart"
-                    type="date"
-                    value={formData.currentPeriodStart}
-                    onChange={(e) => setFormData(prev => ({ ...prev, currentPeriodStart: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="currentPeriodEnd">Fim do Período</Label>
-                  <Input
-                    id="currentPeriodEnd"
-                    type="date"
-                    value={formData.currentPeriodEnd}
-                    onChange={(e) => setFormData(prev => ({ ...prev, currentPeriodEnd: e.target.value }))}
-                  />
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleSave} disabled={loading}>
-                    {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    {editingSubscription ? 'Atualizar' : 'Criar'}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       </CardHeader>
       <CardContent>

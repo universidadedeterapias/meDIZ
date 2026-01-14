@@ -89,6 +89,7 @@ export default function UsersPage() {
   const [loadingPlanNames, setLoadingPlanNames] = useState(false)
   const [subscriptionDateStart, setSubscriptionDateStart] = useState('')
   const [subscriptionDateEnd, setSubscriptionDateEnd] = useState('')
+  const [topSearchesFormat, setTopSearchesFormat] = useState<'csv' | 'xlsx'>('csv')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [isCreateUserDialogOpen, setIsCreateUserDialogOpen] = useState(false)
@@ -350,9 +351,12 @@ export default function UsersPage() {
     }
   }
 
+  const [exportCanceledOnly, setExportCanceledOnly] = useState(false)
+
   const handleExport = async (format: 'csv' | 'xlsx' = 'csv') => {
     try {
-      const response = await fetch(`/api/admin/export?type=users&format=${format}`)
+      const canceledParam = exportCanceledOnly ? '&canceledOnly=true' : ''
+      const response = await fetch(`/api/admin/export?type=users&format=${format}${canceledParam}`)
       
       if (!response.ok) {
         throw new Error('Erro ao exportar dados')
@@ -370,6 +374,29 @@ export default function UsersPage() {
     } catch (err) {
       console.error('Erro na exportação:', err)
       alert('Erro ao exportar dados')
+    }
+  }
+
+  const handleTopSearchesExport = async () => {
+    try {
+      const response = await fetch(`/api/admin/export?type=top-searches&format=${topSearchesFormat}`)
+
+      if (!response.ok) {
+        throw new Error('Erro ao exportar top buscas')
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `top_buscas_30_dias_${new Date().toISOString().split('T')[0]}.${topSearchesFormat}`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (err) {
+      console.error('Erro na exportação top buscas:', err)
+      alert('Erro ao exportar top buscas')
     }
   }
 
@@ -392,7 +419,28 @@ export default function UsersPage() {
     <div className="container py-10">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Gerenciamento de Usuários</h1>
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={exportCanceledOnly}
+              onChange={(e) => setExportCanceledOnly(e.target.checked)}
+            />
+            Exportar apenas cancelados
+          </label>
+          <div className="flex items-center gap-2">
+            <select
+              value={topSearchesFormat}
+              onChange={(e) => setTopSearchesFormat(e.target.value as 'csv' | 'xlsx')}
+              className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+            >
+              <option value="csv">CSV</option>
+              <option value="xlsx">XLSX</option>
+            </select>
+            <Button variant="outline" onClick={handleTopSearchesExport}>
+              Exportar Top 20 buscas
+            </Button>
+          </div>
           <Button variant="outline" onClick={() => handleExport('csv')}>
             <Download className="mr-2 h-4 w-4" />
             Exportar CSV
