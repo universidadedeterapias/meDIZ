@@ -232,6 +232,11 @@ const buildBlocks = (text: string): TextBlock[] => {
       )
     )
   )
+  const normalizedHasIframe = /<\s*iframe\b/i.test(normalized)
+  const normalizedHasHtmlTag = /<\s*[a-z][\s\S]*>/i.test(normalized)
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:buildBlocks',message:'normalized inspection',data:{normalizedLength:normalized.length,normalizedHasIframe,normalizedHasHtmlTag},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2'})}).catch(()=>{});
+  // #endregion
   if (!normalized) return []
   const lines = normalized.split('\n')
   const blocks: TextBlock[] = []
@@ -371,6 +376,10 @@ export async function POST(req: NextRequest) {
   doc.moveDown(0.4)
 
   const blocks = buildBlocks(answer)
+  const blocksContainIframe = blocks.some((block) => 'text' in block && /<\s*iframe\b/i.test(block.text))
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:blocks',message:'blocks inspection',data:{blocksCount:blocks.length,blocksContainIframe},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3'})}).catch(()=>{});
+  // #endregion
   doc.font('Helvetica').fontSize(11)
 
   blocks.forEach((block) => {
