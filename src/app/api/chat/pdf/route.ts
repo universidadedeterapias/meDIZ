@@ -325,6 +325,13 @@ export async function POST(req: NextRequest) {
   const now = new Date()
   const patientName = body.patientName?.trim()
   const therapistName = body.therapistName?.trim() || session.user.name || session.user.email || 'meDIZ'
+  const iframeMatches = answer?.match(/<\s*iframe\b/gi) || []
+  const hasIframe = iframeMatches.length > 0
+  const hasHtmlTag = /<\s*[a-z][\s\S]*>/i.test(answer || '')
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:POST',message:'PDF input inspection',data:{answerLength:answer?.length||0,hasIframe,iframeCount:iframeMatches.length,hasHtmlTag,language},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
+  console.log('[PDF] Input inspection', { answerLength: answer?.length || 0, hasIframe, iframeCount: iframeMatches.length, hasHtmlTag, language })
 
   const doc = new PDFDocument({ size: 'A4', margin: 40 })
   const chunks: Buffer[] = []
