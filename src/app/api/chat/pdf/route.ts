@@ -48,6 +48,10 @@ const getLabels = (language: LanguageCode) => {
 
 const normalizeText = (text: string) =>
   text
+    // Remove iframes e tags HTML antes de qualquer outro tratamento
+    .replace(/<\s*iframe\b[\s\S]*?<\/\s*iframe\s*>/gi, ' ')
+    .replace(/<\s*iframe\b[\s\S]*?>/gi, ' ')
+    .replace(/<\/?\s*[a-z][^>]*>/gi, ' ')
     .replace(/\r\n/g, '\n')
     .replace(/\\n/g, '\n')
     .replace(/[ \t]+\n/g, '\n')
@@ -59,7 +63,10 @@ const removeMarkdownMarkers = (text: string) =>
   text.replace(/\*\*/g, '').replace(/\*/g, '').trim()
 
 const removeEmojis = (text: string) =>
-  text.replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu, '').trim()
+  text
+    .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu, '•')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim()
 
 const stripDiacritics = (text: string) =>
   text.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -211,10 +218,14 @@ const isSectionHeading = (line: string) => {
 const isBulletLine = (line: string) =>
   /^[-•*]\s+/.test(line) || /^(📍|🌩️|✅|⚠️|💡|❗|❕)\s+/.test(line)
 
-const stripBullet = (line: string) =>
-  removeEmojis(
-    line.replace(/^[-•*]\s+/, '').replace(/^(📍|🌩️|✅|⚠️|💡|❗|❕)\s+/, '').trim()
-  )
+const stripBullet = (line: string) => {
+  const raw = line.replace(/^[-•*]\s+/, '').replace(/^(📍|🌩️|✅|⚠️|💡|❗|❕)\s+/, '').trim()
+  const cleaned = removeEmojis(raw)
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:stripBullet',message:'bullet normalization',data:{rawStartsWithBullet:/^•/.test(raw),cleanedStartsWithBullet:/^•/.test(cleaned)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
+  return cleaned
+}
 
 const buildBlocks = (text: string): TextBlock[] => {
   const normalized = normalizeText(
@@ -280,6 +291,13 @@ const buildBlocks = (text: string): TextBlock[] => {
       continue
     }
 
+    const lastBlock = blocks[blocks.length - 1]
+    const startsWithUppercase = /^[A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ]/.test(line)
+    if (lastBlock?.type === 'bullet' && !startsWithUppercase) {
+      lastBlock.text = `${lastBlock.text} ${line}`
+      continue
+    }
+
     paragraphLines.push(line)
   }
 
@@ -300,14 +318,18 @@ const formatTime = (date: Date, language: LanguageCode) =>
     minute: '2-digit'
   })
 
-const writeInlineText = (doc: PDFKit.PDFDocument, text: string) => {
-  const segments = text.split('**')
+const DEFAULT_LINE_GAP = 6
+const BULLET_LINE_GAP = 5
+
+const writeInlineText = (doc: PDFKit.PDFDocument, text: string, lineGap = DEFAULT_LINE_GAP) => {
+  const normalized = text.replace(/•/g, '**•**')
+  const segments = normalized.split('**')
   segments.forEach((segment, index) => {
     const isBold = index % 2 === 1
     doc.font(isBold ? 'Helvetica-Bold' : 'Helvetica')
-    doc.text(segment, { continued: index < segments.length - 1 })
+    doc.text(segment, { continued: index < segments.length - 1, lineGap })
   })
-  doc.text('')
+  doc.text('', { lineGap })
 }
 
 export async function POST(req: NextRequest) {
@@ -407,13 +429,13 @@ export async function POST(req: NextRequest) {
 
     if (block.type === 'bullet') {
       doc.font('Helvetica')
-      writeInlineText(doc, `• ${block.text}`)
-      doc.moveDown(0.4)
+      writeInlineText(doc, `• ${block.text}`, BULLET_LINE_GAP)
+      doc.moveDown(1)
       return
     }
 
-    writeInlineText(doc, block.text)
-    doc.moveDown(0.6)
+    writeInlineText(doc, block.text, DEFAULT_LINE_GAP)
+    doc.moveDown(1.1)
   })
 
   doc.end()
