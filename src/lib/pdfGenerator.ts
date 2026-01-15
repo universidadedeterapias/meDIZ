@@ -14,31 +14,8 @@ interface PDFData {
  */
 export async function generateChatPDF(data: PDFData): Promise<void> {
   try {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:15',message:'generateChatPDF entry',data:{answerLength:data.answer?.length||0,answerPreview:data.answer?.substring(0,200),hasMarkdown:data.answer?.includes('**')||false,hasHtml:data.answer?.includes('<')||false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-    // #endregion
-    console.log('🔍 Debug PDF - Dados recebidos:', {
-      question: data.question,
-      answerLength: data.answer?.length || 0,
-      hasAnswer: !!data.answer,
-      timestamp: data.timestamp
-    })
-    
-    // Debug específico para IMPACTO BIOLÓGICO
-    console.log('🔍 Debug PDF - Answer content preview:', data.answer?.substring(0, 500))
-    console.log('🔍 Debug PDF - Answer contains IMPACTO BIOLÓGICO:', data.answer?.includes('IMPACTO BIOLÓGICO'))
-    console.log('🔍 Debug PDF - Answer contains **IMPACTO BIOLÓGICO**:', data.answer?.includes('**IMPACTO BIOLÓGICO**'))
-
     // Cria o HTML que será convertido para PDF
     const htmlContent = createPDFHTML(data)
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:30',message:'HTML generated',data:{htmlLength:htmlContent?.length||0,hasAnswerContent:htmlContent?.includes('answer-content')||false,processedAnswerPreview:htmlContent?.substring(htmlContent.indexOf('answer-content')||0,htmlContent.indexOf('answer-content')+300||300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-    // #endregion
-    
-    console.log('🔍 Debug PDF - HTML gerado:', {
-      htmlLength: htmlContent?.length || 0,
-      hasContent: htmlContent?.includes('answer-content') || false
-    })
     
     // Configurações do PDF otimizadas
     const options = {
@@ -59,13 +36,9 @@ export async function generateChatPDF(data: PDFData): Promise<void> {
         compress: true
       }
     }
-
-    console.log('🔍 Debug PDF - Iniciando geração...')
     
     // Gera e baixa o PDF
     await html2pdf().set(options).from(htmlContent).save()
-    
-    console.log('✅ Debug PDF - PDF gerado com sucesso!')
   } catch (error) {
     console.error('❌ Erro ao gerar PDF:', error)
     throw new Error('Falha na geração do PDF')
@@ -77,27 +50,13 @@ export async function generateChatPDF(data: PDFData): Promise<void> {
  * Versão simplificada e robusta para evitar seções vazias
  */
 function processAnswerContent(htmlContent: string): string {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:73',message:'processAnswerContent entry',data:{contentLength:htmlContent?.length||0,first200Chars:htmlContent?.substring(0,200)||'',hasMarkdown:htmlContent?.includes('**')||false,hasHtmlTags:htmlContent?.includes('<')||false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-  // #endregion
-  console.log('🔍 Debug processAnswerContent - Input:', {
-    contentLength: htmlContent?.length || 0,
-    hasContent: !!htmlContent,
-    firstChars: htmlContent?.substring(0, 100) || 'VAZIO'
-  })
-
   // Se o conteúdo estiver vazio, retorna uma mensagem padrão
   if (!htmlContent || htmlContent.trim().length === 0) {
-    console.log('⚠️ Debug processAnswerContent - Conteúdo vazio, retornando mensagem padrão')
     return '<p style="margin-bottom: 10px; text-align: justify; line-height: 1.5;">Conteúdo não disponível.</p>'
   }
 
   // Versão simplificada: divide por quebras de linha e processa cada parte
   const lines = htmlContent.split('\n').map(line => line.trim()).filter(line => line.length > 0)
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:87',message:'Lines split',data:{totalLines:lines.length,firstLines:lines.slice(0,5)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-  // #endregion
-  console.log('🔍 Debug processAnswerContent - Linhas encontradas:', lines.length)
   
   let result = ''
   let currentSection = ''
@@ -106,24 +65,13 @@ function processAnswerContent(htmlContent: string): string {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
     
-    // Debug específico para IMPACTO BIOLÓGICO
-    if (line.toUpperCase().includes('IMPACTO BIOLÓGICO')) {
-      console.log(`🔍 Encontrou IMPACTO BIOLÓGICO na linha ${i}: "${line}"`)
-      console.log(`🔍 isSectionTitle retornou: ${isSectionTitle(line)}`)
-    }
-    
     // Verifica se é um título de seção
     const isTitle = isSectionTitle(line)
-    // #region agent log
-    if (i < 10 || isTitle) {
-      fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:105',message:'Checking if line is section title',data:{lineIndex:i,line:line.substring(0,100),isTitle:isTitle,currentSectionTitle:currentSectionTitle||'none'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
-    }
-    // #endregion
+    
     if (isTitle) {
       // Verificação especial para "LATERALIDADE DEPENDE..." - deve ser tratado como conteúdo
       const cleanLine = line.replace(/\*\*/g, '').replace(/\*/g, '').trim().toUpperCase()
       if (cleanLine.includes('LATERALIDADE') && cleanLine.includes('DEPENDE')) {
-        console.log(`🔄 Linha especial "${line}" - tratando como conteúdo da seção atual`)
         if (currentSection) {
           currentSection += '\n' + line
         } else {
@@ -132,12 +80,9 @@ function processAnswerContent(htmlContent: string): string {
         continue
       }
       
-      console.log(`✅ Título detectado: "${line}"`)
-      
       // Salva seção anterior se tiver conteúdo
       if (currentSectionTitle && currentSection.trim()) {
         result += createSectionHTML(currentSectionTitle, currentSection.trim())
-        console.log(`✅ Seção criada: ${currentSectionTitle}`)
       }
       
       // Inicia nova seção
@@ -156,25 +101,15 @@ function processAnswerContent(htmlContent: string): string {
   // Adiciona a última seção
   if (currentSectionTitle && currentSection.trim()) {
     result += createSectionHTML(currentSectionTitle, currentSection.trim())
-    console.log(`✅ Última seção criada: ${currentSectionTitle}`)
   } else if (currentSection.trim()) {
     // Se não tem título mas tem conteúdo, cria seção geral
     result += createSectionHTML('RESPOSTA', currentSection.trim())
-    console.log('✅ Seção geral criada: RESPOSTA')
   }
 
   // Se não gerou nada, pelo menos mostra o conteúdo original
   if (result.trim().length === 0) {
-    console.log('⚠️ Debug processAnswerContent - Nenhum resultado gerado, usando conteúdo original')
     result = createSectionHTML('RESPOSTA', htmlContent.trim())
   }
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:150',message:'processAnswerContent result',data:{resultLength:result.length,hasDivs:result.includes('<div'),hasParagraphs:result.includes('<p'),resultPreview:result.substring(0,300),sectionsCreated:result.split('<div class="content-section"').length-1},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-  // #endregion
-  console.log('🔍 Debug processAnswerContent - Resultado final:', {
-    resultLength: result.length,
-    hasContent: result.includes('<div') || result.includes('<p')
-  })
 
   return result
 }
@@ -220,26 +155,6 @@ function isSectionTitle(line: string): boolean {
   const cleanLine = line.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\s+/g, ' ').trim()
   const upperLine = cleanLine.toUpperCase()
   
-  // Debug específico para seções conhecidas e a DICA
-  if (upperLine.includes('IMPACTO') || upperLine.includes('CONTEXTO') || upperLine.includes('SÍMBOLOS') || upperLine.includes('CHAVE') || upperLine.includes('LATERALIDADE') || upperLine.includes('EXPERIÊNCIAS COMUNS') || upperLine.includes('CONFLITO EMOCIONAL') || upperLine.startsWith('DICA:')) {
-    console.log(`🔍 Debug isSectionTitle - Linha original: "${line}"`)
-    console.log(`🔍 Debug isSectionTitle - Linha limpa: "${cleanLine}"`)
-    console.log(`🔍 Debug isSectionTitle - Upper (normalized): "${upperLine}"`)
-    console.log(`🔍 Debug isSectionTitle - Length: ${upperLine.length}`)
-    console.log(`🔍 Debug isSectionTitle - Char codes:`, Array.from(upperLine).map(c => c.charCodeAt(0)))
-    const isSection = sectionKeywords.some(keyword => upperLine.startsWith(keyword.toUpperCase()) && upperLine.length >= keyword.toUpperCase().length);
-    console.log(`🔍 Debug isSectionTitle - Is a section title? ${isSection}`);
-    if (upperLine.includes('EXPERIÊNCIAS COMUNS')) {
-      console.log(`🔍 Debug EXPERIÊNCIAS COMUNS - Detecção: ${isSection}`);
-    }
-    if (upperLine.includes('CONFLITO EMOCIONAL')) {
-      console.log(`🔍 Debug CONFLITO EMOCIONAL - Detecção: ${isSection}`);
-    }
-    if (upperLine.startsWith('DICA:')) {
-      console.log(`🔍 Debug DICA - Detecção: ${isSection}`);
-    }
-  }
-  
   // Ordena as palavras-chave por comprimento (mais longas primeiro) para evitar detecção incorreta
   const sortedKeywords = sectionKeywords.sort((a, b) => b.length - a.length)
   
@@ -263,25 +178,11 @@ function isSectionTitle(line: string): boolean {
                          !upperLine.includes('ON THE') && // Evita "LATERALITY DEPENDS ON THE..."
                          !upperLine.includes('AS THE') // Evita "LATERALITY DEPENDS... AS THE..."
     
-    // Debug específico para seções importantes
-    if (upperKeyword.includes('CHAVE') || upperKeyword.includes('LATERALIDADE') || upperKeyword.includes('EXPERIÊNCIAS COMUNS') || upperKeyword.includes('CONFLITO EMOCIONAL')) {
-      console.log(`🔍 Debug ${upperKeyword} - Line: "${upperLine}"`)
-      console.log(`🔍 Debug ${upperKeyword} - Exact match: ${exactMatch}`)
-      console.log(`🔍 Debug ${upperKeyword} - Includes match: ${includesMatch}`)
-      console.log(`🔍 Debug ${upperKeyword} - Length check: ${upperLine.length <= upperKeyword.length + 5}`)
-      console.log(`🔍 Debug ${upperKeyword} - Contains DEPENDE: ${upperLine.includes('DEPENDE')}`)
-    }
-    
     if (exactMatch || includesMatch) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:233',message:'Section title matched',data:{keyword:upperKeyword,line:upperLine.substring(0,100),exactMatch:exactMatch,includesMatch:includesMatch},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
-      // #endregion
       return true
     }
   }
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:238',message:'No section title match',data:{line:upperLine.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
-  // #endregion
+  
   return false
 }
 
@@ -289,16 +190,10 @@ function isSectionTitle(line: string): boolean {
  * Cria HTML para uma seção
  */
 function createSectionHTML(title: string, content: string): string {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:244',message:'createSectionHTML entry',data:{title:title.substring(0,50),contentLength:content.length,contentPreview:content.substring(0,200),hasMarkdown:content.includes('**')||false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-  // #endregion
   if (!content || content.trim().length === 0) return ''
   
   // Limpa o título removendo formatação markdown
   const cleanTitle = title.replace(/\*\*/g, '').replace(/\*/g, '').trim()
-  
-  console.log(`🔍 Debug createSectionHTML - Título original: "${title}"`)
-  console.log(`🔍 Debug createSectionHTML - Título limpo: "${cleanTitle}"`)
   
   // Processa o conteúdo
   const processedContent = content
@@ -308,18 +203,12 @@ function createSectionHTML(title: string, content: string): string {
     .replace(/\(blue shield icon\)/g, '🛡️')
     .replace(/\(hourglass icon\)/g, '⏳')
     .replace(/\(lightning bolt icon\)/g, '⚡')
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:256',message:'After markdown processing',data:{processedLength:processedContent.length,processedPreview:processedContent.substring(0,200),hasStrongTags:processedContent.includes('<strong')||false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-  // #endregion
   
   // Divide em parágrafos
   const paragraphs = processedContent
     .split(/\n\s*\n/)
     .map(p => p.trim())
     .filter(p => p.length > 0)
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:263',message:'Paragraphs split',data:{paragraphCount:paragraphs.length,firstParagraph:paragraphs[0]?.substring(0,100)||''},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-  // #endregion
   
   let paragraphHTML = ''
   for (const paragraph of paragraphs) {
@@ -327,9 +216,6 @@ function createSectionHTML(title: string, content: string): string {
       paragraphHTML += `<p style="margin-bottom: 12px; text-align: justify; line-height: 1.6; color: #1f2937;">${paragraph.trim()}</p>\n`
     }
   }
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pdfGenerator.ts:271',message:'createSectionHTML result',data:{paragraphHTMLlength:paragraphHTML.length,paragraphHTMLPreview:paragraphHTML.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-  // #endregion
   
   return `
     <div class="content-section" style="margin-bottom: 25px; page-break-inside: avoid;">

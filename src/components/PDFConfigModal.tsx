@@ -1,7 +1,10 @@
 'use client'
 
+/// <reference lib="dom" />
+
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+
 import {
   Dialog,
   DialogContent,
@@ -13,8 +16,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { FileText, User, Calendar, MessageSquare } from 'lucide-react'
-import { useLanguage } from '@/i18n/useLanguage'
 import { useTranslation } from '@/i18n/useTranslation'
+import { generateChatPDF } from '@/lib/pdfGenerator'
 
 interface PDFConfigModalProps {
   open: boolean
@@ -35,7 +38,6 @@ export function PDFConfigModal({
   answer, 
   sessionId 
 }: PDFConfigModalProps) {
-  const { language } = useLanguage()
   const { t } = useTranslation()
   const [patientName, setPatientName] = useState('')
   const [therapistName, setTherapistName] = useState<string>('')
@@ -47,7 +49,15 @@ export function PDFConfigModal({
     const fetchTherapistName = async () => {
       // loading local não exibido, remover
       try {
-        const res = await fetch('/api/user')
+        // Timeout de 30 segundos para carregamento de dados do usuário
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 segundos
+        
+        const res = await fetch('/api/user', {
+          signal: controller.signal
+        }).finally(() => {
+          clearTimeout(timeoutId)
+        })
         if (res.ok) {
           const userData = await res.json()
           // Prioriza fullName, depois name, depois fallback
@@ -72,46 +82,21 @@ export function PDFConfigModal({
   const handleExport = async () => {
     setIsGenerating(true)
     
-    // Logs de debug para rastrear o problema
-    console.log('[PDFConfigModal] handleExport - Dados antes de gerar PDF:', {
-      question: question?.substring(0, 50) || 'SEM PERGUNTA',
-      answerLength: answer?.length || 0,
-      hasAnswer: !!answer,
-      answerPreview: answer?.substring(0, 100) || 'VAZIO',
-      answerType: typeof answer,
-      sessionId,
-      patientName: patientName.trim() || undefined,
-      therapistName: therapistName.trim() || undefined,
-      language
-    })
-    
     try {
-      const response = await fetch('/api/chat/pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question,
-          answer,
-          patientName: patientName.trim() || undefined,
-          therapistName: therapistName.trim() || undefined,
-          language
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Erro ao gerar PDF')
+      // Validação básica
+      if (!question || !answer) {
+        throw new Error('Pergunta e resposta são obrigatórias para gerar o PDF')
       }
 
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `relatorio-mediz-${new Date().toISOString().split('T')[0]}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      // Chama a função original de geração de PDF (client-side com html2pdf.js)
+      await generateChatPDF({
+        question,
+        answer,
+        timestamp: new Date(),
+        sessionId,
+        patientName: patientName.trim() || undefined
+      })
+      
       console.log('[PDFConfigModal] ✅ PDF gerado com sucesso')
       onOpenChange(false)
     } catch (error) {
@@ -126,7 +111,7 @@ export function PDFConfigModal({
         console.error('Stack trace:', errorStack)
       }
       
-      // Mostra erro ao usuário (opcional - pode adicionar toast/notificação aqui)
+      // Mostra erro ao usuário
       alert(`Erro ao exportar PDF: ${errorMessage}`)
     } finally {
       setIsGenerating(false)

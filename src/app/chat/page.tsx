@@ -1,6 +1,8 @@
 // src/app/chat/page.tsx
 'use client'
 
+/// <reference lib="dom" />
+
 import { Bell, Search, MessageSquarePlus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -119,7 +121,15 @@ export default function Page() {
   useEffect(() => {
     async function loadDynamicSymptoms() {
       try {
-        const response = await fetch('/api/symptoms/popular')
+        // Timeout de 30 segundos para carregamento de sintomas
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 segundos
+        
+        const response = await fetch('/api/symptoms/popular', {
+          signal: controller.signal
+        }).finally(() => {
+          clearTimeout(timeoutId)
+        })
         const data = await response.json()
         
         if (data.success && data.sintomas) {
@@ -153,7 +163,15 @@ export default function Page() {
 
     async function checkUserProfile() {
       try {
-        const res = await fetch('/api/user')
+        // Timeout de 30 segundos para carregamento de usuário
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 segundos
+        
+        const res = await fetch('/api/user', {
+          signal: controller.signal
+        }).finally(() => {
+          clearTimeout(timeoutId)
+        })
         if (!res.ok) {
           router.replace('/login')
           return
@@ -208,12 +226,21 @@ export default function Page() {
     let cancelled = false
     setLoading(true)
 
-    fetch(`/api/openai/messages?threadId=${selectedThread}`)
+    // Timeout de 60 segundos para carregamento de mensagens
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 segundos
+    
+    fetch(`/api/openai/messages?threadId=${selectedThread}`, {
+      signal: controller.signal
+    })
       .then(r => r.json())
       .then(data => {
         if (!cancelled) setResponses(data.responses.assistant || [])
       })
       .catch(console.error)
+      .finally(() => {
+        clearTimeout(timeoutId)
+      })
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
@@ -243,13 +270,20 @@ export default function Page() {
     const t0 = performance.now()
 
     try {
+      // Timeout de 60 segundos para requisições de chat
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 segundos
+      
       const res = await fetch('/api/openai', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
         },
         credentials: 'include', // Inclui cookies na requisição
+        signal: controller.signal,
         body: JSON.stringify({ message: text, language })
+      }).finally(() => {
+        clearTimeout(timeoutId)
       })
 
       // Verifica se houve erro de autenticação
@@ -297,27 +331,13 @@ export default function Page() {
       }
       
       // Valida e processa as respostas
-      console.log('[Chat] Estrutura da resposta recebida:', {
-        hasResponses: !!data.responses,
-        hasAssistant: !!data.responses?.assistant,
-        isArray: Array.isArray(data.responses?.assistant),
-        assistantLength: data.responses?.assistant?.length || 0,
-        fullData: data
-      })
-      
       if (data.responses?.assistant && Array.isArray(data.responses.assistant) && data.responses.assistant.length > 0) {
         setResponses(data.responses.assistant)
       } else if (data.responses?.assistant && typeof data.responses.assistant === 'string') {
         // Fallback: se assistant for uma string ao invés de array
-        console.warn('[Chat] Assistant é string, convertendo para array')
         setResponses([data.responses.assistant])
       } else {
-        console.error('[Chat] Resposta inválida ou vazia:', {
-          responses: data.responses,
-          assistant: data.responses?.assistant,
-          type: typeof data.responses?.assistant,
-          isArray: Array.isArray(data.responses?.assistant)
-        })
+        console.error('[Chat] Resposta inválida ou vazia')
         throw new Error('Resposta inválida do servidor')
       }
       const t1 = performance.now()

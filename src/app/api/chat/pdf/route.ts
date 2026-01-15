@@ -9,7 +9,7 @@ import en from '@/i18n/messages/en'
 import es from '@/i18n/messages/es'
 
 export const runtime = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 300 // 5 minutos - geração de PDF pode ser lenta
 
 type LanguageCode = 'pt-BR' | 'pt-PT' | 'en' | 'es'
 
@@ -46,8 +46,13 @@ const getLabels = (language: LanguageCode) => {
   }
 }
 
-const normalizeText = (text: string) =>
-  text
+const normalizeText = (text: string) => {
+  // #region agent log
+  const originalLength = text?.length || 0
+  const _originalPreview = text?.substring(0, 200) || 'EMPTY'
+  // #endregion
+  
+  const normalized = text
     // Remove iframes e converte tags estruturais em quebras antes de limpar HTML
     .replace(/<\s*iframe\b[\s\S]*?<\/\s*iframe\s*>/gi, ' ')
     .replace(/<\s*iframe\b[\s\S]*?>/gi, ' ')
@@ -67,6 +72,13 @@ const normalizeText = (text: string) =>
     .replace(/\n{3,}/g, '\n\n')
     .replace(/(?:^|\n)[^A-Za-zÀ-ÿ]*(ATENÇÃO|DICA|TIP|ATTENTION)\b/gi, '\n$1')
     .trim()
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:normalizeText',message:'normalizeText result',data:{originalLength,normalizedLength:normalized?.length||0,normalizedPreview:normalized?.substring(0,200)||'EMPTY',isEmpty:!normalized||normalized.length===0},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2'})}).catch(()=>{});
+  // #endregion
+  
+  return normalized
+}
 
 const removeMarkdownMarkers = (text: string) =>
   text.replace(/\*\*/g, '').replace(/\*/g, '').trim()
@@ -233,6 +245,11 @@ const stripBullet = (line: string) => {
 }
 
 const buildBlocks = (text: string): TextBlock[] => {
+  // #region agent log
+  const inputLength = text?.length || 0
+  const _inputPreview = text?.substring(0, 200) || 'EMPTY'
+  // #endregion
+  
   const normalized = normalizeText(
     ensureSideLineBreaks(
       ensureLabelBreaks(
@@ -248,7 +265,17 @@ const buildBlocks = (text: string): TextBlock[] => {
       )
     )
   )
-  if (!normalized) return []
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:buildBlocks',message:'after normalizeText',data:{inputLength,normalizedLength:normalized?.length||0,normalizedPreview:normalized?.substring(0,200)||'EMPTY',willReturnEmpty:!normalized||normalized.length===0},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3'})}).catch(()=>{});
+  // #endregion
+  
+  if (!normalized) {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:buildBlocks',message:'returning empty blocks',data:{reason:'normalized is empty'},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3'})}).catch(()=>{});
+    // #endregion
+    return []
+  }
   const lines = normalized.split('\n')
   const blocks: TextBlock[] = []
   let paragraphLines: string[] = []
@@ -297,6 +324,11 @@ const buildBlocks = (text: string): TextBlock[] => {
   }
 
   flushParagraph()
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:buildBlocks',message:'blocks built',data:{blocksCount:blocks.length,headingCount:blocks.filter(b=>b.type==='heading').length,paragraphCount:blocks.filter(b=>b.type==='paragraph').length,bulletCount:blocks.filter(b=>b.type==='bullet').length,blankCount:blocks.filter(b=>b.type==='blank').length,firstBlockType:blocks[0]?.type||'none',firstBlockText:blocks[0]&&'text' in blocks[0]?blocks[0].text.substring(0,100):'none'},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3'})}).catch(()=>{});
+  // #endregion
+  
   return blocks
 }
 
@@ -317,18 +349,65 @@ const DEFAULT_LINE_GAP = 6
 const BULLET_LINE_GAP = 5
 
 const writeInlineText = (doc: PDFKit.PDFDocument, text: string, lineGap = DEFAULT_LINE_GAP) => {
-  const normalized = text.replace(/•/g, '**•**')
+  // Remove markdown markers vazios e normaliza
+  const cleaned = text.trim()
+  
+  // Se o texto está vazio ou contém apenas marcadores markdown, retorna
+  if (!cleaned || cleaned.replace(/\*\*/g, '').replace(/\*/g, '').trim().length === 0) {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:writeInlineText',message:'skipping empty text',data:{originalText:cleaned.substring(0,50)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'H8'})}).catch(()=>{});
+    // #endregion
+    return
+  }
+  
+  // Normaliza bullets
+  const normalized = cleaned.replace(/•/g, '**•**')
+  
+  // Divide por ** para processar negrito
   const segments = normalized.split('**')
-  segments.forEach((segment, index) => {
+  
+  // Filtra segmentos vazios e processa
+  const validSegments = segments.filter(s => s.trim().length > 0)
+  
+  if (validSegments.length === 0) {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:writeInlineText',message:'no valid segments',data:{originalText:cleaned.substring(0,50),segmentsCount:segments.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'H8'})}).catch(()=>{});
+    // #endregion
+    return
+  }
+  
+  // #region agent log
+  const beforeX = doc.x
+  const beforeY = doc.y
+  // #endregion
+  
+  validSegments.forEach((segment, index) => {
     const isBold = index % 2 === 1
     doc.font(isBold ? 'Helvetica-Bold' : 'Helvetica')
-    doc.text(segment, { continued: index < segments.length - 1, lineGap })
+    doc.fillColor('black') // Garante que a cor está sempre preta
+    const isLast = index === validSegments.length - 1
+    const segmentText = segment.trim()
+    // #region agent log
+    if (index < 2 || index === validSegments.length - 1) {
+      fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:writeInlineText',message:'writing segment',data:{segmentIndex:index,segmentText:segmentText.substring(0,50),isBold,isLast,validSegmentsCount:validSegments.length,x:doc.x,y:doc.y},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'H8'})}).catch(()=>{});
+    }
+    // #endregion
+    if (segmentText.length > 0) {
+      doc.text(segmentText, { continued: !isLast, lineGap })
+    }
   })
   doc.text('', { lineGap })
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:writeInlineText',message:'text written',data:{beforeX,beforeY,afterX:doc.x,afterY:doc.y,validSegmentsCount:validSegments.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'H8'})}).catch(()=>{});
+  // #endregion
 }
 
 export async function POST(req: NextRequest) {
   const session = await auth()
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:POST',message:'entry',data:{hasSession:!!session?.user?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
 
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
@@ -342,8 +421,14 @@ export async function POST(req: NextRequest) {
   const body = (await req.json()) as PdfRequestBody
   const question = body.question?.trim()
   const answer = body.answer?.trim()
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:POST',message:'payload snapshot',data:{questionLength:question?.length||0,answerLength:answer?.length||0,answerPreview:answer?.substring(0,200)||'EMPTY',language:body.language||'pt-BR',hasHtml:/<\s*[a-z][\s\S]*>/i.test(answer||''),hasIframe:/<iframe/i.test(answer||'')},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
 
   if (!question || !answer) {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:POST',message:'missing data error',data:{hasQuestion:!!question,hasAnswer:!!answer},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
     return NextResponse.json({ error: 'Dados insuficientes para gerar PDF' }, { status: 400 })
   }
 
@@ -364,38 +449,68 @@ export async function POST(req: NextRequest) {
     doc.on('error', (error) => reject(error))
   })
 
-  doc.font('Helvetica-Bold').fontSize(18).text(therapistName)
+  // Garante que a cor do texto está definida como preto
+  doc.fillColor('black')
+  doc.strokeColor('black')
+
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:POST',message:'doc initialized',data:{pageWidth:doc.page.width,pageHeight:doc.page.height,marginLeft:doc.page.margins.left,marginRight:doc.page.margins.right,marginTop:doc.page.margins.top,marginBottom:doc.page.margins.bottom,initialX:doc.x,initialY:doc.y},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'H7'})}).catch(()=>{});
+  // #endregion
+
+  // Escreve o header e garante que está visível
+  doc.font('Helvetica-Bold').fontSize(18).fillColor('black').text(therapistName)
   doc.moveDown(0.2)
-  doc.font('Helvetica').fontSize(12).text(labels.reportTitle)
+  doc.font('Helvetica').fontSize(12).fillColor('black').text(labels.reportTitle)
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:POST',message:'header written',data:{x:doc.x,y:doc.y,therapistNameLength:therapistName.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'H7'})}).catch(()=>{});
+  // #endregion
   doc.moveDown(0.6)
   doc.moveTo(doc.x, doc.y).lineTo(doc.page.width - doc.page.margins.right, doc.y).strokeColor('#E5E7EB').stroke()
   doc.moveDown(0.8)
 
   if (patientName) {
-    doc.font('Helvetica-Bold').fontSize(11).text(labels.labelPatient, { continued: true })
-    doc.font('Helvetica').text(` ${patientName}`)
+    doc.font('Helvetica-Bold').fontSize(11).fillColor('black').text(labels.labelPatient, { continued: true })
+    doc.font('Helvetica').fillColor('black').text(` ${patientName}`)
     doc.moveDown(0.4)
   }
 
-  doc.font('Helvetica-Bold').fontSize(10).text(labels.labelDate, { continued: true })
-  doc.font('Helvetica').text(` ${formatDate(now, language)}`)
-  doc.font('Helvetica-Bold').text(labels.labelTime, { continued: true })
-  doc.font('Helvetica').text(` ${formatTime(now, language)}`)
+  doc.font('Helvetica-Bold').fontSize(10).fillColor('black').text(labels.labelDate, { continued: true })
+  doc.font('Helvetica').fillColor('black').text(` ${formatDate(now, language)}`)
+  doc.font('Helvetica-Bold').fillColor('black').text(labels.labelTime, { continued: true })
+  doc.font('Helvetica').fillColor('black').text(` ${formatTime(now, language)}`)
   doc.moveDown(0.8)
 
-  doc.font('Helvetica-Bold').fontSize(12).text(labels.sectionSymptom)
+  doc.font('Helvetica-Bold').fontSize(12).fillColor('black').text(labels.sectionSymptom)
   doc.moveDown(0.2)
-  doc.font('Helvetica').fontSize(11).text(question, { width: doc.page.width - doc.page.margins.left - doc.page.margins.right })
+  doc.font('Helvetica').fontSize(11).fillColor('black').text(question, { width: doc.page.width - doc.page.margins.left - doc.page.margins.right })
   doc.moveDown(0.8)
 
-  doc.font('Helvetica-Bold').fontSize(12).text(labels.sectionResponse)
+  doc.font('Helvetica-Bold').fontSize(12).fillColor('black').text(labels.sectionResponse)
   doc.moveDown(0.4)
 
   const blocks = buildBlocks(answer)
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:POST',message:'blocks built',data:{blocksCount:blocks.length,hasHeading:blocks.some(b=>b.type==='heading'),hasBullet:blocks.some(b=>b.type==='bullet')},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3'})}).catch(()=>{});
+  // #endregion
+  // #region agent log
+  const textBlocks = blocks.filter((block) => 'text' in block) as Array<{ text: string }>
+  const totalTextLength = textBlocks.reduce((sum, block) => sum + block.text.length, 0)
+  const firstText = textBlocks[0]?.text?.slice(0, 160) || ''
+  const lastText = textBlocks[textBlocks.length - 1]?.text?.slice(0, 160) || ''
+  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:POST',message:'blocks text summary',data:{textBlocksCount:textBlocks.length,totalTextLength,firstText,firstTextLength:firstText.length,lastTextLength:lastText.length},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3'})}).catch(()=>{});
+  // #endregion
   // Logs removidos para produção
-  doc.font('Helvetica').fontSize(11)
+  doc.font('Helvetica').fontSize(11).fillColor('black')
 
-  blocks.forEach((block) => {
+  let blocksWritten = 0
+  blocks.forEach((block, index) => {
+    // #region agent log
+    if (index < 5 || block.type !== 'blank') {
+      fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:POST',message:'writing block',data:{blockIndex:index,blockType:block.type,blockText:block.type!=='blank'&&'text' in block?block.text.substring(0,100):'N/A'},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
+    }
+    // #endregion
+    
     if (block.type === 'blank') {
       doc.moveDown(0.5)
       return
@@ -403,26 +518,52 @@ export async function POST(req: NextRequest) {
 
     if (block.type === 'heading') {
       doc.moveDown(0.4)
-      doc.font('Helvetica-Bold').fontSize(11).text(block.text.toUpperCase())
-      doc.moveDown(0.5)
-      doc.font('Helvetica').fontSize(11)
+      // Remove markdown do título antes de escrever
+      const cleanTitle = block.text.replace(/\*\*/g, '').replace(/\*/g, '').trim()
+      if (cleanTitle) {
+        doc.font('Helvetica-Bold').fontSize(11).fillColor('black').text(cleanTitle.toUpperCase())
+        doc.moveDown(0.5)
+        doc.font('Helvetica').fontSize(11).fillColor('black')
+        blocksWritten++
+      }
       return
     }
 
     if (block.type === 'bullet') {
-      doc.font('Helvetica')
-      writeInlineText(doc, `• ${block.text}`, BULLET_LINE_GAP)
-      doc.moveDown(1)
+      const bulletText = block.text.trim()
+      if (bulletText && bulletText.replace(/\*\*/g, '').replace(/\*/g, '').trim().length > 0) {
+        doc.font('Helvetica').fillColor('black')
+        writeInlineText(doc, `• ${bulletText}`, BULLET_LINE_GAP)
+        doc.moveDown(1)
+        blocksWritten++
+      }
       return
     }
 
-    writeInlineText(doc, block.text, DEFAULT_LINE_GAP)
-    doc.moveDown(1.1)
+    const paragraphText = block.text.trim()
+    const cleanedParagraph = paragraphText.replace(/\*\*/g, '').replace(/\*/g, '').trim()
+    // #region agent log
+    if (!cleanedParagraph || cleanedParagraph.length === 0) {
+      fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:POST',message:'skipping empty paragraph',data:{blockIndex:index,originalText:paragraphText.substring(0,50)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'H6'})}).catch(()=>{});
+    }
+    // #endregion
+    if (paragraphText && cleanedParagraph.length > 0) {
+      writeInlineText(doc, paragraphText, DEFAULT_LINE_GAP)
+      doc.moveDown(1.1)
+      blocksWritten++
+    }
   })
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:POST',message:'all blocks written',data:{totalBlocks:blocks.length,blocksWritten},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
+  // #endregion
 
   doc.end()
 
   const pdfBuffer = await pdfBufferPromise
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:POST',message:'pdf ready',data:{pdfBytes:pdfBuffer.length},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
+  // #endregion
   const filename = `relatorio-mediz-${now.toISOString().split('T')[0]}.pdf`
 
   return new NextResponse(pdfBuffer, {

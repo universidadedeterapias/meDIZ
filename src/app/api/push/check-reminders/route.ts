@@ -7,10 +7,10 @@ import { sendPushNotification } from '@/lib/webPush'
  * Endpoint para verificar e enviar lembretes agendados
  * Pode ser chamado por cron job ou manualmente (apenas admins)
  * 
- * IMPORTANTE: Usa Node.js runtime e timeout de 5 minutos para processar muitos usuários
+ * IMPORTANTE: Usa Node.js runtime e timeout de 10 minutos para processar muitos usuários
  */
 export const runtime = 'nodejs'
-export const maxDuration = 300 // 5 minutos (300 segundos)
+export const maxDuration = 600 // 10 minutos (600 segundos)
 
 export async function GET(req: NextRequest) {
   // #region agent log

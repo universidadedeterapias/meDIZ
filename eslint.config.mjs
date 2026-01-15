@@ -40,6 +40,8 @@ export default [
         Request: 'readonly',
         Response: 'readonly',
         Headers: 'readonly',
+        AbortController: 'readonly',
+        AbortSignal: 'readonly',
         
         // Event globals
         Event: 'readonly',

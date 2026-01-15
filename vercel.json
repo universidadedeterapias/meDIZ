@@ -3,10 +3,13 @@
   "framework": "nextjs",
   "functions": {
     "src/app/api/**/*.ts": {
-      "maxDuration": 30
+      "maxDuration": 600
     },
     "src/app/api/openai/route.ts": {
-      "maxDuration": 60
+      "maxDuration": 600
+    },
+    "src/app/api/push/check-reminders/route.ts": {
+      "maxDuration": 600
     }
   },
   "regions": ["iad1"],
