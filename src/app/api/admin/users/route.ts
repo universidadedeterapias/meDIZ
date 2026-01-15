@@ -48,16 +48,9 @@ function getCorrectPlanName(
 
 export async function GET(req: NextRequest) {
   try {
-    console.log('[ADMIN USERS API] 🔍 ====== INÍCIO DA REQUISIÇÃO ======')
     const session = await auth()
-    console.log('[ADMIN USERS API] 🔍 Sessão:', {
-      hasSession: !!session,
-      email: session?.user?.email || 'não disponível',
-      isAdmin: session?.user?.email?.includes('@mediz.com') || false
-    })
 
     if (!session?.user?.email || !session.user.email.includes('@mediz.com')) {
-      console.log('[ADMIN USERS API] ❌ Acesso negado - não é admin')
       return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
     }
 
@@ -129,7 +122,6 @@ export async function GET(req: NextRequest) {
         some: subscriptionFilter
       }
 
-      console.log('[ADMIN USERS API] 🔍 Filtro de assinatura aplicado:', JSON.stringify(subscriptionFilter, null, 2))
     }
 
     // Busca todos os usuários ordenados por data de criação (mais recentes primeiro)
@@ -187,39 +179,19 @@ export async function GET(req: NextRequest) {
     // Por isso processamos TODOS os usuários primeiro
 
     // 🔍 DEBUG: Log da busca
-    console.log('[ADMIN USERS API] 🔍 Usuários encontrados na query:', allUsers.length)
-    console.log('[ADMIN USERS API] 🔍 Where clause aplicado:', JSON.stringify(whereClause, null, 2))
-
     // Processa os dados dos usuários (TODOS, antes dos filtros)
     const processedUsers = await Promise.all(allUsers.map(async user => {
-      // 🔍 DEBUG: Log de cada usuário processado
-      // Não logar email por segurança
-      console.log(`[ADMIN USERS API] 🔍 Processando usuário: ${user.id}`, {
-        totalSubscriptions: user.subscriptions.length,
-        subscriptions: user.subscriptions.map(sub => ({
-          id: sub.id,
-          status: sub.status,
-          currentPeriodEnd: sub.currentPeriodEnd.toISOString(),
-          isExpired: sub.currentPeriodEnd < new Date()
-        }))
-      })
-
       // Determina se tem subscription ativa usando fonte de verdade
       const activeSubscription = user.subscriptions.find(sub => 
         ['active', 'ACTIVE', 'cancel_at_period_end'].includes(sub.status) &&
         sub.currentPeriodEnd >= new Date()
       )
 
-      // 🔍 DEBUG: Verificar se há assinaturas expiradas
+      // Buscar assinaturas expiradas
       const expiredSubscriptions = user.subscriptions.filter(sub => 
-        sub.currentPeriodEnd < new Date() && 
-        ['active', 'ACTIVE', 'expired'].includes(sub.status)
+        !['active', 'ACTIVE', 'cancel_at_period_end'].includes(sub.status) ||
+        sub.currentPeriodEnd < new Date()
       )
-      
-      if (expiredSubscriptions.length > 0) {
-        // Não logar email por segurança
-        console.log(`[ADMIN USERS API] ⚠️ Usuário ${user.id} tem ${expiredSubscriptions.length} assinatura(s) expirada(s)`)
-      }
 
       // Determina o plano baseado na fonte de verdade
       const plan = activeSubscription ? 'premium' : 'free'
@@ -365,7 +337,6 @@ export async function GET(req: NextRequest) {
         return false
       })
       
-      console.log('[ADMIN USERS API] 🔍 Filtro por nome do plano aplicado:', planNameFilter)
     }
 
     // Estatísticas gerais usando fonte de verdade
@@ -409,19 +380,6 @@ export async function GET(req: NextRequest) {
       activeUsers: activeUsersCount
     }
 
-    // 🔍 DEBUG: Log das estatísticas antes de retornar
-    console.log('[ADMIN USERS API] 📊 Estatísticas calculadas:', {
-      totalUsers: totalFilteredUsers,
-      premiumUsers: premiumUsersCount,
-      freeUsers: totalFilteredUsers - premiumUsersCount,
-      adminUsers: adminUsersCount,
-      activeUsers: activeUsersCount,
-      filteredUsersCount: filteredUsers.length,
-      paginatedUsersCount: paginatedUsers.length,
-      allProcessedUsersCount: processedUsers.length,
-      providerFilter
-    })
-
     const response = {
       users: paginatedUsers, // Usar usuários paginados após filtros
       pagination: {
@@ -432,12 +390,6 @@ export async function GET(req: NextRequest) {
       },
       stats
     }
-
-    console.log('[ADMIN USERS API] ✅ ====== FIM DA REQUISIÇÃO ======')
-    console.log('[ADMIN USERS API] ✅ Retornando:', {
-      usersCount: filteredUsers.length,
-      stats: response.stats
-    })
 
     return NextResponse.json(response)
 

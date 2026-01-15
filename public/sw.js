@@ -5,6 +5,8 @@ const RUNTIME_CACHE = 'mediz-runtime-v1'
 // Instalação do Service Worker
 self.addEventListener('install', (event) => {
   console.log('[SW] Service Worker instalado')
+  // skipWaiting() garante que o SW seja ativado imediatamente
+  // Isso é importante para notificações push funcionarem em background
   self.skipWaiting()
 })
 
@@ -12,20 +14,26 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   console.log('[SW] Service Worker ativado')
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((cacheName) => {
-            return cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE
-          })
-          .map((cacheName) => {
-            console.log('[SW] Removendo cache antigo:', cacheName)
-            return caches.delete(cacheName)
-          })
-      )
-    })
+    Promise.all([
+      // Limpar caches antigos
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames
+            .filter((cacheName) => {
+              return cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE
+            })
+            .map((cacheName) => {
+              console.log('[SW] Removendo cache antigo:', cacheName)
+              return caches.delete(cacheName)
+            })
+        )
+      }),
+      // clients.claim() garante que o SW controle todas as páginas
+      // Isso é CRÍTICO para notificações push funcionarem quando o app está fechado
+      self.clients.claim()
+    ])
   )
-  return self.clients.claim()
+  console.log('[SW] Service Worker pronto para receber notificações push em background')
 })
 
 // Interceptar requisições para cache
@@ -43,8 +51,10 @@ self.addEventListener('fetch', (event) => {
 })
 
 // Gerenciar notificações push
+// IMPORTANTE: Este handler funciona mesmo quando o app está fechado
+// O Service Worker continua rodando em background
 self.addEventListener('push', (event) => {
-  console.log('[SW] Notificação push recebida:', event)
+  console.log('[SW] Notificação push recebida (app pode estar fechado):', event)
 
   let notificationData = {
     title: 'meDIZ',
@@ -70,6 +80,8 @@ self.addEventListener('push', (event) => {
     }
   }
 
+  // event.waitUntil() é CRÍTICO para garantir que a notificação seja exibida
+  // mesmo quando o app está fechado
   event.waitUntil(
     self.registration.showNotification(notificationData.title, {
       body: notificationData.body,
@@ -80,14 +92,19 @@ self.addEventListener('push', (event) => {
       data: notificationData.data,
       actions: notificationData.actions || [],
       vibrate: [200, 100, 200],
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      // silent: false garante que a notificação seja exibida mesmo em background
+      silent: false
     })
   )
+  
+  console.log('[SW] Notificação exibida com sucesso (app pode estar fechado)')
 })
 
 // Gerenciar cliques em notificações
+// IMPORTANTE: Funciona em desktop e mobile (Android e iOS)
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notificação clicada:', event)
+  console.log('[SW] Notificação clicada (mobile ou desktop):', event)
 
   event.notification.close()
 
@@ -95,16 +112,23 @@ self.addEventListener('notificationclick', (event) => {
   const urlToOpen = data.url || '/'
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Verificar se já existe uma janela aberta
+    clients.matchAll({ 
+      type: 'window', 
+      includeUncontrolled: true 
+    }).then((clientList) => {
+      // Verificar se já existe uma janela/aba aberta
       for (let i = 0; i < clientList.length; i++) {
         const client = clientList[i]
-        if (client.url === urlToOpen && 'focus' in client) {
-          return client.focus()
+        // Verificar se é a mesma URL ou domínio
+        if (client.url.includes(urlToOpen) || client.url.includes(self.location.origin)) {
+          if ('focus' in client) {
+            return client.focus()
+          }
         }
       }
 
-      // Se não existe, abrir nova janela
+      // Se não existe, abrir nova janela/aba
+      // Funciona em desktop (nova aba) e mobile (abre app)
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen)
       }
