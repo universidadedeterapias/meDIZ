@@ -48,10 +48,19 @@ const getLabels = (language: LanguageCode) => {
 
 const normalizeText = (text: string) =>
   text
-    // Remove iframes e tags HTML antes de qualquer outro tratamento
+    // Remove iframes e converte tags estruturais em quebras antes de limpar HTML
     .replace(/<\s*iframe\b[\s\S]*?<\/\s*iframe\s*>/gi, ' ')
     .replace(/<\s*iframe\b[\s\S]*?>/gi, ' ')
+    .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\/\s*p\s*>/gi, '\n')
+    .replace(/<\/\s*div\s*>/gi, '\n')
+    .replace(/<\/\s*h[1-6]\s*>/gi, '\n')
+    .replace(/<\s*li\s*>/gi, '\n- ')
+    .replace(/<\/\s*li\s*>/gi, '')
+    .replace(/<\/\s*ul\s*>/gi, '\n')
+    .replace(/<\/\s*ol\s*>/gi, '\n')
     .replace(/<\/?\s*[a-z][^>]*>/gi, ' ')
+    .replace(/&nbsp;/gi, ' ')
     .replace(/\r\n/g, '\n')
     .replace(/\\n/g, '\n')
     .replace(/[ \t]+\n/g, '\n')
@@ -220,11 +229,7 @@ const isBulletLine = (line: string) =>
 
 const stripBullet = (line: string) => {
   const raw = line.replace(/^[-•*]\s+/, '').replace(/^(📍|🌩️|✅|⚠️|💡|❗|❕)\s+/, '').trim()
-  const cleaned = removeEmojis(raw)
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:stripBullet',message:'bullet normalization',data:{rawStartsWithBullet:/^•/.test(raw),cleanedStartsWithBullet:/^•/.test(cleaned)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{});
-  // #endregion
-  return cleaned
+  return removeEmojis(raw)
 }
 
 const buildBlocks = (text: string): TextBlock[] => {
@@ -243,16 +248,6 @@ const buildBlocks = (text: string): TextBlock[] => {
       )
     )
   )
-  const normalizedHasIframe = /<\s*iframe\b/i.test(normalized)
-  const normalizedHasHtmlTag = /<\s*[a-z][\s\S]*>/i.test(normalized)
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:buildBlocks',message:'normalized inspection',data:{normalizedLength:normalized.length,normalizedHasIframe,normalizedHasHtmlTag},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2'})}).catch(()=>{});
-  console.log('[PDF] normalized inspection', {
-    normalizedLength: normalized.length,
-    normalizedHasIframe,
-    normalizedHasHtmlTag
-  })
-  // #endregion
   if (!normalized) return []
   const lines = normalized.split('\n')
   const blocks: TextBlock[] = []
@@ -357,13 +352,7 @@ export async function POST(req: NextRequest) {
   const now = new Date()
   const patientName = body.patientName?.trim()
   const therapistName = body.therapistName?.trim() || session.user.name || session.user.email || 'meDIZ'
-  const iframeMatches = answer?.match(/<\s*iframe\b/gi) || []
-  const hasIframe = iframeMatches.length > 0
-  const hasHtmlTag = /<\s*[a-z][\s\S]*>/i.test(answer || '')
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:POST',message:'PDF input inspection',data:{answerLength:answer?.length||0,hasIframe,iframeCount:iframeMatches.length,hasHtmlTag,language},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{});
-  // #endregion
-  console.log('[PDF] Input inspection', { answerLength: answer?.length || 0, hasIframe, iframeCount: iframeMatches.length, hasHtmlTag, language })
+  // Logs removidos para produção
 
   const doc = new PDFDocument({ size: 'A4', margin: 40 })
   const chunks: Buffer[] = []
@@ -403,14 +392,7 @@ export async function POST(req: NextRequest) {
   doc.moveDown(0.4)
 
   const blocks = buildBlocks(answer)
-  const blocksContainIframe = blocks.some((block) => 'text' in block && /<\s*iframe\b/i.test(block.text))
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:blocks',message:'blocks inspection',data:{blocksCount:blocks.length,blocksContainIframe},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3'})}).catch(()=>{});
-  console.log('[PDF] blocks inspection', {
-    blocksCount: blocks.length,
-    blocksContainIframe
-  })
-  // #endregion
+  // Logs removidos para produção
   doc.font('Helvetica').fontSize(11)
 
   blocks.forEach((block) => {
