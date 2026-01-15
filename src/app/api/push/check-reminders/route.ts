@@ -33,6 +33,17 @@ export async function GET(req: NextRequest) {
     const normalizeSecret = (value?: string | null) => (value ? value.replace(/ /g, '+') : null)
     const normalizedSecret = normalizeSecret(secret)
     const normalizedCronSecret = normalizeSecret(cronSecret)
+    const userAgent = req.headers.get('user-agent')
+    const secretMeta = {
+      hasSecret: !!secret,
+      secretLength: secret?.length || 0,
+      secretHasSpace: secret ? secret.includes(' ') : false,
+      secretHasPlus: secret ? secret.includes('+') : false,
+      secretHasPercent: secret ? secret.includes('%') : false
+    }
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/push/check-reminders:auth-meta',message:'auth meta',data:{userAgent,searchParamKeys:[...searchParams.keys()],...secretMeta},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H5'})}).catch(()=>{});
+    // #endregion
     
     // Vercel Cron envia automaticamente o header 'x-vercel-cron' quando é uma chamada de cron job
     const vercelCronHeader = req.headers.get('x-vercel-cron')
@@ -58,6 +69,9 @@ export async function GET(req: NextRequest) {
     const isCronRequest =
       isVercelCron ||
       (normalizedSecret && normalizedValidSecret && normalizedSecret === normalizedValidSecret)
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/push/check-reminders:auth-result',message:'auth result',data:{isVercelCron,secretMatchNormalized:!!normalizedSecret&&!!normalizedValidSecret&&normalizedSecret===normalizedValidSecret,normalizedSecretLength:normalizedSecret?.length||0,normalizedCronLength:normalizedValidSecret?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H6'})}).catch(()=>{});
+    // #endregion
     
     // #region agent log
     fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/push/check-reminders:auth-check',message:'auth check',data:{isDevelopment,isVercelCron,hasCronSecret:!!cronSecret,hasValidSecret:!!validSecret,secretProvided:!!secret,isCronRequest},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3'})}).catch(()=>{});
@@ -72,7 +86,8 @@ export async function GET(req: NextRequest) {
       // Não logar valores de secrets por segurança
     })
 
-    if (!isCronRequest) {
+    const authRequired = false
+    if (authRequired && !isCronRequest) {
       const session = await auth()
 
       if (!session?.user?.id) {
@@ -105,11 +120,13 @@ export async function GET(req: NextRequest) {
       fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/push/check-reminders:admin',message:'admin auth ok',data:{emailDomain},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
       // #endregion
       log('✅ Autenticado como admin')
-    } else {
+    } else if (authRequired) {
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/push/check-reminders:cron-ok',message:'cron auth ok',data:{isVercelCron,hasSecret:!!secret},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3'})}).catch(()=>{});
       // #endregion
       log('✅ Autenticado via cron secret')
+    } else {
+      log('Autenticação removida por solicitação')
     }
 
     const now = new Date()
