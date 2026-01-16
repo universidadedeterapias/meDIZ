@@ -20,7 +20,7 @@ export async function generateChatPDF(data: PDFData): Promise<void> {
     // Configurações do PDF otimizadas
     const options = {
       margin: [0.3, 0.3, 0.3, 0.3] as [number, number, number, number],
-      filename: `relatorio-medico-${formatDateForFilename(data.timestamp)}.pdf`,
+      filename: `relatorio-de-origem-emocional-${formatDateForFilename(data.timestamp)}.pdf`,
       image: { type: 'jpeg' as const, quality: 0.98 },
       html2canvas: { 
         scale: 2,
@@ -570,7 +570,7 @@ function createPDFHTML(data: PDFData): string {
             <strong>⚠️ Importante:</strong> Sempre consulte um profissional de saúde qualificado antes de tomar decisões relacionadas à sua saúde.
         </div>
         <div style="margin-top: 12px;">
-            © ${new Date().getFullYear()} Relatório Médico
+            © ${new Date().getFullYear()} relatorio de origem emocional
           </div>
         </div>
       </div>

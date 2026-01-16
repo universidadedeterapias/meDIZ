@@ -17,10 +17,15 @@ export async function GET(req: NextRequest) {
   fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/push/check-reminders:GET',message:'entry',data:{hasUrl:!!req.url,method:'GET'},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   const debugLog: string[] = []
+  // IMPORTANTE: Logs sempre ativos em produção para debug de notificações
   const log = (message: string, data?: unknown) => {
     const logEntry = `[CHECK-REMINDERS] ${new Date().toISOString()} - ${message}${data ? ` | Data: ${JSON.stringify(data)}` : ''}`
     console.log(logEntry)
     debugLog.push(logEntry)
+    // Também logar erros críticos para monitoramento
+    if (message.includes('❌') || message.includes('ERRO')) {
+      console.error(logEntry)
+    }
   }
 
   try {
@@ -164,16 +169,23 @@ export async function GET(req: NextRequest) {
       }))
     })
 
-    // Buscar lembretes ativos que devem ser enviados agora ou nos últimos 4 minutos
-    // Isso permite que o cron execute a cada 5 minutos e ainda capture todos os lembretes
-    // Calcula os horários válidos (atual e últimos 4 minutos)
+    // Buscar lembretes ativos que devem ser enviados agora
+    // O cron executa a cada minuto, então verificamos apenas o horário atual
+    // Também verificamos o minuto anterior para garantir que não perdemos nenhum lembrete
+    // (caso o cron tenha atrasado alguns segundos)
     const validTimes: string[] = [currentTime]
-    for (let i = 1; i <= 4; i++) {
-      const pastDate = new Date(now)
-      pastDate.setMinutes(pastDate.getMinutes() - i)
-      const pastTime = `${String(pastDate.getHours()).padStart(2, '0')}:${String(pastDate.getMinutes()).padStart(2, '0')}`
-      validTimes.push(pastTime)
-    }
+    
+    // Adicionar minuto anterior como fallback (para garantir que não perdemos lembretes)
+    const previousMinute = new Date(now)
+    previousMinute.setMinutes(previousMinute.getMinutes() - 1)
+    const previousTime = `${String(previousMinute.getHours()).padStart(2, '0')}:${String(previousMinute.getMinutes()).padStart(2, '0')}`
+    validTimes.push(previousTime)
+    
+    log('Horários válidos para verificação', { 
+      currentTime, 
+      previousTime,
+      validTimes 
+    })
     
     const reminders = await prisma.reminder.findMany({
       where: {

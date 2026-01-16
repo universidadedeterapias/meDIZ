@@ -164,17 +164,17 @@ export function SymptomsDashboard() {
   }))
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex items-center gap-2 md:gap-4">
         <Link 
           href="/chat"
-          className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors group -ml-12"
+          className="flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors group -ml-4 md:-ml-12"
           aria-label={t('dashboard.symptoms.backToChat', 'Voltar para o chat')}
         >
-          <ArrowLeft className="h-5 w-5 text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors" />
+          <ArrowLeft className="h-4 w-4 md:h-5 md:w-5 text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors" />
         </Link>
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          <Activity className="h-8 w-8 text-indigo-600" />
+        <h1 className="text-xl md:text-3xl font-bold flex items-center gap-2 md:gap-3">
+          <Activity className="h-6 w-6 md:h-8 md:w-8 text-indigo-600" />
           {t('dashboard.symptoms.title', 'Dashboard de Sintomas')}
         </h1>
       </div>
@@ -202,15 +202,17 @@ export function SymptomsDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={frequencyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="#6366f1" />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="h-[250px] md:h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={frequencyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    <Bar dataKey="value" fill="#6366f1" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
 
@@ -226,23 +228,25 @@ export function SymptomsDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={topSymptomsData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={100} />
-                  <Tooltip 
-                    formatter={(value: number) => [value, t('dashboard.symptoms.searches', 'Pesquisas')]}
-                    labelFormatter={(label, payload) => {
-                      if (payload && payload[0]) {
-                        return payload[0].payload.fullName
-                      }
-                      return label
-                    }}
-                  />
-                  <Bar dataKey="count" fill="#8b5cf6" />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="h-[250px] md:h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={topSymptomsData} layout="vertical" margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" tick={{ fontSize: 12 }} />
+                    <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 10 }} />
+                    <Tooltip 
+                      formatter={(value: number) => [value, t('dashboard.symptoms.searches', 'Pesquisas')]}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload[0]) {
+                          return payload[0].payload.fullName
+                        }
+                        return label
+                      }}
+                    />
+                    <Bar dataKey="count" fill="#8b5cf6" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
 
@@ -259,30 +263,32 @@ export function SymptomsDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={copingStrategyData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      label={(props: any) => {
-                        const percent = props.percent || 0
-                        const name = props.name || ''
-                        return `${name}: ${(percent * 100).toFixed(0)}%`
-                      }}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {copingStrategyData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="h-[250px] md:h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={copingStrategyData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        label={(props: any) => {
+                          const percent = props.percent || 0
+                          const name = props.name || ''
+                          return `${name}: ${(percent * 100).toFixed(0)}%`
+                        }}
+                        outerRadius={60}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {copingStrategyData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -309,30 +315,40 @@ export function SymptomsDashboard() {
                   {globalData.period} - {t('dashboard.symptoms.global.subtitle', 'Top 20 sintomas mais pesquisados')}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={500}>
-                  <BarChart 
-                    data={globalData.global.topSymptoms}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 100 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="symptom" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={120}
-                      interval={0}
-                      tick={{ fontSize: 12 }}
-                    />
-                    <YAxis />
-                    <Tooltip 
-                      formatter={(value: number) => [value, t('dashboard.symptoms.searches', 'Pesquisas')]}
-                      labelFormatter={(label) => `${t('dashboard.symptoms.symptom', 'Sintoma')}: ${label}`}
-                    />
-                    <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
+            <CardContent className="overflow-x-auto -mx-4 md:mx-0 px-4 md:px-6">
+              <div className="min-w-[600px] md:min-w-0">
+                <div className="h-[400px] md:h-[500px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart 
+                      data={globalData.global.topSymptoms}
+                      margin={{ 
+                        top: 20, 
+                        right: 10, 
+                        left: 0, 
+                        bottom: 80 
+                      }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="symptom" 
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                        interval={0}
+                        tick={{ fontSize: 10 }}
+                        width={undefined}
+                      />
+                      <YAxis tick={{ fontSize: 10 }} width={40} />
+                      <Tooltip 
+                        formatter={(value: number) => [value, t('dashboard.symptoms.searches', 'Pesquisas')]}
+                        labelFormatter={(label) => `${t('dashboard.symptoms.symptom', 'Sintoma')}: ${label}`}
+                      />
+                      <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </CardContent>
             </Card>
           ) : (
             <Card>

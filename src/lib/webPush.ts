@@ -34,10 +34,13 @@ export async function sendPushNotification(
   userId: string,
   payload: PushNotificationPayload
 ): Promise<{ success: number; failed: number; errors: string[] }> {
-  const isDev = process.env.NODE_ENV === 'development'
+  // IMPORTANTE: Logs sempre ativos para debug de notificações push
+  // Mesmo em produção, precisamos ver se as notificações estão sendo enviadas
   const log = (message: string, data?: unknown) => {
-    if (isDev) {
-      console.log(`[WEBPUSH] ${new Date().toISOString()} - ${message}`, data || '')
+    console.log(`[WEBPUSH] ${new Date().toISOString()} - ${message}`, data || '')
+    // Logar erros críticos
+    if (message.includes('❌') || message.includes('ERRO')) {
+      console.error(`[WEBPUSH] ${new Date().toISOString()} - ${message}`, data || '')
     }
   }
 
@@ -100,7 +103,16 @@ export async function sendPushNotification(
         }
       }
 
-      await webpush.sendNotification(pushSubscription, notificationPayload)
+      // Opções importantes para garantir entrega em background:
+      // - TTL: 24 horas (86400 segundos) - tempo que a notificação fica válida
+      // - urgency: 'high' - prioridade alta para garantir entrega imediata
+      const options = {
+        TTL: 86400, // 24 horas em segundos
+        urgency: 'high' as const, // Prioridade alta para entrega imediata
+        headers: {} // Headers adicionais se necessário
+      }
+
+      await webpush.sendNotification(pushSubscription, notificationPayload, options)
       log(`✅ Notificação enviada com sucesso para subscription ${subscription.id}`)
       results.success++
     } catch (error) {

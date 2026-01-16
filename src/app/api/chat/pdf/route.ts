@@ -564,7 +564,7 @@ export async function POST(req: NextRequest) {
   // #region agent log
   fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/chat/pdf:POST',message:'pdf ready',data:{pdfBytes:pdfBuffer.length},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
   // #endregion
-  const filename = `relatorio-mediz-${now.toISOString().split('T')[0]}.pdf`
+  const filename = `relatorio-de-origem-emocional-${now.toISOString().split('T')[0]}.pdf`
 
   return new NextResponse(pdfBuffer, {
     headers: {

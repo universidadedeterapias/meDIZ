@@ -7,7 +7,8 @@ self.addEventListener('install', (event) => {
   console.log('[SW] Service Worker instalado')
   // skipWaiting() garante que o SW seja ativado imediatamente
   // Isso é importante para notificações push funcionarem em background
-  self.skipWaiting()
+  // event.waitUntil garante que o skipWaiting seja processado antes de continuar
+  event.waitUntil(self.skipWaiting())
 })
 
 // Ativação do Service Worker
@@ -31,9 +32,12 @@ self.addEventListener('activate', (event) => {
       // clients.claim() garante que o SW controle todas as páginas
       // Isso é CRÍTICO para notificações push funcionarem quando o app está fechado
       self.clients.claim()
-    ])
+    ]).then(() => {
+      console.log('[SW] Service Worker pronto para receber notificações push em background')
+      // Forçar ativação imediata para garantir que está pronto
+      return self.clients.claim()
+    })
   )
-  console.log('[SW] Service Worker pronto para receber notificações push em background')
 })
 
 // Interceptar requisições para cache
@@ -54,7 +58,7 @@ self.addEventListener('fetch', (event) => {
 // IMPORTANTE: Este handler funciona mesmo quando o app está fechado
 // O Service Worker continua rodando em background
 self.addEventListener('push', (event) => {
-  console.log('[SW] Notificação push recebida (app pode estar fechado):', event)
+  console.log('[SW] Notificação push recebida (app pode estar fechado)')
 
   let notificationData = {
     title: 'meDIZ',
@@ -80,25 +84,31 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  // event.waitUntil() é CRÍTICO para garantir que a notificação seja exibida
-  // mesmo quando o app está fechado
+  // CRÍTICO: event.waitUntil() garante que a notificação seja exibida
+  // mesmo quando o app está completamente fechado
+  // Sem event.waitUntil, o Service Worker pode ser terminado antes de exibir a notificação
   event.waitUntil(
     self.registration.showNotification(notificationData.title, {
       body: notificationData.body,
       icon: notificationData.icon,
       badge: notificationData.badge,
-      tag: notificationData.tag,
-      requireInteraction: notificationData.requireInteraction,
-      data: notificationData.data,
+      tag: notificationData.tag || 'mediz-notification',
+      requireInteraction: notificationData.requireInteraction || false,
+      data: notificationData.data || {},
       actions: notificationData.actions || [],
       vibrate: [200, 100, 200],
       timestamp: Date.now(),
-      // silent: false garante que a notificação seja exibida mesmo em background
-      silent: false
+      silent: false,
+      renotify: true
+    }).then(() => {
+      console.log('[SW] Notificação exibida com sucesso (app pode estar fechado)')
+    }).catch((error) => {
+      console.error('[SW] Erro ao exibir notificação:', error)
+      // Re-throw para que o event.waitUntil saiba que houve erro
+      // mas não bloqueie o Service Worker
+      throw error
     })
   )
-  
-  console.log('[SW] Notificação exibida com sucesso (app pode estar fechado)')
 })
 
 // Gerenciar cliques em notificações
