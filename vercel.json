@@ -15,7 +15,7 @@
   "regions": ["iad1"],
   "crons": [
     {
-      "path": "/api/push/check-reminders?secret=/api/push/check-reminders?secret=VdGrSBGov9s9sA73SbLJGR2%2BnSNdj%2B7fMNj001xB1jc%3D",
+      "path": "/api/push/check-reminders?secret=VdGrSBGov9s9sA73SbLJGR2%2BnSNdj%2B7fMNj001xB1jc%3D",
       "schedule": "*/5 * * * *"
     }
   ]

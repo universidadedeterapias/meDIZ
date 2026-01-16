@@ -16,7 +16,7 @@ export default function SymptomsDashboardPage() {
       <SidebarInset>
         <div className="flex flex-col h-screen">
           <div className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-zinc-900">
-            <div className="container mx-auto py-8 px-6 max-w-7xl">
+            <div className="container mx-auto py-4 md:py-8 px-4 md:px-6 max-w-7xl">
               <SymptomsDashboard />
             </div>
           </div>
