@@ -90,7 +90,8 @@
     "test-check-reminders": "tsx src/scripts/test-check-reminders.ts",
     "check-reminders-local": "tsx src/scripts/run-check-reminders-local.ts",
     "verify-vapid-key": "tsx src/scripts/verify-vapid-key.ts",
-    "diagnose-nextjs": "tsx src/scripts/diagnose-nextjs.ts"
+    "diagnose-nextjs": "tsx src/scripts/diagnose-nextjs.ts",
+    "get-phone-numbers": "tsx src/scripts/get-phone-numbers-with-notifications.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.9.0",

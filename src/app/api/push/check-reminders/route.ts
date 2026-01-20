@@ -13,9 +13,6 @@ export const runtime = 'nodejs'
 export const maxDuration = 600 // 10 minutos (600 segundos)
 
 export async function GET(req: NextRequest) {
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/push/check-reminders:GET',message:'entry',data:{hasUrl:!!req.url,method:'GET'},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{});
-  // #endregion
   const debugLog: string[] = []
   // IMPORTANTE: Logs sempre ativos em produção para debug de notificações
   const log = (message: string, data?: unknown) => {
@@ -38,25 +35,11 @@ export async function GET(req: NextRequest) {
     const normalizeSecret = (value?: string | null) => (value ? value.replace(/ /g, '+') : null)
     const normalizedSecret = normalizeSecret(secret)
     const normalizedCronSecret = normalizeSecret(cronSecret)
-    const userAgent = req.headers.get('user-agent')
-    const secretMeta = {
-      hasSecret: !!secret,
-      secretLength: secret?.length || 0,
-      secretHasSpace: secret ? secret.includes(' ') : false,
-      secretHasPlus: secret ? secret.includes('+') : false,
-      secretHasPercent: secret ? secret.includes('%') : false
-    }
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/push/check-reminders:auth-meta',message:'auth meta',data:{userAgent,searchParamKeys:[...searchParams.keys()],...secretMeta},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H5'})}).catch(()=>{});
-    // #endregion
     
     // Vercel Cron envia automaticamente o header 'x-vercel-cron' quando é uma chamada de cron job
     const vercelCronHeader = req.headers.get('x-vercel-cron')
     const isVercelCron = vercelCronHeader === '1'
 
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/push/check-reminders:auth-input',message:'auth inputs',data:{hasSecret:!!secret,cronSecretPresent:!!cronSecret,vercelCronHeader,searchParamKeys:[...searchParams.keys()],nodeEnv:process.env.NODE_ENV||'unknown'},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2'})}).catch(()=>{});
-    // #endregion
     log('Verificando autenticação', { 
       hasSecret: !!secret, 
       hasCronSecret: !!cronSecret,
@@ -74,13 +57,6 @@ export async function GET(req: NextRequest) {
     const isCronRequest =
       isVercelCron ||
       (normalizedSecret && normalizedValidSecret && normalizedSecret === normalizedValidSecret)
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/push/check-reminders:auth-result',message:'auth result',data:{isVercelCron,secretMatchNormalized:!!normalizedSecret&&!!normalizedValidSecret&&normalizedSecret===normalizedValidSecret,normalizedSecretLength:normalizedSecret?.length||0,normalizedCronLength:normalizedValidSecret?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H6'})}).catch(()=>{});
-    // #endregion
-    
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/push/check-reminders:auth-check',message:'auth check',data:{isDevelopment,isVercelCron,hasCronSecret:!!cronSecret,hasValidSecret:!!validSecret,secretProvided:!!secret,isCronRequest},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3'})}).catch(()=>{});
-    // #endregion
     log('Verificação de cron request', {
       isDevelopment,
       isVercelCron,
@@ -96,9 +72,6 @@ export async function GET(req: NextRequest) {
       const session = await auth()
 
       if (!session?.user?.id) {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/push/check-reminders:unauth',message:'no session',data:{isCronRequest:false},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
-        // #endregion
         log('❌ Não autenticado')
         return NextResponse.json(
           { error: 'Não autenticado', debugLog },
@@ -112,23 +85,14 @@ export async function GET(req: NextRequest) {
       log('Verificação de admin', { emailDomain: `@${emailDomain}`, isAdmin })
 
       if (!isAdmin) {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/push/check-reminders:forbidden',message:'not admin',data:{emailDomain},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
-        // #endregion
         log('❌ Não autorizado (não é admin)')
         return NextResponse.json(
           { error: 'Não autorizado', debugLog },
           { status: 403 }
         )
       }
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/push/check-reminders:admin',message:'admin auth ok',data:{emailDomain},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
-      // #endregion
       log('✅ Autenticado como admin')
     } else if (authRequired) {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/d7dd85d6-4ae9-4d7a-bb81-6fa13e0d3054',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/push/check-reminders:cron-ok',message:'cron auth ok',data:{isVercelCron,hasSecret:!!secret},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3'})}).catch(()=>{});
-      // #endregion
       log('✅ Autenticado via cron secret')
     } else {
       log('Autenticação removida por solicitação')
