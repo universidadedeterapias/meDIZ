@@ -91,7 +91,9 @@
     "check-reminders-local": "tsx src/scripts/run-check-reminders-local.ts",
     "verify-vapid-key": "tsx src/scripts/verify-vapid-key.ts",
     "diagnose-nextjs": "tsx src/scripts/diagnose-nextjs.ts",
-    "get-phone-numbers": "tsx src/scripts/get-phone-numbers-with-notifications.ts"
+    "get-phone-numbers": "tsx src/scripts/get-phone-numbers-with-notifications.ts",
+    "send-push-to-all": "tsx src/scripts/send-push-to-all-users.ts",
+    "reset-notifications-banner": "tsx src/scripts/reset-notifications-banner.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.9.0",
