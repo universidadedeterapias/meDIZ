@@ -7,11 +7,12 @@ import { prisma } from '@/lib/prisma'
  * APENAS PARA ADMINS
  * 
  * POST /api/admin/push/reset-banner
+ * Body (opcional): { deleteSubscriptions: true } - se true, também deleta as subscriptions
  * 
  * Isso reseta notificationsEnabled = false para todos os usuários com subscriptions ativas,
  * fazendo o banner de notificações aparecer novamente
  */
-export async function POST(_req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
     // Verificar autenticação
     const session = await auth()
@@ -33,8 +34,18 @@ export async function POST(_req: NextRequest) {
       )
     }
 
+    // Ler body opcional
+    let deleteSubscriptions = false
+    try {
+      const body = await req.json().catch(() => ({}))
+      deleteSubscriptions = body.deleteSubscriptions === true
+    } catch {
+      // Usar valor padrão se body não for válido
+    }
+
     console.log('[RESET-BANNER] Iniciando reset de notificações...')
     console.log('[RESET-BANNER] Admin:', session.user.email)
+    console.log('[RESET-BANNER] Deletar subscriptions:', deleteSubscriptions)
 
     // Buscar todos os usuários que têm subscriptions ativas
     const usersWithSubscriptions = await prisma.user.findMany({
@@ -45,7 +56,12 @@ export async function POST(_req: NextRequest) {
       },
       select: {
         id: true,
-        notificationsEnabled: true
+        notificationsEnabled: true,
+        pushSubscriptions: {
+          select: {
+            id: true
+          }
+        }
       }
     })
 
@@ -56,7 +72,8 @@ export async function POST(_req: NextRequest) {
         success: false,
         message: 'Nenhum usuário encontrado com subscriptions ativas',
         totalUsers: 0,
-        updated: 0
+        updated: 0,
+        deletedSubscriptions: 0
       })
     }
 
@@ -72,14 +89,38 @@ export async function POST(_req: NextRequest) {
       }
     })
 
+    let deletedCount = 0
+    // Se solicitado, também deletar as subscriptions
+    if (deleteSubscriptions) {
+      const allSubscriptionIds = usersWithSubscriptions.flatMap(u => 
+        u.pushSubscriptions.map(s => s.id)
+      )
+      
+      const deleteResult = await prisma.pushSubscription.deleteMany({
+        where: {
+          id: {
+            in: allSubscriptionIds
+          }
+        }
+      })
+      
+      deletedCount = deleteResult.count
+      console.log(`[RESET-BANNER] ${deletedCount} subscriptions deletadas`)
+    }
+
     console.log(`[RESET-BANNER] Reset concluído: ${updateResult.count} usuários atualizados`)
 
     return NextResponse.json({
       success: true,
-      message: 'Banner de notificações resetado com sucesso',
+      message: deleteSubscriptions 
+        ? 'Banner resetado e subscriptions deletadas com sucesso'
+        : 'Banner de notificações resetado com sucesso',
       totalUsers: usersWithSubscriptions.length,
       updated: updateResult.count,
-      note: 'O banner aparecerá novamente para esses usuários quando acessarem o app'
+      deletedSubscriptions: deletedCount,
+      note: deleteSubscriptions
+        ? 'O banner aparecerá novamente. As subscriptions antigas foram deletadas, então os usuários precisarão criar novas.'
+        : 'O banner aparecerá novamente para esses usuários quando acessarem o app. As subscriptions antigas foram mantidas.'
     })
 
   } catch (error) {
