@@ -98,23 +98,50 @@ export async function GET(req: NextRequest) {
       log('Autenticação removida por solicitação')
     }
 
+    // IMPORTANTE: Converter para timezone do Brasil (America/Sao_Paulo)
+    // O servidor Vercel roda em UTC, mas os lembretes são salvos no horário local do Brasil
     const now = new Date()
-    const currentHour = now.getHours()
-    const currentMinute = now.getMinutes()
-    const currentDay = now.getDay() // 0 = domingo, 6 = sábado
+    const brazilTimeZone = 'America/Sao_Paulo'
+    
+    // Converter para horário do Brasil usando Intl.DateTimeFormat
+    const brazilTime = new Intl.DateTimeFormat('pt-BR', {
+      timeZone: brazilTimeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      weekday: 'long'
+    }).formatToParts(now)
+    
+    const currentHour = parseInt(brazilTime.find(part => part.type === 'hour')?.value || '0', 10)
+    const currentMinute = parseInt(brazilTime.find(part => part.type === 'minute')?.value || '0', 10)
+    const currentDayName = brazilTime.find(part => part.type === 'weekday')?.value || ''
+    
+    // Mapear nome do dia para número (0 = domingo, 6 = sábado)
+    const dayNameMap: Record<string, number> = {
+      'domingo': 0,
+      'segunda-feira': 1,
+      'terça-feira': 2,
+      'quarta-feira': 3,
+      'quinta-feira': 4,
+      'sexta-feira': 5,
+      'sábado': 6
+    }
+    const currentDay = dayNameMap[currentDayName.toLowerCase()] ?? now.getDay()
     const currentSeconds = now.getSeconds()
 
-    // Formatar hora atual como HH:mm
+    // Formatar hora atual como HH:mm (no timezone do Brasil)
     const currentTime = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`
 
     log('Informações de tempo', {
-      now: now.toISOString(),
+      nowUTC: now.toISOString(),
+      timezone: brazilTimeZone,
       currentHour,
       currentMinute,
       currentSeconds,
       currentDay,
       currentTime,
-      dayName: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][currentDay]
+      dayName: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][currentDay],
+      note: 'Horário convertido para America/Sao_Paulo (Brasil)'
     })
 
     // Buscar TODOS os lembretes ativos primeiro para debug
@@ -140,9 +167,18 @@ export async function GET(req: NextRequest) {
     const validTimes: string[] = [currentTime]
     
     // Adicionar minuto anterior como fallback (para garantir que não perdemos lembretes)
-    const previousMinute = new Date(now)
-    previousMinute.setMinutes(previousMinute.getMinutes() - 1)
-    const previousTime = `${String(previousMinute.getHours()).padStart(2, '0')}:${String(previousMinute.getMinutes()).padStart(2, '0')}`
+    // Também converter para timezone do Brasil
+    const previousMinuteDate = new Date(now.getTime() - 60 * 1000) // 1 minuto atrás
+    const previousMinuteBrazil = new Intl.DateTimeFormat('pt-BR', {
+      timeZone: brazilTimeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).formatToParts(previousMinuteDate)
+    
+    const previousHour = parseInt(previousMinuteBrazil.find(part => part.type === 'hour')?.value || '0', 10)
+    const previousMinute = parseInt(previousMinuteBrazil.find(part => part.type === 'minute')?.value || '0', 10)
+    const previousTime = `${String(previousHour).padStart(2, '0')}:${String(previousMinute).padStart(2, '0')}`
     validTimes.push(previousTime)
     
     log('Horários válidos para verificação', { 
