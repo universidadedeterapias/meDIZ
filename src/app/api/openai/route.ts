@@ -9,6 +9,7 @@ import { getUserLimits, getUserPeriod } from '@/lib/userPeriod'
 import { NextResponse } from 'next/server'
 // Cache desabilitado para evitar problemas com tradução multi-idioma
 import { DEFAULT_LANGUAGE, isSupportedLanguage, getLanguageMapping, type LanguageCode } from '@/i18n/config'
+import { withRetryAndCircuitBreaker, isRetryableError } from '@/lib/retry'
 
 const CHAT_WEBHOOK_URL =
   process.env.N8N_CHAT_WEBHOOK_URL ?? 'https://mediz-n8n.gjhi7d.easypanel.host/webhook/chat-texto'
@@ -55,20 +56,49 @@ async function requestAssistantResponse(
     nomeIdioma: langMapping.namePortuguese
   }
   
-  const response = await fetch(CHAT_WEBHOOK_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  })
+  // Usar retry com circuit breaker para o webhook n8n
+  const response = await withRetryAndCircuitBreaker(
+    'n8n-webhook',
+    async () => {
+      const res = await fetch(CHAT_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload),
+        // Timeout de 30 segundos
+        signal: AbortSignal.timeout(30000)
+      })
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '')
-    throw new Error(
-      `Webhook do n8n retornou ${response.status} - ${response.statusText} ${errorText ? `- ${errorText}` : ''}`
-    )
-  }
+      if (!res.ok) {
+        const errorText = await res.text().catch(() => '')
+        const error = new Error(
+          `Webhook do n8n retornou ${res.status} - ${res.statusText} ${errorText ? `- ${errorText}` : ''}`
+        )
+        // Adicionar status ao erro para verificação de retry
+        ;(error as { status?: number }).status = res.status
+        throw error
+      }
+
+      return res
+    },
+    {
+      maxAttempts: 3,
+      initialDelay: 1000, // 1 segundo
+      backoffMultiplier: 2,
+      maxDelay: 5000, // 5 segundos máximo
+      shouldRetry: (error) => {
+        // Retry apenas para erros retryable (rede, timeout, 5xx, 429)
+        return isRetryableError(error)
+      },
+      onRetry: (error, attempt, delay) => {
+        console.warn(
+          `[OpenAI API] Retry ${attempt}/3 para webhook n8n após ${delay}ms:`,
+          error instanceof Error ? error.message : error
+        )
+      }
+    }
+  )
 
   const responseText = await response.text()
   

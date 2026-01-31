@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { withCache } from '@/lib/cache'
 
 export async function GET(_req: NextRequest) {
   console.log('[Dashboard API] Iniciando requisição GET')
@@ -22,6 +23,40 @@ export async function GET(_req: NextRequest) {
     
     console.log('[Dashboard API] Usuário autorizado, prosseguindo...')
 
+    // Usar cache com TTL de 2 minutos (120 segundos)
+    // Cache por usuário admin para permitir invalidação individual se necessário
+    const cacheKey = `dashboard-stats:${session.user.email}`
+    
+    const stats = await withCache(
+      cacheKey,
+      async () => {
+        return await fetchDashboardStats()
+      },
+      {
+        ttl: 120, // 2 minutos
+        prefix: 'admin'
+      }
+    )
+
+    console.log('[Dashboard API] Retornando dados finais:', stats)
+    return NextResponse.json({
+      success: true,
+      stats
+    })
+
+  } catch (error) {
+    console.error('[Dashboard Stats API] Erro:', error)
+    return NextResponse.json({ 
+      error: 'Erro interno do servidor' 
+    }, { status: 500 })
+  }
+}
+
+/**
+ * Função que busca as estatísticas do dashboard
+ * Separada para facilitar cache e testes
+ */
+async function fetchDashboardStats() {
     // Inicializar com valores padrão
     const stats = {
       totalUsers: 0,
@@ -114,16 +149,5 @@ export async function GET(_req: NextRequest) {
       console.error('[Dashboard API] Erro ao buscar estatísticas:', error)
     }
 
-    console.log('[Dashboard API] Retornando dados finais:', stats)
-    return NextResponse.json({
-      success: true,
-      stats
-    })
-
-  } catch (error) {
-    console.error('[Dashboard Stats API] Erro:', error)
-    return NextResponse.json({ 
-      error: 'Erro interno do servidor' 
-    }, { status: 500 })
-  }
+    return stats
 }

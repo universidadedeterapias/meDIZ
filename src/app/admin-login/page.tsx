@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 export default function AdminLoginPage() {
@@ -12,11 +12,48 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
 
-  // Evitar hydration mismatch
+  // Evitar hydration mismatch e ler erros da URL
   useEffect(() => {
     setMounted(true)
-  }, [])
+    
+    // Limpar cache ao carregar a página para evitar problemas de sessão
+    if (typeof window !== 'undefined') {
+      // Limpar localStorage e sessionStorage relacionados a autenticação
+      try {
+        const keysToRemove: string[] = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && (key.includes('auth') || key.includes('session') || key.includes('cache'))) {
+            keysToRemove.push(key)
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key))
+      } catch (e) {
+        console.warn('Erro ao limpar localStorage:', e)
+      }
+    }
+    
+    // Ler erro da URL (vindo do middleware)
+    const urlError = searchParams.get('error')
+    if (urlError) {
+      const errorMessages: Record<string, string> = {
+        'session_expired': 'Sua sessão expirou. Por favor, faça login novamente.',
+        'not_admin': 'Você não tem permissão de administrador.',
+        'Configuration': 'Erro de configuração. Tente novamente.',
+        'CredentialsSignin': 'Credenciais inválidas.',
+        'AccessDenied': 'Acesso negado.'
+      }
+      
+      setError(errorMessages[urlError] || 'Erro ao fazer login. Tente novamente.')
+      
+      // Limpar parâmetro de erro da URL para evitar problemas futuros
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.delete('error')
+      window.history.replaceState({}, '', newUrl.pathname + newUrl.search)
+    }
+  }, [searchParams])
 
   // Não renderizar até estar montado no cliente
   if (!mounted) {
@@ -46,6 +83,11 @@ export default function AdminLoginPage() {
       })
 
       if (result?.error) {
+        // Limpar URL de erros anteriores
+        const newUrl = new URL(window.location.href)
+        newUrl.searchParams.delete('error')
+        window.history.replaceState({}, '', newUrl.pathname + newUrl.search)
+        
         setError('Credenciais inválidas')
         setLoading(false)
         
@@ -87,6 +129,11 @@ export default function AdminLoginPage() {
           if (typeof window !== 'undefined') {
             const { clearAllCaches } = await import('@/lib/logout-utils')
             clearAllCaches()
+            
+            // Limpar qualquer parâmetro de erro da URL
+            const newUrl = new URL(window.location.href)
+            newUrl.searchParams.delete('error')
+            window.history.replaceState({}, '', newUrl.pathname + newUrl.search)
           }
           
           // Registrar login bem-sucedido
@@ -104,19 +151,35 @@ export default function AdminLoginPage() {
           
           // Aguarda um pouco para garantir que a sessão foi criada
           setTimeout(() => {
-            router.push('/admin')
+            // Usar replace para não deixar histórico de login na navegação
+            router.replace('/admin')
             // Força refresh da página para garantir que os dados sejam carregados
             router.refresh()
           }, 100)
         } else {
+          // Limpar URL de erros
+          const newUrl = new URL(window.location.href)
+          newUrl.searchParams.delete('error')
+          window.history.replaceState({}, '', newUrl.pathname + newUrl.search)
+          
           setError('Você não tem permissão de administrador')
           setLoading(false)
         }
       } catch {
+        // Limpar URL de erros
+        const newUrl = new URL(window.location.href)
+        newUrl.searchParams.delete('error')
+        window.history.replaceState({}, '', newUrl.pathname + newUrl.search)
+        
         setError('Erro ao verificar permissões')
         setLoading(false)
       }
     } catch {
+      // Limpar URL de erros
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.delete('error')
+      window.history.replaceState({}, '', newUrl.pathname + newUrl.search)
+      
       setError('Erro ao fazer login')
       setLoading(false)
     }

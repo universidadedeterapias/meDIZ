@@ -1,0 +1,53 @@
+name: Backup Semanal do Banco de Dados
+
+on:
+  schedule:
+    # Executa toda segunda-feira às 2h UTC (23h de domingo no horário de Brasília)
+    - cron: '0 2 * * 1'
+  workflow_dispatch: # Permite execução manual
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Instalar dependências
+        run: npm ci
+      
+      - name: Instalar PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      
+      - name: Executar backup
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: npx tsx scripts/backup-database-weekly.ts
+      
+      - name: Upload backup para artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-backup
+          path: backups/
+          retention-days: 30
+      
+      # Opcional: Upload para S3/Cloud Storage
+      # - name: Upload para S3
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: us-east-1
+      # - name: Upload para S3
+      #   run: |
+      #     aws s3 cp backups/ s3://seu-bucket/backups/ --recursive

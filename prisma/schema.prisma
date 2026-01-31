@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // URL direta para migrations (opcional, só precisa se usar Prisma Data Proxy)
 }
 
 model User {
@@ -59,6 +60,10 @@ model ChatSession {
   isFavorite Boolean       @default(false)
   messages   ChatMessage[]
   user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Índices compostos para otimizar queries de sessões
+  @@index([userId, startedAt]) // Busca de sessões por usuário ordenadas por data
+  @@index([userId, isFavorite]) // Busca de sessões favoritas
 }
 
 model Account {
@@ -126,6 +131,10 @@ model Subscription {
   updatedAt            DateTime @updatedAt
   plan                 Plan     @relation(fields: [planId], references: [id])
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Índices compostos para otimizar queries frequentes
+  @@index([status, currentPeriodEnd]) // Busca de assinaturas ativas
+  @@index([userId, status]) // Busca de assinatura por usuário e status
 }
 
 model ChatMessage {
@@ -148,6 +157,9 @@ model ChatAnswerCache {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   expiresAt      DateTime?
+
+  // Índice para limpeza eficiente de cache expirado
+  @@index([expiresAt])
 }
 
 model LogExecucao {
@@ -281,6 +293,8 @@ model Reminder {
   @@index([userId])
   @@index([active])
   @@index([time])
+  // Índice composto para otimizar busca de lembretes ativos por horário
+  @@index([active, time])
   @@map("reminders")
 }
 

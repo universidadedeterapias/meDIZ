@@ -1,0 +1,31 @@
+# Dockerfile para desenvolvimento local
+# Otimizado para hot-reload e desenvolvimento rápido
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Instalar dependências do sistema
+RUN apk add --no-cache libc6-compat
+
+# Copiar arquivos de dependências e schema Prisma (necessário para postinstall)
+COPY package.json package-lock.json* ./
+COPY prisma ./prisma/
+
+# Instalar dependências (postinstall roda prisma generate)
+RUN npm ci
+
+# Copiar código fonte (será sobrescrito por volume em dev)
+COPY . .
+
+# Gerar Prisma Client
+RUN npx prisma generate
+
+EXPOSE 3000
+
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
+ENV NEXT_TELEMETRY_DISABLED 1
+
+# Comando padrão (será sobrescrito por docker-compose)
+CMD ["npm", "run", "dev"]

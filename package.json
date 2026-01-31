@@ -7,6 +7,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
+    "migrate:docker": "tsx scripts/migrate-docker-safe.ts",
     "check": "tsc --noEmit && eslint . --ext .ts",
     "build-tsc": "tsc",
     "start-node": "node dist/index.js",
@@ -93,7 +94,9 @@
     "diagnose-nextjs": "tsx src/scripts/diagnose-nextjs.ts",
     "get-phone-numbers": "tsx src/scripts/get-phone-numbers-with-notifications.ts",
     "send-push-to-all": "tsx src/scripts/send-push-to-all-users.ts",
-    "reset-notifications-banner": "tsx src/scripts/reset-notifications-banner.ts"
+    "reset-notifications-banner": "tsx src/scripts/reset-notifications-banner.ts",
+    "enable-banner-no-subscription": "tsx src/scripts/enable-banner-for-users-without-subscription.ts",
+    "backup-database": "tsx scripts/backup-database-weekly.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.9.0",
@@ -122,6 +125,7 @@
     "@react-pdf/renderer": "^4.3.2",
     "@types/pdfkit": "^0.17.4",
     "bcryptjs": "^3.0.2",
+    "bullmq": "^5.66.5",
     "class-variance-authority": "^0.7.1",
     "cloudinary": "^2.7.0",
     "clsx": "^2.1.1",

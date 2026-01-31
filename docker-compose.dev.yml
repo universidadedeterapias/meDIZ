@@ -1,0 +1,66 @@
+# Docker Compose para desenvolvimento local
+# Usa volumes para hot-reload. Banco: use DATABASE_URL do .env.local (mesmo banco de produção)
+
+services:
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: mediz-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mediz-dev-network
+
+  # Next.js Application (Development)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: mediz-app-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    # DATABASE_URL vem do .env (use o mesmo banco de produção). Opcional: crie .env.local e liste antes de .env.
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-dev-secret-change-in-production}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY:-}
+      - N8N_CHAT_WEBHOOK_URL=${N8N_CHAT_WEBHOOK_URL:-}
+    volumes:
+      # Montar código fonte para hot-reload
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - mediz-dev-network
+    command: npm run dev
+
+volumes:
+  redis_dev_data:
+    driver: local
+
+networks:
+  mediz-dev-network:
+    driver: bridge
