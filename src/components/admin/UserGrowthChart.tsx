@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { TrendingUp, TrendingDown, Users, Crown } from 'lucide-react'
+import { TrendingUp, TrendingDown, Users, Crown, XCircle } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -29,6 +29,7 @@ interface WeeklyGrowth {
   premiumUsers: number
   freeUsers: number
   conversions: number
+  cancelled?: number
   growthRate: number
   conversionRate: number
 }
@@ -91,6 +92,12 @@ export function UserGrowthChart({
     Premium: week.premiumUsers,
     Gratuito: week.freeUsers,
     Total: week.totalUsers
+  }))
+
+  // Dados para gráfico de cancelados por semana
+  const cancelledChartData = chartData.map(week => ({
+    periodo: week.week.split(' - ')[0],
+    Cancelados: week.cancelled ?? 0
   }))
 
   // Função para filtrar por período
@@ -322,59 +329,58 @@ export function UserGrowthChart({
         </CardContent>
       </Card>
 
+      {/* Filtros compartilhados para os gráficos abaixo */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-sm font-medium text-gray-600">Período:</span>
+        <Button
+          variant={selectedDays === 7 ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => handleFilterChange(7)}
+          disabled={loading}
+        >
+          7 dias
+        </Button>
+        <Button
+          variant={selectedDays === 15 ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => handleFilterChange(15)}
+          disabled={loading}
+        >
+          15 dias
+        </Button>
+        <Button
+          variant={selectedDays === 30 ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => handleFilterChange(30)}
+          disabled={loading}
+        >
+          30 dias
+        </Button>
+        <Button
+          variant={selectedDays === 60 ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => handleFilterChange(60)}
+          disabled={loading}
+        >
+          60 dias
+        </Button>
+        <Button
+          variant={selectedDays === 90 ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => handleFilterChange(90)}
+          disabled={loading}
+        >
+          90 dias
+        </Button>
+      </div>
+
       {/* Gráfico Horizontal - Crescimento ao Longo do Tempo */}
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <CardTitle>Crescimento ao Longo do Tempo</CardTitle>
-              <CardDescription>
-                Evolução de usuários Premium e Gratuitos
-              </CardDescription>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                variant={selectedDays === 7 ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleFilterChange(7)}
-                disabled={loading}
-              >
-                7 dias
-              </Button>
-              <Button
-                variant={selectedDays === 15 ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleFilterChange(15)}
-                disabled={loading}
-              >
-                15 dias
-              </Button>
-              <Button
-                variant={selectedDays === 30 ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleFilterChange(30)}
-                disabled={loading}
-              >
-                30 dias
-              </Button>
-              <Button
-                variant={selectedDays === 60 ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleFilterChange(60)}
-                disabled={loading}
-              >
-                60 dias
-              </Button>
-              <Button
-                variant={selectedDays === 90 ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleFilterChange(90)}
-                disabled={loading}
-              >
-                90 dias
-              </Button>
-            </div>
-          </div>
+          <CardTitle>Crescimento ao Longo do Tempo</CardTitle>
+          <CardDescription>
+            Evolução de usuários Premium e Gratuitos
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -444,6 +450,60 @@ export function UserGrowthChart({
                   activeDot={{ r: 6 }}
                 />
               </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Gráfico de Assinaturas Canceladas por Semana */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <XCircle className="h-5 w-5 text-red-500" />
+            Assinaturas Canceladas por Semana
+          </CardTitle>
+          <CardDescription>
+            Quantidade de assinaturas canceladas por período (usa o mesmo filtro acima)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="h-[300px] flex items-center justify-center">
+              <div className="text-gray-500">Carregando dados...</div>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={cancelledChartData}>
+                <defs>
+                  <linearGradient id="cancelledGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#EF4444" stopOpacity={0.9}/>
+                    <stop offset="95%" stopColor="#DC2626" stopOpacity={0.8}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <XAxis
+                  dataKey="periodo"
+                  stroke="#6B7280"
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  interval={0}
+                />
+                <YAxis stroke="#6B7280" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Bar
+                  dataKey="Cancelados"
+                  fill="url(#cancelledGradient)"
+                  radius={[8, 8, 0, 0]}
+                  label={{ position: 'top', fill: '#1F2937', fontSize: 12 }}
+                />
+              </BarChart>
             </ResponsiveContainer>
           )}
         </CardContent>

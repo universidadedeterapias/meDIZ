@@ -73,6 +73,12 @@ export default function AdminSidebar() {
       active: pathname === '/admin/analytics'
     },
     { 
+      href: '/admin/metrics', 
+      icon: TrendingUp, 
+      label: 'Métricas',
+      active: pathname === '/admin/metrics'
+    },
+    { 
       href: '/admin/export-sintomas', 
       icon: FileSpreadsheet, 
       label: 'Exportar Sintomas',

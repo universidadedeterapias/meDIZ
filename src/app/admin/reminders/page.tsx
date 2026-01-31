@@ -28,7 +28,7 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table'
-import { ArrowLeft, Search, Bell, Users, Clock, CheckCircle, XCircle, Plus, Edit2, Trash2 } from 'lucide-react'
+import { ArrowLeft, Search, Bell, Users, Clock, CheckCircle, XCircle, Plus, Edit2, Trash2, BellRing, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
@@ -86,6 +86,8 @@ export default function AdminRemindersPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isEnablingBanner, setIsEnablingBanner] = useState(false)
+  const [bannerStats, setBannerStats] = useState<{ total: number; withoutSubscriptions: number; needsUpdate: number } | null>(null)
   const [formData, setFormData] = useState({
     userId: '',
     sendToAll: false,
@@ -99,7 +101,55 @@ export default function AdminRemindersPage() {
   useEffect(() => {
     loadReminders()
     loadUsers()
+    loadBannerStats()
   }, [])
+
+  const loadBannerStats = async () => {
+    try {
+      const response = await fetch('/api/admin/push/enable-banner-for-all')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.stats) {
+          setBannerStats({
+            total: data.stats.totalUsers || 0,
+            withoutSubscriptions: data.stats.withoutSubscriptions?.total || 0,
+            needsUpdate: data.stats.withoutSubscriptions?.notificationsEnabledTrue || 0
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas do banner:', error)
+    }
+  }
+
+  const handleEnableBannerForAll = async () => {
+    if (!confirm('Isso irá habilitar o banner de notificações para todos os usuários sem subscription. Continuar?')) {
+      return
+    }
+
+    setIsEnablingBanner(true)
+    try {
+      const response = await fetch('/api/admin/push/enable-banner-for-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target: 'no-subscription' })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Erro ao habilitar banner')
+      }
+
+      const result = await response.json()
+      alert(`✅ ${result.message}\n\n${result.stats ? `Total atualizado: ${result.stats.updated}` : ''}`)
+      loadBannerStats()
+    } catch (error) {
+      console.error('Erro ao habilitar banner:', error)
+      alert(error instanceof Error ? error.message : 'Erro ao habilitar banner')
+    } finally {
+      setIsEnablingBanner(false)
+    }
+  }
 
   const loadReminders = async () => {
     try {
@@ -361,6 +411,60 @@ export default function AdminRemindersPage() {
           Novo Lembrete
         </Button>
       </div>
+
+      {/* Ações de Notificações */}
+      <Card className="border-indigo-200 bg-indigo-50/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BellRing className="h-5 w-5 text-indigo-600" />
+            Gerenciar Banner de Notificações
+          </CardTitle>
+          <CardDescription>
+            Habilite o banner de ativação de notificações para usuários sem subscription
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {bannerStats && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="p-3 bg-white rounded-lg border">
+                <p className="text-sm text-gray-600">Usuários sem subscription</p>
+                <p className="text-2xl font-bold text-indigo-600">{bannerStats.withoutSubscriptions}</p>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <p className="text-sm text-gray-600">Precisam atualização</p>
+                <p className="text-2xl font-bold text-orange-600">{bannerStats.needsUpdate}</p>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <p className="text-sm text-gray-600">Já estão OK</p>
+                <p className="text-2xl font-bold text-green-600">{bannerStats.withoutSubscriptions - bannerStats.needsUpdate}</p>
+              </div>
+            </div>
+          )}
+          <Button
+            onClick={handleEnableBannerForAll}
+            disabled={isEnablingBanner || (bannerStats?.needsUpdate === 0)}
+            className="w-full"
+            variant="default"
+          >
+            {isEnablingBanner ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Habilitando...
+              </>
+            ) : (
+              <>
+                <BellRing className="h-4 w-4 mr-2" />
+                Habilitar Banner para Usuários sem Subscription
+              </>
+            )}
+          </Button>
+          {bannerStats?.needsUpdate === 0 && (
+            <p className="text-sm text-gray-600 text-center">
+              ✅ Todos os usuários sem subscription já estão configurados corretamente
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Estatísticas */}
       {stats && (

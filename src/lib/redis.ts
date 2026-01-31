@@ -28,7 +28,7 @@ export function getRedisClient(): Redis | null {
   }
 
   try {
-    // Criar cliente Redis
+    // Criar cliente Redis com connection pooling otimizado para serverless
     redis = new Redis(redisUrl, {
       // Configurações recomendadas para produção
       maxRetriesPerRequest: 3,
@@ -49,7 +49,12 @@ export function getRedisClient(): Redis | null {
       // Configurações para serverless (Vercel)
       lazyConnect: true,
       enableReadyCheck: false,
-      enableOfflineQueue: false
+      enableOfflineQueue: false,
+      // Connection pooling otimizado
+      keepAlive: 30000, // 30 segundos
+      connectTimeout: 10000, // 10 segundos
+      // Para Upstash Redis (serverless), usar configurações específicas
+      family: 4 // IPv4
     })
 
     // Event handlers (apenas em desenvolvimento)

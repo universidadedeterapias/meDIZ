@@ -12,6 +12,7 @@ interface WeeklyGrowth {
   premiumUsers: number
   freeUsers: number
   conversions: number
+  cancelled: number
   growthRate: number
   conversionRate: number
 }
@@ -117,6 +118,19 @@ export async function GET(req: NextRequest) {
           }
         })
 
+        // Assinaturas canceladas no dia (status alterado para canceled/cancelled/expired no período)
+        const cancelled = await prisma.subscription.count({
+          where: {
+            updatedAt: {
+              gte: dayStart,
+              lte: dayEnd
+            },
+            status: {
+              in: ['canceled', 'CANCELED', 'cancelled', 'expired']
+            }
+          }
+        })
+
         // Calcular taxa de crescimento (comparar com dia anterior)
         const previousDayStart = new Date(dayStart)
         previousDayStart.setDate(dayStart.getDate() - 1)
@@ -147,6 +161,7 @@ export async function GET(req: NextRequest) {
           premiumUsers: premiumUsersAtDay,
           freeUsers,
           conversions,
+          cancelled,
           growthRate: Math.round(growthRate * 100) / 100,
           conversionRate: Math.round(conversionRate * 100) / 100
         })
@@ -233,6 +248,19 @@ export async function GET(req: NextRequest) {
           }
         })
 
+        // Assinaturas canceladas na semana (status alterado para canceled/cancelled/expired no período)
+        const cancelled = await prisma.subscription.count({
+          where: {
+            updatedAt: {
+              gte: weekStart,
+              lte: weekEnd
+            },
+            status: {
+              in: ['canceled', 'CANCELED', 'cancelled', 'expired']
+            }
+          }
+        })
+
         // Calcular taxa de crescimento
         const previousWeekStart = new Date(weekStart)
         previousWeekStart.setDate(weekStart.getDate() - 7)
@@ -265,6 +293,7 @@ export async function GET(req: NextRequest) {
           premiumUsers: premiumUsersAtWeek,
           freeUsers,
           conversions,
+          cancelled,
           growthRate: Math.round(growthRate * 100) / 100,
           conversionRate: Math.round(conversionRate * 100) / 100
         })
