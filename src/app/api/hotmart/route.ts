@@ -318,16 +318,29 @@ export async function POST(req: NextRequest) {
       log('Evento:', parsed.event)
       
       // Verificar se a estrutura básica existe
-      if (!parsed.event || !parsed.data || !parsed.data.purchase) {
+      // SUBSCRIPTION_CANCELLATION não traz data.purchase, apenas data.subscriber + data.subscription
+      const isSubscriptionCancellationOnly =
+        parsed.event === HotmartEvent.SUBSCRIPTION_CANCELLATION &&
+        parsed.data?.subscriber?.email
+      const hasPurchase = !!(parsed.data && parsed.data.purchase)
+      const hasValidStructure =
+        parsed.event &&
+        parsed.data &&
+        (hasPurchase || isSubscriptionCancellationOnly)
+
+      if (!hasValidStructure) {
         logError('❌ Estrutura de dados inválida', undefined, '[hotmart]', {
           hasEvent: !!parsed.event,
           hasData: !!parsed.data,
-          hasPurchase: !!(parsed.data && parsed.data.purchase)
+          hasPurchase,
+          isSubscriptionCancellationOnly: !!isSubscriptionCancellationOnly
         })
         return NextResponse.json({ error: 'Invalid payload structure' }, { status: 400 })
       }
-      
-      log('Status da compra:', parsed.data.purchase.status)
+
+      if (parsed.data.purchase) {
+        log('Status da compra:', parsed.data.purchase.status)
+      }
     } catch (parseError) {
       logError('Falha ao parsear JSON', parseError instanceof Error ? parseError : undefined)
       return NextResponse.json({ error: 'Invalid JSON format' }, { status: 400 })
