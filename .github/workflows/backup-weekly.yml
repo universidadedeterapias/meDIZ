@@ -32,7 +32,24 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
-        run: npx tsx scripts/backup-database-weekly.ts
+        run: |
+          echo "🔍 Verificando variáveis de ambiente..."
+          if [ -z "$DATABASE_URL" ] && [ -z "$DIRECT_URL" ]; then
+            echo "❌ Erro: DATABASE_URL ou DIRECT_URL não configurada"
+            exit 1
+          fi
+          echo "✅ Variáveis de ambiente configuradas"
+          npx tsx scripts/backup-database-weekly.ts
+      
+      - name: Verificar se backup foi criado
+        run: |
+          if [ ! -d "backups" ] || [ -z "$(ls -A backups)" ]; then
+            echo "❌ Erro: Nenhum arquivo de backup encontrado no diretório backups/"
+            ls -la backups/ || echo "Diretório backups/ não existe"
+            exit 1
+          fi
+          echo "✅ Arquivos de backup encontrados:"
+          ls -lh backups/
       
       - name: Upload backup para artifacts
         uses: actions/upload-artifact@v4
@@ -40,6 +57,7 @@ jobs:
           name: database-backup
           path: backups/
           retention-days: 30
+          if-no-files-found: error
       
       # Opcional: Upload para S3/Cloud Storage
       # - name: Upload para S3

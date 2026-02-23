@@ -3,6 +3,7 @@
 
 import { useEffect } from 'react'
 import { useTranslation } from '@/i18n/useTranslation'
+import { LanguageSwitcher } from '@/components/language-switcher'
 
 type Props = { target: string }
 
@@ -30,9 +31,12 @@ export default function SplashScreen({ target }: Props) {
           <span className="text-yellow-400">!</span>
         </p>
       </div>
-      <p className="text-zinc-100 text-lg font-bold">
-        {t('chat.loading.welcome', 'Bem-vindo!')}
-      </p>
+      <div className="flex flex-col items-center gap-4">
+        <p className="text-zinc-100 text-lg font-bold">
+          {t('chat.loading.welcome', 'Bem-vindo!')}
+        </p>
+        <LanguageSwitcher showLabel={false} />
+      </div>
     </div>
   )
 }

@@ -6,11 +6,11 @@ async function fixExpiredSubscriptions() {
   console.log('=' .repeat(50))
 
   try {
-    // 1. Buscar subscriptions expiradas mas marcadas como ativas
+    // 1. Buscar subscriptions expiradas mas marcadas como ativas ou cancel_at_period_end
     const expiredButActive = await prisma.subscription.findMany({
       where: {
         status: {
-          in: ['active', 'ACTIVE']
+          in: ['active', 'ACTIVE', 'cancel_at_period_end']
         },
         currentPeriodEnd: {
           lt: new Date()
@@ -54,7 +54,7 @@ async function fixExpiredSubscriptions() {
     const updateResult = await prisma.subscription.updateMany({
       where: {
         status: {
-          in: ['active', 'ACTIVE']
+          in: ['active', 'ACTIVE', 'cancel_at_period_end']
         },
         currentPeriodEnd: {
           lt: new Date()
@@ -71,7 +71,7 @@ async function fixExpiredSubscriptions() {
     const stillActive = await prisma.subscription.count({
       where: {
         status: {
-          in: ['active', 'ACTIVE']
+          in: ['active', 'ACTIVE', 'cancel_at_period_end']
         },
         currentPeriodEnd: {
           lt: new Date()
