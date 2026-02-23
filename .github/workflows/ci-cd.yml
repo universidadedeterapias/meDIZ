@@ -15,6 +15,10 @@ permissions:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    env:
+      # Prisma validate/generate precisa que existam; não conecta ao banco
+      DATABASE_URL: postgresql://user:pass@localhost:5432/dummy
+      DIRECT_URL: postgresql://user:pass@localhost:5432/dummy
     steps:
       - name: Checkout
         uses: actions/checkout@v4

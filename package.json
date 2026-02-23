@@ -96,7 +96,14 @@
     "send-push-to-all": "tsx src/scripts/send-push-to-all-users.ts",
     "reset-notifications-banner": "tsx src/scripts/reset-notifications-banner.ts",
     "enable-banner-no-subscription": "tsx src/scripts/enable-banner-for-users-without-subscription.ts",
-    "backup-database": "tsx scripts/backup-database-weekly.ts"
+    "backup-database": "tsx scripts/backup-database-weekly.ts",
+    "diagnose-premium": "tsx src/scripts/diagnose-premium-drop.ts",
+    "check-webhooks": "tsx src/scripts/check-webhook-health.ts",
+    "count-active": "tsx src/scripts/count-active-subscriptions.ts",
+    "monthly-revenue": "tsx src/scripts/calculate-monthly-revenue.ts",
+    "cypress": "cypress open",
+    "cypress:run": "cypress run",
+    "test:e2e": "cypress run"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.9.0",
@@ -180,6 +187,8 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
-    "typescript-eslint": "^8.46.1"
+    "typescript-eslint": "^8.46.1",
+    "cypress": "^13.15.0",
+    "cypress-mochawesome-reporter": "^4.0.2"
   }
 }

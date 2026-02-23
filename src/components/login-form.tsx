@@ -21,6 +21,7 @@ import { useState, useEffect } from 'react'
 import { Eye, EyeOff, AlertCircle, Info } from 'lucide-react'
 import GoogleIcon from './icons/Google'
 import { useTranslation } from '@/i18n/useTranslation'
+import { LanguageSwitcher } from '@/components/language-switcher'
 
 const REMEMBER_ME_EMAIL_KEY = 'mediz_remembered_email'
 
@@ -133,7 +134,7 @@ export function LoginForm({
           </p>
           <hr className="w-1/12 border-indigo-600 my-3 sm:my-4" />
           <p className="text-zinc-500 mb-4 sm:mb-6 text-sm sm:text-base">
-            <span className="text-indigo-600">12.460</span>{' '}
+            <span className="text-indigo-600">28.653</span>{' '}
             {t('login.stats', 'pessoas já usaram')}
           </p>
           <CardTitle className="text-lg sm:text-xl text-zinc-800 pt-2">
@@ -209,6 +210,11 @@ export function LoginForm({
               {isLoading ? t('login.button.loading', 'Entrando...') : t('login.submit', 'Entrar')}
             </Button>
           </form>
+
+          {/* Seletor de idioma */}
+          <div className="flex justify-center mt-4">
+            <LanguageSwitcher showLabel={false} />
+          </div>
 
           {/* Link/ação: Esqueci minha senha (WhatsApp) */}
           <button
