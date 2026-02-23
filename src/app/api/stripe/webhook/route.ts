@@ -66,13 +66,15 @@ export async function POST(req: NextRequest) {
         
         const item = sub.items.data[0] as Stripe.SubscriptionItem
 
-        // Acessar propriedades de período de forma segura
-        const periodStart = 'current_period_start' in sub && typeof sub.current_period_start === 'number' 
-          ? sub.current_period_start 
-          : null
-        const periodEnd = 'current_period_end' in sub && typeof sub.current_period_end === 'number'
-          ? sub.current_period_end
-          : null
+        // Período: Stripe pode enviar no objeto subscription ou (em versões mais novas) só em items.data[0]
+        const periodStart =
+          ('current_period_start' in sub && typeof (sub as unknown as { current_period_start?: number }).current_period_start === 'number')
+            ? (sub as unknown as { current_period_start: number }).current_period_start
+            : (typeof item.current_period_start === 'number' ? item.current_period_start : null)
+        const periodEnd =
+          ('current_period_end' in sub && typeof (sub as unknown as { current_period_end?: number }).current_period_end === 'number')
+            ? (sub as unknown as { current_period_end: number }).current_period_end
+            : (typeof item.current_period_end === 'number' ? item.current_period_end : null)
 
         console.log('🔍 [STRIPE WEBHOOK] Subscription ID:', sub.id)
         console.log('🔍 [STRIPE WEBHOOK] Customer ID:', sub.customer)

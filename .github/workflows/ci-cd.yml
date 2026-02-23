@@ -30,7 +30,7 @@ jobs:
           cache: npm
 
       - name: Install deps
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Pre-deploy checks
         run: npm run check:deploy
