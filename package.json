@@ -101,6 +101,7 @@
     "check-webhooks": "tsx src/scripts/check-webhook-health.ts",
     "count-active": "tsx src/scripts/count-active-subscriptions.ts",
     "monthly-revenue": "tsx src/scripts/calculate-monthly-revenue.ts",
+    "revenue-by-plans": "tsx src/scripts/revenue-by-plans.ts",
     "cypress": "cypress open",
     "cypress:run": "cypress run",
     "test:e2e": "cypress run"
