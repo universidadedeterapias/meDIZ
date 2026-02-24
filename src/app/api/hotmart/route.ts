@@ -716,7 +716,18 @@ export async function POST(req: NextRequest) {
 
     const now = new Date()
     const start = now
-    const end = periodicity === 'year' ? addYears(now, 1) : addMonths(now, 1)
+    // Usar interval do plano no banco como fonte de verdade (evita plano mensal aparecer com 1 ano)
+    const intervalCount = plan.intervalCount ?? 1
+    const usePlanInterval = plan.interval === 'MONTH' || plan.interval === 'YEAR'
+    const effectivePeriodicity = usePlanInterval
+      ? (plan.interval === 'YEAR' ? 'year' : 'month')
+      : periodicity
+    const end = effectivePeriodicity === 'year'
+      ? addYears(now, intervalCount)
+      : addMonths(now, intervalCount)
+    if (usePlanInterval) {
+      log('📅 Usando interval do plano no banco:', { interval: plan.interval, intervalCount, effectivePeriodicity })
+    }
 
     log('Criando/atualizando subscrição:', {
       userId: user.id,
