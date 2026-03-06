@@ -647,6 +647,41 @@ export async function POST(req: NextRequest) {
       logError('Plano encontrado', undefined, '[hotmart]', { name: plan.name, interval: plan.interval, stripePriceId: plan.stripePriceId })
     }
 
+    // Proteção: se o nome do plano indica ANUAL mas o banco está MONTH, usar ano no período e corrigir o plano
+    const planNameLower = (plan.name || '').toLowerCase()
+    const nameSuggestsAnnual = /anual|annual|yearly|ano\s*$/i.test(planNameLower)
+    if (nameSuggestsAnnual && plan.interval !== 'YEAR') {
+      logError('⚠️ Plano com nome anual mas interval no banco não é YEAR; corrigindo período para ano e atualizando plano', undefined, '[hotmart]', { planName: plan.name, interval: plan.interval })
+      try {
+        plan = await prisma.plan.update({
+          where: { id: plan.id },
+          data: { interval: 'YEAR' as const, intervalCount: plan.intervalCount ?? 1 }
+        })
+        log('✅ Plano atualizado para interval YEAR:', { planId: plan.id, name: plan.name })
+      } catch (updateErr) {
+        logError('Falha ao atualizar plan.interval para YEAR (período será calculado como ano mesmo assim)', updateErr)
+      }
+    }
+
+    // Período e IDs da transação (usados também para compra pendente quando usuário não existe)
+    const syntheticId = buildSyntheticSubId(parsed)
+    const transactionId = parsed.data.purchase.transaction || parsed.id
+    const now = new Date()
+    const start = now
+    const intervalCount = plan.intervalCount ?? 1
+    const usePlanInterval = plan.interval === 'MONTH' || plan.interval === 'YEAR'
+    const effectivePeriodicity = usePlanInterval
+      ? (plan.interval === 'YEAR' ? 'year' : 'month')
+      : (nameSuggestsAnnual ? 'year' : periodicity)
+    const end = effectivePeriodicity === 'year'
+      ? addYears(now, intervalCount)
+      : addMonths(now, intervalCount)
+    if (usePlanInterval) {
+      log('📅 Usando interval do plano no banco:', { interval: plan.interval, intervalCount, effectivePeriodicity })
+    } else if (nameSuggestsAnnual) {
+      log('📅 Usando período anual (nome do plano indica anual):', { effectivePeriodicity, intervalCount })
+    }
+
     // 4) Usuário (cria se não existir)
     const email = getBuyerEmail(parsed)
     log('Email do comprador:', email)
@@ -655,9 +690,36 @@ export async function POST(req: NextRequest) {
     
     if (!user) {
       log('Usuário não existe, criando novo...')
+      // Salvar compra pendente ANTES de criar usuário: se algo falhar ou o usuário se cadastrar depois com este email, a assinatura pode ser vinculada no confirm-signup
+      if (email) {
+        try {
+          await prisma.pendingHotmartPurchase.upsert({
+            where: { stripeSubscriptionId: syntheticId },
+            create: {
+              email,
+              transaction: transactionId,
+              stripeSubscriptionId: syntheticId,
+              planId: plan.id,
+              currentPeriodStart: start,
+              currentPeriodEnd: end,
+              status: 'pending'
+            },
+            update: {
+              email,
+              planId: plan.id,
+              currentPeriodStart: start,
+              currentPeriodEnd: end,
+              status: 'pending'
+            }
+          })
+          log('✅ Compra pendente registrada (email) para possível vínculo no cadastro')
+        } catch (pendingErr) {
+          logError('Falha ao salvar compra pendente (não bloqueia fluxo)', pendingErr)
+        }
+      }
       const userName =
-        parsed.data.buyer.name ||
-        [parsed.data.buyer.first_name, parsed.data.buyer.last_name]
+        parsed.data.buyer?.name ||
+        [parsed.data.buyer?.first_name, parsed.data.buyer?.last_name]
           .filter(Boolean)
           .join(' ') ||
         null
@@ -674,8 +736,6 @@ export async function POST(req: NextRequest) {
     }
 
     // 5) Subscrição (idempotente por transaction)
-    const syntheticId = buildSyntheticSubId(parsed)
-    const transactionId = parsed.data.purchase.transaction || parsed.id
     log('🔍 DEBUG: Informações da transação:', {
       transactionId,
       syntheticId,
@@ -713,21 +773,6 @@ export async function POST(req: NextRequest) {
         createdAt: sub.createdAt.toISOString()
       }))
     })
-
-    const now = new Date()
-    const start = now
-    // Usar interval do plano no banco como fonte de verdade (evita plano mensal aparecer com 1 ano)
-    const intervalCount = plan.intervalCount ?? 1
-    const usePlanInterval = plan.interval === 'MONTH' || plan.interval === 'YEAR'
-    const effectivePeriodicity = usePlanInterval
-      ? (plan.interval === 'YEAR' ? 'year' : 'month')
-      : periodicity
-    const end = effectivePeriodicity === 'year'
-      ? addYears(now, intervalCount)
-      : addMonths(now, intervalCount)
-    if (usePlanInterval) {
-      log('📅 Usando interval do plano no banco:', { interval: plan.interval, intervalCount, effectivePeriodicity })
-    }
 
     log('Criando/atualizando subscrição:', {
       userId: user.id,
@@ -823,6 +868,16 @@ export async function POST(req: NextRequest) {
         })
         log('✅ Nova assinatura criada:', { id: subscription.id })
       }
+    }
+
+    // Marcar compra pendente como consumida (assinatura foi criada/atualizada com sucesso)
+    try {
+      await prisma.pendingHotmartPurchase.updateMany({
+        where: { stripeSubscriptionId: syntheticId, status: 'pending' },
+        data: { status: 'consumed' }
+      })
+    } catch {
+      // Ignorar; não falha o webhook
     }
 
     const duration = Date.now() - startTime

@@ -46,6 +46,7 @@
     "seed-hotmart-plans": "tsx src/scripts/seed-hotmart-plans.ts",
     "add-hotmart-plans": "tsx src/scripts/add-hotmart-plans-direct.ts",
     "fix-hotmart-plans": "tsx src/scripts/fix-hotmart-plans.ts",
+    "fix-annual-plans-interval": "tsx src/scripts/fix-annual-plans-interval.ts",
     "create-test-8-30": "tsx src/scripts/create-test-user-8-30-days.ts",
     "validate-premium": "tsx src/scripts/validate-premium-definition.ts",
     "debug-search": "tsx src/scripts/debug-search-api.ts",
