@@ -65,6 +65,39 @@ export async function POST(req: NextRequest) {
       }
     })
 
+    // Se comprou na Hotmart antes de se cadastrar: vincular assinatura ao usuário (deixar premium)
+    try {
+      const pending = await prisma.pendingHotmartPurchase.findFirst({
+        where: { email: user.email, status: 'pending' },
+        orderBy: { currentPeriodEnd: 'desc' },
+        include: { plan: true }
+      })
+      if (pending) {
+        const existingSub = await prisma.subscription.findUnique({
+          where: { stripeSubscriptionId: pending.stripeSubscriptionId }
+        })
+        if (!existingSub) {
+          await prisma.subscription.create({
+            data: {
+              userId: user.id,
+              planId: pending.planId,
+              stripeSubscriptionId: pending.stripeSubscriptionId,
+              status: 'active',
+              currentPeriodStart: pending.currentPeriodStart,
+              currentPeriodEnd: pending.currentPeriodEnd
+            }
+          })
+          await prisma.pendingHotmartPurchase.update({
+            where: { id: pending.id },
+            data: { status: 'consumed' }
+          })
+        }
+      }
+    } catch (linkErr) {
+      console.error('[confirm-signup] Erro ao vincular assinatura Hotmart pendente:', linkErr)
+      // Não falha a confirmação do cadastro
+    }
+
     // Não deletar token - deixar expirar naturalmente (evita erro de REPLICA IDENTITY)
 
     return NextResponse.json({

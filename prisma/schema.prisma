@@ -101,22 +101,42 @@ model VerificationToken {
 }
 
 model Plan {
-  id              String         @id @default(uuid())
-  name            String
-  stripePriceId   String         @unique
-  monthlyLimit    Int?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  active          Boolean        @default(true)
-  amount          Int?
-  currency        String?
-  interval        PlanInterval?
-  intervalCount   Int?
-  stripeProductId String?
-  trialPeriodDays Int?
-  hotmartOfferKey String?        @unique
-  hotmartId       Int?           @unique
-  subscriptions   Subscription[]
+  id                      String                   @id @default(uuid())
+  name                    String
+  stripePriceId           String                   @unique
+  monthlyLimit            Int?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  active                  Boolean                  @default(true)
+  amount                  Int?
+  currency                String?
+  interval                PlanInterval?
+  intervalCount           Int?
+  stripeProductId         String?
+  trialPeriodDays         Int?
+  hotmartOfferKey         String?                  @unique
+  hotmartId               Int?                     @unique
+  subscriptions          Subscription[]
+  pendingHotmartPurchases PendingHotmartPurchase[]
+}
+
+/// Compras Hotmart recebidas pelo webhook quando o usuário ainda não existia.
+/// Ao confirmar cadastro com o mesmo email, a assinatura é criada a partir daqui.
+model PendingHotmartPurchase {
+  id                   String   @id @default(uuid())
+  email                String
+  transaction          String   // ID da transação Hotmart
+  stripeSubscriptionId String   @unique // hotmart_${transaction} (idempotência)
+  planId               String
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  status               String   @default("pending") // pending | consumed
+  createdAt            DateTime @default(now())
+  plan                 Plan     @relation(fields: [planId], references: [id])
+
+  @@index([email, status])
+  @@index([stripeSubscriptionId])
+  @@map("pending_hotmart_purchases")
 }
 
 model Subscription {
