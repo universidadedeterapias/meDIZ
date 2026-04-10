@@ -124,6 +124,26 @@ npm run set-admin
 
 ## Regras de Desenvolvimento
 
+### CRÍTICO: Segurança de Segredos e Tokens
+- **Nunca** commitar segredos reais (tokens, API keys, passwords, client secrets, connection strings completas).
+- Sempre mascarar valores sensíveis em logs, prints e documentação (`***`).
+- Tratar como sensível qualquer valor com nomes como: `SECRET`, `TOKEN`, `KEY`, `PASSWORD`, `DATABASE_URL`, `DIRECT_URL`, `WEBHOOK_URL`.
+- Para exemplos de configuração, usar placeholders (`"..."`) e nunca valores reais.
+- Se um segredo vazar por engano: **rotacionar imediatamente** e remover o arquivo do versionamento.
+
+### CRÍTICO: Política de .gitignore
+- Manter `.env*` ignorado em todos os ambientes.
+- Ignorar arquivos de credenciais e certificados: `*.pem`, `*.key`, `*.p12`, `*.pfx`, `*.crt`, `*.cer`, `*.jks`, `*.keystore`.
+- Ignorar credenciais JSON comuns: `credentials.json`, `*credentials*.json`, `service-account*.json`.
+- Ignorar backups e dumps locais sensíveis: `backups/`, `*.sql.gz`, `*.dump`.
+- Antes de abrir PR, validar que não existem arquivos sensíveis staged.
+
+### Checklist rápido antes de commit/deploy
+1. Confirmar que `.env`, secrets e chaves não foram adicionados ao git.
+2. Conferir workflows e configs para não expor tokens em texto puro.
+3. Evitar logs com payload completo de autenticação/checkout/webhook.
+4. Verificar se variáveis obrigatórias de build estão definidas no CI (ex.: `NEXTAUTH_SECRET`).
+
 ### CRÍTICO: Artifacts & Browser Storage
 **NUNCA use localStorage, sessionStorage ou qualquer API de browser storage em artifacts.**
 - Artifacts não têm acesso a browser storage

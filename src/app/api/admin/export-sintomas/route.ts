@@ -1,7 +1,6 @@
 // API para exportar sintomas mais pesquisados
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
-import { getUserMessages } from '@/lib/assistant'
 import { NextResponse } from 'next/server'
 
 interface SintomaData {
@@ -13,6 +12,7 @@ interface SintomaData {
 }
 
 export async function POST(req: Request) {
+  const startedAt = Date.now()
   try {
     const session = await auth()
 
@@ -63,17 +63,29 @@ export async function POST(req: Request) {
         }
       }
     } else if (period === 'custom' && startDate && endDate) {
+      const customStart = new Date(startDate)
+      const customEnd = new Date(endDate)
+      customEnd.setHours(23, 59, 59, 999)
+
+      if (customStart > customEnd) {
+        return NextResponse.json(
+          { error: 'Período inválido: data inicial maior que data final' },
+          { status: 400 }
+        )
+      }
+
       dateFilter = {
         createdAt: {
-          gte: new Date(startDate),
-          lte: new Date(endDate)
+          gte: customStart,
+          lte: customEnd
         }
       }
     }
     
     console.log(`📅 Filtro de período: ${period}`, dateFilter)
     
-    // 2. Busca sessões de chat com filtros
+    // 2. Busca sessões com primeira mensagem do usuário em uma única query
+    // Evita N+1 e reduz timeout em produção.
     const chatSessions = await prisma.chatSession.findMany({
       where: {
         threadId: {
@@ -82,10 +94,19 @@ export async function POST(req: Request) {
         ...dateFilter
       },
       select: {
-        id: true,
-        threadId: true,
         createdAt: true,
-        userId: true
+        messages: {
+          where: {
+            role: 'USER'
+          },
+          orderBy: {
+            createdAt: 'asc'
+          },
+          take: 1,
+          select: {
+            content: true
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc'
@@ -95,59 +116,60 @@ export async function POST(req: Request) {
     console.log(`📈 Encontradas ${chatSessions.length} sessões com threadId`)
 
     if (chatSessions.length === 0) {
-      return NextResponse.json({ 
-        error: 'Nenhuma sessão encontrada',
-        data: []
+      const emptyCsv =
+        'Sintoma Pesquisado,Quantidade de Pesquisas,Data da Primeira Pesquisa,Data da Última Pesquisa\n'
+      return NextResponse.json({
+        success: true,
+        data: [],
+        csv: emptyCsv,
+        summary: {
+          totalSintomas: 0,
+          totalPesquisas: 0,
+          sintomaMaisPesquisado: '',
+          quantidadeMaisPesquisado: 0,
+          top10: []
+        },
+        message: 'Nenhuma sessão encontrada no período'
       })
     }
 
-    // 2. Agrupa por threadId (cada threadId = um sintoma único)
+    // 3. Agrupa pela primeira mensagem do usuário (sintoma)
     const sintomasMap = new Map<string, SintomaData>()
     let processadas = 0
+    let semMensagemUsuario = 0
 
-    console.log('🔄 Processando mensagens dos usuários...')
+    console.log('🔄 Processando mensagens dos usuários (modo otimizado)...')
 
     for (const session of chatSessions) {
-      if (!session.threadId) continue
-
-      try {
-        // Recupera a mensagem original do usuário
-        const userMessages = await getUserMessages(session.threadId)
-        const sintoma = userMessages[0] || 'Mensagem não encontrada'
-
-        // Atualiza ou cria entrada no mapa
-        if (sintomasMap.has(sintoma)) {
-          const existing = sintomasMap.get(sintoma)!
-          existing.quantidade++
-          existing.ultimaPesquisa = session.createdAt
-          existing.threadIds.push(session.threadId)
-          
-          // Atualiza primeira pesquisa se for mais antiga
-          if (session.createdAt < existing.primeiraPesquisa) {
-            existing.primeiraPesquisa = session.createdAt
-          }
-        } else {
-          sintomasMap.set(sintoma, {
-            sintoma,
-            quantidade: 1,
-            primeiraPesquisa: session.createdAt,
-            ultimaPesquisa: session.createdAt,
-            threadIds: [session.threadId]
-          })
-        }
-
-        processadas++
-
-        // Pequena pausa para não sobrecarregar a API
-        await new Promise(resolve => setTimeout(resolve, 50))
-
-      } catch (error) {
-        console.error(`❌ Erro ao processar threadId ${session.threadId}:`, error)
+      const sintoma = session.messages[0]?.content?.trim()
+      if (!sintoma) {
+        semMensagemUsuario++
         continue
       }
+
+      if (sintomasMap.has(sintoma)) {
+        const existing = sintomasMap.get(sintoma)!
+        existing.quantidade++
+        existing.ultimaPesquisa = session.createdAt
+        existing.threadIds.push('N/A')
+
+        if (session.createdAt < existing.primeiraPesquisa) {
+          existing.primeiraPesquisa = session.createdAt
+        }
+      } else {
+        sintomasMap.set(sintoma, {
+          sintoma,
+          quantidade: 1,
+          primeiraPesquisa: session.createdAt,
+          ultimaPesquisa: session.createdAt,
+          threadIds: ['N/A']
+        })
+      }
+
+      processadas++
     }
 
-    console.log(`✅ Processamento concluído: ${processadas} sessões`)
+    console.log(`✅ Processamento concluído: ${processadas} sessões, ${semMensagemUsuario} sem mensagem de usuário`)
 
     // 3. Converte para array e ordena por quantidade
     const sintomasArray = Array.from(sintomasMap.values())
@@ -174,6 +196,8 @@ export async function POST(req: Request) {
     const csvContent = csvHeader + csvRows
 
     // 6. Retorna dados
+    const elapsedMs = Date.now() - startedAt
+    console.log(`⏱️ Exportação de sintomas finalizada em ${elapsedMs}ms`)
     return NextResponse.json({
       success: true,
       data: csvData,

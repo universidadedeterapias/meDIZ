@@ -9,6 +9,8 @@ on:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout código
@@ -27,18 +29,22 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
+
+      - name: Verificar Docker no runner
+        run: |
+          docker --version
+          docker info
       
       - name: Executar backup
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
         run: |
           echo "🔍 Verificando variáveis de ambiente..."
-          if [ -z "$DATABASE_URL" ] && [ -z "$DIRECT_URL" ]; then
-            echo "❌ Erro: DATABASE_URL ou DIRECT_URL não configurada"
+          if [ -z "$DIRECT_URL" ]; then
+            echo "❌ Erro: DIRECT_URL não configurada"
             exit 1
           fi
-          echo "✅ Variáveis de ambiente configuradas"
+          echo "✅ DIRECT_URL configurada"
           npx tsx scripts/backup-database-weekly.ts
       
       - name: Verificar se backup foi criado

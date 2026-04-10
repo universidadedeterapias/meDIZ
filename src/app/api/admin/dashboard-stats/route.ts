@@ -76,9 +76,20 @@ async function fetchDashboardStats() {
       const totalUsersResult = await prisma.$queryRaw`SELECT COUNT(*) as count FROM "User"`
       stats.totalUsers = parseInt((totalUsersResult as Record<string, unknown>[])[0].count as string)
 
-      // Buscar usuários ativos (últimos 7 dias)
-      const activeUsersResult = await prisma.$queryRaw`SELECT COUNT(*) as count FROM "User" WHERE "createdAt" >= NOW() - INTERVAL '7 days'`
-      stats.activeUsers = parseInt((activeUsersResult as Record<string, unknown>[])[0].count as string)
+      // Buscar usuários ativos (últimos 7 dias) com base em atividade real (chat)
+      // Mantém o mesmo critério usado na API de usuários para evitar divergência no painel.
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      stats.activeUsers = await prisma.user.count({
+        where: {
+          chatSessions: {
+            some: {
+              createdAt: {
+                gte: sevenDaysAgo
+              }
+            }
+          }
+        }
+      })
 
       // Buscar total de sessões de chat
       const totalChatSessionsResult = await prisma.chatSession.count()

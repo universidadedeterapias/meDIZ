@@ -2,6 +2,18 @@
   "name": "mediz_app",
   "version": "0.1.0",
   "private": true,
+  "files": [
+    "src/**",
+    "public/**",
+    "prisma/**",
+    "next.config.*",
+    "postcss.config.*",
+    "tailwind.config.*",
+    "tsconfig.json",
+    "package.json",
+    "README*",
+    "LICENSE*"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
@@ -85,7 +97,6 @@
     "clean": "node scripts/clean-build.js",
     "build:safe": "npm run check:deploy && npm run build",
     "build:clean": "npm run clean && npm run build",
-    "setup:cicd": "node scripts/setup-cicd.js",
     "test:2fa": "node scripts/test-2fa-local.js",
     "generate-vapid-keys": "tsx src/scripts/generate-vapid-keys.ts",
     "debug-reminders": "tsx src/scripts/debug-reminders.ts",
