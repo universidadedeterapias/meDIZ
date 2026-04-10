@@ -3,6 +3,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import {
+  countPremiumUsers,
+  PRISMA_CANCELED_GRACE_STATUSES,
+  prismaWhereCanceledSubscriptionEnded,
+  prismaWhereCanceledSubscriptionInGrace,
+  prismaWhereSubscriptionGrantsPremium
+} from '@/lib/premiumUtils'
 import { getRedisClient } from '@/lib/redis'
 import { getCache } from '@/lib/cache'
 
@@ -33,8 +40,14 @@ interface MetricsData {
   // Métricas de assinaturas
   subscriptions: {
     total: number
+    /** Linhas que ainda concedem acesso premium (inclui cancelado com período vigente). */
     active: number
+    /** Todas as linhas com status canceled/cancelled. */
     cancelled: number
+    /** Canceladas com currentPeriodEnd no futuro (ainda contam em active). */
+    cancelledInGrace: number
+    /** Canceladas com período já encerrado. */
+    cancelledPeriodEnded: number
     revenue: number // Estimativa (opcional)
   }
   
@@ -95,6 +108,8 @@ export async function GET(_req: NextRequest) {
         total: 0,
         active: 0,
         cancelled: 0,
+        cancelledInGrace: 0,
+        cancelledPeriodEnded: 0,
         revenue: 0
       },
       services: {
@@ -133,16 +148,8 @@ export async function GET(_req: NextRequest) {
       `
       metrics.users.newThisWeek = Number(newThisWeekResult[0]?.count || 0)
 
-      // Usuários premium (com assinaturas ativas)
       try {
-        const premiumUsersResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-          SELECT COUNT(DISTINCT u.id) as count 
-          FROM "User" u
-          INNER JOIN "Subscription" s ON u.id = s."userId"
-          WHERE s.status IN ('active', 'ACTIVE', 'cancel_at_period_end')
-          AND s."currentPeriodEnd" >= NOW()
-        `
-        metrics.users.premium = Number(premiumUsersResult[0]?.count || 0)
+        metrics.users.premium = await countPremiumUsers()
       } catch {
         metrics.users.premium = 0
       }
@@ -177,20 +184,24 @@ export async function GET(_req: NextRequest) {
       // 3. Métricas de assinaturas
       metrics.subscriptions.total = await prisma.subscription.count()
 
-      const activeSubsResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-        SELECT COUNT(*) as count 
-        FROM "Subscription" 
-        WHERE status IN ('active', 'ACTIVE', 'cancel_at_period_end')
-        AND "currentPeriodEnd" >= NOW()
-      `
-      metrics.subscriptions.active = Number(activeSubsResult[0]?.count || 0)
+      metrics.subscriptions.active = await prisma.subscription.count({
+        where: prismaWhereSubscriptionGrantsPremium()
+      })
 
-      const cancelledSubsResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-        SELECT COUNT(*) as count 
-        FROM "Subscription" 
-        WHERE status IN ('canceled', 'CANCELED', 'cancelled')
-      `
-      metrics.subscriptions.cancelled = Number(cancelledSubsResult[0]?.count || 0)
+      const [cancelledTotal, inGrace, periodEnded] = await Promise.all([
+        prisma.subscription.count({
+          where: { status: { in: [...PRISMA_CANCELED_GRACE_STATUSES] } }
+        }),
+        prisma.subscription.count({
+          where: prismaWhereCanceledSubscriptionInGrace()
+        }),
+        prisma.subscription.count({
+          where: prismaWhereCanceledSubscriptionEnded()
+        })
+      ])
+      metrics.subscriptions.cancelled = cancelledTotal
+      metrics.subscriptions.cancelledInGrace = inGrace
+      metrics.subscriptions.cancelledPeriodEnded = periodEnded
 
       // 4. Status dos serviços
       try {

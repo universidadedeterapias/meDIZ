@@ -1,6 +1,12 @@
 // src/scripts/diagnose-premium-drop.ts
 import { prisma } from '@/lib/prisma'
-import { countPremiumUsers, validatePremiumCount } from '@/lib/premiumUtils'
+import {
+  countPremiumUsers,
+  PRISMA_PREMIUM_LIKE_STATUSES,
+  prismaWhereSubscriptionGrantsPremium,
+  subscriptionGrantsPremiumAccess,
+  validatePremiumCount
+} from '@/lib/premiumUtils'
 
 async function diagnosePremiumDrop() {
   console.log('🔍 DIAGNÓSTICO: REDUÇÃO DE USUÁRIOS PREMIUM\n')
@@ -27,7 +33,7 @@ async function diagnosePremiumDrop() {
           lt: new Date()
         },
         status: {
-          in: ['active', 'ACTIVE', 'cancel_at_period_end']
+          in: [...PRISMA_PREMIUM_LIKE_STATUSES]
         }
       },
       include: {
@@ -49,7 +55,7 @@ async function diagnosePremiumDrop() {
       }
     })
 
-    console.log(`\n⏰ ASSINATURAS QUE EXPIRARAM NOS ÚLTIMOS 7 DIAS: ${expiredLastWeek.length}`)
+    console.log(`\n⏰ ASSINATURAS (status ativo/trial etc.) QUE EXPIRARAM NOS ÚLTIMOS 7 DIAS: ${expiredLastWeek.length}`)
     if (expiredLastWeek.length > 0) {
       expiredLastWeek.forEach((sub, index) => {
         console.log(`\n${index + 1}. Usuário: ${sub.user.email} (${sub.user.name || 'Sem nome'})`)
@@ -103,7 +109,7 @@ async function diagnosePremiumDrop() {
     const expiredButActive = await prisma.subscription.findMany({
       where: {
         status: {
-          in: ['active', 'ACTIVE', 'cancel_at_period_end']
+          in: [...PRISMA_PREMIUM_LIKE_STATUSES]
         },
         currentPeriodEnd: {
           lt: new Date()
@@ -172,7 +178,7 @@ async function diagnosePremiumDrop() {
     if (updatedLastWeek.length > 0) {
       updatedLastWeek.forEach((sub, index) => {
         const isExpired = sub.currentPeriodEnd < new Date()
-        const isActive = ['active', 'ACTIVE', 'cancel_at_period_end'].includes(sub.status) && !isExpired
+        const isActive = subscriptionGrantsPremiumAccess(sub)
         console.log(`\n${index + 1}. Usuário: ${sub.user.email}`)
         console.log(`   Plano: ${sub.plan.name}`)
         console.log(`   Status: ${sub.status} ${isActive ? '✅ ATIVA' : '❌ INATIVA'}`)
@@ -184,12 +190,7 @@ async function diagnosePremiumDrop() {
     // 6. Verificar se há problemas com webhooks (assinaturas sem atualização recente mas que deveriam estar ativas)
     const shouldBeActiveButNotUpdated = await prisma.subscription.findMany({
       where: {
-        status: {
-          in: ['active', 'ACTIVE', 'cancel_at_period_end']
-        },
-        currentPeriodEnd: {
-          gte: new Date()
-        },
+        ...prismaWhereSubscriptionGrantsPremium(),
         updatedAt: {
           lt: sevenDaysAgo
         }

@@ -18,8 +18,10 @@ import { useLanguage } from '@/i18n/useLanguage'
 import { getUpgradeLink } from '@/lib/upgradeLinks'
 
 type SubscriptionAPI = {
-  status: 'active' | 'trialing' | 'cancel_at_period_end' | 'canceled'
+  status: string
   currentPeriodEnd: string | null
+  /** Fonte de verdade do servidor (cancelado com período vigente = true) */
+  hasPremiumAccess?: boolean
 }
 
 type NavOption = {
@@ -47,13 +49,30 @@ export function NavOptions({ options }: NavOptionsProps) {
       .then(res => (res.ok ? res.json() : Promise.reject()))
       .then(setSubscription)
       .catch(() =>
-        setSubscription({ status: 'canceled', currentPeriodEnd: null })
+        setSubscription({
+          status: 'canceled',
+          currentPeriodEnd: null,
+          hasPremiumAccess: false
+        })
       )
   }, [user?.id])
 
+  const legacyPremiumHint =
+    subscription?.hasPremiumAccess === undefined &&
+    subscription?.currentPeriodEnd &&
+    new Date(subscription.currentPeriodEnd) > new Date() &&
+    [
+      'active',
+      'trialing',
+      'cancel_at_period_end',
+      'past_due',
+      'paused',
+      'canceled',
+      'cancelled'
+    ].includes((subscription?.status ?? '').toLowerCase())
+
   const isSubscribed =
-    subscription?.status.toLocaleLowerCase() === 'active' ||
-    subscription?.status.toLocaleLowerCase() === 'trialing'
+    subscription?.hasPremiumAccess === true || legacyPremiumHint
 
   const handleLogout = async () => {
     // Limpar todos os caches ANTES do logout

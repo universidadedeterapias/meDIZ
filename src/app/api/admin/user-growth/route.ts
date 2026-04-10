@@ -2,6 +2,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import {
+  PRISMA_CANCELED_GRACE_STATUSES,
+  PRISMA_PREMIUM_LIKE_STATUSES,
+  prismaWhereSubscriptionGrantsPremium
+} from '@/lib/premiumUtils'
 
 interface WeeklyGrowth {
   week: string
@@ -88,15 +93,16 @@ export async function GET(req: NextRequest) {
                 createdAt: {
                   lte: dayEnd
                 },
-                status: {
-                  in: ['active', 'ACTIVE', 'cancel_at_period_end']
-                },
                 currentPeriodStart: {
                   lte: dayEnd
                 },
                 currentPeriodEnd: {
                   gte: dayEnd
-                }
+                },
+                OR: [
+                  { status: { in: [...PRISMA_PREMIUM_LIKE_STATUSES] } },
+                  { status: { in: [...PRISMA_CANCELED_GRACE_STATUSES] } }
+                ]
               }
             }
           }
@@ -218,15 +224,16 @@ export async function GET(req: NextRequest) {
                 createdAt: {
                   lte: weekEnd
                 },
-                status: {
-                  in: ['active', 'ACTIVE', 'cancel_at_period_end']
-                },
                 currentPeriodStart: {
                   lte: weekEnd
                 },
                 currentPeriodEnd: {
                   gte: weekEnd
-                }
+                },
+                OR: [
+                  { status: { in: [...PRISMA_PREMIUM_LIKE_STATUSES] } },
+                  { status: { in: [...PRISMA_CANCELED_GRACE_STATUSES] } }
+                ]
               }
             }
           }
@@ -304,14 +311,7 @@ export async function GET(req: NextRequest) {
     const totalPremium = await prisma.user.count({
       where: {
         subscriptions: {
-          some: {
-            status: {
-              in: ['active', 'ACTIVE', 'cancel_at_period_end']
-            },
-            currentPeriodEnd: {
-              gte: new Date()
-            }
-          }
+          some: prismaWhereSubscriptionGrantsPremium()
         }
       }
     })

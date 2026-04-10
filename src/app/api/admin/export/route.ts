@@ -1,6 +1,10 @@
 // src/app/api/admin/export/route.ts
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import {
+  prismaWhereSubscriptionGrantsPremium,
+  subscriptionGrantsPremiumAccess
+} from '@/lib/premiumUtils'
 import { NextRequest, NextResponse } from 'next/server'
 import { logDataExport } from '@/lib/auditLogger'
 import { sendDataExportAlert } from '@/lib/whatsappService'
@@ -158,10 +162,10 @@ async function exportUsers(format: string, options: { canceledOnly: boolean }) {
 
   // Processa os dados
   const processedData = users.map(user => {
-    const activeSubscription = user.subscriptions.find(sub => 
-      ['active', 'ACTIVE', 'cancel_at_period_end'].includes(sub.status) &&
-      sub.currentPeriodEnd >= new Date()
-    )
+    const paying = user.subscriptions.filter(sub => subscriptionGrantsPremiumAccess(sub))
+    const activeSubscription = paying.sort(
+      (a, b) => b.currentPeriodEnd.getTime() - a.currentPeriodEnd.getTime()
+    )[0]
     const latestSubscription = user.subscriptions[0]
 
     return {
@@ -246,10 +250,10 @@ async function exportTopSearches(format: string) {
   const userMap = new Map(users.map(user => [user.id, user]))
   const processedData = topSearches.map(item => {
     const user = userMap.get(item.userId)
-    const activeSubscription = user?.subscriptions.find(sub =>
-      ['active', 'ACTIVE', 'cancel_at_period_end'].includes(sub.status) &&
-      sub.currentPeriodEnd >= new Date()
-    )
+    const paying = user?.subscriptions.filter(sub => subscriptionGrantsPremiumAccess(sub)) ?? []
+    const activeSubscription = paying.sort(
+      (a, b) => b.currentPeriodEnd.getTime() - a.currentPeriodEnd.getTime()
+    )[0]
     const lastSearchDate = item._max.createdAt
 
     return {
@@ -279,14 +283,7 @@ async function exportAnalytics(format: string) {
   const usersWithActiveSubscriptions = await prisma.user.count({
     where: {
       subscriptions: {
-        some: {
-          status: {
-            in: ['active', 'ACTIVE', 'cancel_at_period_end']
-          },
-          currentPeriodEnd: {
-            gte: new Date()
-          }
-        }
+        some: prismaWhereSubscriptionGrantsPremium()
       }
     }
   })

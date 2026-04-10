@@ -3,6 +3,11 @@ logs/
 cache/
 .data/
 
+# Backups de banco (podem conter dados sensíveis) — manter só o marcador da pasta
+backups/*
+!backups/.gitkeep
+*.dump
+
 # Ambiente e sistema
 .env.local
 .env*.local

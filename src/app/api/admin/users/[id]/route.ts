@@ -1,5 +1,6 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { prismaWhereSubscriptionGrantsPremium } from '@/lib/premiumUtils'
 import { NextRequest, NextResponse } from 'next/server'
 import { logUserAction, AuditActions } from '@/lib/auditLogger'
 
@@ -28,14 +29,7 @@ export async function GET(
         whatsapp: true,
         createdAt: true,
         subscriptions: {
-          where: {
-            status: {
-              in: ['active', 'ACTIVE', 'cancel_at_period_end']
-            },
-            currentPeriodEnd: {
-              gte: new Date()
-            }
-          },
+          where: prismaWhereSubscriptionGrantsPremium(),
           include: {
             plan: {
               select: {

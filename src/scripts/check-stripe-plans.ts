@@ -1,5 +1,6 @@
 // Script para verificar planos Stripe no banco e no painel admin
 import { PrismaClient } from '@prisma/client'
+import { subscriptionGrantsPremiumAccess } from '@/lib/premiumUtils'
 
 const prisma = new PrismaClient()
 
@@ -46,13 +47,8 @@ async function checkStripePlans() {
     }
 
     // 2. Verificar quais têm assinaturas ativas
-    const now = new Date()
     const plansWithActiveSubs = allStripePlans.filter(plan => {
-      return plan.subscriptions.some(sub => {
-        const isActive = ['active', 'trialing', 'past_due', 'cancel_at_period_end'].includes(sub.status)
-        const notExpired = sub.currentPeriodEnd >= now
-        return isActive && notExpired
-      })
+      return plan.subscriptions.some(sub => subscriptionGrantsPremiumAccess(sub))
     })
 
     console.log(`✅ Planos com assinaturas ativas: ${plansWithActiveSubs.length}`)
@@ -74,11 +70,9 @@ async function checkStripePlans() {
       console.log(`   Total de assinaturas: ${plan.subscriptions.length}`)
       
       if (plan.subscriptions.length > 0) {
-        const activeSubs = plan.subscriptions.filter(sub => {
-          const isActive = ['active', 'trialing', 'past_due', 'cancel_at_period_end'].includes(sub.status)
-          const notExpired = sub.currentPeriodEnd >= now
-          return isActive && notExpired
-        })
+        const activeSubs = plan.subscriptions.filter(sub =>
+          subscriptionGrantsPremiumAccess(sub)
+        )
         console.log(`   Assinaturas ativas: ${activeSubs.length}`)
         
         if (activeSubs.length === 0) {

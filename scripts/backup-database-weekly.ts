@@ -16,7 +16,7 @@ import { exec } from 'child_process'
 import { promisify } from 'util'
 import { writeFile, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import * as dotenv from 'dotenv'
 
 const execAsync = promisify(exec)
@@ -30,6 +30,24 @@ interface BackupOptions {
   timestamp?: boolean
 }
 
+function maskSensitive(input: string, secret?: string): string {
+  if (!input) return input
+  let output = input
+  if (secret) {
+    output = output.split(secret).join('***')
+  }
+  output = output.replace(/api_key=[^&\s]+/gi, 'api_key=***')
+  return output
+}
+
+function isProxyLikeDatabaseUrl(url: string): boolean {
+  return (
+    url.startsWith('prisma://') ||
+    url.startsWith('prisma+postgres://') ||
+    url.includes('prisma-data.net')
+  )
+}
+
 async function backupDatabase(options: BackupOptions = {}) {
   const {
     outputDir = './backups',
@@ -40,8 +58,9 @@ async function backupDatabase(options: BackupOptions = {}) {
   console.log('🔄 Iniciando backup do banco de dados...')
   console.log(`📋 Configurações: outputDir=${outputDir}, compress=${compress}, timestamp=${timestamp}`)
 
-  // Verificar DATABASE_URL
-  const databaseUrl = process.env.DATABASE_URL || process.env.DIRECT_URL
+  // Para backup, SEMPRE preferir URL direta (compatível com pg_dump)
+  const directUrl = process.env.DIRECT_URL
+  const databaseUrl = directUrl || process.env.DATABASE_URL
   if (!databaseUrl) {
     const errorMsg = '❌ DATABASE_URL ou DIRECT_URL não configurada'
     console.error(errorMsg)
@@ -49,7 +68,13 @@ async function backupDatabase(options: BackupOptions = {}) {
     throw new Error(errorMsg)
   }
 
-  console.log('✅ URL do banco de dados encontrada (ocultando credenciais)')
+  if (!directUrl && isProxyLikeDatabaseUrl(databaseUrl)) {
+    const errorMsg = '❌ URL de proxy detectada em DATABASE_URL. Defina DIRECT_URL com conexão PostgreSQL direta para o backup.'
+    console.error(errorMsg)
+    throw new Error(errorMsg)
+  }
+
+  console.log(`✅ URL do banco encontrada (${directUrl ? 'DIRECT_URL' : 'DATABASE_URL'})`)
 
   // Criar diretório de backups se não existir
   if (!existsSync(outputDir)) {
@@ -63,16 +88,7 @@ async function backupDatabase(options: BackupOptions = {}) {
   let host: string, port: string, database: string, username: string, password: string
   
   try {
-    // Normalizar URL para parsing
-    const normalizedUrl = databaseUrl.startsWith('postgresql://') 
-      ? databaseUrl.replace(/^postgresql:\/\//, 'https://')
-      : databaseUrl.startsWith('postgres://')
-      ? databaseUrl.replace(/^postgres:\/\//, 'https://')
-      : databaseUrl.startsWith('https://') || databaseUrl.startsWith('http://')
-      ? databaseUrl
-      : `https://${databaseUrl}`
-    
-    const url = new URL(normalizedUrl)
+    const url = new URL(databaseUrl)
     host = url.hostname
     port = url.port || '5432'
     database = url.pathname.slice(1) // Remove leading /
@@ -96,35 +112,32 @@ async function backupDatabase(options: BackupOptions = {}) {
     ? new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
     : 'latest'
   
-  // Corrigir extensão: se compress=true, usar gzip via pipe, não formato custom
-  const extension = compress ? 'sql.gz' : 'sql'
+  // Com compress=true, usamos formato custom (-Fc), que já é comprimido e portátil
+  const extension = compress ? 'dump' : 'sql'
   const filename = `backup-${database}-${timestampStr}.${extension}`
   const filepath = join(outputDir, filename)
+  const absoluteOutputDir = resolve(outputDir)
 
   console.log(`📦 Criando backup: ${filename}`)
   console.log(`📂 Caminho completo: ${filepath}`)
 
   try {
-    // Escapar senha para uso seguro no shell (evitar injection)
-    const escapedPassword = password.replace(/'/g, "'\"'\"'")
-    
-    // Usar pg_dump com compressão via gzip se solicitado
-    // Formato correto: usar pipe para gzip ao invés de formato custom
-    let pgDumpCommand: string
-    
-    if (compress) {
-      // Usar formato plain SQL com compressão via gzip
-      pgDumpCommand = `PGPASSWORD='${escapedPassword}' pg_dump -h ${host} -p ${port} -U ${username} -d ${database} --no-owner --no-acl | gzip > "${filepath}"`
-    } else {
-      // Formato plain SQL sem compressão
-      pgDumpCommand = `PGPASSWORD='${escapedPassword}' pg_dump -h ${host} -p ${port} -U ${username} -d ${database} --no-owner --no-acl > "${filepath}"`
-    }
+    const baseArgs = ['-h', host, '-p', port, '-U', username, '-d', database, '--no-owner', '--no-acl']
+    const pgDumpArgs = compress
+      ? [...baseArgs, '-Fc', '-f', filepath]
+      : [...baseArgs, '-f', filepath]
 
     console.log('🔧 Executando comando pg_dump...')
-    console.log(`📝 Comando (senha oculta): pg_dump -h ${host} -p ${port} -U ${username} -d ${database} ${compress ? '| gzip' : ''}`)
+    console.log(`📝 Comando (senha oculta): pg_dump -h ${host} -p ${port} -U ${username} -d ${database} ${compress ? '-Fc' : ''}`)
 
     try {
-      await execAsync(pgDumpCommand, { maxBuffer: 10 * 1024 * 1024 }) // 10MB buffer
+      const quotedArgs = pgDumpArgs.map(arg => `"${arg.replace(/"/g, '\\"')}"`).join(' ')
+      const command = `pg_dump ${quotedArgs}`
+
+      await execAsync(command, {
+        maxBuffer: 10 * 1024 * 1024,
+        env: { ...process.env, PGPASSWORD: password }
+      })
       console.log(`✅ Backup criado com sucesso: ${filepath}`)
       
       // Verificar se arquivo foi criado
@@ -144,16 +157,60 @@ async function backupDatabase(options: BackupOptions = {}) {
       
       return filepath
     } catch (pgDumpError: any) {
-      console.error('❌ Erro ao executar pg_dump:', pgDumpError.message)
+      console.error('❌ Erro ao executar pg_dump:', maskSensitive(String(pgDumpError.message || ''), password))
       console.error('📋 Detalhes do erro:', {
         code: pgDumpError.code,
         signal: pgDumpError.signal,
         stdout: pgDumpError.stdout?.substring(0, 500),
-        stderr: pgDumpError.stderr?.substring(0, 500)
+        stderr: maskSensitive(String(pgDumpError.stderr || '').substring(0, 500), password)
       })
       
-      // Se pg_dump não estiver disponível ou falhar, tentar método alternativo
-      console.log('⚠️  Tentando método alternativo...')
+      // Tentativa de fallback via Docker (sem depender de pg_dump local)
+      console.log('⚠️  Tentando backup via Docker...')
+      try {
+        try {
+          await execAsync('docker info', { maxBuffer: 2 * 1024 * 1024 })
+        } catch {
+          throw new Error('Docker está instalado, mas o daemon não está em execução. Inicie o Docker Desktop e tente novamente.')
+        }
+
+        const dockerArgs = [
+          'run',
+          '--rm',
+          '-e',
+          `PGPASSWORD=${password}`,
+          '-v',
+          `${absoluteOutputDir}:/backups`,
+          'postgres:17-alpine',
+          'pg_dump',
+          '-h',
+          host,
+          '-p',
+          port,
+          '-U',
+          username,
+          '-d',
+          database,
+          '--no-owner',
+          '--no-acl',
+          ...(compress ? ['-Fc'] : []),
+          '-f',
+          `/backups/${filename}`
+        ]
+
+        const dockerCommand = `docker ${dockerArgs.map(arg => `"${String(arg).replace(/"/g, '\\"')}"`).join(' ')}`
+        await execAsync(dockerCommand, {
+          maxBuffer: 10 * 1024 * 1024
+        })
+
+        console.log(`✅ Backup criado com sucesso via Docker: ${filepath}`)
+        return filepath
+      } catch (dockerError: any) {
+        console.error('❌ Fallback via Docker também falhou:', maskSensitive(String(dockerError.message || ''), password))
+      }
+
+      // Último fallback: exportar apenas schema
+      console.log('⚠️  Tentando método alternativo de schema...')
       
       try {
         // Método alternativo: usar Prisma para exportar schema
@@ -176,8 +233,10 @@ async function backupDatabase(options: BackupOptions = {}) {
         await prisma.$disconnect()
         return schemaFilepath
       } catch (altError: any) {
-        console.error('❌ Método alternativo também falhou:', altError.message)
-        throw new Error(`Falha no backup: pg_dump (${pgDumpError.message}) e método alternativo (${altError.message})`)
+        const maskedPgError = maskSensitive(String(pgDumpError.message || ''), password)
+        const maskedAltError = maskSensitive(String(altError.message || ''), password)
+        console.error('❌ Método alternativo também falhou:', maskedAltError)
+        throw new Error(`Falha no backup: pg_dump (${maskedPgError}) e método alternativo (${maskedAltError})`)
       }
     }
   } catch (error: any) {

@@ -5,6 +5,7 @@ import { getMessages } from '@/lib/assistant'
 import { createChatSessionWithThread } from '@/lib/chatService'
 import { saveChatMessage } from '@/lib/chatMessages'
 import { prisma } from '@/lib/prisma'
+import { isUserPremium } from '@/lib/premiumUtils'
 import { getUserLimits, getUserPeriod } from '@/lib/userPeriod'
 import { NextResponse } from 'next/server'
 // Cache desabilitado para evitar problemas com tradução multi-idioma
@@ -191,24 +192,11 @@ export async function POST(req: Request) {
     }
   })
 
-  // ── 2) Verifica assinatura ativa ──────────────────────────────────
-  const hasActiveSubscription = await prisma.subscription.findFirst({
-    where: {
-      userId,
-      status: {
-        in: ['active', 'ACTIVE', 'cancel_at_period_end']
-      },
-      currentPeriodEnd: {
-        gte: new Date()
-      }
-    },
-    select: {
-      id: true // Só seleciona o ID para verificar existência
-    }
-  })
+  // ── 2) Acesso premium (inclui cancelada com período ainda vigente) ─
+  const hasPremiumAccess = await isUserPremium(userId)
 
-  // ── 3) Se não tiver assinatura, aplica regras do plano gratuito ──────
-  if (!hasActiveSubscription) {
+  // ── 3) Sem premium: plano gratuito (limite + popup) ─────────────────
+  if (!hasPremiumAccess) {
     // Busca informações do usuário para saber a data de cadastro
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -286,8 +274,8 @@ export async function POST(req: Request) {
     // ── 7) Busca as mensagens geradas e retorna ao cliente ───────────
     const responses = await getMessages(threadId)
 
-    // ── 8) Se não tiver assinatura, inclui informações do período na resposta ───
-    if (!hasActiveSubscription) {
+    // ── 8) Plano gratuito: período + popup entre pesquisas ─────────────
+    if (!hasPremiumAccess) {
       const user = await prisma.user.findUnique({
         where: { id: userId },
         select: { createdAt: true }

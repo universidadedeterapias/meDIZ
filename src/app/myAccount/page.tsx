@@ -37,8 +37,9 @@ import { useLanguage } from '@/i18n/useLanguage'
 import { getUpgradeLink } from '@/lib/upgradeLinks'
 
 type SubscriptionAPI = {
-  status: 'active' | 'trialing' | 'cancel_at_period_end' | 'canceled'
+  status: string
   currentPeriodEnd: string | null
+  hasPremiumAccess?: boolean
 }
 
 type FormValues = {
@@ -90,7 +91,11 @@ export default function MyAccountPage() {
       })
       .then(setSubscription)
       .catch(() =>
-        setSubscription({ status: 'canceled', currentPeriodEnd: null })
+        setSubscription({
+          status: 'canceled',
+          currentPeriodEnd: null,
+          hasPremiumAccess: false
+        })
       )
   }, [user?.id])
 
@@ -123,11 +128,28 @@ export default function MyAccountPage() {
     return <MyAccountSkeleton />
   }
 
-  const { status, currentPeriodEnd } = subscription
-  const isActive =
-    status.toLocaleLowerCase() === 'active' ||
-    status.toLocaleLowerCase() === 'trialing'
-  const isCancelling = status.toLocaleLowerCase() === 'cancel_at_period_end'
+  const { status, currentPeriodEnd, hasPremiumAccess } = subscription
+  const statusLower = status.toLowerCase()
+  const hasPremium =
+    hasPremiumAccess === true ||
+    (hasPremiumAccess === undefined &&
+      !!currentPeriodEnd &&
+      new Date(currentPeriodEnd) > new Date() &&
+      [
+        'active',
+        'trialing',
+        'cancel_at_period_end',
+        'past_due',
+        'paused',
+        'canceled',
+        'cancelled'
+      ].includes(statusLower))
+  const isActiveStripe =
+    statusLower === 'active' || statusLower === 'trialing'
+  const isCancelling = statusLower === 'cancel_at_period_end'
+  const isCanceledWithGrace =
+    hasPremium &&
+    (statusLower === 'canceled' || statusLower === 'cancelled')
   const renewDate = currentPeriodEnd
 
   const handleMenuSelect = (action: 'view' | 'change') => {
@@ -156,7 +178,7 @@ export default function MyAccountPage() {
   }
 
   const handleCancelSubscription = async () => {
-    if (!isActive || isCancelling) return
+    if (!isActiveStripe || isCancelling || isCanceledWithGrace) return
     const msg = renewDate
       ? t('account.subscription.cancelConfirm', 'Cancelar ao fim do ciclo (até {date})?').replace('{date}', formatDate(renewDate) ?? '')
       : t('account.subscription.cancelConfirmNoDate', 'Cancelar sua assinatura?')
@@ -170,7 +192,9 @@ export default function MyAccountPage() {
       return
     }
     alert(t('account.subscription.cancelSuccess', 'Cancelamento agendado!'))
-    setSubscription(s => (s ? { ...s, status: 'cancel_at_period_end' } : s))
+    setSubscription(s =>
+      s ? { ...s, status: 'cancel_at_period_end', hasPremiumAccess: true } : s
+    )
   }
 
   const handleLogout = async () => {
@@ -242,7 +266,7 @@ export default function MyAccountPage() {
         </Card>
 
         {/* Cartão de Assinatura / Oferta */}
-        {isActive ? (
+        {hasPremium ? (
           <Card className="border-yellow-400 bg-yellow-50 shadow-sm text-sm border-l-4">
             <CardHeader className="space-y-1">
               <CardTitle className="text-yellow-800">
@@ -251,7 +275,9 @@ export default function MyAccountPage() {
               <CardDescription className="text-yellow-700/80">
                 {isCancelling
                   ? `${t('account.subscription.cancelling', 'Cancelamento agendado para')} ${formatDate(renewDate!)}`
-                  : `${t('account.subscription.renewal', 'Renovação em')} ${formatDate(renewDate!)}`}
+                  : isCanceledWithGrace && renewDate
+                    ? `${t('account.subscription.accessUntil', 'Acesso Premium até')} ${formatDate(renewDate)}`
+                    : `${t('account.subscription.renewal', 'Renovação em')} ${formatDate(renewDate!)}`}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -397,7 +423,7 @@ export default function MyAccountPage() {
         {/* Planos & Preços */}
         <Card
           className={`shadow-sm ${
-            !isActive ? 'opacity-50 pointer-events-none' : ''
+            !hasPremium ? 'opacity-50 pointer-events-none' : ''
           }`}
         >
           <CardHeader className="flex flex-row justify-between items-center">
@@ -407,10 +433,14 @@ export default function MyAccountPage() {
           </CardHeader>
           <Separator />
           <CardContent className="p-4 space-y-4">
-            {isActive && (
+            {hasPremium && renewDate && (
               <div className="flex justify-between text-sm">
-                <span>{t('account.subscription.renewalDate', 'Data de Renovação:')}</span>
-                <span className="font-bold">{formatDate(renewDate!)}</span>
+                <span>
+                  {isCanceledWithGrace || isCancelling
+                    ? t('account.subscription.accessUntilDate', 'Acesso até:')
+                    : t('account.subscription.renewalDate', 'Data de Renovação:')}
+                </span>
+                <span className="font-bold">{formatDate(renewDate)}</span>
               </div>
             )}
 
@@ -420,7 +450,7 @@ export default function MyAccountPage() {
                 variant="outline"
                 size="sm"
                 className="w-full"
-                disabled={!isActive}
+                disabled={!hasPremium}
               >
                 <Link href="/account/payments-history">
                   {t('account.subscription.viewPaymentHistory', 'Ver Histórico de Pagamentos')}
@@ -430,7 +460,7 @@ export default function MyAccountPage() {
                 variant="outline"
                 size="sm"
                 onClick={handleCancelSubscription}
-                disabled={!isActive || isCancelling}
+                disabled={!isActiveStripe || isCancelling || isCanceledWithGrace}
                 className="w-full text-red-700"
               >
                 {isCancelling ? t('account.subscription.cancelSuccess', 'Cancelamento agendado!') : t('account.subscription.cancel', 'Cancelar assinatura')}

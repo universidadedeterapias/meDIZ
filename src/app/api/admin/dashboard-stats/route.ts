@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { withCache } from '@/lib/cache'
+import { countPremiumUsers } from '@/lib/premiumUtils'
 
 export async function GET(_req: NextRequest) {
   console.log('[Dashboard API] Iniciando requisição GET')
@@ -76,24 +77,28 @@ async function fetchDashboardStats() {
       const totalUsersResult = await prisma.$queryRaw`SELECT COUNT(*) as count FROM "User"`
       stats.totalUsers = parseInt((totalUsersResult as Record<string, unknown>[])[0].count as string)
 
-      // Buscar usuários ativos (últimos 7 dias)
-      const activeUsersResult = await prisma.$queryRaw`SELECT COUNT(*) as count FROM "User" WHERE "createdAt" >= NOW() - INTERVAL '7 days'`
-      stats.activeUsers = parseInt((activeUsersResult as Record<string, unknown>[])[0].count as string)
+      // Buscar usuários ativos (últimos 7 dias) com base em atividade real (chat)
+      // Mantém o mesmo critério usado na API de usuários para evitar divergência no painel.
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      stats.activeUsers = await prisma.user.count({
+        where: {
+          chatSessions: {
+            some: {
+              createdAt: {
+                gte: sevenDaysAgo
+              }
+            }
+          }
+        }
+      })
 
       // Buscar total de sessões de chat
       const totalChatSessionsResult = await prisma.chatSession.count()
       stats.totalChatSessions = totalChatSessionsResult
 
-      // Buscar usuários premium (com assinaturas ativas)
+      // Usuários premium (inclui cancelado com acesso até o fim do período)
       try {
-        const premiumUsersResult = await prisma.$queryRaw`
-          SELECT COUNT(DISTINCT u.id) as count 
-          FROM "User" u
-          INNER JOIN "Subscription" s ON u.id = s."userId"
-          WHERE s.status IN ('active', 'ACTIVE', 'cancel_at_period_end')
-          AND s."currentPeriodEnd" >= NOW()
-        `
-        stats.premiumUsers = parseInt((premiumUsersResult as Record<string, unknown>[])[0].count as string)
+        stats.premiumUsers = await countPremiumUsers()
         
         // Calcular usuários gratuitos
         stats.freeUsers = stats.totalUsers - stats.premiumUsers

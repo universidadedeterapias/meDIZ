@@ -1,7 +1,11 @@
 // src/app/api/admin/analytics/route.ts
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
-import { countPremiumUsers, validatePremiumCount } from '@/lib/premiumUtils'
+import {
+  countPremiumUsers,
+  prismaWhereSubscriptionGrantsPremium,
+  validatePremiumCount
+} from '@/lib/premiumUtils'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request) {
@@ -58,14 +62,7 @@ export async function GET(req: Request) {
     const allUsers = await prisma.user.findMany({
       where: {
         subscriptions: {
-          none: {
-            status: {
-              in: ['active', 'ACTIVE', 'cancel_at_period_end']
-            },
-            currentPeriodEnd: {
-              gte: new Date()
-            }
-          }
+          none: prismaWhereSubscriptionGrantsPremium()
         }
       },
       select: {
