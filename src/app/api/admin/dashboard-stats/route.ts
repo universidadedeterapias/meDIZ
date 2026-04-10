@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { withCache } from '@/lib/cache'
+import { countPremiumUsers } from '@/lib/premiumUtils'
 
 export async function GET(_req: NextRequest) {
   console.log('[Dashboard API] Iniciando requisição GET')
@@ -95,16 +96,9 @@ async function fetchDashboardStats() {
       const totalChatSessionsResult = await prisma.chatSession.count()
       stats.totalChatSessions = totalChatSessionsResult
 
-      // Buscar usuários premium (com assinaturas ativas)
+      // Usuários premium (inclui cancelado com acesso até o fim do período)
       try {
-        const premiumUsersResult = await prisma.$queryRaw`
-          SELECT COUNT(DISTINCT u.id) as count 
-          FROM "User" u
-          INNER JOIN "Subscription" s ON u.id = s."userId"
-          WHERE s.status IN ('active', 'ACTIVE', 'cancel_at_period_end')
-          AND s."currentPeriodEnd" >= NOW()
-        `
-        stats.premiumUsers = parseInt((premiumUsersResult as Record<string, unknown>[])[0].count as string)
+        stats.premiumUsers = await countPremiumUsers()
         
         // Calcular usuários gratuitos
         stats.freeUsers = stats.totalUsers - stats.premiumUsers

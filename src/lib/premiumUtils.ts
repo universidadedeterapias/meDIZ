@@ -1,5 +1,86 @@
 // src/lib/premiumUtils.ts
 import { prisma } from '@/lib/prisma'
+import type { Prisma } from '@prisma/client'
+
+/**
+ * Status que ainda concedem acesso premium até currentPeriodEnd (comparação case-insensitive).
+ * Inclui cancelamento ao fim do período e tolera "canceled/cancelled" com fim de período no futuro
+ * (dados legados ou webhook fora de ordem).
+ */
+const PREMIUM_ACCESS_NORMALIZED = new Set([
+  'active',
+  'trialing',
+  'past_due',
+  'cancel_at_period_end',
+  'paused'
+])
+
+/**
+ * Para filtros Prisma: variantes comuns de capitalização no banco.
+ */
+export const PRISMA_PREMIUM_LIKE_STATUSES = [
+  'active',
+  'ACTIVE',
+  'trialing',
+  'TRIALING',
+  'past_due',
+  'PAST_DUE',
+  'cancel_at_period_end',
+  'CANCEL_AT_PERIOD_END',
+  'paused',
+  'PAUSED'
+] as const
+
+export const PRISMA_CANCELED_GRACE_STATUSES = [
+  'canceled',
+  'cancelled',
+  'CANCELED',
+  'CANCELLED'
+] as const
+
+export function subscriptionGrantsPremiumAccess(sub: {
+  status: string
+  currentPeriodEnd: Date
+}): boolean {
+  if (sub.currentPeriodEnd.getTime() < Date.now()) return false
+  const s = sub.status.trim().toLowerCase()
+  if (PREMIUM_ACCESS_NORMALIZED.has(s)) return true
+  if (s === 'canceled' || s === 'cancelled') return true
+  return false
+}
+
+/** Where Prisma: assinatura ainda "paga" até o fim do período (admin / contagens). */
+export function prismaWhereSubscriptionGrantsPremium(
+  now: Date = new Date()
+): Prisma.SubscriptionWhereInput {
+  return {
+    currentPeriodEnd: { gte: now },
+    OR: [
+      { status: { in: [...PRISMA_PREMIUM_LIKE_STATUSES] } },
+      { status: { in: [...PRISMA_CANCELED_GRACE_STATUSES] } }
+    ]
+  }
+}
+
+/** Status canceled/cancelled com período ainda vigente (acesso até o fim do ciclo). */
+export function prismaWhereCanceledSubscriptionInGrace(
+  now: Date = new Date()
+): Prisma.SubscriptionWhereInput {
+  return {
+    currentPeriodEnd: { gte: now },
+    status: { in: [...PRISMA_CANCELED_GRACE_STATUSES] }
+  }
+}
+
+/** Canceladas e período já encerrado (não concedem mais acesso). */
+export function prismaWhereCanceledSubscriptionEnded(
+  now: Date = new Date()
+): Prisma.SubscriptionWhereInput {
+  return {
+    currentPeriodEnd: { lt: now },
+    status: { in: [...PRISMA_CANCELED_GRACE_STATUSES] }
+  }
+}
 
 /**
  * Determina se um usuário é premium baseado na fonte de verdade do banco
@@ -10,12 +91,7 @@ export async function isUserPremium(userId: string): Promise<boolean> {
     const activeSubscription = await prisma.subscription.findFirst({
       where: {
         userId,
-        status: {
-          in: ['active', 'ACTIVE', 'cancel_at_period_end']
-        },
-        currentPeriodEnd: {
-          gte: new Date()
-        }
+        ...prismaWhereSubscriptionGrantsPremium()
       },
       select: {
         id: true
@@ -37,14 +113,7 @@ export async function getPremiumUsers() {
     const premiumUsers = await prisma.user.findMany({
       where: {
         subscriptions: {
-          some: {
-            status: {
-              in: ['active', 'ACTIVE', 'cancel_at_period_end']
-            },
-            currentPeriodEnd: {
-              gte: new Date()
-            }
-          }
+          some: prismaWhereSubscriptionGrantsPremium()
         }
       },
       select: {
@@ -70,14 +139,7 @@ export async function countPremiumUsers(): Promise<number> {
     const count = await prisma.user.count({
       where: {
         subscriptions: {
-          some: {
-            status: {
-              in: ['active', 'ACTIVE', 'cancel_at_period_end']
-            },
-            currentPeriodEnd: {
-              gte: new Date()
-            }
-          }
+          some: prismaWhereSubscriptionGrantsPremium()
         }
       }
     })
@@ -97,9 +159,11 @@ export const PREMIUM_VALIDATION_QUERY = `
 SELECT COUNT(DISTINCT u.id) as premium_count
 FROM "User" u
 JOIN "Subscription" s ON u.id = s."userId"
-WHERE s.status IN ('active', 'ACTIVE', 'cancel_at_period_end')
-  AND s."currentPeriodEnd" >= NOW()
-  AND s."currentPeriodStart" <= NOW();
+WHERE s."currentPeriodEnd" >= NOW()
+  AND (
+    LOWER(TRIM(s.status)) IN ('active', 'trialing', 'past_due', 'cancel_at_period_end', 'paused')
+    OR LOWER(TRIM(s.status)) IN ('canceled', 'cancelled')
+  );
 `
 
 /**

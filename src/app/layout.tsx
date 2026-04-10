@@ -5,7 +5,7 @@ import { HydrationBoundary } from '@/components/hydration-boundary'
 import { GlobalErrorHandler } from '@/components/GlobalErrorHandler'
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
 import PushNotificationBanner from '@/components/PushNotificationBanner'
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { LanguageProvider } from '@/i18n/LanguageProvider'
 import { getCurrentLanguage } from '@/i18n/server'
@@ -33,14 +33,15 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: 'default',
     title: 'meDIZ'
-  },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: 'cover'
-  },
+  }
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
   themeColor: '#6366f1'
 }
 

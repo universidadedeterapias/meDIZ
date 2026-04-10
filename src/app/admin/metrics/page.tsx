@@ -41,6 +41,8 @@ interface MetricsData {
     total: number
     active: number
     cancelled: number
+    cancelledInGrace: number
+    cancelledPeriodEnded: number
     revenue: number
   }
   services: {
@@ -143,9 +145,16 @@ export default function MetricsPage() {
   ]
 
   const subscriptionData = [
-    { name: 'Ativas', value: metrics.subscriptions.active },
-    { name: 'Canceladas', value: metrics.subscriptions.cancelled },
-    { name: 'Total', value: metrics.subscriptions.total }
+    { name: 'Com acesso', value: metrics.subscriptions.active },
+    {
+      name: 'Cancel. c/ período',
+      value: metrics.subscriptions.cancelledInGrace ?? 0
+    },
+    {
+      name: 'Cancel. encerradas',
+      value: metrics.subscriptions.cancelledPeriodEnded ?? 0
+    },
+    { name: 'Total linhas', value: metrics.subscriptions.total }
   ]
 
   return (
@@ -329,16 +338,33 @@ export default function MetricsPage() {
                 <p className="text-2xl font-bold">{metrics.subscriptions.total.toLocaleString()}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Ativas</p>
+                <p className="text-sm text-gray-600">Com acesso premium</p>
                 <p className="text-2xl font-bold text-green-600">
                   {metrics.subscriptions.active.toLocaleString()}
                 </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Inclui canceladas que ainda estão dentro do período pago.
+                </p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Canceladas</p>
+                <p className="text-sm text-gray-600">Canceladas (total no BD)</p>
                 <p className="text-2xl font-bold text-red-600">
                   {metrics.subscriptions.cancelled.toLocaleString()}
                 </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-gray-600">Cancel. c/ período vigente</p>
+                  <p className="text-lg font-semibold text-amber-600">
+                    {(metrics.subscriptions.cancelledInGrace ?? 0).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-600">Cancel. período encerrado</p>
+                  <p className="text-lg font-semibold text-gray-700">
+                    {(metrics.subscriptions.cancelledPeriodEnded ?? 0).toLocaleString()}
+                  </p>
+                </div>
               </div>
             </div>
             <ResponsiveContainer width="100%" height={150}>

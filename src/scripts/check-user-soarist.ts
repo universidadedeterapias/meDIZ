@@ -1,7 +1,6 @@
 // src/scripts/check-user-soarist.ts
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
+import { subscriptionGrantsPremiumAccess } from '@/lib/premiumUtils'
 
 async function main() {
   try {
@@ -57,11 +56,10 @@ async function main() {
       console.log('')
     })
     
-    // Verificar se há assinatura ativa
-    const activeSub = user.subscriptions.find(sub => 
-      ['active', 'ACTIVE', 'cancel_at_period_end'].includes(sub.status) &&
-      sub.currentPeriodEnd >= new Date()
-    )
+    const paying = user.subscriptions.filter(sub => subscriptionGrantsPremiumAccess(sub))
+    const activeSub = paying.sort(
+      (a, b) => b.currentPeriodEnd.getTime() - a.currentPeriodEnd.getTime()
+    )[0]
     
     if (activeSub) {
       console.log(`✅ Assinatura ATIVA:`)

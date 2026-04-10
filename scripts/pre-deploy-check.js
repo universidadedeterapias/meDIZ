@@ -145,10 +145,11 @@ const totalIssues = runChecks();
 if (totalIssues === 0) {
   console.log('\n✅ All checks passed! Ready for deployment.');
   console.log('🚀 You can now run: npm run build');
+  console.log('💡 Dica: use npm run check:deploy ou npm run deploy-check (sem espaço no nome do script).');
 } else {
   console.log(`\n⚠️  Found ${totalIssues} issues. Fix before deploying.`);
   console.log('💡 Run individual checks:');
-  console.log('   - npm run check:deploy (this script)');
+  console.log('   - npm run check:deploy ou npm run deploy-check (this script)');
   console.log('   - npx tsc --noEmit (TypeScript)');
   console.log('   - npx eslint src (ESLint)');
   console.log('   - npx prisma validate (Prisma)');

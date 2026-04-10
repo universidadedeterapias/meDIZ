@@ -2,7 +2,7 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { getUserPeriod, getUserLimits } from '@/lib/userPeriod'
-import { countPremiumUsers } from '@/lib/premiumUtils'
+import { countPremiumUsers, subscriptionGrantsPremiumAccess } from '@/lib/premiumUtils'
 import { NextRequest, NextResponse } from 'next/server'
 import { hash } from 'bcryptjs'
 import { logUserAction, AuditActions } from '@/lib/auditLogger'
@@ -182,15 +182,15 @@ export async function GET(req: NextRequest) {
     // Processa os dados dos usuários (TODOS, antes dos filtros)
     const processedUsers = await Promise.all(allUsers.map(async user => {
       // Determina se tem subscription ativa usando fonte de verdade
-      const activeSubscription = user.subscriptions.find(sub => 
-        ['active', 'ACTIVE', 'cancel_at_period_end'].includes(sub.status) &&
-        sub.currentPeriodEnd >= new Date()
+      const payingSubscriptions = user.subscriptions.filter(sub =>
+        subscriptionGrantsPremiumAccess(sub)
       )
+      const activeSubscription = payingSubscriptions.sort(
+        (a, b) => b.currentPeriodEnd.getTime() - a.currentPeriodEnd.getTime()
+      )[0]
 
-      // Buscar assinaturas expiradas
-      const expiredSubscriptions = user.subscriptions.filter(sub => 
-        !['active', 'ACTIVE', 'cancel_at_period_end'].includes(sub.status) ||
-        sub.currentPeriodEnd < new Date()
+      const expiredSubscriptions = user.subscriptions.filter(
+        sub => !subscriptionGrantsPremiumAccess(sub)
       )
 
       // Determina o plano baseado na fonte de verdade

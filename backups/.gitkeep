@@ -1,0 +1,1 @@
+# Backups locais (ex.: pg_dump). Arquivos .dump e similares ficam ignorados pelo Git.

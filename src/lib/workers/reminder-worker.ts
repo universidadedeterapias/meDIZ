@@ -6,6 +6,7 @@
  */
 
 import { Worker, Job } from 'bullmq'
+import { getBullMqRedisConnection } from '@/lib/bullmq-connection'
 import { prisma } from '../prisma'
 import { sendPushNotification } from '../webPush'
 
@@ -14,34 +15,12 @@ interface ReminderJobData {
   userId: string | null // null = lembrete global
 }
 
-// Configurar conexão Redis para BullMQ
-function getRedisConnection() {
-  const redisUrl = process.env.REDIS_URL
-  if (!redisUrl) {
-    return null
-  }
-
-  // Se é URL completa (Upstash, Redis Cloud, etc.)
-  if (redisUrl.startsWith('redis://') || redisUrl.startsWith('rediss://')) {
-    return { url: redisUrl }
-  }
-
-  // Se é formato host:port (não recomendado, mas suportado)
-  const parts = redisUrl.split(':')
-  if (parts.length === 2) {
-    return {
-      host: parts[0],
-      port: parseInt(parts[1], 10)
-    }
-  }
-
-  return null
-}
-
-const redisConnection = getRedisConnection()
+const redisConnection = getBullMqRedisConnection()
 
 if (!redisConnection) {
-  console.warn('[ReminderWorker] REDIS_URL não configurada. Worker não será criado.')
+  if (process.env.npm_lifecycle_event !== 'build') {
+    console.warn('[ReminderWorker] REDIS_URL não configurada. Worker não será criado.')
+  }
 }
 
 /**

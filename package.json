@@ -94,6 +94,7 @@
     "test-popup-final-adjustments": "tsx src/scripts/test-popup-final-adjustments.ts",
     "check-popup-image": "tsx src/scripts/check-popup-image.ts",
     "check:deploy": "node scripts/pre-deploy-check.js",
+    "deploy-check": "node scripts/pre-deploy-check.js",
     "clean": "node scripts/clean-build.js",
     "build:safe": "npm run check:deploy && npm run build",
     "build:clean": "npm run clean && npm run build",
