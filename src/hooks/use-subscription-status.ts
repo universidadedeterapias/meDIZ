@@ -25,7 +25,7 @@ export function useSubscriptionStatus(): SubscriptionStatus {
     async function checkSubscription() {
       try {
         // Verificar cache primeiro
-        const cacheKey = 'subscription-status'
+        const cacheKey = 'subscription-status-v2'
         const cacheTimestamp = localStorage.getItem(`${cacheKey}-timestamp`)
         const cachedStatus = localStorage.getItem(cacheKey)
         
@@ -58,20 +58,25 @@ export function useSubscriptionStatus(): SubscriptionStatus {
         console.log('[useSubscriptionStatus] 📦 Dados recebidos do servidor:', {
           status: data.status,
           currentPeriodEnd: data.currentPeriodEnd,
-          currentPeriodStart: data.currentPeriodStart
+          currentPeriodStart: data.currentPeriodStart,
+          hasPremiumAccess: data.hasPremiumAccess
         })
-        
-        // Verifica se a assinatura está ativa e não expirou
-        const statusLower = data.status?.toLowerCase() || ''
-        const isActive = statusLower === 'active' || statusLower === 'cancel_at_period_end'
-        const notExpired = data.currentPeriodEnd ? new Date(data.currentPeriodEnd) > new Date() : false
-        const isPremium = isActive && notExpired
+
+        let isPremium: boolean
+        if (typeof data.hasPremiumAccess === 'boolean') {
+          isPremium = data.hasPremiumAccess
+        } else {
+          const statusLower = data.status?.toLowerCase() || ''
+          const isActive =
+            statusLower === 'active' || statusLower === 'cancel_at_period_end'
+          const notExpired = data.currentPeriodEnd
+            ? new Date(data.currentPeriodEnd) > new Date()
+            : false
+          isPremium = isActive && notExpired
+        }
 
         console.log('[useSubscriptionStatus] 🔍 Análise do status:', {
           statusOriginal: data.status,
-          statusLowercase: statusLower,
-          isActive,
-          notExpired,
           isPremium,
           currentPeriodEnd: data.currentPeriodEnd,
           now: new Date().toISOString()

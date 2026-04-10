@@ -1,5 +1,6 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { prismaWhereSubscriptionGrantsPremium } from '@/lib/premiumUtils'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -48,85 +49,62 @@ export async function GET() {
     })
   })
 
-  // 🔍 DEBUG: Verificar assinaturas ativas com filtro correto
+  const premiumWhere = {
+    userId: session.user.id,
+    ...prismaWhereSubscriptionGrantsPremium()
+  }
+
   const activeSubscriptions = await prisma.subscription.findMany({
-    where: {
-      userId: session.user.id,
-      status: {
-        in: ['active', 'ACTIVE', 'cancel_at_period_end']
-      },
-      currentPeriodEnd: {
-        gte: new Date()
-      }
-    },
+    where: premiumWhere,
     select: {
       id: true,
       status: true,
       currentPeriodStart: true,
       currentPeriodEnd: true
     },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { currentPeriodEnd: 'desc' }
   })
 
-  console.log('[API /stripe/subscription] ✅ Assinaturas ATIVAS encontradas:', activeSubscriptions.length)
-  activeSubscriptions.forEach((sub, index) => {
-    console.log(`[API /stripe/subscription] ✅ Assinatura Ativa ${index + 1}:`, {
-      id: sub.id,
-      status: sub.status,
-      currentPeriodStart: sub.currentPeriodStart.toISOString(),
-      currentPeriodEnd: sub.currentPeriodEnd.toISOString()
+  console.log(
+    '[API /stripe/subscription] ✅ Assinaturas com acesso premium:',
+    activeSubscriptions.length
+  )
+  activeSubscriptions.forEach((s, index) => {
+    console.log(`[API /stripe/subscription] ✅ Premium ${index + 1}:`, {
+      id: s.id,
+      status: s.status,
+      currentPeriodStart: s.currentPeriodStart.toISOString(),
+      currentPeriodEnd: s.currentPeriodEnd.toISOString()
     })
   })
 
-  // 🔧 CORREÇÃO: Buscar apenas assinaturas ATIVAS e VÁLIDAS (mesma lógica de isUserPremium)
-  // Isso garante que só retornamos assinaturas que realmente dão acesso premium
   const sub = await prisma.subscription.findFirst({
-    where: {
-      userId: session.user.id,
-      status: {
-        in: ['active', 'ACTIVE', 'cancel_at_period_end']
-      },
-      currentPeriodEnd: {
-        gte: new Date()
-      }
-    },
+    where: premiumWhere,
     select: {
       status: true,
       currentPeriodEnd: true,
       currentPeriodStart: true
     },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { currentPeriodEnd: 'desc' }
   })
 
   if (!sub) {
-    console.log('[API /stripe/subscription] ⚠️ Nenhuma assinatura ATIVA encontrada - retornando canceled')
-    console.log('[API /stripe/subscription] 💡 Isso significa que o usuário é GRATUITO')
+    console.log('[API /stripe/subscription] ⚠️ Sem acesso premium (gratuito ou período encerrado)')
     const duration = Date.now() - requestStart
     console.log('[API /stripe/subscription] ⏱️ Tempo total:', duration, 'ms')
     console.log('[API /stripe/subscription] ====== FIM VERIFICAÇÃO ASSINATURA ======')
     return NextResponse.json({
       status: 'canceled',
       currentPeriodEnd: null,
-      currentPeriodStart: null
+      currentPeriodStart: null,
+      hasPremiumAccess: false
     })
   }
 
-  const now = new Date()
-  const isExpired = sub.currentPeriodEnd < now
-  const statusLower = sub.status.toLowerCase()
-  const isActiveStatus = ['active', 'cancel_at_period_end'].includes(statusLower)
-  const isValid = isActiveStatus && !isExpired
-
-  console.log('[API /stripe/subscription] ✅ Assinatura ATIVA encontrada:', {
+  console.log('[API /stripe/subscription] ✅ Assinatura usada para acesso:', {
     status: sub.status,
-    statusLowercase: statusLower,
     currentPeriodStart: sub.currentPeriodStart.toISOString(),
-    currentPeriodEnd: sub.currentPeriodEnd.toISOString(),
-    now: now.toISOString(),
-    isExpired,
-    isActiveStatus,
-    isValid,
-    willReturnActive: isValid
+    currentPeriodEnd: sub.currentPeriodEnd.toISOString()
   })
 
   const duration = Date.now() - requestStart
@@ -136,6 +114,7 @@ export async function GET() {
   return NextResponse.json({
     status: sub.status,
     currentPeriodEnd: sub.currentPeriodEnd.toISOString(),
-    currentPeriodStart: sub.currentPeriodStart.toISOString()
+    currentPeriodStart: sub.currentPeriodStart.toISOString(),
+    hasPremiumAccess: true
   })
 }
