@@ -1,5 +1,5 @@
 // src/lib/sidebarOptions.ts
-import { FileText, GraduationCap, Headset, Star } from 'lucide-react'
+import { FileText, GraduationCap, Headset, Home, Star } from 'lucide-react'
 import { FaWhatsapp } from 'react-icons/fa'
 
 export const sidebarOptions = [
@@ -14,6 +14,12 @@ export const sidebarOptions = [
     translationKey: 'sidebar.supportWhatsapp',
     url: 'https://wa.me/5555997230707?text=Ol%C3%A1!%0AEstou%20no%20app%20_me_*DIZ!*%20e%20preciso%20de%20ajuda',
     icon: FaWhatsapp
+  },
+  {
+    name: 'Página inicial',
+    translationKey: 'sidebar.home',
+    url: '/',
+    icon: Home
   },
   {
     name: 'Professor',

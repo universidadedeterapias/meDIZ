@@ -70,9 +70,11 @@ function SidebarHeaderContent({
             <h4 className="scroll-m-20 text-xl font-normal tracking-tight">
               {displayName}
             </h4>
-            <a href="/myAccount" className="text-primary">
-              {t('navbar.account', 'Conta')}
-            </a>
+            <div className="flex items-center gap-3">
+              <a href="/myAccount" className="text-primary">
+                {t('navbar.account', 'Conta')}
+              </a>
+            </div>
           </div>
         </div>
       )}

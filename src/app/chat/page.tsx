@@ -3,7 +3,7 @@
 
 /// <reference lib="dom" />
 
-import { Bell, Search, MessageSquarePlus, GraduationCap, Headset } from 'lucide-react'
+import { Bell, Search, MessageSquarePlus, GraduationCap, Headset, Home } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -371,6 +371,13 @@ export default function Page() {
     window.location.href = upgradeLink
   }
 
+  const handleGoHome = () => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[ChatPage] Clique em Início, navegando para "/"')
+    }
+    router.push('/')
+  }
+
   // Loading enquanto checa o perfil
   if (checkingProfile || !user) {
     return (
@@ -434,6 +441,16 @@ export default function Page() {
                 </div>
               </div>
               <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+                <Button
+                  variant="outline"
+                  onClick={handleGoHome}
+                  className="h-8 sm:h-9 rounded-lg border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-2.5 sm:px-3"
+                  aria-label={t('chat.goHome', 'Ir para a página inicial')}
+                  title={t('chat.goHome', 'Ir para a página inicial')}
+                >
+                  <Home className="w-4 h-4 mr-1.5" />
+                  <span className="text-xs sm:text-sm">{t('sidebar.home', 'Início')}</span>
+                </Button>
                 <div className="relative group cursor-pointer" onClick={() => router.push('/suggestion')}>
                   <Button
                     onClick={(e) => {

@@ -233,7 +233,11 @@ export function Result({
 
     const payload: AssistantHandoffPayload = {
       message: handoffMessage,
-      preview: t('chat.handoff.preview', 'Encaminhei o contexto completo da pesquisa anterior.'),
+      preview: t(
+        'chat.handoff.preview',
+        `Contexto encaminhado da pesquisa: ${symptomText}`
+      ),
+      sourceQuestion: symptomText,
       sourceThreadId: sessionId,
       createdAt: new Date().toISOString()
     }

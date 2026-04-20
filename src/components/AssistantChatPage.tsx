@@ -11,7 +11,7 @@ import { useUser } from '@/contexts/user'
 import { useTranslation } from '@/i18n/useTranslation'
 import { AssistantHandoffPayload } from '@/lib/chatHandoff'
 import { FirstName } from '@/lib/utils'
-import { Bell, SendHorizontal } from 'lucide-react'
+import { Bell, Home, SendHorizontal } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -107,6 +107,13 @@ export function AssistantChatPage({
 
   const appendMessages = (newMessages: ChatBubble[]) => {
     setMessages((prev) => [...prev, ...newMessages])
+  }
+
+  const handleGoHome = () => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[AssistantChatPage] Clique em Início, navegando para "/"')
+    }
+    router.push('/')
   }
 
   const sendMessage = useCallback(async (text: string, displayOverride?: string) => {
@@ -218,7 +225,8 @@ export function AssistantChatPage({
 
       sendMessage(
         payload.message,
-        payload.preview || t('chat.handoff.preview', 'Encaminhei o contexto completo da pesquisa anterior.')
+        payload.preview ||
+          t('chat.handoff.preview', `Contexto encaminhado da pesquisa: ${payload.sourceQuestion}`)
       )
     } catch (error) {
       console.error('[AssistantChatPage] Erro ao consumir handoff:', error)
@@ -269,7 +277,19 @@ export function AssistantChatPage({
                   <p className="text-[11px] sm:text-xs text-zinc-500 truncate">{assistantSubtitle}</p>
                 </div>
               </div>
-              <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-500 mr-1 sm:mr-2" />
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleGoHome}
+                  className="h-8 sm:h-9 rounded-lg border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-2.5 sm:px-3"
+                  aria-label={t('chat.goHome', 'Ir para a página inicial')}
+                  title={t('chat.goHome', 'Ir para a página inicial')}
+                >
+                  <Home className="w-4 h-4 mr-1.5" />
+                  <span className="text-xs sm:text-sm">{t('sidebar.home', 'Início')}</span>
+                </Button>
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-500 mr-1 sm:mr-2" />
+              </div>
             </div>
           </header>
 

@@ -1,5 +1,5 @@
 'use client'
-import { LogOut, type LucideIcon } from 'lucide-react'
+import { Home, LogOut, type LucideIcon } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -98,7 +98,28 @@ export function NavOptions({ options }: NavOptionsProps) {
   return (
     <SidebarGroup className="group">
       <SidebarMenu className="gap-1 pt-4">
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild className="px-4 py-6">
+            <a
+              href="/"
+              onClick={() => {
+                if (process.env.NODE_ENV !== 'production') {
+                  console.log('[NavOptions] Clique em Página inicial, navegando para "/"')
+                }
+              }}
+              className="flex items-center gap-4 text-zinc-800 text-lg group-data-[collapsed=true]:hidden"
+            >
+              <Home style={{ width: 24, height: 24 }} />
+              {t('sidebar.home', 'Página inicial')}
+            </a>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+
         {options.map((item, idx) => {
+          if (item.url === '/') {
+            return null
+          }
+
           // Opção premium em destaque e só se não for assinante
           const label = item.translationKey
             ? t(item.translationKey, item.name)

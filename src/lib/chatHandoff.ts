@@ -3,6 +3,7 @@ export type AssistantHandoffTarget = 'professor-paulo' | 'meatende'
 export type AssistantHandoffPayload = {
   message: string
   preview: string
+  sourceQuestion: string
   sourceThreadId?: string
   createdAt: string
 }
@@ -17,7 +18,7 @@ export const ASSISTANT_HANDOFF_ROUTES: Record<AssistantHandoffTarget, string> = 
   meatende: '/meatende'
 }
 
-const MAX_HANDOFF_MARKDOWN_LENGTH = 12000
+const MAX_HANDOFF_MARKDOWN_LENGTH = 5000
 
 export function buildAssistantHandoffMessage({
   question,
@@ -36,12 +37,12 @@ export function buildAssistantHandoffMessage({
   return [
     'Contexto encaminhado automaticamente do chat principal do meDIZ.',
     '',
-    'Pergunta original do usuário:',
+    'Pergunta original da pesquisa:',
     normalizedQuestion,
     '',
-    'Resultado do meDIZ:',
+    'Resumo do resultado meDIZ (usar como base de continuidade):',
     truncatedMarkdown,
     '',
-    'Instrução: continue a conversa considerando o contexto acima, sem repetir integralmente o texto.'
+    'Instrução obrigatória: continue a conversa a partir desse contexto, sem reiniciar a anamnese do zero e sem pedir novamente o sintoma principal já informado.'
   ].join('\n')
 }
