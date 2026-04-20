@@ -139,7 +139,7 @@ export function NavOptions({ options }: NavOptionsProps) {
           }
 
           // Itens normais (idx > 0)
-          const isExternal = idx !== options.length - 1
+          const isExternal = /^https?:\/\//i.test(itemUrl)
           return (
             <SidebarMenuItem key={item.name}>
               <SidebarMenuButton asChild className="px-4 py-6">

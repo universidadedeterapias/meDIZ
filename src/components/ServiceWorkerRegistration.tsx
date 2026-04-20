@@ -4,6 +4,25 @@ import { useEffect } from 'react'
 
 export default function ServiceWorkerRegistration() {
   useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+      console.warn('[SW] Service Worker não suportado neste navegador')
+      return
+    }
+
+    if (process.env.NODE_ENV !== 'production') {
+      // Em desenvolvimento, evita cache de chunks do Next.js por SW antigo.
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+        .then(() => {
+          console.log('[SW] Service Workers desregistrados no ambiente de desenvolvimento')
+        })
+        .catch((error) => {
+          console.error('[SW] Erro ao desregistrar Service Workers em desenvolvimento:', error)
+        })
+      return
+    }
+
     if (
       typeof window !== 'undefined' &&
       'serviceWorker' in navigator
@@ -67,8 +86,6 @@ export default function ServiceWorkerRegistration() {
         console.log('[SW] ✅ Service Worker pronto para notificações em background')
         console.log('[SW] Status:', registration.active?.state)
       })
-    } else {
-      console.warn('[SW] Service Worker não suportado neste navegador')
     }
   }, [])
 

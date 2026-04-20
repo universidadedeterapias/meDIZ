@@ -3,7 +3,7 @@
 
 /// <reference lib="dom" />
 
-import { Bell, Search, MessageSquarePlus } from 'lucide-react'
+import { Bell, Search, MessageSquarePlus, GraduationCap, Headset } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -412,11 +412,11 @@ export default function Page() {
       />
 
       <SidebarInset>
-        <div className="flex flex-col min-h-screen">
+        <div className="chat-app-shell">
           {/* Header */}
-          <header className="w-full sticky top-0 z-30 flex items-center h-16 bg-zinc-50 p-4 shadow-sm">
-            <div className="w-full flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+          <header className="chat-topbar">
+            <div className="chat-main-container flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                 <SidebarTrigger className="-ml-1 flex-shrink-0" />
                 <div className="flex flex-row items-center min-w-0">
                   <Avatar className="w-8 h-8 border-2 border-indigo-600 flex-shrink-0">
@@ -428,7 +428,7 @@ export default function Page() {
                       {FirstName(user.name).charAt(0)}
                     </AvatarFallback>
                   </Avatar>
-                  <h2 className="ml-2 scroll-m-20 text-base sm:text-xl font-semibold tracking-tight text-indigo-600 truncate">
+                  <h2 className="ml-2 text-sm sm:text-base font-semibold text-indigo-700 truncate">
                     {t('chat.greeting.prefix', 'Olá')}, {FirstName(user.name)}!
                   </h2>
                 </div>
@@ -440,7 +440,7 @@ export default function Page() {
                       e.stopPropagation()
                       router.push('/suggestion')
                     }}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 group-hover:scale-105"
+                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2 group-hover:scale-105 rounded-xl"
                     size="default"
                   >
                     <MessageSquarePlus className="h-4 w-4" />
@@ -453,21 +453,26 @@ export default function Page() {
                     <span className="absolute inset-0 bg-green-400 rounded-md animate-ping opacity-75"></span>
                   </Badge>
                 </div>
-                <Bell className="mr-2" />
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-500 mr-1 sm:mr-2" />
               </div>
             </div>
           </header>
 
           {/* Busca */}
-          <div className="flex flex-col items-center gap-4 py-6 px-4 bg-zinc-100">
-            <p className="text-indigo-600 font-bold text-3xl">
-              me<span className="uppercase">diz</span>
-              <span className="text-yellow-400">!</span>
-            </p>
-            <div className="w-full max-w-4xl space-y-4">
+          <div className="chat-main-container flex flex-col items-center gap-4 py-5 sm:py-6">
+            <div className="w-full text-left">
+              <p className="text-indigo-600 font-bold text-2xl sm:text-3xl leading-tight">
+                me<span className="uppercase">diz</span>
+                <span className="text-yellow-400">!</span>
+              </p>
+              <p className="text-zinc-500 text-xs sm:text-sm mt-1">
+                {t('chat.subtitle', 'Pesquise sintomas e receba uma leitura terapêutica estruturada.')}
+              </p>
+            </div>
+            <div className="w-full max-w-5xl space-y-3 sm:space-y-4">
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="w-5 h-5 text-gray-400" />
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <Search className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-400" />
                 </div>
                 <Input
                   type="text"
@@ -476,12 +481,12 @@ export default function Page() {
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
                   disabled={loading}
-                  className="w-full pl-10 pr-24 py-6 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors placeholder:text-sm"
+                  className="w-full pl-10 sm:pl-11 pr-24 py-6 sm:py-7 bg-white border border-zinc-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors placeholder:text-xs sm:placeholder:text-sm text-sm sm:text-base shadow-sm"
                 />
                 <Button
                   onClick={handleSendMessage}
                   disabled={loading}
-                  className="absolute inset-y-1 right-1 rounded-sm px-6 py-4 min-h-[41.5px] bg-indigo-600 text-white hover:bg-indigo-700"
+                  className="absolute inset-y-1 right-1 rounded-lg px-4 sm:px-6 py-4 min-h-[41.5px] bg-indigo-600 text-white hover:bg-indigo-700"
                 >
                   {loading ? '...' : t('general.search', 'Buscar')}
                 </Button>
@@ -491,19 +496,19 @@ export default function Page() {
 
           {/* Links externos se houver resposta */}
           {responses.length > 0 && (
-            <section className="w-full px-6 bg-zinc-100 pb-4">
+            <section className="chat-main-container pb-3 sm:pb-4">
               <ExternalLinks />
             </section>
           )}
 
           {/* Corpo da conversa */}
-          <main className="flex-1 overflow-y-auto px-4 pb-6 bg-zinc-100">
+          <main className="flex-1 overflow-y-auto pb-6">
             {loading ? (
               <ClientOnly>
                 <LoadingPlaceholder />
               </ClientOnly>
             ) : responses.length === 0 ? (
-              <div className="w-full max-w-4xl mt-4 flex flex-col gap-4">
+              <div className="chat-main-container mt-2 sm:mt-3 flex flex-col gap-3 sm:gap-4">
                 <Label className="text-zinc-400">
                   {t('chat.popularQueries', 'Mais buscados:')}
                 </Label>
@@ -526,9 +531,35 @@ export default function Page() {
                     options={presetSymptomOptions}
                   />
                 )}
+
+                <div className="chat-card p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm font-medium text-zinc-700 mb-2">
+                    {t('chat.assistants.title', 'Quer aprofundar a conversa?')}
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => router.push('/professor-paulo')}
+                      className="justify-start h-10 sm:h-11 rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                    >
+                      <GraduationCap className="w-4 h-4 mr-2" />
+                      {t('chat.assistants.professor', 'Conversar com o Professor')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => router.push('/meatende')}
+                      className="justify-start h-10 sm:h-11 rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                    >
+                      <Headset className="w-4 h-4 mr-2" />
+                      {t('chat.assistants.simulator', 'Usar Simulador de atendimento')}
+                    </Button>
+                  </div>
+                </div>
               </div>
             ) : (
-              <div className="max-w-4xl mx-auto space-y-4">
+              <div className="chat-main-container space-y-4">
                 {responses.map((md, idx) => (
                   <Result 
                     key={idx} 

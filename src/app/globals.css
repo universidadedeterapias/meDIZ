@@ -89,3 +89,25 @@ body,
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  .chat-app-shell {
+    @apply flex flex-col min-h-screen bg-gradient-to-b from-zinc-50 to-zinc-100;
+  }
+
+  .chat-main-container {
+    @apply w-full max-w-5xl mx-auto px-3 sm:px-5;
+  }
+
+  .chat-topbar {
+    @apply w-full sticky top-0 z-30 flex items-center min-h-16 bg-zinc-50/95 backdrop-blur border-b border-zinc-200/80 px-3 sm:px-4;
+  }
+
+  .chat-composer-bar {
+    @apply border-t border-zinc-200/90 bg-zinc-50/95 backdrop-blur px-3 sm:px-4 py-3;
+  }
+
+  .chat-card {
+    @apply rounded-2xl border border-zinc-200 bg-white shadow-sm;
+  }
+}

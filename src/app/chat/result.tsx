@@ -12,7 +12,21 @@ import {
   AccordionTrigger
 } from '@/components/ui/accordion'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import {
+  ASSISTANT_HANDOFF_ROUTES,
+  ASSISTANT_HANDOFF_STORAGE_KEYS,
+  AssistantHandoffPayload,
+  AssistantHandoffTarget,
+  buildAssistantHandoffMessage
+} from '@/lib/chatHandoff'
 import parseResponse from '@/lib/parseResponse'
 import { processMarkdownContent } from '@/lib/markdownProcessor'
 import { UserPeriod } from '@/lib/userPeriod'
@@ -35,6 +49,7 @@ import { useTranslation } from '@/i18n/useTranslation'
 import { useLanguage } from '@/i18n/useLanguage'
 import type { LanguageCode } from '@/i18n/config'
 import { getUpgradeLink } from '@/lib/upgradeLinks'
+import { useRouter } from 'next/navigation'
 
 // Mapa de string → componente, mantém tudo num lugar
 const ICON_MAP: Record<
@@ -161,6 +176,7 @@ export function Result({
   userQuestion,
   sessionId
 }: ResultProps) {
+  const router = useRouter()
   // DEBUG: Verificar se há iframe no markdown original
   useEffect(() => {
     if (markdown && (markdown.includes('<iframe') || markdown.includes('iframe'))) {
@@ -207,6 +223,32 @@ export function Result({
   const symptomText =
     userQuestion || data.popular || data.scientific || t('result.defaultSymptom', 'Sintoma')
 
+  const handleForwardResult = (target: AssistantHandoffTarget) => {
+    if (typeof window === 'undefined') return
+
+    const handoffMessage = buildAssistantHandoffMessage({
+      question: symptomText,
+      resultMarkdown: markdown
+    })
+
+    const payload: AssistantHandoffPayload = {
+      message: handoffMessage,
+      preview: t('chat.handoff.preview', 'Encaminhei o contexto completo da pesquisa anterior.'),
+      sourceThreadId: sessionId,
+      createdAt: new Date().toISOString()
+    }
+
+    try {
+      sessionStorage.setItem(
+        ASSISTANT_HANDOFF_STORAGE_KEYS[target],
+        JSON.stringify(payload)
+      )
+      router.push(ASSISTANT_HANDOFF_ROUTES[target])
+    } catch (error) {
+      console.error('[Result] Erro ao encaminhar contexto para assistente:', error)
+    }
+  }
+
   useEffect(() => {
     // só roda no client
     if (typeof window !== 'undefined') {
@@ -215,26 +257,26 @@ export function Result({
   }, [])
 
   return (
-    <Card className="w-full mb-6">
-      <CardHeader className="space-y-6 p-6">
+    <Card className="chat-card w-full mb-5 sm:mb-6">
+      <CardHeader className="space-y-5 p-4 sm:p-6">
         {/* Header com botão PDF */}
-        <div className="flex justify-between items-start gap-2 sm:gap-4">
+        <div className="flex justify-between items-start gap-3 sm:gap-4">
           <div className="flex-1">
             {data.scientific && (
               <>
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-2">
                   <span className="block w-1 h-4 bg-primary rounded" />
                   <span className="uppercase text-sm font-semibold text-primary">
                     {t('result.scientificName', 'Nome científico')}
                   </span>
                 </div>
-                <CardTitle className="text-2xl font-bold text-foreground mb-6">
+                <CardTitle className="text-xl sm:text-2xl font-bold text-zinc-900 mb-4">
                   {data.scientific}
                 </CardTitle>
               </>
             )}
             {data.popular && (
-              <div className="w-full py-4 text-center text-2xl font-bold text-primary bg-indigo-50 rounded-2xl mb-4">
+              <div className="w-full py-3.5 sm:py-4 text-center text-xl sm:text-2xl font-bold text-primary bg-indigo-50 rounded-xl mb-3 sm:mb-4">
                 {data.popular}
               </div>
             )}
@@ -249,7 +291,7 @@ export function Result({
           </div>
           
           {/* Botão de exportação PDF */}
-          <div className="ml-2 sm:ml-4 flex-shrink-0">
+          <div className="ml-1 sm:ml-3 flex-shrink-0">
             {/* Logs removidos em produção para evitar vazamento de conteúdo/PII */}
             <ExportPDFButton
               question={userQuestion}
@@ -259,16 +301,16 @@ export function Result({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-8 p-6 pt-0">
+      <CardContent className="space-y-6 sm:space-y-8 p-4 sm:p-6 pt-0">
         {/* Contexto Geral */}
-        <section className="space-y-3">
+        <section className="space-y-3 chat-card p-4 sm:p-5">
           <div className="flex items-center gap-2">
             <span className="block w-1 h-4 bg-primary rounded" />
-            <span className="uppercase text-sm font-semibold text-primary">
+            <span className="uppercase text-xs sm:text-sm font-semibold text-primary">
               {t('result.generalContext', 'Contexto geral')}
             </span>
           </div>
-          <div className="prose prose-sm max-w-none text-justify">
+          <div className="prose prose-sm max-w-none text-justify text-zinc-700 leading-relaxed">
             {/* <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {data.contextoGeral}
             </ReactMarkdown> */}
@@ -285,14 +327,14 @@ export function Result({
         </section>
 
         {/* Impacto biológico */}
-        <section className="space-y-3">
+        <section className="space-y-3 chat-card p-4 sm:p-5">
           <div className="flex items-center gap-2">
             <span className="block w-1 h-4 bg-primary rounded" />
-            <span className="uppercase text-sm font-semibold text-primary">
+            <span className="uppercase text-xs sm:text-sm font-semibold text-primary">
               {t('result.biologicalImpact', 'Impacto biológico')}
             </span>
           </div>
-          <div className="prose prose-sm max-w-none text-justify font-normal">
+          <div className="prose prose-sm max-w-none text-justify font-normal text-zinc-700 leading-relaxed">
             {/* <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {data.impactoBiologico}
             </ReactMarkdown> */}
@@ -323,9 +365,9 @@ export function Result({
               <AccordionItem
                 key={sec.title}
                 value={sec.title}
-                className="border rounded-md border-zinc-200"
+                className="border rounded-xl border-zinc-200 bg-white"
               >
-                <AccordionTrigger className="flex items-center gap-2 font-medium bg-zinc-50 rounded-md px-2 hover:no-underline">
+                <AccordionTrigger className="flex items-center gap-2 font-medium bg-zinc-50 rounded-xl px-3 py-2 hover:no-underline">
                   <div className="flex flex-row gap-1 justify-start items-center flex-1 capitalize">
                     {Icon && (
                       <Icon className="h-4 w-4 flex-shrink-0 text-primary" />
@@ -333,7 +375,7 @@ export function Result({
                     {translateSectionTitle(sec.title, language).toLowerCase()}
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className="prose prose-sm max-w-none p-3 text-left">
+                <AccordionContent className="prose prose-sm max-w-none p-4 text-left text-zinc-700 leading-relaxed">
                   {shouldBlur ? (
                     <BlurredAccordionContent onSubscribe={handleSubscribe}>
                       {/* <ReactMarkdown
@@ -373,13 +415,32 @@ export function Result({
           })}
         </Accordion>
 
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              className="w-full py-6 border-indigo-200 text-indigo-700 hover:bg-indigo-50 rounded-xl"
+            >
+              {t('chat.handoff.trigger', 'Encaminhar para outro assistente')}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-72">
+            <DropdownMenuItem onClick={() => handleForwardResult('professor-paulo')}>
+              {t('chat.handoff.professor', 'Encaminhar para Professor')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleForwardResult('meatende')}>
+              {t('chat.handoff.meatende', 'Encaminhar para Simulador de atendimento')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         {/* Ações */}
         <ClientOnly>
-          <div className="w-full flex items-center justify-between gap-2">
+          <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
             <SaveSymptomDialog 
               symptom={symptomText} 
               threadId={sessionId}
-              triggerClassName="w-full py-6 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors flex items-center justify-center gap-2"
+              triggerClassName="w-full py-6 rounded-xl bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors flex items-center justify-center gap-2"
               onSaved={() => {
                 // Disparar evento customizado para atualizar a sidebar
                 if (typeof window !== 'undefined') {
@@ -396,7 +457,7 @@ export function Result({
               }
               url={baseUrl}
               text={data.impactoBiologico}
-              triggerClassName="w-full py-6 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors flex items-center justify-center gap-2"
+              triggerClassName="w-full py-6 rounded-xl bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors flex items-center justify-center gap-2"
             />
           </div>
         </ClientOnly>
