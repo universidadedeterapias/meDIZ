@@ -92,7 +92,7 @@ body,
 
 @layer components {
   .chat-app-shell {
-    @apply flex flex-col min-h-screen bg-gradient-to-b from-zinc-50 to-zinc-100;
+    @apply flex flex-col min-h-screen bg-gradient-to-b from-indigo-50 via-violet-50 to-indigo-100;
   }
 
   .chat-main-container {
@@ -100,14 +100,22 @@ body,
   }
 
   .chat-topbar {
-    @apply w-full sticky top-0 z-30 flex items-center min-h-16 bg-zinc-50/95 backdrop-blur border-b border-zinc-200/80 px-3 sm:px-4;
+    @apply w-full sticky top-0 z-30 flex items-center min-h-16 bg-indigo-50/95 backdrop-blur border-b border-indigo-200/80 px-3 sm:px-4;
   }
 
   .chat-composer-bar {
-    @apply border-t border-zinc-200/90 bg-zinc-50/95 backdrop-blur px-3 sm:px-4 py-3;
+    @apply border-t border-indigo-200/90 bg-indigo-50/95 backdrop-blur px-3 sm:px-4 py-3;
   }
 
   .chat-card {
-    @apply rounded-2xl border border-zinc-200 bg-white shadow-sm;
+    @apply rounded-2xl border border-indigo-200 bg-white/95 shadow-sm;
+  }
+
+  .chat-bubble-assistant {
+    @apply max-w-[90%] sm:max-w-[82%] rounded-2xl rounded-bl-sm px-3.5 sm:px-4 py-2.5 sm:py-3 bg-white/95 text-zinc-800 border border-indigo-100 text-sm sm:text-[15px] leading-relaxed shadow-sm whitespace-pre-wrap;
+  }
+
+  .chat-bubble-user {
+    @apply max-w-[90%] sm:max-w-[82%] rounded-2xl rounded-br-sm px-3.5 sm:px-4 py-2.5 sm:py-3 bg-indigo-600 text-white text-sm sm:text-[15px] leading-relaxed shadow-sm whitespace-pre-wrap;
   }
 }

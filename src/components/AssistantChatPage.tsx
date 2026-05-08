@@ -297,8 +297,13 @@ export function AssistantChatPage({
             <div className="chat-main-container space-y-4 sm:space-y-5">
               {messages.length === 0 && (
                 <div className="chat-card p-4 sm:p-6 text-zinc-600">
-                  <p className="font-semibold text-zinc-800 mb-1">{welcomeTitle}</p>
-                  <p className="text-sm sm:text-[15px] leading-relaxed">{welcomeDescription}</p>
+                  <div className="chat-bubble-assistant">
+                    <p className="font-semibold text-zinc-800 mb-1">
+                      {t('chat.welcome.personalized', `Olá, ${greetingName || 'por aqui'}!`)}
+                    </p>
+                    <p className="text-sm sm:text-[15px] leading-relaxed">{welcomeDescription}</p>
+                  </div>
+                  <p className="mt-3 text-xs sm:text-sm text-indigo-700 font-medium">{welcomeTitle}</p>
                 </div>
               )}
 
@@ -308,11 +313,7 @@ export function AssistantChatPage({
                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[90%] sm:max-w-[82%] rounded-2xl px-3.5 sm:px-4 py-2.5 sm:py-3 whitespace-pre-wrap text-sm sm:text-[15px] leading-relaxed shadow-sm ${
-                      message.role === 'user'
-                        ? 'bg-indigo-600 text-white rounded-br-sm'
-                        : 'bg-white text-zinc-800 border border-zinc-200 rounded-bl-sm'
-                    }`}
+                    className={message.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'}
                   >
                     {message.content}
                   </div>
@@ -321,7 +322,7 @@ export function AssistantChatPage({
 
               {loading && (
                 <div className="flex justify-start">
-                  <div className="max-w-[90%] sm:max-w-[82%] rounded-2xl rounded-bl-sm px-3.5 sm:px-4 py-2.5 sm:py-3 bg-white border border-zinc-200 text-sm text-zinc-500 shadow-sm">
+                  <div className="chat-bubble-assistant text-zinc-500">
                     {typingLabel}
                   </div>
                 </div>

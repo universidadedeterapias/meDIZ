@@ -12,10 +12,10 @@ export default function MeAtendePage() {
       assistantName="Simulador de atendimento"
       assistantSubtitle={t('chat.meatende.subtitle', 'Acolhimento e conversa inicial')}
       apiEndpoint="/api/meatende"
-      welcomeTitle={t('chat.meatende.welcome', 'Olá!')}
+      welcomeTitle={t('chat.meatende.welcome', 'Pronto para simular um atendimento')}
       welcomeDescription={t(
         'chat.meatende.emptyState',
-        'Digite sua mensagem para iniciar a conversa com o Simulador de atendimento.'
+        'Descreva o cenário de hoje para treinarmos abordagem, acolhimento e próximos passos.'
       )}
       inputPlaceholder={t(
         'chat.meatende.input.placeholder',

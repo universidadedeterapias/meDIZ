@@ -3,24 +3,19 @@
 
 /// <reference lib="dom" />
 
-import { Bell, Search, MessageSquarePlus, GraduationCap, Headset, Home } from 'lucide-react'
+import { ArrowRight, Bell, Search, MessageSquarePlus, GraduationCap, Headset, Home } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { AppSidebar } from '@/components/app-sidebar'
-import { ClientOnly } from '@/components/ClientOnly'
 import { ExternalLinks } from '@/components/ExternalLinks'
 import { Footer } from '@/components/Footer'
-import OptionSelector from '@/components/form/OptionSelector'
-import DynamicOptionSelector from '@/components/form/DynamicOptionSelector'
-import { LoadingPlaceholder } from '@/components/LoadingPlaceholder'
 import PromotionPopup from '@/components/PromotionPopup'
 import Spinner from '@/components/Spinner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   SidebarInset,
   SidebarProvider,
@@ -47,7 +42,40 @@ type RawUser = {
   description?: string
 }
 
-// Tipo que vamos usar internamente, sempre com name/fullName definidos
+type AgentMode = 'chat' | 'professor' | 'simulador'
+type ConversationBubble = {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+}
+
+const createClientMessageId = () =>
+  globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`
+
+const AGENT_MODE_CONFIG: Record<
+  AgentMode,
+  {
+    label: string
+    endpoint: string
+    greetingPrompt: string
+  }
+> = {
+  chat: {
+    label: 'Chat meDIZ',
+    endpoint: '/api/openai',
+    greetingPrompt: 'Quero uma leitura terapêutica no chat principal.'
+  },
+  professor: {
+    label: 'Professor',
+    endpoint: '/api/professor-paulo',
+    greetingPrompt: 'Quero conversar com o Professor hoje.'
+  },
+  simulador: {
+    label: 'Simulador de atendimento',
+    endpoint: '/api/meatende',
+    greetingPrompt: 'Quero treinar no Simulador de atendimento.'
+  }
+}
 
 export default function Page() {
   const router = useRouter()
@@ -58,9 +86,7 @@ export default function Page() {
   const [user, setUser] = useState<User | null>(null)
   const [checkingProfile, setCheckingProfile] = useState(true)
   const [input, setInput] = useState('')
-  const [responses, setResponses] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
-  const [selectedThread, setSelectedThread] = useState<string | null>(null)
   const [limitReached, setLimitReached] = useState(false)
   const [elapsedMs, setElapsedMs] = useState<number | null>(null)
   const [originalQuestion, setOriginalQuestion] = useState<string>('')
@@ -69,94 +95,20 @@ export default function Page() {
   const [userPeriod, setUserPeriod] = useState<'first-week' | 'first-month' | 'beyond-month'>('first-week')
   const [fullVisualization, setFullVisualization] = useState(true)
   const [showPopup, setShowPopup] = useState(false)
+  const [agentMode, setAgentMode] = useState<AgentMode>('chat')
+  const [agentThreads, setAgentThreads] = useState<Record<AgentMode, string | null>>({
+    chat: null,
+    professor: null,
+    simulador: null
+  })
+  const [messagesByAgent, setMessagesByAgent] = useState<Record<AgentMode, ConversationBubble[]>>({
+    chat: [],
+    professor: [],
+    simulador: []
+  })
+  const [chatResponses, setChatResponses] = useState<string[]>([])
+  const inputRef = useRef<HTMLInputElement | null>(null)
   
-  // Estados para sintomas dinâmicos
-  const [dynamicSymptoms, setDynamicSymptoms] = useState<{sintoma: string, quantidade: number}[]>([])
-  const [symptomsLoaded, setSymptomsLoaded] = useState(false)
-
-  const presetSymptomOptions = [
-    {
-      label: t('symptoms.backPain', 'Dor nas costas'),
-      value: t('symptoms.backPain', 'Dor nas costas')
-    },
-    {
-      label: t('symptoms.highBloodPressure', 'Pressão alta'),
-      value: t('symptoms.highBloodPressure', 'Pressão alta')
-    },
-    {
-      label: t('symptoms.fatigue', 'Cansaço'),
-      value: t('symptoms.fatigue', 'Cansaço')
-    },
-    {
-      label: t('symptoms.migraine', 'Enxaqueca'),
-      value: t('symptoms.migraine', 'Enxaqueca')
-    },
-    {
-      label: t('symptoms.insomnia', 'Insônia'),
-      value: t('symptoms.insomnia', 'Insônia')
-    },
-    {
-      label: t('symptoms.anxiety', 'Ansiedade'),
-      value: t('symptoms.anxiety', 'Ansiedade')
-    },
-    {
-      label: t('symptoms.rhinitis', 'Rinite'),
-      value: t('symptoms.rhinitis', 'Rinite')
-    },
-    {
-      label: t('symptoms.kneePain', 'Dor no joelho'),
-      value: t('symptoms.kneePain', 'Dor no joelho')
-    },
-    {
-      label: t('symptoms.stress', 'Estresse'),
-      value: t('symptoms.stress', 'Estresse')
-    },
-    {
-      label: t('symptoms.headache', 'Dor de cabeça'),
-      value: t('symptoms.headache', 'Dor de cabeça')
-    }
-  ]
-
-  // Carrega sintomas dinâmicos
-  useEffect(() => {
-    async function loadDynamicSymptoms() {
-      try {
-        // Timeout de 30 segundos para carregamento de sintomas
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 segundos
-        
-        const response = await fetch('/api/symptoms/popular', {
-          signal: controller.signal
-        }).finally(() => {
-          clearTimeout(timeoutId)
-        })
-        const data = await response.json()
-        
-        if (data.success && data.sintomas) {
-          setDynamicSymptoms(data.sintomas)
-          setSymptomsLoaded(true)
-        } else {
-          // Fallback para sintomas fixos
-          setSymptomsLoaded(true)
-        }
-      } catch (error) {
-        // Evita logar objetos Event diretamente
-        if (error instanceof Error) {
-          console.error('Erro ao carregar sintomas dinâmicos:', {
-            name: error.name,
-            message: error.message
-          })
-        } else {
-          console.error('Erro ao carregar sintomas dinâmicos:', error)
-        }
-        // Fallback para sintomas fixos
-        setSymptomsLoaded(true)
-      }
-    }
-
-    loadDynamicSymptoms()
-  }, [])
-
   // 1) Confira perfil e normalize o nome
   useEffect(() => {
     let cancelled = false
@@ -220,52 +172,25 @@ export default function Page() {
     }
   }, [router])
 
-  // 2) Carrega respostas do chat quando selecionar uma thread
-  useEffect(() => {
-    if (checkingProfile || !selectedThread) return
-    let cancelled = false
-    setLoading(true)
-
-    // Timeout de 60 segundos para carregamento de mensagens
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 segundos
-    
-    fetch(`/api/openai/messages?threadId=${selectedThread}`, {
-      signal: controller.signal
-    })
-      .then(r => r.json())
-      .then(data => {
-        if (!cancelled) setResponses(data.responses.assistant || [])
-      })
-      .catch(console.error)
-      .finally(() => {
-        clearTimeout(timeoutId)
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [checkingProfile, selectedThread])
-
-  // 3) Envia mensagem
-  const handleSendMessage = async () => {
-    if (!input.trim() || loading) return // Evita múltiplas chamadas
-    handleSendMessageFromText(input.trim())
-  }
-
   // Função reutilizável para enviar mensagem
-  const handleSendMessageFromText = async (text: string) => {
-    if (loading) return
+  const handleSendMessageFromText = async (text: string, targetMode: AgentMode = agentMode) => {
+    if (loading || !text.trim()) return
+    const message = text.trim()
+    setAgentMode(targetMode)
     setLoading(true)
-    setResponses([])
+    if (targetMode === 'chat') {
+      setChatResponses([])
+    } else {
+      setMessagesByAgent((prev) => ({
+        ...prev,
+        [targetMode]: [...prev[targetMode], { id: createClientMessageId(), role: 'user', content: message }]
+      }))
+    }
     setElapsedMs(null)
     
     // Armazena a pergunta original para o PDF
-    setOriginalQuestion(text)
-    setInput(text) // Atualiza o input
+    setOriginalQuestion(message)
+    setInput('')
 
     const t0 = performance.now()
 
@@ -274,14 +199,19 @@ export default function Page() {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 segundos
       
-      const res = await fetch('/api/openai', {
+      const isMainChat = targetMode === 'chat'
+      const res = await fetch(AGENT_MODE_CONFIG[targetMode].endpoint, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
         },
         credentials: 'include', // Inclui cookies na requisição
         signal: controller.signal,
-        body: JSON.stringify({ message: text, language })
+        body: JSON.stringify({
+          message,
+          language,
+          threadId: isMainChat ? undefined : agentThreads[targetMode] || undefined
+        })
       }).finally(() => {
         clearTimeout(timeoutId)
       })
@@ -312,18 +242,18 @@ export default function Page() {
 
       const data = await res.json()
 
-      if (data.threadId) {
-        setSelectedThread(data.threadId)
+      if (typeof data.threadId === 'string' && data.threadId) {
+        setAgentThreads((prev) => ({ ...prev, [targetMode]: data.threadId }))
       }
       
       // Processa informações do período do usuário e visualização
-      if (data.userPeriod) {
+      if (isMainChat && data.userPeriod) {
         setUserPeriod(data.userPeriod as UserPeriod)
         setFullVisualization(data.fullVisualization || false)
       }
       
       // Verifica se deve mostrar o popup entre pesquisas
-      if (data.shouldShowPopup) {
+      if (isMainChat && data.shouldShowPopup) {
         // Atrasa a exibição do popup para após a exibição da resposta
         setTimeout(() => {
           setShowPopup(true)
@@ -331,11 +261,31 @@ export default function Page() {
       }
       
       // Valida e processa as respostas
-      if (data.responses?.assistant && Array.isArray(data.responses.assistant) && data.responses.assistant.length > 0) {
-        setResponses(data.responses.assistant)
-      } else if (data.responses?.assistant && typeof data.responses.assistant === 'string') {
-        // Fallback: se assistant for uma string ao invés de array
-        setResponses([data.responses.assistant])
+      if (isMainChat && data.responses?.assistant && Array.isArray(data.responses.assistant) && data.responses.assistant.length > 0) {
+        setChatResponses(data.responses.assistant)
+      } else if (isMainChat && data.responses?.assistant && typeof data.responses.assistant === 'string') {
+        setChatResponses([data.responses.assistant])
+      } else if (!isMainChat) {
+        const latestAssistantReply =
+          typeof data?.latestAssistantReply === 'string' && data.latestAssistantReply.trim().length > 0
+            ? data.latestAssistantReply
+            : Array.isArray(data?.responses?.assistant)
+              ? String(data.responses.assistant[data.responses.assistant.length - 1] || '')
+              : typeof data?.responses?.assistant === 'string'
+                ? data.responses.assistant
+                : ''
+
+        if (latestAssistantReply.trim().length > 0) {
+          setMessagesByAgent((prev) => ({
+            ...prev,
+            [targetMode]: [
+              ...prev[targetMode],
+              { id: createClientMessageId(), role: 'assistant', content: latestAssistantReply }
+            ]
+          }))
+        } else {
+          throw new Error('Resposta inválida do servidor')
+        }
       } else {
         console.error('[Chat] Resposta inválida ou vazia')
         throw new Error('Resposta inválida do servidor')
@@ -351,19 +301,116 @@ export default function Page() {
           stack: err.stack
         })
         alert(`${t('chat.error.prefix', 'Erro ao processar sua mensagem')}: ${err.message}`)
+        if (targetMode !== 'chat') {
+          setMessagesByAgent((prev) => ({
+            ...prev,
+            [targetMode]: [
+              ...prev[targetMode],
+              {
+                id: createClientMessageId(),
+                role: 'assistant',
+                content: t('chat.error.generic', 'Erro ao processar sua mensagem. Tente novamente.')
+              }
+            ]
+          }))
+        }
       } else if (err && typeof err === 'object' && 'type' in err) {
         // Pode ser um Event object
         console.error('[Chat] Erro (tipo: Event):', (err as { type?: string }).type || 'Unknown')
         alert(t('chat.error.generic', 'Erro ao processar sua mensagem. Tente novamente.'))
+        if (targetMode !== 'chat') {
+          setMessagesByAgent((prev) => ({
+            ...prev,
+            [targetMode]: [
+              ...prev[targetMode],
+              {
+                id: createClientMessageId(),
+                role: 'assistant',
+                content: t('chat.error.generic', 'Erro ao processar sua mensagem. Tente novamente.')
+              }
+            ]
+          }))
+        }
       } else {
         console.error('[Chat] Erro ao enviar mensagem:', err)
         alert(t('chat.error.generic', 'Erro ao processar sua mensagem. Tente novamente.'))
+        if (targetMode !== 'chat') {
+          setMessagesByAgent((prev) => ({
+            ...prev,
+            [targetMode]: [
+              ...prev[targetMode],
+              {
+                id: createClientMessageId(),
+                role: 'assistant',
+                content: t('chat.error.generic', 'Erro ao processar sua mensagem. Tente novamente.')
+              }
+            ]
+          }))
+        }
       }
     } finally {
-      setInput('')
       setLoading(false)
     }
   }
+
+  const handleSendMessage = () => {
+    void handleSendMessageFromText(input, agentMode)
+  }
+
+  const activateAgentMode = (mode: AgentMode) => {
+    setAgentMode(mode)
+
+    // Para "Pesquisar impacto", o envio deve acontecer apenas após o usuário digitar o sintoma.
+    if (mode === 'chat') {
+      if (typeof window !== 'undefined') {
+        window.setTimeout(() => {
+          inputRef.current?.focus()
+          inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 120)
+      }
+      return
+    }
+
+    // Professor e Simulador autoenviam apenas na primeira ativação
+    if (messagesByAgent[mode].length === 0) {
+      void handleSendMessageFromText(AGENT_MODE_CONFIG[mode].greetingPrompt, mode)
+    }
+  }
+
+  const modeCards: Array<{
+    mode: AgentMode
+    title: string
+    description: string
+    icon: typeof Search
+  }> = [
+    {
+      mode: 'chat',
+      title: t('chat.triage.card.chat.title', 'Pesquisar impacto emocional de um sintoma'),
+      description: t(
+        'chat.triage.card.chat.description',
+        'Leitura terapêutica estruturada a partir do que você está investigando'
+      ),
+      icon: Search
+    },
+    {
+      mode: 'professor',
+      title: t('chat.triage.card.professor.title', 'Conversar com o Professor'),
+      description: t(
+        'chat.triage.card.professor.description',
+        'Tire dúvidas sobre casos, protocolos e conduta clínica'
+      ),
+      icon: GraduationCap
+    },
+    {
+      mode: 'simulador',
+      title: t('chat.triage.card.simulator.title', 'Simular um atendimento'),
+      description: t(
+        'chat.triage.card.simulator.description',
+        'Pratique uma consulta completa com um paciente virtual'
+      ),
+      icon: Headset
+    }
+  ]
   
   // Função para lidar com clique no botão de assinatura
   const handleSubscribe = () => {
@@ -408,13 +455,15 @@ export default function Page() {
     <SidebarProvider>
       <AppSidebar
         history={[]} // implemente seu histórico se quiser
-        selectedThread={selectedThread}
-        onSelectSession={setSelectedThread}
+        selectedThread={agentThreads.chat}
+        onSelectSession={(threadId) => {
+          setAgentMode('chat')
+          setAgentThreads((prev) => ({ ...prev, chat: threadId }))
+        }}
         onSelectSymptom={(symptomText) => {
-          setInput(symptomText)
-          setResponses([])
-          setSelectedThread(null)
-          handleSendMessageFromText(symptomText)
+          setAgentMode('chat')
+          setChatResponses([])
+          void handleSendMessageFromText(symptomText)
         }}
       />
 
@@ -426,7 +475,7 @@ export default function Page() {
               <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                 <SidebarTrigger className="-ml-1 flex-shrink-0" />
                 <div className="flex flex-row items-center min-w-0">
-                  <Avatar className="w-8 h-8 border-2 border-indigo-600 flex-shrink-0">
+                  <Avatar className="w-7 h-7 border-2 border-indigo-600 flex-shrink-0">
                     <AvatarImage
                       src={userContext?.image ?? undefined}
                       alt="User"
@@ -435,7 +484,7 @@ export default function Page() {
                       {FirstName(user.name).charAt(0)}
                     </AvatarFallback>
                   </Avatar>
-                  <h2 className="ml-2 text-sm sm:text-base font-semibold text-indigo-700 truncate">
+                  <h2 className="ml-2 text-xs sm:text-sm font-semibold text-indigo-700 truncate">
                     {t('chat.greeting.prefix', 'Olá')}, {FirstName(user.name)}!
                   </h2>
                 </div>
@@ -444,12 +493,12 @@ export default function Page() {
                 <Button
                   variant="outline"
                   onClick={handleGoHome}
-                  className="h-8 sm:h-9 rounded-lg border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-2.5 sm:px-3"
+                  className="h-7 sm:h-8 rounded-lg border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-2 sm:px-2.5"
                   aria-label={t('chat.goHome', 'Ir para a página inicial')}
                   title={t('chat.goHome', 'Ir para a página inicial')}
                 >
-                  <Home className="w-4 h-4 mr-1.5" />
-                  <span className="text-xs sm:text-sm">{t('sidebar.home', 'Início')}</span>
+                  <Home className="w-3.5 h-3.5 mr-1" />
+                  <span className="text-[11px] sm:text-xs">{t('sidebar.home', 'Início')}</span>
                 </Button>
                 <div className="relative group cursor-pointer" onClick={() => router.push('/suggestion')}>
                   <Button
@@ -457,11 +506,11 @@ export default function Page() {
                       e.stopPropagation()
                       router.push('/suggestion')
                     }}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2 group-hover:scale-105 rounded-xl"
+                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-1.5 group-hover:scale-105 rounded-xl h-8 sm:h-9 px-2.5 sm:px-3"
                     size="default"
                   >
-                    <MessageSquarePlus className="h-4 w-4" />
-                    <span className="hidden sm:inline">{t('sidebar.suggestion.button', 'Sugestão')}</span>
+                    <MessageSquarePlus className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline text-xs">{t('sidebar.suggestion.button', 'Sugestão')}</span>
                   </Button>
                   <Badge 
                     className="absolute -top-2 -left-2 bg-green-500 hover:bg-green-600 text-white border-none shadow-lg animate-pulse cursor-pointer z-10"
@@ -475,109 +524,85 @@ export default function Page() {
             </div>
           </header>
 
-          {/* Busca */}
-          <div className="chat-main-container flex flex-col items-center gap-4 py-5 sm:py-6">
-            <div className="w-full text-left">
-              <p className="text-indigo-600 font-bold text-2xl sm:text-3xl leading-tight">
-                me<span className="uppercase">diz</span>
-                <span className="text-yellow-400">!</span>
-              </p>
-              <p className="text-zinc-500 text-xs sm:text-sm mt-1">
-                {t('chat.subtitle', 'Pesquise sintomas e receba uma leitura terapêutica estruturada.')}
-              </p>
-            </div>
-            <div className="w-full max-w-5xl space-y-3 sm:space-y-4">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Search className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-400" />
-                </div>
-                <Input
-                  type="text"
-                  placeholder={t('chat.input.placeholder', 'Digite uma dor, doença ou sintoma')}
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                  disabled={loading}
-                  className="w-full pl-10 sm:pl-11 pr-24 py-6 sm:py-7 bg-white border border-zinc-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors placeholder:text-xs sm:placeholder:text-sm text-sm sm:text-base shadow-sm"
-                />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={loading}
-                  className="absolute inset-y-1 right-1 rounded-lg px-4 sm:px-6 py-4 min-h-[41.5px] bg-indigo-600 text-white hover:bg-indigo-700"
-                >
-                  {loading ? '...' : t('general.search', 'Buscar')}
-                </Button>
-              </div>
-            </div>
-          </div>
-
           {/* Links externos se houver resposta */}
-          {responses.length > 0 && (
+          {agentMode === 'chat' && chatResponses.length > 0 && (
             <section className="chat-main-container pb-3 sm:pb-4">
               <ExternalLinks />
             </section>
           )}
 
           {/* Corpo da conversa */}
-          <main className="flex-1 overflow-y-auto pb-6">
-            {loading ? (
-              <ClientOnly>
-                <LoadingPlaceholder />
-              </ClientOnly>
-            ) : responses.length === 0 ? (
-              <div className="chat-main-container mt-2 sm:mt-3 flex flex-col gap-3 sm:gap-4">
-                <Label className="text-zinc-400">
-                  {t('chat.popularQueries', 'Mais buscados:')}
-                </Label>
-                {symptomsLoaded && dynamicSymptoms.length > 0 ? (
-                  <DynamicOptionSelector
-                    value={input}
-                    onChange={val => {
-                      setInput(val)
-                      handleSendMessage()
-                    }}
-                    options={dynamicSymptoms}
-                  />
-                ) : (
-                  <OptionSelector
-                    value={input}
-                    onChange={val => {
-                      setInput(val)
-                      handleSendMessage()
-                    }}
-                    options={presetSymptomOptions}
-                  />
-                )}
+          <main className="flex-1 overflow-y-auto pb-8 min-h-[68vh]">
+            <div className="chat-main-container pt-2 sm:pt-3">
+              <p className="text-indigo-600 font-bold text-2xl sm:text-3xl leading-tight">
+                me<span className="uppercase">diz</span>
+                <span className="text-yellow-400">!</span>
+              </p>
+            </div>
 
-                <div className="chat-card p-3 sm:p-4">
-                  <p className="text-xs sm:text-sm font-medium text-zinc-700 mb-2">
-                    {t('chat.assistants.title', 'Quer aprofundar a conversa?')}
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => router.push('/professor-paulo')}
-                      className="justify-start h-10 sm:h-11 rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50"
-                    >
-                      <GraduationCap className="w-4 h-4 mr-2" />
-                      {t('chat.assistants.professor', 'Conversar com o Professor')}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => router.push('/meatende')}
-                      className="justify-start h-10 sm:h-11 rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50"
-                    >
-                      <Headset className="w-4 h-4 mr-2" />
-                      {t('chat.assistants.simulator', 'Usar Simulador de atendimento')}
-                    </Button>
+            {agentMode === 'chat' && chatResponses.length === 0 && messagesByAgent.chat.length === 0 ? (
+              <div className="chat-main-container mt-1.5 sm:mt-2 flex flex-col gap-2.5 sm:gap-3">
+                <div className="chat-card p-2.5 sm:p-3">
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-semibold shadow-sm">
+                      m
+                    </div>
+                    <div className="chat-bubble-assistant !max-w-[100%]">
+                      <p className="text-sm sm:text-base font-semibold text-indigo-700 mb-0.5">
+                        {t('chat.personalized.hello', `Olá, ${FirstName(user.name)}! 👋`)}
+                      </p>
+                      <p className="text-xs sm:text-sm leading-relaxed">
+                        {t(
+                          'chat.proactive.greeting',
+                          `Me conta: o que você gostaria de fazer hoje? Posso te ajudar de três formas diferentes, ou você pode descrever livremente no campo abaixo.`
+                        )}
+                      </p>
+                    </div>
                   </div>
+                  <div className="mt-2.5 grid grid-cols-1 gap-2">
+                    {modeCards.map((card) => {
+                      const CardIcon = card.icon
+                      const isActive = agentMode === card.mode
+                      return (
+                        <button
+                          key={card.mode}
+                          type="button"
+                          onClick={() => activateAgentMode(card.mode)}
+                          className={`w-full rounded-xl border px-2.5 py-2 text-left transition-colors ${
+                            isActive
+                              ? 'border-indigo-400 bg-indigo-50'
+                              : 'border-indigo-200 bg-white/90 hover:bg-indigo-50/70'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                              <CardIcon className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm sm:text-base font-semibold text-indigo-950 leading-tight">{card.title}</p>
+                              <p className="text-[11px] sm:text-xs text-indigo-900/70 leading-snug mt-0.5">
+                                {card.description}
+                              </p>
+                            </div>
+                            <ArrowRight className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {loading && (
+                    <div className="mt-2 flex justify-start">
+                      <div className="chat-bubble-assistant text-zinc-500 text-xs py-2">
+                        {t('chat.typing.assistant', 'Produzindo seu relatório emocional...')}
+                      </div>
+                    </div>
+                  )}
                 </div>
+
               </div>
-            ) : (
+            ) : agentMode === 'chat' ? (
               <div className="chat-main-container space-y-4">
-                {responses.map((md, idx) => (
+                {chatResponses.map((md, idx) => (
                   <Result 
                     key={idx} 
                     markdown={md} 
@@ -586,9 +611,29 @@ export default function Page() {
                     fullVisualization={fullVisualization}
                     onSubscribe={handleSubscribe}
                     userQuestion={originalQuestion}
-                    sessionId={selectedThread || undefined}
+                    sessionId={agentThreads.chat || undefined}
                   />
                 ))}
+              </div>
+            ) : (
+              <div className="chat-main-container space-y-3 sm:space-y-4">
+                {messagesByAgent[agentMode].map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div className={message.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'}>
+                      {message.content}
+                    </div>
+                  </div>
+                ))}
+                {loading && (
+                  <div className="flex justify-start">
+                    <div className="chat-bubble-assistant text-zinc-500 text-xs py-2">
+                      {t('chat.typing.assistant', 'Produzindo seu relatório emocional...')}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             
@@ -599,6 +644,39 @@ export default function Page() {
               onSubscribe={handleSubscribe}
             />
           </main>
+
+          <div className="chat-main-container pt-1.5 pb-3">
+            <div className="chat-card p-2 sm:p-2.5">
+              <p className="text-center text-indigo-700/75 text-[11px] sm:text-xs mb-1.5">
+                {t(
+                  'chat.composer.hint',
+                  'Pesquisar impacto: digite seu sintoma. Professor e Simulador iniciam automaticamente.'
+                )}
+              </p>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500/70" />
+                <Input
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  placeholder={t(
+                    'chat.composer.placeholder',
+                    'Pode ser um sintoma, uma dúvida para o Professor ou exercitar um atendimento...'
+                  )}
+                  className="h-11 rounded-[14px] border-2 border-indigo-500/70 bg-white/95 pl-9 pr-24 text-xs sm:text-sm placeholder:text-indigo-700/60"
+                  disabled={loading}
+                />
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={loading || !input.trim()}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 px-3.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold"
+                >
+                  {t('chat.send', 'Enviar')}
+                </Button>
+              </div>
+            </div>
+          </div>
 
           <Footer />
         </div>
