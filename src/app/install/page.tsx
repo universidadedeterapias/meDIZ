@@ -15,11 +15,14 @@ import {
 
 import { ArrowRight, CheckCircle, Download, Smartphone } from 'lucide-react'
 
-import bannerApp from '@/app/assets/bannerapp(1).png'
-import medizIcon from '@/app/assets/iconemeDIZ512x512.png'
-import tela1 from '@/app/assets/TELA1.jpeg'
-import tela2 from '@/app/assets/TELA2.png'
-import tela3 from '@/app/assets/TELA3.jpeg'
+/** Imagens em /public/install para não passar pelo loader webpack (Sharp) no build — evita OOM/corrupt header no CI. */
+const INSTALL_ASSETS = {
+  icon: '/install/icon-mediz.png',
+  banner: '/install/bannerapp.png',
+  tela1: '/install/TELA1.jpeg',
+  tela2: '/install/TELA2.png',
+  tela3: '/install/TELA3.jpeg'
+} as const
 
 // ----------------------------------------------------------------------------
 // Evento de beforeinstallprompt
@@ -143,10 +146,11 @@ const Install: FC = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <Image
-            src={medizIcon}
+            src={INSTALL_ASSETS.icon}
             alt="meDIZ Logo"
             width={80}
             height={80}
+            unoptimized
             className="mx-auto mb-4 rounded-2xl shadow-lg"
           />
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
@@ -177,10 +181,11 @@ const Install: FC = () => {
         {/* App Preview */}
         <div className="mb-12">
           <Image
-            src={bannerApp}
+            src={INSTALL_ASSETS.banner}
             alt="meDIZ App Preview"
             width={1024}
             height={512}
+            unoptimized
             className="w-full max-w-4xl mx-auto rounded-2xl shadow-2xl"
           />
         </div>
@@ -242,24 +247,27 @@ const Install: FC = () => {
           </h3>
           <div className="grid md:grid-cols-3 gap-4 max-w-3xl mx-auto">
             <Image
-              src={tela1}
+              src={INSTALL_ASSETS.tela1}
               alt="Tela 1"
               width={300}
               height={600}
+              unoptimized
               className="w-full rounded-lg shadow-md"
             />
             <Image
-              src={tela2}
+              src={INSTALL_ASSETS.tela2}
               alt="Tela 2"
               width={300}
               height={600}
+              unoptimized
               className="w-full rounded-lg shadow-md"
             />
             <Image
-              src={tela3}
+              src={INSTALL_ASSETS.tela3}
               alt="Tela 3"
               width={300}
               height={600}
+              unoptimized
               className="w-full rounded-lg shadow-md"
             />
           </div>
