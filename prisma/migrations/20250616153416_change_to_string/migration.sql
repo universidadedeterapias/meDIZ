@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "User" ALTER COLUMN "averageSessionPrice" SET DATA TYPE TEXT,
+ALTER COLUMN "clientsPerWeek" SET DATA TYPE TEXT,
+ALTER COLUMN "yearsOfExperience" SET DATA TYPE TEXT;
