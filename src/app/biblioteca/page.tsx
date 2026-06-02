@@ -100,13 +100,32 @@ export default function BibliotecaPage() {
     setOpeningId(productId)
     try {
       const res = await apiFetch(apiPath, { cache: 'no-store' })
-      if (!res.ok) throw new Error('access_failed')
-      const data = await res.json()
-      if (data.url) {
-        window.open(data.url, '_blank', 'noopener,noreferrer')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const code = typeof data?.error === 'string' ? data.error : 'access_failed'
+        throw new Error(code)
       }
-    } catch {
-      alert(t('library.error.open', 'Não foi possível abrir o conteúdo.'))
+      if (!data.url) {
+        throw new Error(
+          typeof data?.error === 'string' ? data.error : 'CONTENT_NOT_AVAILABLE'
+        )
+      }
+      window.open(data.url, '_blank', 'noopener,noreferrer')
+    } catch (e) {
+      const code = e instanceof Error ? e.message : ''
+      const message =
+        code === 'NO_PERMISSION_FOR_THIS_CONTENT'
+          ? t(
+              'library.error.noPermission',
+              'Você ainda não tem permissão para este conteúdo.'
+            )
+          : code === 'CONTENT_NOT_AVAILABLE'
+            ? t(
+                'library.error.notAvailable',
+                'Conteúdo indisponível no servidor. Configure as URLs da biblioteca no painel admin ou nas variáveis de ambiente.'
+              )
+            : t('library.error.open', 'Não foi possível abrir o conteúdo.')
+      alert(message)
     } finally {
       setOpeningId(null)
     }

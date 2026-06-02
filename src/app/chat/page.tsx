@@ -11,7 +11,6 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { ClientOnly } from '@/components/ClientOnly'
-import { ExternalLinks } from '@/components/ExternalLinks'
 import { Footer } from '@/components/Footer'
 import OptionSelector from '@/components/form/OptionSelector'
 import DynamicOptionSelector from '@/components/form/DynamicOptionSelector'
@@ -500,13 +499,6 @@ export default function Page() {
               </div>
             </div>
           </div>
-
-          {/* Links externos se houver resposta */}
-          {responses.length > 0 && (
-            <section className="w-full min-w-0 border-b border-border bg-muted/30 px-3 pb-4 sm:px-6">
-              <ExternalLinks />
-            </section>
-          )}
 
           {/* Corpo da conversa */}
           <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background px-3 pb-6 sm:px-4">

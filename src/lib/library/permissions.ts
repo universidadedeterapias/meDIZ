@@ -1,3 +1,4 @@
+import { hasComplimentaryAccess } from '@/lib/complimentaryAccess'
 import { prisma } from '@/lib/prisma'
 import { normalizeLibraryEmail } from './email'
 
@@ -27,39 +28,11 @@ const FULL_PERMISSIONS: LibraryPermissoes = {
   livro_digital: true
 }
 
-/** Contas com biblioteca e audioterapia totalmente liberadas (teste/demo). */
-const FULL_LIBRARY_ACCESS_EMAILS = new Set<string>([
-  'marianna.yaskara@live.com',
-  'marianna.yaskara2020@gmail.com',
-  ...(process.env.LIBRARY_FULL_ACCESS_EMAILS?.split(',')
-    .map((email) => normalizeLibraryEmail(email))
-    .filter(Boolean) ?? [])
-])
-
-/** IDs de usuário com acesso total (fallback se o e-mail da sessão divergir do banco). */
-const FULL_LIBRARY_ACCESS_USER_IDS = new Set<string>([
-  '19763963-830b-4655-9ba7-0f46b0a007ec',
-  'a5cd051e-a50b-442d-b9f1-17e5f635923c',
-  ...(process.env.LIBRARY_FULL_ACCESS_USER_IDS?.split(',')
-    .map((id) => id.trim())
-    .filter(Boolean) ?? [])
-])
-
-function isMariannaYaskaraEmail(email: string): boolean {
-  const normalized = normalizeLibraryEmail(email)
-  if (FULL_LIBRARY_ACCESS_EMAILS.has(normalized)) return true
-  const localPart = normalized.split('@')[0] ?? ''
-  return (
-    localPart === 'marianna.yaskara' || localPart.startsWith('marianna.yaskara')
-  )
-}
-
 export function hasFullLibraryAccess(
   email: string,
   userId?: string
 ): boolean {
-  if (userId && FULL_LIBRARY_ACCESS_USER_IDS.has(userId)) return true
-  return isMariannaYaskaraEmail(email)
+  return hasComplimentaryAccess(email, userId)
 }
 
 /** PDF + livro digital (sem audioterapia) */

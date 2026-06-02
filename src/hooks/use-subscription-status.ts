@@ -67,12 +67,19 @@ export function useSubscriptionStatus(): SubscriptionStatus {
           isPremium = data.hasPremiumAccess
         } else {
           const statusLower = data.status?.toLowerCase() || ''
-          const isActive =
-            statusLower === 'active' || statusLower === 'cancel_at_period_end'
           const notExpired = data.currentPeriodEnd
             ? new Date(data.currentPeriodEnd) > new Date()
             : false
-          isPremium = isActive && notExpired
+          const statusGrantsAccess = [
+            'active',
+            'trialing',
+            'past_due',
+            'cancel_at_period_end',
+            'paused',
+            'canceled',
+            'cancelled'
+          ].includes(statusLower)
+          isPremium = statusGrantsAccess && notExpired
         }
 
         console.log('[useSubscriptionStatus] 🔍 Análise do status:', {

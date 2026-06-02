@@ -85,7 +85,7 @@ const ALLOWED_MEDIA: Record<
   raw: {
     mime: ['application/pdf'],
     ext: /\.pdf$/i,
-    maxBytes: 50 * 1024 * 1024
+    maxBytes: 10 * 1024 * 1024
   }
 }
 

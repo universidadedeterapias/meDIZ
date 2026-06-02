@@ -1,4 +1,5 @@
 import { auth } from '@/auth'
+import { hasComplimentaryAccess } from '@/lib/complimentaryAccess'
 import { prisma } from '@/lib/prisma'
 import { prismaWhereSubscriptionGrantsPremium } from '@/lib/premiumUtils'
 import { NextResponse } from 'next/server'
@@ -15,6 +16,45 @@ export async function GET() {
 
   if (process.env.NODE_ENV === 'development') {
     console.log('[API /stripe/subscription] 👤 User ID:', session.user.id)
+  }
+
+  const sessionEmail = session.user.email?.trim()
+  if (
+    sessionEmail &&
+    hasComplimentaryAccess(sessionEmail, session.user.id)
+  ) {
+    const farFuture = new Date('2099-12-31T23:59:59.000Z')
+    console.log(
+      '[API /stripe/subscription] ✅ Acesso cortesia (Plus + biblioteca):',
+      sessionEmail
+    )
+    return NextResponse.json({
+      status: 'active',
+      currentPeriodEnd: farFuture.toISOString(),
+      currentPeriodStart: new Date().toISOString(),
+      hasPremiumAccess: true,
+      complimentary: true
+    })
+  }
+
+  const dbUser = !sessionEmail
+    ? await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { email: true }
+      })
+    : null
+  if (
+    dbUser?.email &&
+    hasComplimentaryAccess(dbUser.email, session.user.id)
+  ) {
+    const farFuture = new Date('2099-12-31T23:59:59.000Z')
+    return NextResponse.json({
+      status: 'active',
+      currentPeriodEnd: farFuture.toISOString(),
+      currentPeriodStart: new Date().toISOString(),
+      hasPremiumAccess: true,
+      complimentary: true
+    })
   }
 
   // 🔍 DEBUG: Buscar TODAS as assinaturas primeiro para ver o que existe

@@ -11,6 +11,7 @@ import { assertLibraryContentAccess, LibraryAccessError } from './permissions'
 import { normalizeLibraryEmail } from './email'
 import { resolveLibraryLocale } from './locale'
 import { isRemoteMediaRef } from '@/lib/catalog/media-upload'
+import { livroDigitalUrlFromEnv, pdfUrlsFromEnv } from './libraryEnvUrls'
 
 export type LibraryContentResponse =
   | { url: string; locale: LanguageCode }
@@ -61,22 +62,35 @@ export async function serveLibraryContent(
       }
     }
   } else if (content === 'livro_digital') {
-    const file = resolveLivroDigitalFile(locale)
-    if (file) {
-      payload = {
-        url: toPublicUrl(file.relative, baseUrl),
-        locale: file.locale
+    const envUrl = livroDigitalUrlFromEnv(locale)
+    if (envUrl) {
+      payload = { url: envUrl, locale }
+    } else {
+      const file = resolveLivroDigitalFile(locale)
+      if (file) {
+        payload = {
+          url: toPublicUrl(file.relative, baseUrl),
+          locale: file.locale
+        }
       }
     }
   } else if (content === 'pdf') {
-    const variants = resolvePdfVariants(locale)
-    if (variants.length > 0) {
+    const envUrls = pdfUrlsFromEnv(locale)
+    if (envUrls.length > 0) {
       payload = {
-        locale: variants[0].locale,
-        urls: variants.map((v) => ({
-          url: toPublicUrl(v.relative, baseUrl),
-          label: v.label
-        }))
+        locale,
+        urls: envUrls
+      }
+    } else {
+      const variants = resolvePdfVariants(locale)
+      if (variants.length > 0) {
+        payload = {
+          locale: variants[0].locale,
+          urls: variants.map((v) => ({
+            url: toPublicUrl(v.relative, baseUrl),
+            label: v.label
+          }))
+        }
       }
     }
   }

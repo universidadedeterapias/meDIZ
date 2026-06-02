@@ -106,16 +106,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
   if (product.permissionKey === 'PDF') {
     const legacy = await serveLibraryContent(auth.user.email, 'pdf', language)
     const legacyJson = await legacy.json()
-    if (
-      legacy.ok &&
-      Array.isArray(legacyJson.urls) &&
-      legacyJson.urls[product.pdfIndex]
-    ) {
-      const target = legacyJson.urls[product.pdfIndex]
-      return NextResponse.json(
-        { url: target.url, label: target.label, locale: legacyJson.locale },
-        { headers: { 'Cache-Control': 'no-store' } }
-      )
+    if (legacy.ok && Array.isArray(legacyJson.urls) && legacyJson.urls.length > 0) {
+      const target =
+        legacyJson.urls[product.pdfIndex] ??
+        legacyJson.urls[0]
+      if (target?.url) {
+        return NextResponse.json(
+          { url: target.url, label: target.label, locale: legacyJson.locale },
+          { headers: { 'Cache-Control': 'no-store' } }
+        )
+      }
     }
     return legacy
   }

@@ -8,6 +8,10 @@ import {
 } from '@/lib/library/contentPaths'
 import { isRemoteMediaRef } from '@/lib/catalog/media-upload'
 import { permissionKeyToLib } from '@/lib/catalog/types'
+import {
+  livroDigitalUrlFromEnv,
+  pdfUrlsFromEnv
+} from '@/lib/library/libraryEnvUrls'
 
 export function permissionToContentKey(
   key: CatalogPermissionKey
@@ -23,7 +27,20 @@ export function resolveProductMediaUrl(
   baseUrl?: string
 ): { url: string; locale: LanguageCode } | null {
   const ref = mediaFileName?.trim()
-  if (!ref) return null
+
+  if (!ref) {
+    if (permissionKey === 'LIVRO_DIGITAL') {
+      const envUrl = livroDigitalUrlFromEnv(locale)
+      return envUrl ? { url: envUrl, locale } : null
+    }
+    if (permissionKey === 'PDF') {
+      const envUrls = pdfUrlsFromEnv(locale)
+      if (envUrls[0]) {
+        return { url: envUrls[0].url, locale }
+      }
+    }
+    return null
+  }
 
   if (isRemoteMediaRef(ref)) {
     return { url: ref, locale }

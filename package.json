@@ -93,6 +93,7 @@
     "test-popup-no-scroll": "tsx src/scripts/test-popup-no-scroll.ts",
     "test-popup-final-adjustments": "tsx src/scripts/test-popup-final-adjustments.ts",
     "check-popup-image": "tsx src/scripts/check-popup-image.ts",
+    "sync:library-cloudinary": "tsx scripts/sync-library-pdfs-cloudinary.ts",
     "check:deploy": "node scripts/pre-deploy-check.js",
     "deploy-check": "node scripts/pre-deploy-check.js",
     "clean": "node scripts/clean-build.js",

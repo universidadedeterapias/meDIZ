@@ -9,7 +9,7 @@ export type LibraryContentKey = 'audioterapia' | 'pdf' | 'livro_digital'
 /** Estrutura preferida: dois PDFs por idioma. */
 const PDF_VARIANT_FILES = ['material-1.pdf', 'material-2.pdf'] as const
 
-const PDF_VARIANT_LABELS: Record<LanguageCode, [string, string]> = {
+export const PDF_VARIANT_LABELS: Record<LanguageCode, [string, string]> = {
   'pt-BR': ['Material complementar 1', 'Material complementar 2'],
   'pt-PT': ['Material complementar 1', 'Material complementar 2'],
   en: ['Supplementary material 1', 'Supplementary material 2'],
@@ -50,6 +50,33 @@ const LEGACY_LOCALE_PATTERNS: Record<LanguageCode, RegExp[]> = {
   'pt-PT': [/(^|[\s_.-])pt($|[\s_.-])/, /portugues/],
   en: [/(^|[\s_.-])en($|[\s_.-])/, /english/],
   es: [/(^|[\s_.-])es($|[\s_.-])/, /espanol/, /spanish/]
+}
+
+/** Lista PDFs em uma pasta (ex.: pdfs/, livro digital/) que batem com o idioma. */
+function listLegacyLocalizedFiles(
+  locale: LanguageCode,
+  directory: string,
+  extension: string
+): { relative: string; locale: LanguageCode }[] {
+  const patterns = LEGACY_LOCALE_PATTERNS[locale]
+  const entries = readDirSafe(directory)
+  const matched: { relative: string; locale: LanguageCode; name: string }[] = []
+
+  for (const entry of entries) {
+    const normalizedEntry = normalizeForMatch(entry)
+    if (!normalizedEntry.endsWith(extension)) continue
+    if (patterns.some((pattern) => pattern.test(normalizedEntry))) {
+      matched.push({
+        relative: relativePath(directory, entry),
+        locale,
+        name: entry
+      })
+    }
+  }
+
+  return matched
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+    .map(({ relative, locale: loc }) => ({ relative, locale: loc }))
 }
 
 function findLegacyLocalizedFile(
@@ -440,6 +467,20 @@ export function resolvePdfVariants(locale: LanguageCode): ResolvedPdfVariant[] {
 
     if (variants.length === PDF_VARIANT_FILES.length) {
       return variants
+    }
+  }
+
+  for (const loc of candidates) {
+    for (const directory of ['pdfs', 'pdf'] as const) {
+      const legacyFiles = listLegacyLocalizedFiles(loc, directory, '.pdf')
+      if (legacyFiles.length === 0) continue
+
+      const labels = PDF_VARIANT_LABELS[loc] ?? PDF_VARIANT_LABELS['pt-BR']
+      return legacyFiles.map((file, index) => ({
+        relative: file.relative,
+        locale: file.locale,
+        label: labels[index] ?? path.basename(file.relative, '.pdf')
+      }))
     }
   }
 

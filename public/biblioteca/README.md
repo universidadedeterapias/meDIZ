@@ -47,6 +47,16 @@ public/biblioteca/
 Os nomes `material-1.pdf` e `material-2.pdf` são fixos no código.
 Renomeie seus arquivos ao colar nas pastas ou altere `src/lib/library/contentPaths.ts`.
 
+## Deploy (Vercel / produção)
+
+Os PDFs e áudios **não vão no Git** (são grandes). Em produção, use uma destas opções:
+
+1. **Admin** → Catálogo → enviar PDF no produto (grava URL do Cloudinary no banco).
+2. **Script** (com Cloudinary no `.env`): `npm run sync:library-cloudinary`
+3. **Variáveis de ambiente** — veja `.env.example` (`LIBRARY_LIVRO_DIGITAL_URL_*`, `LIBRARY_PDF_URL_*`).
+
+Em desenvolvimento local, basta manter os arquivos nesta pasta.
+
 ## Permissões (Hotmart)
 
 Continua igual: o n8n envia `permissoes` no `PUT /api/library/permissions`.
