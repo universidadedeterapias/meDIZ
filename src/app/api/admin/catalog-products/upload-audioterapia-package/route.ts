@@ -1,60 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { mediaItemsToJson, parseMediaItems } from '@/lib/catalog/media-items'
 import type { CatalogMediaItem } from '@/lib/catalog/types'
 import {
-  ensureAudioterapiaFolderName,
-  uploadAudioterapiaPackageFiles
+  buildAudioterapiaPackageFromUploads,
+  ensureAudioterapiaFolderName
 } from '@/lib/catalog/audioterapia-folder'
-import { saveCatalogMediaFile } from '@/lib/catalog/media-upload'
 import { formatCatalogDbError } from '@/lib/catalog/prisma-errors'
 import { requireAdmin } from '@/lib/requireAuth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+const bodySchema = z.object({
+  title: z.string().min(1),
+  productId: z.string().uuid().optional().nullable(),
+  description: z.string().optional().nullable(),
+  purchaseUrl: z.string().optional(),
+  replaceExisting: z.boolean().optional(),
+  coverImageUrl: z.string().url().optional().nullable(),
+  locale: z.enum(['pt', 'en', 'es']).optional().nullable(),
+  tracks: z
+    .array(
+      z.object({
+        url: z.string().url(),
+        originalName: z.string().min(1)
+      })
+    )
+    .min(1)
+})
+
 export async function POST(req: NextRequest) {
   const auth = await requireAdmin()
   if (auth.ok === false) return auth.response
 
   try {
-    const formData = await req.formData()
-    const title = String(formData.get('title') ?? '').trim()
-    const productId = String(formData.get('productId') ?? '').trim() || null
-    const description = String(formData.get('description') ?? '').trim() || null
-    const purchaseUrl = String(formData.get('purchaseUrl') ?? '').trim()
-    const replaceExisting = formData.get('replaceExisting') === 'true'
+    const parsed = bodySchema.parse(await req.json())
+    const title = parsed.title.trim()
+    const productId = parsed.productId?.trim() || null
+    const description = parsed.description?.trim() || null
+    const purchaseUrl = parsed.purchaseUrl?.trim() ?? ''
+    const replaceExisting = parsed.replaceExisting ?? true
+    const coverImageUrl = parsed.coverImageUrl?.trim() || null
 
-    if (!title) {
-      return NextResponse.json({ error: 'Informe o título da audioterapia' }, { status: 400 })
-    }
-
-    const uploads: { name: string; buffer: Buffer }[] = []
-    for (const entry of formData.getAll('files')) {
-      if (typeof entry === 'string' || !(entry instanceof File) || entry.size === 0) {
-        continue
-      }
-      const buffer = Buffer.from(await entry.arrayBuffer())
-      uploads.push({ name: entry.name, buffer })
-    }
-
-    if (uploads.length === 0) {
-      return NextResponse.json(
-        { error: 'Envie ao menos um arquivo MP3 ou MP4' },
-        { status: 400 }
-      )
-    }
-
-    const cover = formData.get('cover')
-    let coverImageUrl: string | null = null
-    if (cover instanceof File && cover.size > 0) {
-      const buffer = Buffer.from(await cover.arrayBuffer())
-      const uploaded = await saveCatalogMediaFile(buffer, cover.name, 'cover')
-      coverImageUrl = uploaded.publicUrl
-    }
+    const tracks = parsed.tracks.map((track) => ({
+      url: track.url,
+      originalName: track.originalName
+    }))
 
     const { folderName, mediaItems, primaryMediaFileName } =
-      await uploadAudioterapiaPackageFiles(title, uploads)
+      buildAudioterapiaPackageFromUploads(title, tracks, parsed.locale)
 
     const defaultPurchaseUrl =
       purchaseUrl ||
@@ -73,6 +69,7 @@ export async function POST(req: NextRequest) {
       tagLabel: 'Áudios guiados',
       purchaseUrl: defaultPurchaseUrl,
       permissionKey: 'AUDIOTERAPIA' as const,
+      locale: parsed.locale ?? null,
       mediaFileName: primaryMediaFileName,
       mediaItems: mediaItemsToJson(mediaItems),
       unlockedLabel: 'Ouvir agora',
@@ -122,6 +119,9 @@ export async function POST(req: NextRequest) {
       title: product.title
     })
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.flatten() }, { status: 400 })
+    }
     console.error('[upload-audioterapia-package]', error)
     return NextResponse.json(
       { error: formatCatalogDbError(error) },

@@ -8,5 +8,5 @@ export async function GET() {
   const auth = await requireUser({ pathname: '/api/biblioteca/pdf' })
   if (auth.ok === false) return auth.response
   const language = await getCurrentLanguage()
-  return serveLibraryContent(auth.user.email, 'pdf', language)
+  return serveLibraryContent(auth.user, 'pdf', language)
 }

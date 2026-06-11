@@ -79,10 +79,12 @@ export async function POST(request: NextRequest) {
         coverImageUrl: data.coverImageUrl?.trim() || null,
         purchaseUrl: data.purchaseUrl.trim(),
         permissionKey: data.permissionKey,
+        locale: data.locale ?? null,
         pdfIndex: data.pdfIndex,
         mediaFileName: data.mediaFileName?.trim() || null,
         mediaItems: mediaItemsToJson(data.mediaItems ?? null),
         unlockedLabel: data.unlockedLabel?.trim() || null,
+        freeAccess: data.freeAccess,
         sortOrder: data.sortOrder,
         active: data.active
       }

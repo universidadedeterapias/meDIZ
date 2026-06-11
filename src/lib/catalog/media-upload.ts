@@ -1,16 +1,15 @@
-import path from 'path'
-import { mkdir, writeFile } from 'fs/promises'
 import {
-  cloudinaryErrorMessage,
   detectResourceType,
-  isCloudinaryConfigured as cloudinaryConfigured,
-  uploadMediaStream,
   validateMediaFile,
   type CloudinaryResourceType
 } from '@/lib/cloudinary-upload'
-import { toPublicUrl } from '@/lib/library/contentPaths'
+import {
+  guessContentTypeFromFileName,
+  R2_MAX_BYTES
+} from '@/lib/catalog/r2-media-policy'
+import { isR2Configured, uploadBufferToR2 } from '@/lib/r2'
 
-export type CatalogMediaKind = 'cover' | 'pdf' | 'audio'
+export type CatalogMediaKind = 'cover' | 'pdf' | 'audio' | 'video'
 
 export function kindToResourceType(
   kind: CatalogMediaKind,
@@ -18,6 +17,7 @@ export function kindToResourceType(
 ): CloudinaryResourceType {
   if (kind === 'cover') return 'image'
   if (kind === 'pdf') return 'raw'
+  if (kind === 'video') return 'video'
   return detectResourceType(file) === 'video' ? 'video' : 'video'
 }
 
@@ -26,31 +26,12 @@ export function validateCatalogMediaFile(
   kind: CatalogMediaKind
 ): string | null {
   const resourceType = kindToResourceType(kind, file)
-  return validateMediaFile(file, resourceType)
-}
-
-function sanitizeFileName(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9._-]+/g, '-')
-    .replace(/-+/g, '-')
-    .slice(0, 120)
-}
-
-function localSubdir(kind: CatalogMediaKind): string {
-  switch (kind) {
-    case 'pdf':
-      return path.join('pdf', 'uploads')
-    case 'audio':
-      return path.join('audioterapias', 'uploads')
-    default:
-      return 'uploads'
+  const baseError = validateMediaFile(file, resourceType)
+  if (baseError) return baseError
+  if (file.size > R2_MAX_BYTES) {
+    return 'Arquivo muito grande (máximo 200 MB)'
   }
-}
-
-export function isCloudinaryConfigured(): boolean {
-  return cloudinaryConfigured()
+  return null
 }
 
 export function isRemoteMediaRef(ref: string | null | undefined): boolean {
@@ -61,14 +42,14 @@ export function isRemoteMediaRef(ref: string | null | undefined): boolean {
 export type CatalogMediaUploadResult = {
   mediaRef: string
   publicUrl: string
-  storage: 'cloudinary' | 'local'
+  storage: 'r2'
 }
 
+/** Upload server-side (scripts/CLI). No admin, prefira URL pré-assinada no navegador. */
 export async function saveCatalogMediaFile(
   buffer: Buffer,
   originalName: string,
-  kind: CatalogMediaKind,
-  options?: { audioterapiaFolder?: string }
+  kind: CatalogMediaKind
 ): Promise<CatalogMediaUploadResult> {
   const fileStub = new File([buffer], originalName)
   const validationError = validateCatalogMediaFile(fileStub, kind)
@@ -76,57 +57,16 @@ export async function saveCatalogMediaFile(
     throw new Error(validationError)
   }
 
-  const safeName = sanitizeFileName(originalName)
-  const stamp = Date.now()
-
-  if (cloudinaryConfigured()) {
-    const resourceType = kindToResourceType(kind, fileStub)
-    const folder =
-      kind === 'cover'
-        ? 'mediz/catalog'
-        : kind === 'pdf'
-          ? 'mediz/catalog/pdf'
-          : 'mediz/catalog/audioterapia'
-
-    try {
-      const result = await uploadMediaStream(buffer, {
-        folder,
-        publicId: `${kind}-${stamp}-${safeName.replace(/\.[^.]+$/, '')}`,
-        resourceType
-      })
-      return {
-        mediaRef: result.secure_url,
-        publicUrl: result.secure_url,
-        storage: 'cloudinary'
-      }
-    } catch (error) {
-      throw new Error(cloudinaryErrorMessage(error))
-    }
+  if (!isR2Configured()) {
+    throw new Error('Storage R2 não configurado no servidor.')
   }
 
-  const relativeDir =
-    kind === 'audio' && options?.audioterapiaFolder
-      ? path.join(
-          'biblioteca',
-          'audioterapias',
-          options.audioterapiaFolder
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[<>:"/\\|?*]+/g, '-')
-            .trim()
-        )
-      : path.join('biblioteca', localSubdir(kind))
-  const absoluteDir = path.join(process.cwd(), 'public', relativeDir)
-  await mkdir(absoluteDir, { recursive: true })
-
-  const fileName = `${stamp}-${safeName}`
-  const relativeFile = path.join(relativeDir, fileName).split(path.sep).join('/')
-
-  await writeFile(path.join(process.cwd(), 'public', relativeFile), buffer)
+  const contentType = guessContentTypeFromFileName(originalName)
+  const { url } = await uploadBufferToR2(buffer, originalName, contentType)
 
   return {
-    mediaRef: relativeFile,
-    publicUrl: toPublicUrl(relativeFile),
-    storage: 'local'
+    mediaRef: url,
+    publicUrl: url,
+    storage: 'r2'
   }
 }

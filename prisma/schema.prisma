@@ -381,6 +381,7 @@ enum CatalogSection {
 enum CatalogPermissionKey {
   LIVRO_DIGITAL
   PDF
+  VIDEO
   AUDIOTERAPIA
 }
 
@@ -394,12 +395,16 @@ model CatalogProduct {
   coverImageUrl String?              @map("cover_image_url")
   purchaseUrl   String               @map("purchase_url")
   permissionKey CatalogPermissionKey @map("permission_key")
+  /// pt | en | es — null = visível em todos os idiomas (pt-BR e pt-PT usam pt)
+  locale        String?              @db.VarChar(10)
   pdfIndex      Int                  @default(0) @map("pdf_index")
-  /// Caminho em public/biblioteca/... ou URL https (Cloudinary) do áudio/PDF
+  /// URL pública do áudio/PDF/capa no Cloudflare R2
   mediaFileName String?              @map("media_file_name") @db.VarChar(2048)
   /// Faixas: [{ id, title, mediaFileName, locale, sortOrder }]
   mediaItems    Json?                @map("media_items")
   unlockedLabel String?              @map("unlocked_label") @db.VarChar(80)
+  /// true = qualquer usuário logado acessa; false = exige liberação Hotmart (library_permissions)
+  freeAccess    Boolean              @default(false) @map("free_access")
   sortOrder     Int                  @default(0) @map("sort_order")
   active        Boolean              @default(true)
   createdAt     DateTime             @default(now()) @map("created_at")

@@ -19,6 +19,13 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts'
+import {
+  adminChartAxisStroke,
+  adminChartAxisTick,
+  adminChartBarLabel,
+  adminChartGridProps,
+  adminChartTooltipProps
+} from '@/components/admin/chart-theme'
 
 interface WeeklyGrowth {
   week: string
@@ -152,7 +159,7 @@ export function UserGrowthChart({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-indigo-600" />
-                <span className="text-sm text-gray-600">Total Usuários</span>
+                <span className="text-sm text-muted-foreground">Total Usuários</span>
               </div>
               <div className="text-lg font-bold text-indigo-600">
                 {currentWeek?.totalUsers || 0}
@@ -161,7 +168,7 @@ export function UserGrowthChart({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-green-600" />
-                <span className="text-sm text-gray-600">Novos Usuários</span>
+                <span className="text-sm text-muted-foreground">Novos Usuários</span>
               </div>
               <div className="text-lg font-bold text-green-600">
                 {currentWeek?.newUsers || 0}
@@ -170,14 +177,14 @@ export function UserGrowthChart({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Crown className="h-4 w-4 text-yellow-600" />
-                <span className="text-sm text-gray-600">Conversões</span>
+                <span className="text-sm text-muted-foreground">Conversões</span>
               </div>
               <div className="text-lg font-bold text-yellow-600">
                 {currentWeek?.conversions || 0}
               </div>
             </div>
             <div className="pt-2 border-t">
-              <div className="text-xs text-gray-500 text-center">
+              <div className="text-xs text-muted-foreground text-center">
                 {currentWeek?.week || 'Semana atual'}
               </div>
             </div>
@@ -194,7 +201,7 @@ export function UserGrowthChart({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-indigo-600" />
-                <span className="text-sm text-gray-600">Total Usuários</span>
+                <span className="text-sm text-muted-foreground">Total Usuários</span>
               </div>
               <div className="text-lg font-bold text-indigo-600">
                 {previousWeek?.totalUsers || 0}
@@ -203,7 +210,7 @@ export function UserGrowthChart({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-green-600" />
-                <span className="text-sm text-gray-600">Novos Usuários</span>
+                <span className="text-sm text-muted-foreground">Novos Usuários</span>
               </div>
               <div className="text-lg font-bold text-green-600">
                 {previousWeek?.newUsers || 0}
@@ -212,14 +219,14 @@ export function UserGrowthChart({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Crown className="h-4 w-4 text-yellow-600" />
-                <span className="text-sm text-gray-600">Conversões</span>
+                <span className="text-sm text-muted-foreground">Conversões</span>
               </div>
               <div className="text-lg font-bold text-yellow-600">
                 {previousWeek?.conversions || 0}
               </div>
             </div>
             <div className="pt-2 border-t">
-              <div className="text-xs text-gray-500 text-center">
+              <div className="text-xs text-muted-foreground text-center">
                 {previousWeek?.week || 'Semana anterior'}
               </div>
             </div>
@@ -237,12 +244,12 @@ export function UserGrowthChart({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
+            <div className="text-center p-4 bg-muted/50 rounded-lg">
               <div className="text-2xl font-bold text-indigo-600">
                 {comparison.usersGrowth >= 0 ? '+' : ''}{comparison.usersGrowth}
               </div>
-              <div className="text-sm text-gray-600">Novos Usuários</div>
-              <div className="text-xs text-gray-500 flex items-center justify-center gap-1 mt-1">
+              <div className="text-sm text-muted-foreground">Novos Usuários</div>
+              <div className="text-xs text-muted-foreground flex items-center justify-center gap-1 mt-1">
                 {comparison.usersGrowthRate >= 0 ? (
                   <TrendingUp className="h-3 w-3 text-green-500" />
                 ) : (
@@ -252,12 +259,12 @@ export function UserGrowthChart({
               </div>
             </div>
             
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
+            <div className="text-center p-4 bg-muted/50 rounded-lg">
               <div className="text-2xl font-bold text-yellow-600">
                 {comparison.conversionsGrowth >= 0 ? '+' : ''}{comparison.conversionsGrowth}
               </div>
-              <div className="text-sm text-gray-600">Conversões</div>
-              <div className="text-xs text-gray-500 flex items-center justify-center gap-1 mt-1">
+              <div className="text-sm text-muted-foreground">Conversões</div>
+              <div className="text-xs text-muted-foreground flex items-center justify-center gap-1 mt-1">
                 {comparison.conversionsGrowthRate >= 0 ? (
                   <TrendingUp className="h-3 w-3 text-green-500" />
                 ) : (
@@ -267,12 +274,12 @@ export function UserGrowthChart({
               </div>
             </div>
             
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
+            <div className="text-center p-4 bg-muted/50 rounded-lg">
               <div className="text-2xl font-bold text-purple-600">
                 {currentWeek?.totalUsers || 0}
               </div>
-              <div className="text-sm text-gray-600">Total Atual</div>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-sm text-muted-foreground">Total Atual</div>
+              <div className="text-xs text-muted-foreground mt-1">
                 vs {previousWeek?.totalUsers || 0} anterior
               </div>
             </div>
@@ -301,28 +308,22 @@ export function UserGrowthChart({
                   <stop offset="95%" stopColor="#2563EB" stopOpacity={0.8}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis dataKey="name" stroke="#6B7280" />
-              <YAxis stroke="#6B7280" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#FFFFFF', 
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '8px'
-                }}
-              />
-              <Legend />
+              <CartesianGrid {...adminChartGridProps} />
+              <XAxis dataKey="name" stroke={adminChartAxisStroke} tick={adminChartAxisTick} />
+              <YAxis stroke={adminChartAxisStroke} tick={adminChartAxisTick} />
+              <Tooltip {...adminChartTooltipProps} />
+              <Legend wrapperStyle={{ color: 'hsl(var(--foreground))' }} />
               <Bar 
                 dataKey="Premium" 
                 fill={colors.premium}
                 radius={[8, 8, 0, 0]}
-                label={{ position: 'top', fill: '#1F2937', fontSize: 12 }}
+                label={adminChartBarLabel}
               />
               <Bar 
                 dataKey="Gratuito" 
                 fill={colors.free}
                 radius={[8, 8, 0, 0]}
-                label={{ position: 'top', fill: '#1F2937', fontSize: 12 }}
+                label={adminChartBarLabel}
               />
             </BarChart>
           </ResponsiveContainer>
@@ -331,7 +332,7 @@ export function UserGrowthChart({
 
       {/* Filtros compartilhados para os gráficos abaixo */}
       <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-sm font-medium text-gray-600">Período:</span>
+        <span className="text-sm font-medium text-muted-foreground">Período:</span>
         <Button
           variant={selectedDays === 7 ? 'default' : 'outline'}
           size="sm"
@@ -385,7 +386,7 @@ export function UserGrowthChart({
         <CardContent>
           {loading ? (
             <div className="h-[400px] flex items-center justify-center">
-              <div className="text-gray-500">Carregando dados...</div>
+              <div className="text-muted-foreground">Carregando dados...</div>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={400}>
@@ -404,24 +405,19 @@ export function UserGrowthChart({
                     <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.05}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <CartesianGrid {...adminChartGridProps} />
                 <XAxis 
                   dataKey="semana" 
-                  stroke="#6B7280"
+                  stroke={adminChartAxisStroke}
+                  tick={adminChartAxisTick}
                   angle={-45}
                   textAnchor="end"
                   height={80}
                   interval={0}
                 />
-                <YAxis stroke="#6B7280" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#FFFFFF', 
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '8px'
-                  }}
-                />
-                <Legend />
+                <YAxis stroke={adminChartAxisStroke} tick={adminChartAxisTick} />
+                <Tooltip {...adminChartTooltipProps} />
+                <Legend wrapperStyle={{ color: 'hsl(var(--foreground))' }} />
                 <Area
                   type="monotone"
                   dataKey="Premium"
@@ -469,7 +465,7 @@ export function UserGrowthChart({
         <CardContent>
           {loading ? (
             <div className="h-[300px] flex items-center justify-center">
-              <div className="text-gray-500">Carregando dados...</div>
+              <div className="text-muted-foreground">Carregando dados...</div>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
@@ -480,28 +476,23 @@ export function UserGrowthChart({
                     <stop offset="95%" stopColor="#DC2626" stopOpacity={0.8}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <CartesianGrid {...adminChartGridProps} />
                 <XAxis
                   dataKey="periodo"
-                  stroke="#6B7280"
+                  stroke={adminChartAxisStroke}
+                  tick={adminChartAxisTick}
                   angle={-45}
                   textAnchor="end"
                   height={80}
                   interval={0}
                 />
-                <YAxis stroke="#6B7280" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#FFFFFF',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '8px'
-                  }}
-                />
+                <YAxis stroke={adminChartAxisStroke} tick={adminChartAxisTick} />
+                <Tooltip {...adminChartTooltipProps} />
                 <Bar
                   dataKey="Cancelados"
                   fill="url(#cancelledGradient)"
                   radius={[8, 8, 0, 0]}
-                  label={{ position: 'top', fill: '#1F2937', fontSize: 12 }}
+                  label={adminChartBarLabel}
                 />
               </BarChart>
             </ResponsiveContainer>

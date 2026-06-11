@@ -7,11 +7,18 @@ import {
   toPublicUrl,
   type LibraryContentKey
 } from './contentPaths'
-import { assertLibraryContentAccess, LibraryAccessError } from './permissions'
-import { normalizeLibraryEmail } from './email'
+import {
+  assertLibraryContentAccess,
+  LibraryAccessError,
+  type LibraryAuthIdentity
+} from './permissions'
 import { resolveLibraryLocale } from './locale'
 import { isRemoteMediaRef } from '@/lib/catalog/media-upload'
 import { livroDigitalUrlFromEnv, pdfUrlsFromEnv } from './libraryEnvUrls'
+import {
+  protectMediaPayload,
+  protectMediaUrlList
+} from '@/lib/library/protect-media-url'
 
 export type LibraryContentResponse =
   | { url: string; locale: LanguageCode }
@@ -21,14 +28,19 @@ export type LibraryContentResponse =
     }
 
 export async function serveLibraryContent(
-  userEmail: string,
+  user: LibraryAuthIdentity,
   content: LibraryContentKey,
   language: string | null | undefined,
-  options?: { mediaFileName?: string | null; skipPermissionCheck?: boolean }
+  options?: {
+    mediaFileName?: string | null
+    skipPermissionCheck?: boolean
+    productId?: string
+    freeAccess?: boolean
+  }
 ): Promise<NextResponse> {
   if (!options?.skipPermissionCheck) {
     try {
-      await assertLibraryContentAccess(normalizeLibraryEmail(userEmail), content)
+      await assertLibraryContentAccess(user, content)
     } catch (e) {
       if (e instanceof LibraryAccessError) {
         return NextResponse.json(
@@ -102,7 +114,21 @@ export async function serveLibraryContent(
     )
   }
 
-  return NextResponse.json(payload, {
+  const protectOptions = {
+    productId: options?.productId,
+    permission: content,
+    freeAccess: options?.freeAccess
+  }
+
+  const protectedPayload =
+    'urls' in payload
+      ? {
+          ...payload,
+          urls: protectMediaUrlList(payload.urls, user.id, protectOptions)
+        }
+      : protectMediaPayload(payload, user.id, protectOptions)
+
+  return NextResponse.json(protectedPayload, {
     headers: { 'Cache-Control': 'no-store' }
   })
 }

@@ -22,10 +22,12 @@ export function serializeProduct(row: {
   coverImageUrl: string | null
   purchaseUrl: string
   permissionKey: CatalogProductDto['permissionKey']
+  locale: string | null
   pdfIndex: number
   mediaFileName: string | null
   mediaItems: unknown
   unlockedLabel: string | null
+  freeAccess: boolean
   sortOrder: number
   active: boolean
 }): CatalogProductDto {
@@ -38,10 +40,12 @@ export function serializeProduct(row: {
     coverImageUrl: row.coverImageUrl,
     purchaseUrl: row.purchaseUrl,
     permissionKey: row.permissionKey,
+    locale: row.locale,
     pdfIndex: row.pdfIndex,
     mediaFileName: row.mediaFileName,
     mediaItems: parseMediaItems(row.mediaItems),
     unlockedLabel: row.unlockedLabel,
+    freeAccess: row.freeAccess,
     sortOrder: row.sortOrder,
     active: row.active
   }

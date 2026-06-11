@@ -27,7 +27,8 @@ export async function GET(request: NextRequest) {
   }
 
   const language = await getCurrentLanguage()
-  return serveLibraryContent(auth.user.email, 'audioterapia', language, {
-    mediaFileName
+  return serveLibraryContent(auth.user, 'audioterapia', language, {
+    mediaFileName,
+    productId: productId ?? undefined
   })
 }

@@ -41,8 +41,11 @@ export default [
         Request: 'readonly',
         Response: 'readonly',
         Headers: 'readonly',
+        HeadersInit: 'readonly',
+        ReadableStream: 'readonly',
         AbortController: 'readonly',
         AbortSignal: 'readonly',
+        XMLHttpRequest: 'readonly',
         
         // Event globals
         Event: 'readonly',
@@ -71,7 +74,10 @@ export default [
         HTMLOListElement: 'readonly',
         HTMLLIElement: 'readonly',
         HTMLUListElement: 'readonly',
+        HTMLAudioElement: 'readonly',
+        HTMLVideoElement: 'readonly',
         KeyboardEvent: 'readonly',
+        MouseEvent: 'readonly',
         FormData: 'readonly',
         RequestInit: 'readonly',
         

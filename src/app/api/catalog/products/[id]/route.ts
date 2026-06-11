@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { getCurrentLanguage } from '@/i18n/server'
+import { productMatchesUserLanguage } from '@/lib/catalog/locale'
 import { serializeProduct, mapProductsToOffers } from '@/lib/catalog/products'
 import { getLibraryPermissionsForUser } from '@/lib/library/permissions'
 import { requireUser } from '@/lib/requireAuth'
@@ -20,6 +22,11 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   const product = serializeProduct(row)
+  const language = await getCurrentLanguage()
+  if (!productMatchesUserLanguage(product.locale, language)) {
+    return NextResponse.json({ error: 'PRODUCT_NOT_FOUND' }, { status: 404 })
+  }
+
   const permissoes = await getLibraryPermissionsForUser(auth.user)
   const lockedLabel = 'Desbloquear acesso'
   const [offer] = mapProductsToOffers([product], permissoes, lockedLabel)

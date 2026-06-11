@@ -45,6 +45,7 @@ const messages = {
   'sidebar.subscriptionPlus': 'meDIZ+ plan',
   'sidebar.supportWhatsapp': 'Support (WhatsApp)',
   'sidebar.termsPolicies': 'Terms & Policies',
+  'sidebar.cursos': 'Courses',
   'general.cancel': 'Cancel',
   'general.confirm': 'Confirm',
   'general.loading': 'Loading...',

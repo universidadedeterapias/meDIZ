@@ -96,47 +96,18 @@ export default function BibliotecaPage() {
     }
   }, [loadCatalog])
 
-  const openUrl = async (apiPath: string, productId: string) => {
-    setOpeningId(productId)
-    try {
-      const res = await apiFetch(apiPath, { cache: 'no-store' })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        const code = typeof data?.error === 'string' ? data.error : 'access_failed'
-        throw new Error(code)
-      }
-      if (!data.url) {
-        throw new Error(
-          typeof data?.error === 'string' ? data.error : 'CONTENT_NOT_AVAILABLE'
-        )
-      }
-      window.open(data.url, '_blank', 'noopener,noreferrer')
-    } catch (e) {
-      const code = e instanceof Error ? e.message : ''
-      const message =
-        code === 'NO_PERMISSION_FOR_THIS_CONTENT'
-          ? t(
-              'library.error.noPermission',
-              'Você ainda não tem permissão para este conteúdo.'
-            )
-          : code === 'CONTENT_NOT_AVAILABLE'
-            ? t(
-                'library.error.notAvailable',
-                'Conteúdo indisponível no servidor. Configure as URLs da biblioteca no painel admin ou nas variáveis de ambiente.'
-              )
-            : t('library.error.open', 'Não foi possível abrir o conteúdo.')
-      alert(message)
-    } finally {
-      setOpeningId(null)
-    }
-  }
-
   const handleUnlock = (product: CatalogProductOffer) => {
     window.open(product.purchaseUrl, '_blank', 'noopener,noreferrer')
   }
 
   const handleAccess = (product: CatalogProductOffer) => {
-    openUrl(`/api/catalog/products/${product.id}/media`, product.id)
+    if (!product.unlocked) {
+      handleUnlock(product)
+      return
+    }
+    setOpeningId(product.id)
+    router.push(`/biblioteca/leitor/${product.id}`)
+    setOpeningId(null)
   }
 
   if (status === 'loading' || (status === 'authenticated' && loading && products.length === 0)) {

@@ -138,12 +138,12 @@ export function SignupForm({
                 {...register('password')}
                 type={showPassword ? 'text' : 'password'}
                 placeholder={t('signup.password', 'Senha')}
-                className={cn(authFormInputClass, 'pr-10')}
+                className={cn(authFormInputClass, 'relative z-[1] pr-10')}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
+                className="absolute right-3 top-1/2 z-[2] -translate-y-1/2"
                 aria-label={t('signup.password.toggle', 'Alternar visibilidade da senha')}
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -158,12 +158,12 @@ export function SignupForm({
                 {...register('confirm')}
                 type={showConfirm ? 'text' : 'password'}
                 placeholder={t('signup.confirmPassword', 'Confirme a senha')}
-                className={cn(authFormInputClass, 'pr-10')}
+                className={cn(authFormInputClass, 'relative z-[1] pr-10')}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirm(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
+                className="absolute right-3 top-1/2 z-[2] -translate-y-1/2"
                 aria-label={t('signup.confirmPassword.toggle', 'Alternar visibilidade da confirmação')}
               >
                 {showConfirm ? <EyeOff size={20} /> : <Eye size={20} />}

@@ -1,16 +1,12 @@
 /**
- * Envia PDFs de public/biblioteca para o Cloudinary e grava a URL em catalog_products.
- * Uso (com .env e Cloudinary configurado):
+ * Envia PDFs de public/biblioteca para o Cloudflare R2 e grava a URL em catalog_products.
+ * Uso:
  *   npx tsx scripts/sync-library-pdfs-cloudinary.ts
  */
 import { readFile, stat } from 'fs/promises'
 import path from 'path'
 import { prisma } from '../src/lib/prisma'
-import {
-  ensureCloudinaryConfig,
-  isCloudinaryConfigured,
-  uploadMediaStream
-} from '../src/lib/cloudinary-upload'
+import { saveCatalogMediaFile } from '../src/lib/catalog/media-upload'
 import {
   getAbsolutePath,
   resolveLivroDigitalFile,
@@ -20,8 +16,7 @@ import type { LanguageCode } from '../src/i18n/config'
 
 const LOCALES: LanguageCode[] = ['pt-BR', 'pt-PT', 'en', 'es']
 
-/** Plano gratuito Cloudinary (raw): 10 MB — https://cloudinary.com/pricing */
-const MAX_PDF_BYTES = 10 * 1024 * 1024
+const MAX_PDF_BYTES = 200 * 1024 * 1024
 
 async function uploadPdf(relativePath: string): Promise<string | null> {
   const absolute = getAbsolutePath(relativePath.replace(/\\/g, '/'))
@@ -30,21 +25,16 @@ async function uploadPdf(relativePath: string): Promise<string | null> {
     const mb = (size / (1024 * 1024)).toFixed(1)
     const maxMb = (MAX_PDF_BYTES / (1024 * 1024)).toFixed(0)
     console.warn(
-      `Ignorado (muito grande: ${mb} MB, máx. ${maxMb} MB no plano gratuito): ${relativePath}\n` +
-        '  → Comprima o PDF, use plano pago no Cloudinary ou defina LIBRARY_*_URL na Vercel.'
+      `Ignorado (muito grande: ${mb} MB, máx. ${maxMb} MB): ${relativePath}`
     )
     return null
   }
 
   const buffer = await readFile(absolute)
-  const baseName = path.basename(relativePath, '.pdf')
+  const fileName = path.basename(relativePath)
   try {
-    const result = await uploadMediaStream(buffer, {
-      folder: 'mediz/catalog/pdf',
-      publicId: `library-${baseName.replace(/[^a-zA-Z0-9._-]+/g, '-')}-${Date.now()}`,
-      resourceType: 'raw'
-    })
-    return result.secure_url
+    const result = await saveCatalogMediaFile(buffer, fileName, 'pdf')
+    return result.publicUrl
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     console.warn(`Falha no upload de ${relativePath}: ${msg}`)
@@ -53,15 +43,6 @@ async function uploadPdf(relativePath: string): Promise<string | null> {
 }
 
 async function main() {
-  if (!isCloudinaryConfigured()) {
-    console.error(
-      'Configure CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET no .env'
-    )
-    process.exit(1)
-  }
-
-  ensureCloudinaryConfig()
-
   const livroProducts = await prisma.catalogProduct.findMany({
     where: { permissionKey: 'LIVRO_DIGITAL', section: 'BIBLIOTECA' },
     orderBy: { sortOrder: 'asc' }
@@ -121,7 +102,7 @@ async function main() {
 
   console.log(
     `\nConcluído. Livro atualizado: ${livroUpdated > 0 ? 'sim' : 'não'}. ` +
-      'Faça redeploy na Vercel após conferir o admin.'
+      'Confira as URLs no admin.'
   )
 }
 

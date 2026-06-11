@@ -98,21 +98,36 @@ body {
     @apply bg-background text-foreground overflow-x-hidden max-w-[100vw];
   }
 
+  /* Login/cadastro: card claro com tema escuro global — evita senha “invisível” */
+  .dark input.login-field {
+    color: hsl(240 5.9% 10%) !important;
+    caret-color: hsl(240 5.9% 10%);
+    -webkit-text-fill-color: hsl(240 5.9% 10%);
+    background-color: hsl(0 0% 100%) !important;
+    color-scheme: light;
+  }
+
+  .dark input.login-field[type='password'] {
+    color: hsl(240 5.9% 10%) !important;
+    caret-color: hsl(240 5.9% 10%);
+    -webkit-text-fill-color: hsl(240 5.9% 10%);
+  }
+
   /* Autofill do navegador: texto escuro em fundo claro */
-  input:-webkit-autofill,
-  input:-webkit-autofill:hover,
-  input:-webkit-autofill:focus {
+  input.login-field:-webkit-autofill,
+  input.login-field:-webkit-autofill:hover,
+  input.login-field:-webkit-autofill:focus,
+  .dark input.login-field:-webkit-autofill,
+  .dark input.login-field:-webkit-autofill:hover,
+  .dark input.login-field:-webkit-autofill:focus,
+  .dark input.login-field[type='password']:-webkit-autofill,
+  .dark input.login-field[type='password']:-webkit-autofill:hover,
+  .dark input.login-field[type='password']:-webkit-autofill:focus {
     -webkit-text-fill-color: hsl(240 5.9% 10%) !important;
     caret-color: hsl(240 5.9% 10%);
     -webkit-box-shadow: 0 0 0 1000px hsl(0 0% 100%) inset !important;
     box-shadow: 0 0 0 1000px hsl(0 0% 100%) inset !important;
-  }
-
-  .dark input.login-field:-webkit-autofill,
-  .dark input.login-field:-webkit-autofill:hover,
-  .dark input.login-field:-webkit-autofill:focus {
-    -webkit-text-fill-color: hsl(240 5.9% 10%) !important;
-    -webkit-box-shadow: 0 0 0 1000px hsl(0 0% 100%) inset !important;
+    color-scheme: light;
   }
 }
 

@@ -18,6 +18,12 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import {
+  adminChartAxisStroke,
+  adminChartAxisTick,
+  adminChartGridProps,
+  adminChartTooltipProps
+} from '@/components/admin/chart-theme'
 
 interface MetricsData {
   users: {
@@ -285,10 +291,10 @@ export default function MetricsPage() {
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={userGrowthData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
+              <CartesianGrid {...adminChartGridProps} />
+              <XAxis dataKey="name" stroke={adminChartAxisStroke} tick={adminChartAxisTick} />
+              <YAxis stroke={adminChartAxisStroke} tick={adminChartAxisTick} />
+              <Tooltip {...adminChartTooltipProps} />
               <Bar dataKey="value" fill="#3b82f6" />
             </BarChart>
           </ResponsiveContainer>
@@ -369,10 +375,10 @@ export default function MetricsPage() {
             </div>
             <ResponsiveContainer width="100%" height={150}>
               <BarChart data={subscriptionData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
+                <CartesianGrid {...adminChartGridProps} />
+                <XAxis dataKey="name" stroke={adminChartAxisStroke} tick={adminChartAxisTick} />
+                <YAxis stroke={adminChartAxisStroke} tick={adminChartAxisTick} />
+                <Tooltip {...adminChartTooltipProps} />
                 <Bar dataKey="value" fill="#10b981" />
               </BarChart>
             </ResponsiveContainer>

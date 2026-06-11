@@ -43,7 +43,7 @@ export function resolveProductMediaUrl(
   }
 
   if (isRemoteMediaRef(ref)) {
-    return { url: ref, locale }
+    return { url: ref.trim(), locale }
   }
 
   const normalized = ref.replace(/\\/g, '/')
@@ -59,7 +59,11 @@ export function resolveProductMediaUrl(
     }
   }
 
-  if (permissionKey === 'PDF' || permissionKey === 'LIVRO_DIGITAL') {
+  if (
+    permissionKey === 'PDF' ||
+    permissionKey === 'LIVRO_DIGITAL' ||
+    permissionKey === 'VIDEO'
+  ) {
     const candidates = [
       normalized,
       `pdf/${normalized}`,

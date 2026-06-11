@@ -24,7 +24,11 @@ export const catalogProductBodySchema = z.object({
       (v) => /^https?:\/\//i.test(v.trim()),
       'Informe um link válido começando com https://'
     ),
-  permissionKey: z.enum(['LIVRO_DIGITAL', 'PDF', 'AUDIOTERAPIA']),
+  permissionKey: z.enum(['LIVRO_DIGITAL', 'PDF', 'VIDEO', 'AUDIOTERAPIA']),
+  locale: z.preprocess(
+    (v) => (v === '' || v === undefined ? null : v),
+    z.enum(['pt', 'en', 'es']).nullable().optional()
+  ),
   pdfIndex: z.coerce.number().int().min(0).max(20).default(0),
   mediaFileName: z.preprocess(
     (v) => (v === '' || v === undefined ? null : v),
@@ -43,6 +47,7 @@ export const catalogProductBodySchema = z.object({
     .optional()
     .nullable(),
   unlockedLabel: z.string().max(80).optional().nullable(),
+  freeAccess: z.boolean().default(false),
   sortOrder: z.coerce.number().int().min(0).max(9999).default(0),
   active: z.boolean().default(true)
 })

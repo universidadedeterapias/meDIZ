@@ -17,10 +17,12 @@ export type CatalogProductDto = {
   coverImageUrl: string | null
   purchaseUrl: string
   permissionKey: CatalogPermissionKey
+  locale: string | null
   pdfIndex: number
   mediaFileName: string | null
   mediaItems: CatalogMediaItem[] | null
   unlockedLabel: string | null
+  freeAccess: boolean
   sortOrder: number
   active: boolean
 }
@@ -40,6 +42,8 @@ export function permissionKeyToLib(
       return 'livro_digital'
     case 'PDF':
       return 'pdf'
+    case 'VIDEO':
+      return 'pdf'
     case 'AUDIOTERAPIA':
       return 'audioterapia'
   }
@@ -51,6 +55,8 @@ export function defaultUnlockedLabel(key: CatalogPermissionKey): string {
       return 'Acessar livro'
     case 'PDF':
       return 'Acessar PDF'
+    case 'VIDEO':
+      return 'Assistir vídeo'
     case 'AUDIOTERAPIA':
       return 'Ouvir agora'
   }

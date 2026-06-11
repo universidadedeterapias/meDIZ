@@ -5,6 +5,7 @@ const COMPLIMENTARY_ACCOUNT_EMAILS = new Set<string>([
   'marianna.yaskara@live.com',
   'marianna.yaskara2020@gmail.com',
   'marianna.yaskara@mediz.com',
+  'marianna.sales@mediz.com',
   ...(process.env.LIBRARY_FULL_ACCESS_EMAILS?.split(',')
     .map((email) => normalizeLibraryEmail(email))
     .filter(Boolean) ?? []),
@@ -16,6 +17,7 @@ const COMPLIMENTARY_ACCOUNT_EMAILS = new Set<string>([
 const COMPLIMENTARY_ACCOUNT_USER_IDS = new Set<string>([
   '19763963-830b-4655-9ba7-0f46b0a007ec',
   'a5cd051e-a50b-442d-b9f1-17e5f635923c',
+  '7de2fd91-cd04-4258-b65c-34618bffedea',
   ...(process.env.LIBRARY_FULL_ACCESS_USER_IDS?.split(',')
     .map((id) => id.trim())
     .filter(Boolean) ?? []),

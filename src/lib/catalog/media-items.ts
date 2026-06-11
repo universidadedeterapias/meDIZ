@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client'
+import { catalogLocaleLabel, normalizeCatalogLocale } from '@/lib/catalog/locale'
 import type { CatalogMediaItem } from './types'
 
 export function parseMediaItems(value: unknown): CatalogMediaItem[] | null {
@@ -63,14 +64,22 @@ export function mediaItemsToJson(
   return normalized as unknown as Prisma.InputJsonValue
 }
 
+function mediaItemLocaleKey(locale?: string): string {
+  const normalized = normalizeCatalogLocale(locale)
+  if (normalized) return normalized
+  if (locale === 'pt-BR' || locale === 'pt-PT') return 'pt'
+  return locale ?? 'pt'
+}
+
 export function localeDisplayLabel(locale?: string): string {
+  const normalized = normalizeCatalogLocale(locale)
+  if (normalized) return catalogLocaleLabel(normalized)
   switch (locale) {
     case 'pt-BR':
-      return 'Português (BR)'
     case 'pt-PT':
-      return 'Português (PT)'
+      return 'Português'
     case 'es':
-      return 'Espanhol'
+      return 'Español'
     case 'en':
       return 'Inglês'
     default:
@@ -84,13 +93,13 @@ export function groupMediaItemsByLocale(
   const map = new Map<string, CatalogMediaItem[]>()
 
   for (const item of items) {
-    const key = item.locale ?? 'pt-BR'
+    const key = mediaItemLocaleKey(item.locale)
     const list = map.get(key) ?? []
     list.push(item)
     map.set(key, list)
   }
 
-  const order = ['pt-BR', 'pt-PT', 'en', 'es']
+  const order = ['pt', 'en', 'es']
   return [...map.entries()]
     .sort(([a], [b]) => {
       const ia = order.indexOf(a)

@@ -1,5 +1,11 @@
 'use client'
-import { Headphones, Library, LogOut, type LucideIcon } from 'lucide-react'
+import {
+  GraduationCap,
+  Headphones,
+  Library,
+  LogOut,
+  type LucideIcon
+} from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -137,7 +143,10 @@ export function NavOptions({ options }: NavOptionsProps) {
         <SidebarMenuItem>
           <SidebarMenuButton
             asChild
-            isActive={pathname === '/biblioteca'}
+            isActive={
+              pathname === '/biblioteca' ||
+              pathname.startsWith('/biblioteca/')
+            }
             tooltip={t('sidebar.library', 'Biblioteca')}
             className="px-4 py-6 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
           >
@@ -150,6 +159,33 @@ export function NavOptions({ options }: NavOptionsProps) {
               <span className="flex min-w-0 items-center gap-2 group-data-[collapsible=icon]:hidden">
                 <span className="truncate">
                   {t('sidebar.library', 'Biblioteca')}
+                </span>
+                <span className={newFeatureBadgeClass}>
+                  {t('badge.new', 'NOVO')}
+                </span>
+              </span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            asChild
+            isActive={
+              pathname === '/cursos' || pathname.startsWith('/cursos/')
+            }
+            tooltip={t('sidebar.cursos', 'Cursos')}
+            className="px-4 py-6 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
+          >
+            <Link href="/cursos" className={navLinkClass}>
+              <GraduationCap
+                style={{ width: 24, height: 24 }}
+                className="shrink-0 text-indigo-600 dark:text-indigo-400"
+                strokeWidth={1.5}
+              />
+              <span className="flex min-w-0 items-center gap-2 group-data-[collapsible=icon]:hidden">
+                <span className="truncate">
+                  {t('sidebar.cursos', 'Cursos')}
                 </span>
                 <span className={newFeatureBadgeClass}>
                   {t('badge.new', 'NOVO')}

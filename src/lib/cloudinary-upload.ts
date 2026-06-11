@@ -80,12 +80,12 @@ const ALLOWED_MEDIA: Record<
   video: {
     mime: ['audio/mpeg', 'audio/mp3', 'video/mp4', 'audio/mp4'],
     ext: /\.(mp3|mp4)$/i,
-    maxBytes: 100 * 1024 * 1024
+    maxBytes: 200 * 1024 * 1024
   },
   raw: {
     mime: ['application/pdf'],
     ext: /\.pdf$/i,
-    maxBytes: 10 * 1024 * 1024
+    maxBytes: 200 * 1024 * 1024
   }
 }
 

@@ -179,14 +179,14 @@ export function LoginForm({
                 placeholder={t('login.password', 'Senha')}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className={cn(authFormInputClass, 'pr-10')}
+                className={cn(authFormInputClass, 'relative z-[1] pr-10')}
                 autoComplete="current-password"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-700"
+                className="absolute right-3 top-1/2 z-[2] -translate-y-1/2 text-zinc-500 hover:text-zinc-700"
                 aria-label={t('login.password.toggle', 'Alternar visibilidade da senha')}
               >
                 {showPassword ? <EyeOff size={18} className="sm:w-5 sm:h-5" /> : <Eye size={18} className="sm:w-5 sm:h-5" />}

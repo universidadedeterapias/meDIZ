@@ -45,6 +45,7 @@ const messages = {
   'sidebar.subscriptionPlus': 'Suscripción Plus',
   'sidebar.supportWhatsapp': 'Soporte (WhatsApp)',
   'sidebar.termsPolicies': 'Términos y Políticas',
+  'sidebar.cursos': 'Cursos',
   'general.cancel': 'Cancelar',
   'general.confirm': 'Confirmar',
   'general.loading': 'Cargando...',

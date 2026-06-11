@@ -1,26 +1,11 @@
 import path from 'path'
-import { mkdir, writeFile } from 'fs/promises'
 import type { CatalogMediaItem } from '@/lib/catalog/types'
-import {
-  saveCatalogMediaFile,
-  isCloudinaryConfigured
-} from '@/lib/catalog/media-upload'
 
 export function ensureAudioterapiaFolderName(title: string): string {
   const trimmed = title.trim()
   if (!trimmed) return 'Audioterapia'
   if (/^audioterapia\s/i.test(trimmed)) return trimmed
   return `Audioterapia ${trimmed}`
-}
-
-function sanitizeFolderSegment(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[<>:"/\\|?*]+/g, '-')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 120)
 }
 
 function extractLeadingNumber(fileName: string): number {
@@ -85,62 +70,48 @@ export function buildMediaItemsFromRefs(
     }))
 }
 
-async function saveLocalAudioterapiaFile(
-  buffer: Buffer,
-  folderName: string,
-  originalName: string
-): Promise<string> {
-  const safeFolder = sanitizeFolderSegment(folderName)
-  const safeFile = originalName
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9._-]+/g, '-')
-    .replace(/-+/g, '-')
-    .slice(0, 120)
-
-  const relativeDir = path.join('biblioteca', 'audioterapias', safeFolder)
-  const absoluteDir = path.join(process.cwd(), 'public', relativeDir)
-  await mkdir(absoluteDir, { recursive: true })
-
-  const relativeFile = path.join(relativeDir, safeFile).split(path.sep).join('/')
-  await writeFile(path.join(process.cwd(), 'public', relativeFile), buffer)
-  return relativeFile
+function trackLocaleFromProduct(productLocale?: string | null): string | undefined {
+  const normalized = productLocale?.trim()
+  if (!normalized) return undefined
+  if (normalized === 'pt') return 'pt'
+  return normalized
 }
 
-export async function uploadAudioterapiaPackageFiles(
+export function buildAudioterapiaPackageFromUploads(
   folderTitle: string,
-  files: { name: string; buffer: Buffer }[]
-): Promise<{
+  uploads: { url: string; originalName: string }[],
+  productLocale?: string | null
+): {
   folderName: string
   mediaItems: CatalogMediaItem[]
   primaryMediaFileName: string
-}> {
-  const folderName = ensureAudioterapiaFolderName(folderTitle)
-  const refs: { mediaFileName: string; originalName: string }[] = []
-
-  for (const file of files) {
-    if (!/\.(mp3|mp4)$/i.test(file.name)) {
-      throw new Error(`Formato não suportado: ${file.name}. Use MP3 ou MP4.`)
-    }
-
-    let mediaFileName: string
-    if (isCloudinaryConfigured()) {
-      const result = await saveCatalogMediaFile(file.buffer, file.name, 'audio', {
-        audioterapiaFolder: folderName
-      })
-      mediaFileName = result.mediaRef
-    } else {
-      mediaFileName = await saveLocalAudioterapiaFile(
-        file.buffer,
-        folderName,
-        file.name
-      )
-    }
-
-    refs.push({ mediaFileName, originalName: file.name })
+} {
+  if (uploads.length === 0) {
+    throw new Error('Envie ao menos um arquivo MP3 ou MP4.')
   }
 
-  const mediaItems = buildMediaItemsFromRefs(refs)
+  for (const file of uploads) {
+    if (!/\.(mp3|mp4)$/i.test(file.originalName)) {
+      throw new Error(
+        `Formato não suportado: ${file.originalName}. Use MP3 ou MP4.`
+      )
+    }
+    if (!file.url?.trim()) {
+      throw new Error(`URL ausente para ${file.originalName}`)
+    }
+  }
+
+  const folderName = ensureAudioterapiaFolderName(folderTitle)
+  const refs = uploads.map((file) => ({
+    mediaFileName: file.url.trim(),
+    originalName: file.originalName
+  }))
+
+  const trackLocale = trackLocaleFromProduct(productLocale)
+  const mediaItems = buildMediaItemsFromRefs(refs).map((item) => ({
+    ...item,
+    ...(trackLocale ? { locale: trackLocale } : {})
+  }))
   const primaryMediaFileName =
     mediaItems[mediaItems.length - 1]?.mediaFileName ??
     refs[0]?.mediaFileName ??

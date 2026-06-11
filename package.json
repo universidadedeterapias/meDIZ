@@ -25,6 +25,7 @@
     "start-node": "node dist/index.js",
     "postinstall": "prisma generate --no-engine",
     "create-admin": "tsx src/scripts/create-admin.ts",
+    "grant:library-access": "tsx src/scripts/grant-library-access.ts",
     "ensure-admin": "node src/scripts/ensure-admin.js",
     "seed-popup": "tsx src/scripts/seed-popup-data.ts",
     "sync-hotmart-plans": "tsx src/scripts/sync-hotmart-plans.ts",
@@ -122,6 +123,8 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.9.0",
+    "@aws-sdk/client-s3": "^3.1065.0",
+    "@aws-sdk/s3-request-presigner": "^3.1065.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -192,6 +195,8 @@
     "@types/node": "^20.19.19",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cypress": "^13.15.0",
+    "cypress-mochawesome-reporter": "^4.0.2",
     "eslint": "^9.37.0",
     "eslint-config-next": "15.1.7",
     "eslint-plugin-react": "^7.37.5",
@@ -202,8 +207,6 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
-    "typescript-eslint": "^8.46.1",
-    "cypress": "^13.15.0",
-    "cypress-mochawesome-reporter": "^4.0.2"
+    "typescript-eslint": "^8.46.1"
   }
 }

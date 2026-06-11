@@ -30,7 +30,9 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import type { CatalogProductDto } from '@/lib/catalog/types'
+import { catalogLocaleLabel } from '@/lib/catalog/locale'
 import { stripAnsi } from '@/lib/catalog/prisma-errors'
+import { uploadArquivoR2 } from '@/lib/upload-r2'
 
 type FormState = {
   id: string | null
@@ -40,10 +42,12 @@ type FormState = {
   tagLabel: string
   coverImageUrl: string
   purchaseUrl: string
-  permissionKey: 'LIVRO_DIGITAL' | 'PDF' | 'AUDIOTERAPIA'
+  permissionKey: 'LIVRO_DIGITAL' | 'PDF' | 'VIDEO' | 'AUDIOTERAPIA'
+  locale: '' | 'pt' | 'en' | 'es'
   pdfIndex: string
   mediaFileName: string
   unlockedLabel: string
+  freeAccess: boolean
   sortOrder: string
   active: boolean
 }
@@ -57,9 +61,11 @@ const emptyForm = (): FormState => ({
   coverImageUrl: '',
   purchaseUrl: '',
   permissionKey: 'PDF',
+  locale: '',
   pdfIndex: '0',
   mediaFileName: '',
   unlockedLabel: '',
+  freeAccess: false,
   sortOrder: '0',
   active: true
 })
@@ -74,9 +80,11 @@ function productToForm(p: CatalogProductDto): FormState {
     coverImageUrl: p.coverImageUrl ?? '',
     purchaseUrl: p.purchaseUrl,
     permissionKey: p.permissionKey,
+    locale: (p.locale as FormState['locale']) ?? '',
     pdfIndex: String(p.pdfIndex),
     mediaFileName: p.mediaFileName ?? '',
     unlockedLabel: p.unlockedLabel ?? '',
+    freeAccess: p.freeAccess,
     sortOrder: String(p.sortOrder),
     active: p.active
   }
@@ -101,7 +109,7 @@ export default function AdminCatalogProductsPage() {
 
   const showError = (message: string) => setError(stripAnsi(message))
   const [filterSection, setFilterSection] = useState<
-    'ALL' | 'BIBLIOTECA' | 'AUDIOTERAPIA'
+    'ALL' | 'BIBLIOTECA' | 'AUDIOTERAPIA' | 'CURSOS'
   >('ALL')
   const [form, setForm] = useState<FormState>(emptyForm)
   const [editing, setEditing] = useState(false)
@@ -111,6 +119,7 @@ export default function AdminCatalogProductsPage() {
   const [importingMedia, setImportingMedia] = useState(false)
   const [uploadingMedia, setUploadingMedia] = useState(false)
   const [uploadingPackage, setUploadingPackage] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const packageInputRef = useRef<HTMLInputElement>(null)
 
   const loadMediaFiles = useCallback(async () => {
@@ -200,31 +209,27 @@ export default function AdminCatalogProductsPage() {
     loadMediaFiles()
   }, [load, loadMediaFiles])
 
-  const filtered = products.filter((p) =>
-    filterSection === 'ALL' ? true : p.section === filterSection
-  )
+  const filtered = products.filter((p) => {
+    if (filterSection === 'ALL') return true
+    if (filterSection === 'CURSOS') return p.permissionKey === 'VIDEO'
+    if (filterSection === 'BIBLIOTECA') {
+      return p.section === 'BIBLIOTECA' && p.permissionKey !== 'VIDEO'
+    }
+    return p.section === filterSection
+  })
 
   const handleUpload = async (file: File) => {
     setUploading(true)
+    setUploadProgress(0)
     setError(null)
     try {
-      const fd = new FormData()
-      fd.append('image', file)
-      const res = await fetch('/api/admin/catalog-products/upload', {
-        method: 'POST',
-        body: fd,
-        credentials: 'include'
-      })
-      const data = await readJsonResponse<{ error?: string; imageUrl?: string }>(
-        res
-      )
-      if (!res.ok) throw new Error(data?.error || 'Upload falhou')
-      if (!data?.imageUrl) throw new Error('Resposta sem URL da imagem')
-      setForm((f) => ({ ...f, coverImageUrl: data.imageUrl }))
+      const { url } = await uploadArquivoR2(file, setUploadProgress)
+      setForm((f) => ({ ...f, coverImageUrl: url }))
     } catch (e) {
       showError(e instanceof Error ? e.message : 'Erro no upload')
     } finally {
       setUploading(false)
+      setUploadProgress(0)
     }
   }
 
@@ -236,24 +241,36 @@ export default function AdminCatalogProductsPage() {
     }
 
     setUploadingPackage(true)
+    setUploadProgress(0)
     setError(null)
     try {
-      const fd = new FormData()
-      fd.append('title', form.title.trim())
-      if (form.id) fd.append('productId', form.id)
-      if (form.description.trim()) fd.append('description', form.description.trim())
-      if (form.purchaseUrl.trim()) fd.append('purchaseUrl', form.purchaseUrl.trim())
-      fd.append('replaceExisting', 'true')
-      for (const file of Array.from(fileList)) {
-        fd.append('files', file)
+      const files = Array.from(fileList)
+      const tracks: { url: string; originalName: string }[] = []
+
+      for (let index = 0; index < files.length; index++) {
+        const file = files[index]
+        const { url } = await uploadArquivoR2(file, (pct) => {
+          const overall = Math.round(((index + pct / 100) / files.length) * 100)
+          setUploadProgress(overall)
+        })
+        tracks.push({ url, originalName: file.name })
       }
 
       const res = await fetch(
         '/api/admin/catalog-products/upload-audioterapia-package',
         {
           method: 'POST',
-          body: fd,
-          credentials: 'include'
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            title: form.title.trim(),
+            productId: form.id,
+            description: form.description.trim() || null,
+            purchaseUrl: form.purchaseUrl.trim() || undefined,
+            replaceExisting: true,
+            locale: form.locale || null,
+            tracks
+          })
         }
       )
       const data = await readJsonResponse<{
@@ -286,45 +303,37 @@ export default function AdminCatalogProductsPage() {
       showError(e instanceof Error ? e.message : 'Erro ao enviar pasta de áudios')
     } finally {
       setUploadingPackage(false)
+      setUploadProgress(0)
     }
   }
 
   const handleUploadMedia = async (file: File) => {
     setUploadingMedia(true)
+    setUploadProgress(0)
     setError(null)
     try {
-      const kind = form.section === 'AUDIOTERAPIA' ? 'audio' : 'pdf'
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('kind', kind)
-      const res = await fetch('/api/admin/catalog-products/upload-media', {
-        method: 'POST',
-        body: fd,
-        credentials: 'include'
-      })
-      const data = await readJsonResponse<{
-        error?: string
-        mediaRef?: string
-      }>(res)
-      if (!res.ok) throw new Error(data?.error || 'Upload falhou')
-      if (!data?.mediaRef) throw new Error('Resposta sem referência do arquivo')
-      setForm((f) => ({ ...f, mediaFileName: data.mediaRef }))
+      const { url } = await uploadArquivoR2(file, setUploadProgress)
+      setForm((f) => ({ ...f, mediaFileName: url }))
     } catch (e) {
       showError(e instanceof Error ? e.message : 'Erro no upload do arquivo')
     } finally {
       setUploadingMedia(false)
+      setUploadProgress(0)
     }
   }
 
   const showProductMedia =
     form.section === 'AUDIOTERAPIA' ||
     form.permissionKey === 'PDF' ||
-    form.permissionKey === 'LIVRO_DIGITAL'
+    form.permissionKey === 'LIVRO_DIGITAL' ||
+    form.permissionKey === 'VIDEO'
 
   const mediaAccept =
     form.section === 'AUDIOTERAPIA'
       ? 'audio/mpeg,audio/mp3,video/mp4,.mp3,.mp4'
-      : 'application/pdf,.pdf'
+      : form.permissionKey === 'VIDEO'
+        ? 'video/mp4,.mp4'
+        : 'application/pdf,.pdf'
 
   const handleSave = async () => {
     setSaving(true)
@@ -338,9 +347,11 @@ export default function AdminCatalogProductsPage() {
         coverImageUrl: form.coverImageUrl || null,
         purchaseUrl: form.purchaseUrl,
         permissionKey: form.permissionKey,
+        locale: form.locale || null,
         pdfIndex: Number(form.pdfIndex) || 0,
         mediaFileName: form.mediaFileName.trim() || null,
         unlockedLabel: form.unlockedLabel || null,
+        freeAccess: form.freeAccess,
         sortOrder: Number(form.sortOrder) || 0,
         active: form.active
       }
@@ -401,8 +412,36 @@ export default function AdminCatalogProductsPage() {
   }
 
   const startCreate = (section: 'BIBLIOTECA' | 'AUDIOTERAPIA') => {
-    setForm({ ...emptyForm(), section })
+    setForm({
+      ...emptyForm(),
+      section,
+      permissionKey: section === 'AUDIOTERAPIA' ? 'AUDIOTERAPIA' : 'PDF'
+    })
     setEditing(true)
+  }
+
+  const startCreateVideo = () => {
+    setForm({
+      ...emptyForm(),
+      section: 'BIBLIOTECA',
+      permissionKey: 'VIDEO',
+      tagLabel: 'Vídeo',
+      unlockedLabel: 'Assistir vídeo'
+    })
+    setEditing(true)
+  }
+
+  function permissionLabel(key: CatalogProductDto['permissionKey']): string {
+    switch (key) {
+      case 'LIVRO_DIGITAL':
+        return 'Livro digital'
+      case 'PDF':
+        return 'PDF'
+      case 'VIDEO':
+        return 'Vídeo'
+      case 'AUDIOTERAPIA':
+        return 'Audioterapia'
+    }
   }
 
   const startEdit = (p: CatalogProductDto) => {
@@ -416,8 +455,8 @@ export default function AdminCatalogProductsPage() {
         <div>
           <h1 className="text-xl font-bold sm:text-2xl">Produtos do catálogo</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Gerencie título, capa e link de compra exibidos em Biblioteca e
-            Audioterapia.
+            Gerencie título, capa e link de compra em Biblioteca (PDF, livro),
+            Cursos (vídeos) e Audioterapia (áudios).
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -428,6 +467,15 @@ export default function AdminCatalogProductsPage() {
           >
             <Plus className="mr-1 h-4 w-4" />
             Biblioteca
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-indigo-300 text-indigo-800 hover:bg-indigo-50"
+            onClick={startCreateVideo}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            Curso (vídeo)
           </Button>
           <Button
             size="sm"
@@ -459,10 +507,25 @@ export default function AdminCatalogProductsPage() {
         </div>
       )}
 
+      {uploadProgress > 0 && uploadProgress < 100 && (
+        <div className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">
+          <div className="mb-2 flex justify-between text-xs">
+            <span>Enviando para o R2…</span>
+            <span>{uploadProgress}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-violet-100">
+            <div
+              className="h-full rounded-full bg-violet-600 transition-all"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2">
-            {(['ALL', 'BIBLIOTECA', 'AUDIOTERAPIA'] as const).map((s) => (
+            {(['ALL', 'BIBLIOTECA', 'CURSOS', 'AUDIOTERAPIA'] as const).map((s) => (
               <Button
                 key={s}
                 size="sm"
@@ -473,7 +536,9 @@ export default function AdminCatalogProductsPage() {
                   ? 'Todos'
                   : s === 'BIBLIOTECA'
                     ? 'Biblioteca'
-                    : 'Audioterapia'}
+                    : s === 'CURSOS'
+                      ? 'Cursos'
+                      : 'Audioterapia'}
               </Button>
             ))}
           </div>
@@ -514,11 +579,25 @@ export default function AdminCatalogProductsPage() {
                       {!p.active && (
                         <Badge variant="secondary">Inativo</Badge>
                       )}
+                      {p.freeAccess && (
+                        <Badge className="bg-emerald-600 hover:bg-emerald-600">
+                          Gratuito
+                        </Badge>
+                      )}
                       <Badge variant="outline">{p.section}</Badge>
+                      {p.permissionKey === 'VIDEO' && (
+                        <Badge className="bg-indigo-600 hover:bg-indigo-600">
+                          Vídeo
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                      {p.tagLabel} · {p.permissionKey}
+                      {p.freeAccess ? 'Acesso gratuito' : 'Requer liberação'} ·{' '}
+                      {p.tagLabel} · {permissionLabel(p.permissionKey)}
                       {p.permissionKey === 'PDF' ? ` #${p.pdfIndex}` : ''}
+                      {p.locale
+                        ? ` · ${catalogLocaleLabel(p.locale as 'pt' | 'en' | 'es')}`
+                        : ''}
                       {p.section === 'AUDIOTERAPIA' && p.mediaFileName
                         ? ` · ${p.mediaFileName}`
                         : ''}
@@ -554,9 +633,9 @@ export default function AdminCatalogProductsPage() {
               {form.id ? 'Editar produto' : 'Novo produto'}
             </CardTitle>
             <CardDescription>
-              A permissão define quando o botão vira &quot;Acessar&quot; (via
-              Hotmart/n8n). O link de compra é usado em &quot;Desbloquear
-              acesso&quot;.
+              Escolha se o conteúdo é gratuito para todos os usuários logados ou
+              se exige liberação via Hotmart/n8n. A permissão indica qual bônus
+              desbloqueia o produto quando o acesso não é gratuito.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -571,12 +650,19 @@ export default function AdminCatalogProductsPage() {
                     <Label>Seção</Label>
                     <Select
                       value={form.section}
-                      onValueChange={(v) =>
+                      onValueChange={(v) => {
+                        const section = v as FormState['section']
                         setForm((f) => ({
                           ...f,
-                          section: v as FormState['section']
+                          section,
+                          permissionKey:
+                            section === 'AUDIOTERAPIA'
+                              ? 'AUDIOTERAPIA'
+                              : f.permissionKey === 'AUDIOTERAPIA'
+                                ? 'PDF'
+                                : f.permissionKey
                         }))
-                      }
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -589,29 +675,101 @@ export default function AdminCatalogProductsPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Permissão (liberação)</Label>
-                    <Select
-                      value={form.permissionKey}
-                      onValueChange={(v) =>
-                        setForm((f) => ({
-                          ...f,
-                          permissionKey: v as FormState['permissionKey']
-                        }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="LIVRO_DIGITAL">
-                          Livro digital
-                        </SelectItem>
-                        <SelectItem value="PDF">PDF</SelectItem>
-                        <SelectItem value="AUDIOTERAPIA">
-                          Audioterapia
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {form.section === 'AUDIOTERAPIA' ? (
+                      <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted/40 px-3 text-sm text-foreground">
+                        Audioterapia
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          (fixo para esta seção)
+                        </span>
+                      </div>
+                    ) : (
+                      <Select
+                        value={form.permissionKey}
+                        onValueChange={(v) =>
+                          setForm((f) => ({
+                            ...f,
+                            permissionKey: v as FormState['permissionKey']
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Escolha o bônus Hotmart" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="LIVRO_DIGITAL">
+                            Livro digital
+                          </SelectItem>
+                          <SelectItem value="PDF">PDF</SelectItem>
+                          <SelectItem value="VIDEO">Vídeo (Cursos)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      {form.section === 'AUDIOTERAPIA'
+                        ? 'Desbloqueia com a permissão audioterapia enviada pelo n8n/Hotmart.'
+                        : form.permissionKey === 'VIDEO'
+                          ? 'Desbloqueia com a mesma permissão de PDF (bônus da biblioteca).'
+                          : 'Define qual bônus da compra libera este conteúdo.'}
+                    </p>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Idioma do conteúdo</Label>
+                  <Select
+                    value={form.locale || 'ALL'}
+                    onValueChange={(v) =>
+                      setForm((f) => ({
+                        ...f,
+                        locale:
+                          v === 'ALL' ? '' : (v as FormState['locale'])
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">Todos os idiomas</SelectItem>
+                      <SelectItem value="pt">Português (BR e PT)</SelectItem>
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="es">Español</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Se escolher um idioma, o produto só aparece para clientes com
+                    o mesmo idioma no seletor do app.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Modo de acesso</Label>
+                  <Select
+                    value={form.freeAccess ? 'FREE' : 'PERMISSION'}
+                    onValueChange={(v) =>
+                      setForm((f) => ({
+                        ...f,
+                        freeAccess: v === 'FREE'
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PERMISSION">
+                        Requer liberação (bônus Hotmart)
+                      </SelectItem>
+                      <SelectItem value="FREE">
+                        Gratuito para todos (usuários logados)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {form.freeAccess
+                      ? 'Qualquer usuário logado pode abrir o conteúdo, sem liberação no banco.'
+                      : 'Só quem recebeu a permissão correspondente via webhook/n8n pode acessar.'}
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -681,9 +839,9 @@ export default function AdminCatalogProductsPage() {
                   <div className="space-y-2 rounded-lg border border-dashed border-violet-200 bg-violet-50/30 p-3 dark:border-violet-900 dark:bg-violet-950/20">
                     <Label htmlFor="mediaFileName">Arquivo do produto</Label>
                     <p className="text-xs text-muted-foreground">
-                      Envie MP3/MP4 (audioterapia) ou PDF (biblioteca). Com Cloudinary
-                      no .env funciona em produção; sem Cloudinary salva em{' '}
-                      <code className="text-[11px]">public/biblioteca/</code> (só local).
+                      Envie MP3/MP4 (audioterapia), PDF ou MP4 vídeo (biblioteca).
+                      O arquivo vai direto ao Cloudflare R2 e a URL pública é salva
+                      no produto.
                     </p>
                     {form.mediaFileName && (
                       <p className="break-all text-xs text-violet-800 dark:text-violet-200">
@@ -699,11 +857,7 @@ export default function AdminCatalogProductsPage() {
                             ? 'audioterapia-media-files'
                             : undefined
                         }
-                        placeholder={
-                          form.section === 'AUDIOTERAPIA'
-                            ? 'caminho local ou URL após upload'
-                            : 'URL ou caminho do PDF'
-                        }
+                        placeholder="URL pública após upload"
                         value={form.mediaFileName}
                         onChange={(e) =>
                           setForm((f) => ({
@@ -782,11 +936,8 @@ export default function AdminCatalogProductsPage() {
                             Enviar pasta com vários áudios
                           </Button>
                           <p className="text-xs text-muted-foreground">
-                            Ou coloque as pastas em{' '}
-                            <code className="text-[11px]">
-                              public/biblioteca/audioterapias/
-                            </code>{' '}
-                            e use &quot;Importar MP4 da pasta&quot;.
+                            Cada áudio vai direto ao Cloudflare R2; as URLs ficam
+                            salvas neste produto.
                           </p>
                         </div>
                       </>
@@ -807,7 +958,7 @@ export default function AdminCatalogProductsPage() {
                       }
                     />
                     <p className="text-xs text-muted-foreground">
-                      Legado: índice dos PDFs em public/biblioteca/pdf/. Prefira
+                      Usado quando há vários PDFs com a mesma permissão. Prefira
                       enviar o PDF acima.
                     </p>
                   </div>
@@ -828,7 +979,7 @@ export default function AdminCatalogProductsPage() {
                   )}
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <Input
-                      placeholder="https://... ou /catalog/arquivo.jpg"
+                      placeholder="URL pública da capa após upload"
                       value={form.coverImageUrl}
                       onChange={(e) =>
                         setForm((f) => ({

@@ -7,6 +7,7 @@ import { Headphones, Loader2, Lock } from 'lucide-react'
 import Image from 'next/image'
 import { AppSidebar } from '@/components/app-sidebar'
 import type { CatalogProductOffer } from '@/lib/catalog/types'
+import { filterMediaItemsForUserLanguage } from '@/lib/catalog/locale'
 import { groupMediaItemsByLocale } from '@/lib/catalog/media-items'
 import { Button } from '@/components/ui/button'
 import { AppPageHeader } from '@/components/navigation/AppPageHeader'
@@ -19,7 +20,7 @@ export default function AudioterapiaProductPage() {
   const params = useParams()
   const productId = String(params.productId ?? '')
   const { status } = useSession()
-  const { t } = useTranslation()
+  const { t, language } = useTranslation()
   const [product, setProduct] = useState<CatalogProductOffer | null>(null)
   const [loading, setLoading] = useState(true)
   const [openingTrack, setOpeningTrack] = useState<number | null>(null)
@@ -55,30 +56,14 @@ export default function AudioterapiaProductPage() {
     }
   }, [status, router, loadProduct])
 
-  const openTrack = async (sortOrder: number) => {
+  const openTrack = (sortOrder: number) => {
     if (!product?.unlocked) {
-      window.open(product?.purchaseUrl, '_blank', 'noopener,noreferrer')
+      window.open(product.purchaseUrl, '_blank', 'noopener,noreferrer')
       return
     }
-
     setOpeningTrack(sortOrder)
-    try {
-      const res = await apiFetch(
-        `/api/catalog/products/${productId}/media?index=${sortOrder}`,
-        { cache: 'no-store' }
-      )
-      if (!res.ok) throw new Error('access_failed')
-      const data = await res.json()
-      if (data.url) {
-        window.open(data.url, '_blank', 'noopener,noreferrer')
-      }
-    } catch {
-      alert(
-        t('audioterapia.error.open', 'Não foi possível abrir a audioterapia.')
-      )
-    } finally {
-      setOpeningTrack(null)
-    }
+    router.push(`/audioterapia/${productId}/play?index=${sortOrder}`)
+    setOpeningTrack(null)
   }
 
   if (status === 'loading' || loading) {
@@ -105,7 +90,10 @@ export default function AudioterapiaProductPage() {
     )
   }
 
-  const tracks = product.mediaItems ?? []
+  const tracks = filterMediaItemsForUserLanguage(
+    product.mediaItems ?? [],
+    language
+  )
   const groups = groupMediaItemsByLocale(tracks)
   const trackCount = tracks.length
 
