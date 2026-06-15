@@ -33,6 +33,8 @@ import type { CatalogProductDto } from '@/lib/catalog/types'
 import { catalogLocaleLabel } from '@/lib/catalog/locale'
 import { stripAnsi } from '@/lib/catalog/prisma-errors'
 import { uploadArquivoR2 } from '@/lib/upload-r2'
+import { CourseMediaEditor } from '@/components/admin/CourseMediaEditor'
+import type { CatalogMediaItem } from '@/lib/catalog/types'
 
 type FormState = {
   id: string | null
@@ -46,6 +48,12 @@ type FormState = {
   locale: '' | 'pt' | 'en' | 'es'
   pdfIndex: string
   mediaFileName: string
+  mediaItems: CatalogMediaItem[]
+  hotmartProductId: string
+  extraHotmartProductIdsText: string
+  stoneProductId: string
+  paymentProvider: 'HOTMART' | 'STONE' | 'FREE'
+  grantsProductIds: string[]
   unlockedLabel: string
   freeAccess: boolean
   sortOrder: string
@@ -64,6 +72,12 @@ const emptyForm = (): FormState => ({
   locale: '',
   pdfIndex: '0',
   mediaFileName: '',
+  mediaItems: [],
+  hotmartProductId: '',
+  extraHotmartProductIdsText: '',
+  stoneProductId: '',
+  paymentProvider: 'HOTMART',
+  grantsProductIds: [],
   unlockedLabel: '',
   freeAccess: false,
   sortOrder: '0',
@@ -83,6 +97,12 @@ function productToForm(p: CatalogProductDto): FormState {
     locale: (p.locale as FormState['locale']) ?? '',
     pdfIndex: String(p.pdfIndex),
     mediaFileName: p.mediaFileName ?? '',
+    mediaItems: p.mediaItems ?? [],
+    hotmartProductId: p.hotmartProductId ?? '',
+    extraHotmartProductIdsText: (p.extraHotmartProductIds ?? []).join(', '),
+    stoneProductId: p.stoneProductId ?? '',
+    paymentProvider: p.paymentProvider ?? 'HOTMART',
+    grantsProductIds: p.grantsProductIds ?? [],
     unlockedLabel: p.unlockedLabel ?? '',
     freeAccess: p.freeAccess,
     sortOrder: String(p.sortOrder),
@@ -350,6 +370,18 @@ export default function AdminCatalogProductsPage() {
         locale: form.locale || null,
         pdfIndex: Number(form.pdfIndex) || 0,
         mediaFileName: form.mediaFileName.trim() || null,
+        mediaItems:
+          form.permissionKey === 'VIDEO' && form.mediaItems.length > 0
+            ? form.mediaItems
+            : null,
+        hotmartProductId: form.hotmartProductId.trim() || null,
+        extraHotmartProductIds: form.extraHotmartProductIdsText
+          .split(/[,;\s]+/)
+          .map((id) => id.trim())
+          .filter(Boolean),
+        stoneProductId: form.stoneProductId.trim() || null,
+        paymentProvider: form.freeAccess ? 'FREE' : form.paymentProvider,
+        grantsProductIds: form.grantsProductIds,
         unlockedLabel: form.unlockedLabel || null,
         freeAccess: form.freeAccess,
         sortOrder: Number(form.sortOrder) || 0,
@@ -587,8 +619,12 @@ export default function AdminCatalogProductsPage() {
                       <Badge variant="outline">{p.section}</Badge>
                       {p.permissionKey === 'VIDEO' && (
                         <Badge className="bg-indigo-600 hover:bg-indigo-600">
-                          Vídeo
+                          Curso
+                          {p.stoneProductId ? ` · Stone ${p.stoneProductId}` : ''}
                         </Badge>
+                      )}
+                      {p.hotmartProductId && (
+                        <Badge variant="outline">Hotmart {p.hotmartProductId}</Badge>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
@@ -708,7 +744,7 @@ export default function AdminCatalogProductsPage() {
                       {form.section === 'AUDIOTERAPIA'
                         ? 'Desbloqueia com a permissão audioterapia enviada pelo n8n/Hotmart.'
                         : form.permissionKey === 'VIDEO'
-                          ? 'Desbloqueia com a mesma permissão de PDF (bônus da biblioteca).'
+                          ? 'Liberação via Stone: cadastre o ID do produto abaixo e configure o webhook /api/stone/webhook.'
                           : 'Define qual bônus da compra libera este conteúdo.'}
                     </p>
                   </div>
@@ -768,7 +804,9 @@ export default function AdminCatalogProductsPage() {
                   <p className="text-xs text-muted-foreground">
                     {form.freeAccess
                       ? 'Qualquer usuário logado pode abrir o conteúdo, sem liberação no banco.'
-                      : 'Só quem recebeu a permissão correspondente via webhook/n8n pode acessar.'}
+                      : form.permissionKey === 'VIDEO'
+                        ? 'Só quem comprou na Stone (webhook) ou tem acesso gratuito pode ver o curso.'
+                        : 'Só quem recebeu a permissão correspondente via webhook/n8n pode acessar.'}
                   </p>
                 </div>
 
@@ -823,11 +861,19 @@ export default function AdminCatalogProductsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="purchaseUrl">Link de compra (Hotmart) *</Label>
+                  <Label htmlFor="purchaseUrl">
+                    {form.permissionKey === 'VIDEO'
+                      ? 'Link de compra (Stone / checkout) *'
+                      : 'Link de compra (Hotmart) *'}
+                  </Label>
                   <Input
                     id="purchaseUrl"
                     type="url"
-                    placeholder="https://pay.hotmart.com/..."
+                    placeholder={
+                      form.permissionKey === 'VIDEO'
+                        ? 'https://...'
+                        : 'https://pay.hotmart.com/...'
+                    }
                     value={form.purchaseUrl}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, purchaseUrl: e.target.value }))
@@ -835,7 +881,139 @@ export default function AdminCatalogProductsPage() {
                   />
                 </div>
 
-                {showProductMedia && (
+                {!form.freeAccess && (
+                  <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 dark:border-emerald-900 dark:bg-emerald-950/20">
+                    <Label>Pagamento e liberação (webhook)</Label>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Provedor</Label>
+                        <Select
+                          value={form.paymentProvider}
+                          onValueChange={(v) =>
+                            setForm((f) => ({
+                              ...f,
+                              paymentProvider: v as FormState['paymentProvider']
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="HOTMART">Hotmart</SelectItem>
+                            <SelectItem value="STONE">Stone</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {form.paymentProvider === 'HOTMART' ? (
+                        <>
+                          <div className="space-y-2">
+                            <Label htmlFor="hotmartProductId">ID Hotmart</Label>
+                            <Input
+                              id="hotmartProductId"
+                              placeholder="Ex.: 6652189"
+                              value={form.hotmartProductId}
+                              onChange={(e) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  hotmartProductId: e.target.value
+                                }))
+                              }
+                            />
+                          </div>
+                          <div className="space-y-2 sm:col-span-2">
+                            <Label htmlFor="extraHotmartProductIds">
+                              IDs Hotmart extras
+                            </Label>
+                            <Input
+                              id="extraHotmartProductIds"
+                              placeholder="Ex.: 6667092 (físico → mesmo produto)"
+                              value={form.extraHotmartProductIdsText}
+                              onChange={(e) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  extraHotmartProductIdsText: e.target.value
+                                }))
+                              }
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Vários IDs para o mesmo card, separados por vírgula.
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="space-y-2">
+                          <Label htmlFor="stoneProductId">ID Stone</Label>
+                          <Input
+                            id="stoneProductId"
+                            placeholder="SKU / código Stone"
+                            value={form.stoneProductId}
+                            onChange={(e) =>
+                              setForm((f) => ({
+                                ...f,
+                                stoneProductId: e.target.value
+                              }))
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Ao comprar, também libera</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Marque os produtos extras liberados nesta compra.
+                      </p>
+                      <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border bg-background p-2 text-sm">
+                        {products
+                          .filter((p) => p.id !== form.id)
+                          .map((p) => {
+                            const checked = form.grantsProductIds.includes(p.id)
+                            return (
+                              <li key={p.id}>
+                                <label className="flex cursor-pointer items-start gap-2">
+                                  <input
+                                    type="checkbox"
+                                    className="mt-1"
+                                    checked={checked}
+                                    onChange={() => {
+                                      setForm((f) => ({
+                                        ...f,
+                                        grantsProductIds: checked
+                                          ? f.grantsProductIds.filter(
+                                              (id) => id !== p.id
+                                            )
+                                          : [...f.grantsProductIds, p.id]
+                                      }))
+                                    }}
+                                  />
+                                  <span>
+                                    {p.title}
+                                    {p.locale
+                                      ? ` · ${catalogLocaleLabel(p.locale as 'pt' | 'en' | 'es')}`
+                                      : ''}
+                                  </span>
+                                </label>
+                              </li>
+                            )
+                          })}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                {form.permissionKey === 'VIDEO' ? (
+                  <CourseMediaEditor
+                    mediaItems={form.mediaItems}
+                    onChange={(items) =>
+                      setForm((f) => ({ ...f, mediaItems: items }))
+                    }
+                    onPrimaryVideoChange={(url) =>
+                      setForm((f) => ({ ...f, mediaFileName: url }))
+                    }
+                  />
+                ) : null}
+
+                {showProductMedia && form.permissionKey !== 'VIDEO' && (
                   <div className="space-y-2 rounded-lg border border-dashed border-violet-200 bg-violet-50/30 p-3 dark:border-violet-900 dark:bg-violet-950/20">
                     <Label htmlFor="mediaFileName">Arquivo do produto</Label>
                     <p className="text-xs text-muted-foreground">

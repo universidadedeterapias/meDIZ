@@ -16,6 +16,12 @@ import {
 import { resolveLibraryLocale } from '@/lib/library/locale'
 import { serveLibraryContent } from '@/lib/library/serveContent'
 import { protectMediaPayload } from '@/lib/library/protect-media-url'
+import { getProductEntitlementIdsForUser } from '@/lib/purchases/entitlements'
+import {
+  listCourseMaterials,
+  pickCourseMedia
+} from '@/lib/catalog/course-media'
+import type { CourseMediaKind } from '@/lib/catalog/types'
 import { requireUser } from '@/lib/requireAuth'
 
 export const dynamic = 'force-dynamic'
@@ -28,6 +34,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   const { id } = await context.params
   const indexParam = request.nextUrl.searchParams.get('index')
+  const kindParam = request.nextUrl.searchParams.get('kind')
+  const listAll = request.nextUrl.searchParams.get('list') === '1'
 
   const product = await prisma.catalogProduct.findUnique({
     where: { id },
@@ -40,7 +48,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
       mediaFileName: true,
       mediaItems: true,
       pdfIndex: true,
-      freeAccess: true
+      freeAccess: true,
+      paymentProvider: true
     }
   })
 
@@ -52,16 +61,26 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const contentKey = permissionKeyToLib(product.permissionKey)
 
   if (!isFree) {
-    try {
-      await assertLibraryContentAccess(auth.user, contentKey)
-    } catch (e) {
-      if (e instanceof LibraryAccessError) {
-        return NextResponse.json(
-          { error: 'NO_PERMISSION_FOR_THIS_CONTENT' },
-          { status: 403 }
-        )
+    const entitled = await getProductEntitlementIdsForUser(auth.user)
+    if (entitled.has(id)) {
+      // entitlement granular — ok
+    } else if (product.permissionKey === 'VIDEO' || product.paymentProvider === 'STONE') {
+      return NextResponse.json(
+        { error: 'NO_PERMISSION_FOR_THIS_CONTENT' },
+        { status: 403 }
+      )
+    } else {
+      try {
+        await assertLibraryContentAccess(auth.user, contentKey)
+      } catch (e) {
+        if (e instanceof LibraryAccessError) {
+          return NextResponse.json(
+            { error: 'NO_PERMISSION_FOR_THIS_CONTENT' },
+            { status: 403 }
+          )
+        }
+        throw e
       }
-      throw e
     }
   }
 
@@ -80,6 +99,97 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const items = allItems
     ? filterMediaItemsForUserLanguage(allItems, language)
     : null
+
+  const resolveMediaRef = (
+    mediaRef: string,
+    mediaKind?: 'video' | 'pdf'
+  ): NextResponse | null => {
+    if (!mediaRef?.trim()) return null
+    const resolved = resolveProductMediaUrl(
+      product.permissionKey,
+      mediaRef,
+      locale,
+      baseUrl
+    )
+    if (!resolved) return null
+    const body = protectMediaPayload(
+      {
+        url: resolved.url,
+        locale: resolved.locale,
+        ...(mediaKind ? { mediaKind } : {})
+      },
+      auth.user.id,
+      {
+        productId: id,
+        permission: permissionKeyToLib(product.permissionKey),
+        freeAccess: isFree
+      }
+    )
+    return NextResponse.json(body, {
+      headers: { 'Cache-Control': 'no-store' }
+    })
+  }
+
+  if (product.permissionKey === 'VIDEO') {
+    if (listAll) {
+      const materials = listCourseMaterials(
+        allItems,
+        language,
+        product.mediaFileName
+      )
+      const videoRes = materials.video
+        ? resolveProductMediaUrl(
+            'VIDEO',
+            materials.video.mediaFileName,
+            locale,
+            baseUrl
+          )
+        : null
+      const pdfRes = materials.pdf
+        ? resolveProductMediaUrl(
+            'PDF',
+            materials.pdf.mediaFileName,
+            locale,
+            baseUrl
+          )
+        : null
+
+      return NextResponse.json(
+        {
+          locale,
+          video: videoRes
+            ? { url: videoRes.url, title: materials.video?.title }
+            : null,
+          pdf: pdfRes
+            ? { url: pdfRes.url, title: materials.pdf?.title }
+            : null
+        },
+        { headers: { 'Cache-Control': 'no-store' } }
+      )
+    }
+
+    const courseKind: CourseMediaKind =
+      kindParam === 'pdf' ? 'pdf' : 'video'
+    const picked = pickCourseMedia(
+      allItems,
+      language,
+      courseKind,
+      product.mediaFileName
+    )
+    if (picked) {
+      const response = resolveMediaRef(
+        picked.mediaFileName,
+        courseKind === 'pdf' ? 'pdf' : 'video'
+      )
+      if (response) return response
+    }
+
+    return NextResponse.json(
+      { error: 'CONTENT_NOT_AVAILABLE', locale },
+      { status: 404 }
+    )
+  }
+
   let mediaRef = product.mediaFileName
 
   if (indexParam !== null && items?.length) {
@@ -92,32 +202,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   if (mediaRef?.trim()) {
-    const resolved = resolveProductMediaUrl(
-      product.permissionKey,
-      mediaRef,
-      locale,
-      baseUrl
-    )
-    if (resolved) {
-      const mediaKind =
-        product.permissionKey === 'VIDEO' ? 'video' : undefined
-      const body = protectMediaPayload(
-        {
-          url: resolved.url,
-          locale: resolved.locale,
-          ...(mediaKind ? { mediaKind } : {})
-        },
-        auth.user.id,
-        {
-          productId: id,
-          permission: permissionKeyToLib(product.permissionKey),
-          freeAccess: isFree
-        }
-      )
-      return NextResponse.json(body, {
-        headers: { 'Cache-Control': 'no-store' }
-      })
-    }
+    const response = resolveMediaRef(mediaRef, undefined)
+    if (response) return response
   }
 
   if (product.permissionKey === 'AUDIOTERAPIA') {

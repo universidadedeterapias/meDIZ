@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
 import {
-  ChevronLeft,
   Headphones,
   Loader2,
   Pause,
@@ -15,6 +13,7 @@ import {
   SkipForward,
   Video
 } from 'lucide-react'
+import { PageBackButton } from '@/components/navigation/PageBackButton'
 import { Button } from '@/components/ui/button'
 import { formatMediaTime } from '@/lib/format-media-time'
 
@@ -177,17 +176,8 @@ export function AudioterapiaPlayer({
         />
       ) : null}
 
-      <header className="flex items-center justify-between px-4 pb-2 pt-4 sm:px-6">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 rounded-full bg-white/70 text-violet-700 shadow-sm hover:bg-white"
-          asChild
-        >
-          <Link href={backHref} aria-label="Voltar">
-            <ChevronLeft className="h-5 w-5" />
-          </Link>
-        </Button>
+      <header className="flex items-center justify-between gap-2 px-3 pb-2 pt-3 sm:px-6 sm:pt-4">
+        <PageBackButton href={backHref} showLabel className="shadow-sm" />
         <p className="text-lg font-bold tracking-tight">
           <span className="text-violet-600">me</span>
           <span className="text-indigo-600">DIZ</span>

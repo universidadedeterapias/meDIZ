@@ -6,6 +6,7 @@ import {
   isCatalogListSection
 } from '@/lib/catalog/sections'
 import { listCatalogProducts } from '@/lib/catalog/products'
+import { getProductEntitlementIdsForUser } from '@/lib/purchases/entitlements'
 import { getLibraryPermissionsForUser } from '@/lib/library/permissions'
 import { mapProductsToOffers } from '@/lib/catalog/products'
 import { requireUser } from '@/lib/requireAuth'
@@ -44,10 +45,17 @@ export async function GET(request: NextRequest) {
     section
   )
   const permissoes = await getLibraryPermissionsForUser(auth.user)
+  const productEntitlements = await getProductEntitlementIdsForUser(auth.user)
 
   const lockedLabel = 'Desbloquear acesso'
   const language = await getCurrentLanguage()
-  const offers = mapProductsToOffers(products, permissoes, lockedLabel).filter(
+  const offers = mapProductsToOffers(
+    products,
+    permissoes,
+    lockedLabel,
+    undefined,
+    productEntitlements
+  ).filter(
     (product) => productMatchesUserLanguage(product.locale, language)
   )
 

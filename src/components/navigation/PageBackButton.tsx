@@ -1,6 +1,7 @@
 'use client'
 
 import { ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { useTranslation } from '@/i18n/useTranslation'
@@ -9,16 +10,42 @@ import { cn } from '@/lib/utils'
 export type PageBackButtonProps = {
   /** Destino quando não há histórico no navegador */
   fallbackHref?: string
+  /** Link direto (sem router.back) */
+  href?: string
   className?: string
   variant?: 'ghost' | 'outline' | 'secondary'
+  /** Exibe o texto "Voltar" — padrão true para melhor visibilidade no mobile */
   showLabel?: boolean
+}
+
+const backButtonClassName = cn(
+  'shrink-0 gap-1.5 border-indigo-300/80 bg-background font-semibold text-indigo-800 shadow-md',
+  'hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-950',
+  'dark:border-indigo-600 dark:bg-card dark:text-indigo-100 dark:hover:bg-indigo-950/70',
+  'min-h-10 min-w-10'
+)
+
+function BackContent({
+  label,
+  showLabel
+}: {
+  label: string
+  showLabel: boolean
+}) {
+  return (
+    <>
+      <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
+      {showLabel ? <span className="text-sm leading-none">{label}</span> : null}
+    </>
+  )
 }
 
 export function PageBackButton({
   fallbackHref = '/chat',
+  href,
   className,
-  variant = 'ghost',
-  showLabel = false
+  variant = 'outline',
+  showLabel = true
 }: PageBackButtonProps) {
   const router = useRouter()
   const { t } = useTranslation()
@@ -32,20 +59,34 @@ export function PageBackButton({
     }
   }
 
+  const size = showLabel ? 'sm' : 'icon'
+  const classes = cn(backButtonClassName, showLabel ? 'px-3' : '', className)
+
+  if (href) {
+    return (
+      <Button
+        asChild
+        variant={variant}
+        size={size}
+        className={classes}
+      >
+        <Link href={href} aria-label={label}>
+          <BackContent label={label} showLabel={showLabel} />
+        </Link>
+      </Button>
+    )
+  }
+
   return (
     <Button
       type="button"
       variant={variant}
-      size={showLabel ? 'sm' : 'icon'}
+      size={size}
       onClick={handleBack}
-      className={cn(
-        'shrink-0 text-indigo-700 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-indigo-950/50',
-        className
-      )}
+      className={classes}
       aria-label={label}
     >
-      <ArrowLeft className="h-4 w-4" />
-      {showLabel ? <span className="ml-1">{label}</span> : null}
+      <BackContent label={label} showLabel={showLabel} />
     </Button>
   )
 }

@@ -1,4 +1,4 @@
-import type { CatalogSection } from '@prisma/client'
+import type { CatalogSection, PaymentProvider } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { BIBLIOTECA_CATALOG } from '@/lib/library/productCatalog'
 import {
@@ -13,7 +13,10 @@ import type { LibraryPermissoes } from '@/lib/library/permissions'
 
 const PLACEHOLDER_COVER = '/catalog/placeholder.svg'
 
-export function serializeProduct(row: {
+import { loadGrantsProductIds } from '@/lib/purchases/catalog-grants'
+import { loadExtraHotmartProductIds } from '@/lib/purchases/catalog-external-ids'
+
+export type CatalogProductRowInput = {
   id: string
   section: CatalogSection
   title: string
@@ -26,11 +29,18 @@ export function serializeProduct(row: {
   pdfIndex: number
   mediaFileName: string | null
   mediaItems: unknown
+  stoneProductId?: string | null
+  hotmartProductId?: string | null
+  extraHotmartProductIds?: string[]
+  paymentProvider?: PaymentProvider
+  grantsProductIds?: string[]
   unlockedLabel: string | null
   freeAccess: boolean
   sortOrder: number
   active: boolean
-}): CatalogProductDto {
+}
+
+export function serializeProduct(row: CatalogProductRowInput): CatalogProductDto {
   return {
     id: row.id,
     section: row.section,
@@ -44,6 +54,11 @@ export function serializeProduct(row: {
     pdfIndex: row.pdfIndex,
     mediaFileName: row.mediaFileName,
     mediaItems: parseMediaItems(row.mediaItems),
+    stoneProductId: row.stoneProductId ?? null,
+    hotmartProductId: row.hotmartProductId ?? null,
+    extraHotmartProductIds: row.extraHotmartProductIds ?? [],
+    paymentProvider: row.paymentProvider ?? 'HOTMART',
+    grantsProductIds: row.grantsProductIds ?? [],
     unlockedLabel: row.unlockedLabel,
     freeAccess: row.freeAccess,
     sortOrder: row.sortOrder,
@@ -71,6 +86,7 @@ export async function seedCatalogProductsIfEmpty(): Promise<void> {
       entry.permissionKey === 'livro_digital'
         ? ('LIVRO_DIGITAL' as const)
         : ('PDF' as const),
+    locale: 'pt' as const,
     pdfIndex: entry.pdfIndex ?? 0,
     unlockedLabel: entry.unlockedLabelFallback,
     sortOrder: index,
@@ -96,7 +112,17 @@ export async function listCatalogProducts(options: {
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
   })
 
-  return rows.map(serializeProduct)
+  const serialized = await Promise.all(
+    rows.map(async (row) => {
+      const [grantsProductIds, extraHotmartProductIds] = await Promise.all([
+        loadGrantsProductIds(row.id),
+        loadExtraHotmartProductIds(row.id)
+      ])
+      return serializeProduct({ ...row, grantsProductIds, extraHotmartProductIds })
+    })
+  )
+
+  return serialized
 }
 
 function isUnlocked(
@@ -104,9 +130,14 @@ function isUnlocked(
   permissoes: Pick<
     LibraryPermissoes,
     'livro_digital' | 'pdf' | 'audioterapia'
-  >
+  >,
+  productEntitlements?: Set<string>
 ): boolean {
   if (isFreeCatalogProduct(product)) return true
+  if (productEntitlements?.has(product.id)) return true
+  if (product.paymentProvider === 'STONE' || product.permissionKey === 'VIDEO') {
+    return false
+  }
   const key = permissionKeyToLib(product.permissionKey)
   return permissoes[key]
 }
@@ -118,7 +149,8 @@ export function mapProductsToOffers(
     'livro_digital' | 'pdf' | 'audioterapia'
   >,
   lockedLabel: string,
-  pdfTitlesByIndex?: Record<number, string>
+  pdfTitlesByIndex?: Record<number, string>,
+  productEntitlements?: Set<string>
 ): CatalogProductOffer[] {
   return products.map((product) => {
     const title =
@@ -130,7 +162,7 @@ export function mapProductsToOffers(
     return {
       ...product,
       title,
-      unlocked: isUnlocked(product, permissoes),
+      unlocked: isUnlocked(product, permissoes, productEntitlements),
       lockedLabel,
       resolvedUnlockedLabel:
         product.unlockedLabel?.trim() ||

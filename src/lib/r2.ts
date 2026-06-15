@@ -1,4 +1,4 @@
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 function requireEnv(name: string): string {
@@ -106,4 +106,19 @@ export function getR2PublicHostname(): string | null {
   } catch {
     return null
   }
+}
+
+/** Lê objeto do bucket R2 (originais privados ou públicos) — apenas server-side. */
+export async function getBufferFromR2(key: string): Promise<Buffer> {
+  const response = await r2.send(
+    new GetObjectCommand({
+      Bucket: getR2Bucket(),
+      Key: key
+    })
+  )
+  if (!response.Body) {
+    throw new Error('Arquivo não encontrado no R2')
+  }
+  const bytes = await response.Body.transformToByteArray()
+  return Buffer.from(bytes)
 }

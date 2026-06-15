@@ -1,0 +1,202 @@
+{
+  "name": "meDIZ — Novo cliente (onboarding)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Disparado pelo meDIZ após compra Hotmart/Stone\n\n**Quando:** apenas se `user_created: true` (cliente novo).\n\n**meDIZ já fez:** criar usuário, senha temporária e liberações por produto.\n\n**Este fluxo:** planilha CRM + WhatsApp + e-mail.\n\n**Não use** Switch de produto nem PUT /library/permissions.",
+        "height": 320,
+        "width": 520
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-400, -120],
+      "id": "note-readme",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mediz-novo-cliente",
+        "options": {}
+      },
+      "id": "webhook-mediz",
+      "name": "Webhook meDIZ Novo Cliente",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "mediz-novo-cliente"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "email",
+              "name": "email",
+              "value": "={{ ($json.body?.email ?? $json.email ?? '').toLowerCase().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "nome",
+              "name": "nome",
+              "value": "={{ $json.body?.nome ?? $json.nome ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "telefone",
+              "name": "telefone",
+              "value": "={{ $json.body?.telefone ?? $json.telefone ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "senha",
+              "name": "senha_temporaria",
+              "value": "={{ $json.body?.temporary_password ?? $json.temporary_password ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "produtos",
+              "name": "produtos_liberados",
+              "value": "={{ ($json.body?.products_granted ?? $json.products_granted ?? []).map(p => p.title).join(', ') }}",
+              "type": "string"
+            },
+            {
+              "id": "transaction",
+              "name": "transaction",
+              "value": "={{ $json.body?.transaction_id ?? $json.transaction_id ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "provider",
+              "name": "provider",
+              "value": "={{ $json.body?.provider ?? $json.provider ?? 'hotmart' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-normalizar",
+      "name": "Set Normalizar Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "SUBSTITUA_PELA_URL_DA_SUA_PLANILHA",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Nome": "={{ $json.nome }}",
+            "Email": "={{ $json.email }}",
+            "Número": "={{ $json.telefone }}",
+            "Produto": "={{ $json.produtos_liberados }}",
+            "Origem": "={{ $json.provider }}",
+            "Transaction": "={{ $json.transaction }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets-append",
+      "name": "Sheets Append CRM",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [480, 0],
+      "notes": "CRM apenas — permissões ficam no meDIZ"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "SUBSTITUA_URL_Z_API",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Client-Token", "value": "SUBSTITUA_CLIENT_TOKEN" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "=55{{ $json.telefone }}"
+            },
+            {
+              "name": "message",
+              "value": "=Oi! Aqui é a Aline 😊 da Universidade de Terapias.\n\nSua compra foi confirmada! 🙌\n\nSeu acesso ao meDIZ já está liberado.\n\n📧 E-mail: {{ $json.email }}\n🔑 Senha provisória: {{ $json.senha_temporaria }}\n\nAcesse: https://mediz.app/login\n\nTroque a senha no primeiro acesso.\n\nQualquer dúvida, responda aqui. 💜\n\n_Mensagem automática_"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "whatsapp-novo",
+      "name": "WhatsApp Novo Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, -80]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "Seu acesso ao meDIZ",
+        "emailType": "text",
+        "message": "=Olá {{ $json.nome }},\n\nSua compra foi confirmada e seu acesso ao meDIZ está liberado.\n\nE-mail: {{ $json.email }}\nSenha provisória: {{ $json.senha_temporaria }}\n\nAcesse: https://mediz.app/login\n\nConteúdos liberados: {{ $json.produtos_liberados }}\n\nUniversidade de Terapias",
+        "options": {}
+      },
+      "id": "gmail-novo",
+      "name": "Email Credenciais",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [720, 80]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"received\": true }",
+        "options": {}
+      },
+      "id": "respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [960, 0]
+    }
+  ],
+  "connections": {
+    "Webhook meDIZ Novo Cliente": {
+      "main": [[{ "node": "Set Normalizar Payload", "type": "main", "index": 0 }]]
+    },
+    "Set Normalizar Payload": {
+      "main": [[{ "node": "Sheets Append CRM", "type": "main", "index": 0 }]]
+    },
+    "Sheets Append CRM": {
+      "main": [
+        [
+          { "node": "WhatsApp Novo Login", "type": "main", "index": 0 },
+          { "node": "Email Credenciais", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "WhatsApp Novo Login": {
+      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+    },
+    "Email Credenciais": {
+      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

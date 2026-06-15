@@ -4,7 +4,6 @@
 import { useState, useEffect } from 'react'
 import {
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -17,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { Folder, Plus, Trash2, Edit2, Archive, GripVertical, FileText, X, ChevronDown, Activity } from 'lucide-react'
+import { Folder, Plus, Trash2, Edit2, Archive, GripVertical, FileText, X, ChevronDown, ChevronRight } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,7 +30,6 @@ import {
 import { useSubscriptionStatus } from '@/hooks/use-subscription-status'
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { useTranslation } from '@/i18n/useTranslation'
-import { useRouter } from 'next/navigation'
 import {
   DndContext,
   DragOverlay,
@@ -52,6 +50,11 @@ import {
   useSortable
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from '@/components/ui/collapsible'
 
 type SavedSymptom = {
   id: string
@@ -73,6 +76,10 @@ type SymptomFolder = {
 
 type NavFoldersProps = {
   onSelectSymptom?: (symptom: string) => void
+  /** Pastas fechadas por padrão até o usuário clicar */
+  defaultSectionOpen?: boolean
+  /** Quando true, não renderiza SidebarGroup externo (uso dentro de NavOptions) */
+  embedded?: boolean
 }
 
 type DraggedItem = {
@@ -187,7 +194,11 @@ function DraggableSymptomItem({
   )
 }
 
-export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
+export function NavFolders({
+  onSelectSymptom,
+  defaultSectionOpen = false,
+  embedded = false
+}: NavFoldersProps) {
   const { t } = useTranslation()
   const [folders, setFolders] = useState<SymptomFolder[]>([])
   const [loading, setLoading] = useState(true)
@@ -204,7 +215,7 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
   const [showAllFolders, setShowAllFolders] = useState(false)
   const [_activeId, setActiveId] = useState<UniqueIdentifier | null>(null)
   const [draggedItem, setDraggedItem] = useState<DraggedItem | null>(null)
-  const router = useRouter()
+  const [foldersSectionOpen, setFoldersSectionOpen] = useState(defaultSectionOpen)
   
   const { isPremium, isLoading: isLoadingPremium } = useSubscriptionStatus()
   
@@ -585,38 +596,48 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
   )
 
   if (loading) {
-    return (
-      <SidebarGroup>
-        <SidebarGroupLabel className="text-sm font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent group-data-[collapsed=true]:hidden">
-          📁 {t('folders.title', 'Pastas de Pacientes')}
-        </SidebarGroupLabel>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <div className="flex items-center gap-2 px-2 py-3">
-              <div className="h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-muted-foreground">{t('folders.loading', 'Carregando pastas...')}</span>
-            </div>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarGroup>
+    const loadingMenu = (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton className="px-4 py-5" disabled>
+            <Folder style={{ width: 22, height: 22 }} className="shrink-0" />
+            <span className="group-data-[collapsible=icon]:hidden">
+              {t('folders.loading', 'Carregando pastas...')}
+            </span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
     )
+    return embedded ? loadingMenu : <SidebarGroup>{loadingMenu}</SidebarGroup>
   }
 
+  const foldersContent = (
+    <Collapsible open={foldersSectionOpen} onOpenChange={setFoldersSectionOpen}>
+      <SidebarMenu className="gap-0.5">
+        <SidebarMenuItem>
+          <CollapsibleTrigger asChild>
+            <SidebarMenuButton
+              className="h-9 px-2"
+              tooltip={t('folders.title', 'Pastas de Pacientes')}
+            >
+              <Folder className="size-4 shrink-0 text-sidebar-foreground" strokeWidth={1.5} />
+              <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-normal group-data-[collapsible=icon]:hidden">
+                <span className="truncate">
+                  {t('folders.title', 'Pastas de Pacientes')}
+                </span>
+              </span>
+              {foldersSectionOpen ? (
+                <ChevronDown className="ml-auto h-4 w-4 shrink-0 group-data-[collapsible=icon]:hidden" />
+              ) : (
+                <ChevronRight className="ml-auto h-4 w-4 shrink-0 group-data-[collapsible=icon]:hidden" />
+              )}
+            </SidebarMenuButton>
+          </CollapsibleTrigger>
+        </SidebarMenuItem>
 
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onDragOver={handleDragOver}
-    >
-      <SidebarGroup>
-        <div className="flex items-center justify-between px-2 mb-3 group-data-[collapsed=true]:hidden">
-          <SidebarGroupLabel className="text-sm font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-            📁 {t('folders.title', 'Pastas de Pacientes')}
-          </SidebarGroupLabel>
-          <Dialog open={openCreateDialog} onOpenChange={(open) => {
+        <CollapsibleContent>
+          <div className="flex items-center justify-end px-4 pb-2 group-data-[collapsible=icon]:hidden">
+            <Dialog open={openCreateDialog} onOpenChange={(open) => {
             if (!open) {
               setOpenCreateDialog(false)
               return
@@ -937,32 +958,20 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
             </>
           ) : null}
         </SidebarMenu>
+        </CollapsibleContent>
+      </SidebarMenu>
+    </Collapsible>
+  )
 
-        {/* Link para Dashboard de Sintomas */}
-        <div className="mt-4 pt-4 border-t border-indigo-200/50 dark:border-indigo-900/30 group-data-[collapsed=true]:hidden">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <div className="relative">
-                <SidebarMenuButton
-                  onClick={() => {
-                    if (!isPremium) {
-                      setOpenUpgradeModal(true)
-                      return
-                    }
-                    router.push('/symptoms-dashboard')
-                  }}
-                  className="w-full justify-start bg-gradient-to-r from-indigo-500/10 to-purple-500/10 hover:from-indigo-500/20 hover:to-purple-500/20 border border-indigo-300/50 dark:border-indigo-700/50 transition-all duration-200"
-                >
-                  <Activity className="h-4 w-4 mr-2 text-indigo-600 dark:text-indigo-400" />
-                  <span className="flex-1 text-left font-medium text-indigo-700 dark:text-indigo-300">{t('dashboard.symptoms.title', 'Dashboard de Sintomas')}</span>
-                </SidebarMenuButton>
-                <div className="absolute -top-3 -right-3 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold animate-pulse shadow-lg z-10 whitespace-nowrap">
-                  {t('badge.new', 'NOVO')}
-                </div>
-              </div>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </div>
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragOver={handleDragOver}
+    >
+      {embedded ? foldersContent : <SidebarGroup>{foldersContent}</SidebarGroup>}
 
         <DragOverlay>
           {draggedItem && (
@@ -996,7 +1005,6 @@ export function NavFolders({ onSelectSymptom }: NavFoldersProps) {
           open={openUpgradeModal}
           onOpenChange={setOpenUpgradeModal}
         />
-      </SidebarGroup>
     </DndContext>
   )
 }

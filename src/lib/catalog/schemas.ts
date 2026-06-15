@@ -41,11 +41,29 @@ export const catalogProductBodySchema = z.object({
         title: z.string().min(1),
         mediaFileName: z.string().min(1),
         locale: z.string().optional(),
-        sortOrder: z.number().int().min(0)
+        sortOrder: z.number().int().min(0),
+        kind: z.enum(['video', 'pdf', 'audio']).optional()
       })
     )
     .optional()
     .nullable(),
+  stoneProductId: z.preprocess(
+    (v) => (v === '' || v === undefined ? null : v),
+    z.string().max(120).nullable().optional()
+  ),
+  hotmartProductId: z.preprocess(
+    (v) => (v === '' || v === undefined ? null : v),
+    z.string().max(120).nullable().optional()
+  ),
+  paymentProvider: z
+    .enum(['HOTMART', 'STONE', 'FREE'])
+    .optional()
+    .default('HOTMART'),
+  grantsProductIds: z.array(z.string().uuid()).optional().default([]),
+  extraHotmartProductIds: z
+    .array(z.string().max(120))
+    .optional()
+    .default([]),
   unlockedLabel: z.string().max(80).optional().nullable(),
   freeAccess: z.boolean().default(false),
   sortOrder: z.coerce.number().int().min(0).max(9999).default(0),

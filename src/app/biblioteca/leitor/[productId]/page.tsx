@@ -129,6 +129,7 @@ export default function BibliotecaLeitorPage() {
       streamUrl={streamUrl}
       backHref="/biblioteca"
       variant="pdf"
+      productId={productId}
     />
   )
 }

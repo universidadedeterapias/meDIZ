@@ -16,16 +16,22 @@ export function SimpleAppHeader({
   right
 }: SimpleAppHeaderProps) {
   return (
-    <header className="sticky top-0 z-30 w-full border-b border-border bg-background shadow-sm">
-      <div className="mx-auto flex h-14 min-h-14 max-w-3xl items-center justify-between gap-2 px-3 sm:h-16 sm:min-h-16 sm:gap-3 sm:px-4">
-        <PageBackButton fallbackHref={backFallback} />
-        {title ?? (
-          <p className="truncate text-lg font-bold text-primary sm:text-xl">
-            me<span className="uppercase">diz</span>
-            <span className="text-yellow-400">!</span>
-          </p>
-        )}
-        {right ?? <ThemeToggle variant="icon" />}
+    <header className="sticky top-0 z-30 w-full border-b border-border bg-background/95 shadow-sm backdrop-blur-md">
+      <div className="relative mx-auto flex h-14 min-h-14 max-w-3xl items-center px-2 sm:h-16 sm:min-h-16 sm:px-4">
+        <div className="relative z-10 shrink-0">
+          <PageBackButton fallbackHref={backFallback} showLabel={false} />
+        </div>
+        <div className="pointer-events-none absolute inset-x-12 flex justify-center sm:inset-x-16">
+          {title ?? (
+            <p className="truncate text-base font-bold text-primary sm:text-xl">
+              me<span className="uppercase">diz</span>
+              <span className="text-yellow-400">!</span>
+            </p>
+          )}
+        </div>
+        <div className="relative z-10 ml-auto shrink-0">
+          {right ?? <ThemeToggle variant="icon" />}
+        </div>
       </div>
     </header>
   )

@@ -21,7 +21,11 @@ export function parseMediaItems(value: unknown): CatalogMediaItem[] | null {
       sortOrder:
         typeof row.sortOrder === 'number'
           ? row.sortOrder
-          : Number.parseInt(String(row.sortOrder ?? items.length), 10) || items.length
+          : Number.parseInt(String(row.sortOrder ?? items.length), 10) || items.length,
+      kind:
+        row.kind === 'video' || row.kind === 'pdf' || row.kind === 'audio'
+          ? row.kind
+          : undefined
     })
   }
 
@@ -35,6 +39,7 @@ export type CatalogMediaItemPayload = {
   mediaFileName?: string
   locale?: string
   sortOrder?: number
+  kind?: 'video' | 'pdf' | 'audio'
 }
 
 export function mediaItemsToJson(
@@ -56,7 +61,8 @@ export function mediaItemsToJson(
       sortOrder:
         typeof item.sortOrder === 'number'
           ? item.sortOrder
-          : Number.parseInt(String(item.sortOrder ?? index), 10) || index
+          : Number.parseInt(String(item.sortOrder ?? index), 10) || index,
+      ...(item.kind ? { kind: item.kind } : {})
     })
   }
 

@@ -1,5 +1,6 @@
 import { hasComplimentaryAccess } from '@/lib/complimentaryAccess'
 import { prisma } from '@/lib/prisma'
+import { libraryPermissoesFromEntitlements } from '@/lib/purchases/migrate-legacy-permissions'
 import { normalizeLibraryEmail } from './email'
 
 export type LibraryPermissoes = {
@@ -14,12 +15,6 @@ export type LibraryPermissionRow = {
   audioterapia: boolean
   pdf: boolean
   livro_digital: boolean
-}
-
-const EMPTY_PERMISSIONS: LibraryPermissoes = {
-  audioterapia: false,
-  pdf: false,
-  livro_digital: false
 }
 
 const FULL_PERMISSIONS: LibraryPermissoes = {
@@ -133,14 +128,16 @@ export async function getLibraryPermissionsByEmail(
     }
   })
 
+  const fromEntitlements = await libraryPermissoesFromEntitlements(normalizedEmail)
+
   if (!row) {
-    return { ...EMPTY_PERMISSIONS }
+    return fromEntitlements
   }
 
   return {
-    audioterapia: row.audioterapia,
-    pdf: row.pdf,
-    livro_digital: row.livroDigital
+    audioterapia: row.audioterapia || fromEntitlements.audioterapia,
+    pdf: row.pdf || fromEntitlements.pdf,
+    livro_digital: row.livroDigital || fromEntitlements.livro_digital
   }
 }
 

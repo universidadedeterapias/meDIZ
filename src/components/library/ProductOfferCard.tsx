@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { FileText, Headphones, Lock, Loader2, BookOpen } from 'lucide-react'
+import { FileText, Headphones, Lock, Loader2, BookOpen, PlaySquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -26,6 +26,9 @@ export type ProductOfferCardProps = {
 
 function TagIcon({ tag }: { tag: string }) {
   const lower = tag.toLowerCase()
+  if (lower.includes('vídeo') || lower.includes('video')) {
+    return <PlaySquare className="h-3.5 w-3.5 shrink-0" />
+  }
   if (lower.includes('áudio') || lower.includes('audio')) {
     return <Headphones className="h-3.5 w-3.5 shrink-0" />
   }
@@ -34,6 +37,9 @@ function TagIcon({ tag }: { tag: string }) {
   }
   return <BookOpen className="h-3.5 w-3.5 shrink-0" />
 }
+
+/** Largura da coluna visual (capa + botão alinhados). */
+const mediaColumnClass = 'w-full max-w-[15rem] sm:max-w-[17.5rem]'
 
 export function ProductOfferCard({
   title,
@@ -73,15 +79,20 @@ export function ProductOfferCard({
         className
       )}
     >
-      <div className="flex justify-center px-4 pt-4 sm:pt-5">
-        <div className="relative aspect-square w-44 overflow-hidden rounded-xl bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-950 dark:to-violet-950 sm:w-52">
+      <div className="flex flex-col items-center gap-3 px-4 py-5 sm:gap-4 sm:px-5 sm:py-6">
+        <div
+          className={cn(
+            'relative aspect-[3/4] overflow-hidden rounded-xl bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-950 dark:to-violet-950',
+            mediaColumnClass
+          )}
+        >
           {!imageFailed ? (
             <Image
               src={imageSrc}
               alt={imageAlt}
               fill
-              className="object-contain p-1.5"
-              sizes="208px"
+              className="object-contain p-2 sm:p-2.5"
+              sizes="(max-width: 640px) 240px, 280px"
               onError={() => setImageFailed(true)}
             />
           ) : (
@@ -90,34 +101,33 @@ export function ProductOfferCard({
             </div>
           )}
         </div>
-      </div>
 
-      <div className="flex flex-col px-4 pb-3 pt-3 sm:px-5 sm:pb-4">
-        <h3 className="text-center text-base font-bold leading-snug text-foreground sm:text-lg">
-          {title}
-        </h3>
-        {description ? (
-          <p className="mt-2 line-clamp-3 text-center text-xs leading-relaxed text-muted-foreground sm:text-sm">
-            {description}
-          </p>
-        ) : null}
-        {tag ? (
-          <span className="mx-auto mt-3 inline-flex w-fit items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-0.5 text-[11px] font-medium text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
-            <TagIcon tag={tag} />
-            {tag}
-          </span>
-        ) : null}
-      </div>
+        <div className={cn('space-y-2 text-center', mediaColumnClass)}>
+          <h3 className="text-base font-bold leading-snug text-foreground sm:text-lg">
+            {title}
+          </h3>
+          {description ? (
+            <p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground sm:text-sm">
+              {description}
+            </p>
+          ) : null}
+          {tag ? (
+            <span className="mx-auto inline-flex w-fit items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-0.5 text-[11px] font-medium text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+              <TagIcon tag={tag} />
+              {tag}
+            </span>
+          ) : null}
+        </div>
 
-      {children}
+        {children}
 
-      <div className="border-t border-border/60 px-3 pb-3 pt-2 sm:px-4 sm:pb-4">
         <Button
           type="button"
           disabled={isLoading}
           onClick={handleClick}
           className={cn(
-            'h-11 w-full gap-2 rounded-xl text-sm font-semibold text-white shadow-md',
+            mediaColumnClass,
+            'h-10 w-full gap-2 rounded-lg text-sm font-semibold text-white shadow-sm',
             variant === 'audioterapia'
               ? 'bg-violet-600 hover:bg-violet-700'
               : 'bg-indigo-600 hover:bg-indigo-700'

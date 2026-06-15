@@ -1,24 +1,40 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { ChevronLeft, Loader2 } from 'lucide-react'
+import { Download, Loader2, ArrowLeft } from 'lucide-react'
+import { PageBackButton } from '@/components/navigation/PageBackButton'
 import { Button } from '@/components/ui/button'
+import { apiFetch } from '@/lib/fetchClient'
+import { cn } from '@/lib/utils'
+
+const backButtonClassName = cn(
+  'shrink-0 gap-1.5 border-violet-300/80 bg-background font-semibold text-violet-800 shadow-md',
+  'hover:border-violet-400 hover:bg-indigo-50 hover:text-indigo-950',
+  'dark:border-indigo-600 dark:bg-card dark:text-indigo-100 dark:hover:bg-indigo-950/70',
+  'min-h-10 min-w-10'
+)
 
 type LibraryDocumentViewerProps = {
   title: string
   streamUrl: string
   backHref: string
   variant?: 'pdf' | 'video'
+  productId?: string
+  /** Volta in-page (ex.: curso vídeo → PDF) em vez de navegar */
+  onBack?: () => void
 }
 
 export function LibraryDocumentViewer({
   title,
   streamUrl,
   backHref,
-  variant = 'pdf'
+  variant = 'pdf',
+  productId,
+  onBack
 }: LibraryDocumentViewerProps) {
   const [ready, setReady] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
   useEffect(() => {
     const blockSave = (event: KeyboardEvent) => {
@@ -38,36 +54,93 @@ export function LibraryDocumentViewer({
     }
   }, [])
 
-  const subtitle =
-    variant === 'video'
-      ? 'Reprodução protegida — download desativado'
-      : 'Visualização protegida — download desativado'
+  const handleDownload = async () => {
+    if (!productId || downloading) return
+    setDownloading(true)
+    setDownloadError(null)
+    try {
+      const res = await apiFetch('/api/library/download/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const message =
+          res.status === 404
+            ? 'Download ainda não disponível neste ambiente. Aguarde a atualização do app.'
+            : data.error === 'PDF_DOWNLOAD_QUOTA_EXCEEDED'
+              ? data.message ||
+                'Limite mensal de downloads atingido.'
+              : data.message ||
+                data.error ||
+                'Não foi possível preparar o download.'
+        setDownloadError(message)
+        return
+      }
+      if (!data.downloadUrl) {
+        setDownloadError('Link de download indisponível.')
+        return
+      }
+      window.location.assign(data.downloadUrl)
+    } catch {
+      setDownloadError('Erro de rede ao solicitar download.')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   return (
     <div
-      className="flex min-h-[100dvh] flex-col bg-gradient-to-b from-violet-50 to-white"
+      className="flex min-h-[100dvh] flex-col bg-gradient-to-b from-violet-50 to-white dark:from-background dark:to-background"
       onContextMenu={(e) => e.preventDefault()}
     >
-      <header className="flex items-center gap-2 border-b border-violet-100 bg-white/90 px-3 py-3 backdrop-blur sm:px-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 shrink-0 rounded-full"
-          asChild
-        >
-          <Link href={backHref} aria-label="Voltar">
-            <ChevronLeft className="h-5 w-5" />
-          </Link>
-        </Button>
+      <header className="flex items-center gap-2 border-b border-violet-100 bg-white/95 px-3 py-2.5 backdrop-blur dark:border-border dark:bg-background/95 sm:gap-3 sm:px-4 sm:py-3">
+        {onBack ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={backButtonClassName}
+            onClick={onBack}
+          >
+            <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
+            <span className="text-sm leading-none">Voltar</span>
+          </Button>
+        ) : (
+          <PageBackButton href={backHref} showLabel className="shadow-sm" />
+        )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-foreground">{title}</p>
-          <p className="text-[11px] text-muted-foreground">{subtitle}</p>
         </div>
+        {variant === 'pdf' && productId ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 shrink-0 gap-1.5 border-violet-200 text-violet-800 dark:border-violet-800 dark:text-violet-200"
+            disabled={downloading}
+            onClick={() => void handleDownload()}
+          >
+            {downloading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            <span className="hidden sm:inline">Baixar PDF</span>
+          </Button>
+        ) : null}
       </header>
 
-      <div className="relative flex flex-1 items-center justify-center bg-black/5 p-3 sm:p-6">
+      {downloadError ? (
+        <p className="px-4 py-2 text-center text-xs text-red-600 dark:text-red-400">
+          {downloadError}
+        </p>
+      ) : null}
+
+      <div className="relative flex flex-1 items-center justify-center bg-black/5 p-3 dark:bg-muted/20 sm:p-6">
         {!ready && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-background/70">
             <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
           </div>
         )}

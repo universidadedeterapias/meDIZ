@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getCurrentLanguage } from '@/i18n/server'
 import { productMatchesUserLanguage } from '@/lib/catalog/locale'
 import { serializeProduct, mapProductsToOffers } from '@/lib/catalog/products'
+import { getProductEntitlementIdsForUser } from '@/lib/purchases/entitlements'
+import { loadGrantsProductIds } from '@/lib/purchases/catalog-grants'
 import { getLibraryPermissionsForUser } from '@/lib/library/permissions'
 import { requireUser } from '@/lib/requireAuth'
 import { prisma } from '@/lib/prisma'
@@ -21,15 +23,23 @@ export async function GET(_request: Request, context: RouteContext) {
     return NextResponse.json({ error: 'PRODUCT_NOT_FOUND' }, { status: 404 })
   }
 
-  const product = serializeProduct(row)
+  const grantsProductIds = await loadGrantsProductIds(row.id)
+  const product = serializeProduct({ ...row, grantsProductIds })
   const language = await getCurrentLanguage()
   if (!productMatchesUserLanguage(product.locale, language)) {
     return NextResponse.json({ error: 'PRODUCT_NOT_FOUND' }, { status: 404 })
   }
 
   const permissoes = await getLibraryPermissionsForUser(auth.user)
+  const productEntitlements = await getProductEntitlementIdsForUser(auth.user)
   const lockedLabel = 'Desbloquear acesso'
-  const [offer] = mapProductsToOffers([product], permissoes, lockedLabel)
+  const [offer] = mapProductsToOffers(
+    [product],
+    permissoes,
+    lockedLabel,
+    undefined,
+    productEntitlements
+  )
 
   return NextResponse.json(
     { product: offer, permissoes },

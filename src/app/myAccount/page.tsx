@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { useUser } from '@/contexts/user'
 import { formatPhone } from '@/lib/formatPhone'
+import { formatCpfDisplay, formatCpfInput, isValidCpf } from '@/lib/cpf'
 import { formatDate } from '@/lib/utils'
 import { signOut } from 'next-auth/react'
 import { AppearanceSettings } from '@/components/AppearanceSettings'
@@ -47,6 +48,7 @@ type FormValues = {
   fullName: string
   email: string
   whatsapp: string
+  cpf: string
 }
 
 export default function MyAccountPage() {
@@ -69,7 +71,8 @@ export default function MyAccountPage() {
     defaultValues: {
       fullName: user?.fullName ?? '',
       email: user?.email ?? '',
-      whatsapp: user?.whatsapp ?? ''
+      whatsapp: user?.whatsapp ?? '',
+      cpf: user?.cpf ? formatCpfDisplay(user.cpf) : ''
     }
   })
 
@@ -78,7 +81,8 @@ export default function MyAccountPage() {
       reset({
         fullName: user.fullName!,
         email: user.email,
-        whatsapp: user.whatsapp!
+        whatsapp: user.whatsapp!,
+        cpf: user.cpf ? formatCpfDisplay(user.cpf) : ''
       })
     }
   }, [editing, reset, user])
@@ -115,7 +119,8 @@ export default function MyAccountPage() {
               ...u,
               fullName: updated.fullName,
               email: updated.email,
-              whatsapp: updated.whatsapp
+              whatsapp: updated.whatsapp,
+              cpf: updated.cpf ?? null
             }
           : u
       )
@@ -379,6 +384,46 @@ export default function MyAccountPage() {
               {errors.email && (
                 <p className="text-xs text-red-500">{errors.email.message}</p>
               )}
+            </div>
+
+            {/* CPF */}
+            <div>
+              <Label className="text-xs">
+                {t('account.data.cpf', 'CPF')}
+              </Label>
+              {editing ? (
+                <Input
+                  {...register('cpf', {
+                    required: t(
+                      'account.data.cpfRequired',
+                      'CPF é obrigatório para download de PDFs'
+                    ),
+                    validate: (value) =>
+                      isValidCpf(value) ||
+                      t('account.data.cpfInvalid', 'CPF inválido')
+                  })}
+                  className="mt-1 text-sm"
+                  inputMode="numeric"
+                  placeholder="000.000.000-00"
+                  onInput={e => {
+                    const target = e.target as HTMLInputElement
+                    target.value = formatCpfInput(target.value)
+                  }}
+                />
+              ) : (
+                <p className="text-sm">
+                  {user.cpf ? formatCpfDisplay(user.cpf) : '—'}
+                </p>
+              )}
+              {errors.cpf && (
+                <p className="text-xs text-red-500">{errors.cpf.message}</p>
+              )}
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t(
+                  'account.data.cpfHint',
+                  'Usado na marca d\'água dos PDFs baixados da biblioteca.'
+                )}
+              </p>
             </div>
 
             {/* Whatsapp */}

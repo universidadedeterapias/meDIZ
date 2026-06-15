@@ -412,29 +412,27 @@ export default function Page() {
         }}
       />
 
-      <SidebarInset>
-        <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <SidebarInset className="min-w-0 overflow-x-hidden">
+        <div className="flex min-h-svh flex-col bg-background text-foreground">
           {/* Header */}
-          <header className="sticky top-0 z-30 flex h-14 w-full min-w-0 items-center border-b border-border bg-background px-3 py-2 shadow-sm sm:h-16 sm:px-4 sm:py-0">
-            <div className="flex w-full min-w-0 items-center justify-between gap-1.5 sm:gap-2">
-              <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-4">
-                <SidebarTrigger className="-ml-1 flex-shrink-0" />
-                <div className="flex flex-row items-center min-w-0">
-                  <Avatar className="w-8 h-8 border-2 border-indigo-600 flex-shrink-0">
-                    <AvatarImage
-                      src={userContext?.image ?? undefined}
-                      alt="User"
-                    />
-                    <AvatarFallback>
-                      {FirstName(user.name).charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <h2 className="ml-2 scroll-m-20 truncate text-base font-semibold tracking-tight text-indigo-600 dark:text-indigo-400 sm:text-xl">
-                    {t('chat.greeting.prefix', 'Olá')}, {FirstName(user.name)}!
-                  </h2>
-                </div>
+          <header className="sticky top-0 z-30 flex w-full min-w-0 flex-col border-b border-border bg-background/95 px-2 py-2 shadow-sm backdrop-blur-md sm:h-16 sm:flex-row sm:items-center sm:px-4 sm:py-0">
+            <div className="flex w-full min-w-0 items-center justify-between gap-1 sm:gap-2">
+              <SidebarTrigger className="-ml-0.5 shrink-0 md:-ml-1" />
+              <div className="hidden min-w-0 flex-1 items-center gap-3 sm:flex">
+                <Avatar className="h-8 w-8 shrink-0 border-2 border-indigo-600">
+                  <AvatarImage
+                    src={userContext?.image ?? undefined}
+                    alt="User"
+                  />
+                  <AvatarFallback>
+                    {FirstName(user.name).charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <h2 className="truncate text-base font-semibold tracking-tight text-indigo-600 dark:text-indigo-400 sm:text-xl">
+                  {t('chat.greeting.prefix', 'Olá')}, {FirstName(user.name)}!
+                </h2>
               </div>
-              <div className="flex shrink-0 items-center gap-1 sm:gap-4">
+              <div className="flex shrink-0 items-center gap-0.5 sm:gap-4">
                 <div className="relative group cursor-pointer" onClick={() => router.push('/suggestion')}>
                   <Button
                     onClick={(e) => {
@@ -456,8 +454,22 @@ export default function Page() {
                 </div>
                 <LanguageSwitcher showLabel={false} variant="header" />
                 <ThemeToggle variant="icon" />
-                <Bell className="hidden h-5 w-5 shrink-0 text-foreground sm:block" />
+                <Bell className="hidden h-5 w-5 shrink-0 text-foreground md:block" />
               </div>
+            </div>
+            <div className="mt-2 flex items-center justify-center gap-2 sm:hidden">
+              <Avatar className="h-7 w-7 shrink-0 border-2 border-indigo-600">
+                <AvatarImage
+                  src={userContext?.image ?? undefined}
+                  alt="User"
+                />
+                <AvatarFallback className="text-xs">
+                  {FirstName(user.name).charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <h2 className="truncate text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                {t('chat.greeting.prefix', 'Olá')}, {FirstName(user.name)}!
+              </h2>
             </div>
           </header>
 
@@ -501,13 +513,13 @@ export default function Page() {
           </div>
 
           {/* Corpo da conversa */}
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background px-3 pb-6 sm:px-4">
+          <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col overflow-x-hidden overflow-y-auto bg-background px-3 pb-6 sm:px-4">
             {loading ? (
               <ClientOnly>
                 <LoadingPlaceholder />
               </ClientOnly>
             ) : responses.length === 0 ? (
-              <div className="w-full max-w-4xl mt-4 flex flex-col gap-4">
+              <div className="mx-auto mt-4 flex w-full max-w-4xl flex-col gap-4">
                 <Label className="text-sm font-medium text-muted-foreground">
                   {t('chat.popularQueries', 'Mais buscados:')}
                 </Label>

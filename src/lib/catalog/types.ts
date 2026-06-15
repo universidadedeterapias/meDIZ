@@ -1,11 +1,17 @@
 import type { CatalogPermissionKey, CatalogSection } from '@prisma/client'
 
+import type { PaymentProvider } from '@prisma/client'
+
+export type CourseMediaKind = 'video' | 'pdf' | 'audio'
+
 export type CatalogMediaItem = {
   id: string
   title: string
   mediaFileName: string
   locale?: string
   sortOrder: number
+  /** video | pdf para cursos; audio implícito em audioterapia legada */
+  kind?: CourseMediaKind
 }
 
 export type CatalogProductDto = {
@@ -21,6 +27,11 @@ export type CatalogProductDto = {
   pdfIndex: number
   mediaFileName: string | null
   mediaItems: CatalogMediaItem[] | null
+  stoneProductId: string | null
+  hotmartProductId: string | null
+  extraHotmartProductIds: string[]
+  paymentProvider: PaymentProvider
+  grantsProductIds: string[]
   unlockedLabel: string | null
   freeAccess: boolean
   sortOrder: number

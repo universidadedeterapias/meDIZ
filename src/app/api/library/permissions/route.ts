@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { prisma } from '@/lib/prisma'
+import { isValidCpf, normalizeCpf } from '@/lib/cpf'
 import { validateWebhookBearer } from '@/lib/webhookAuth'
 import { normalizeLibraryEmail } from '@/lib/library/email'
-import { upsertLibraryPermissions } from '@/lib/library/permissions'
 import {
-  generateTemporaryPassword,
-  hashPassword
-} from '@/lib/library/temporaryPassword'
+  ensureLibraryUser,
+  grantEntitlementsFromLegacyFlags
+} from '@/lib/purchases/migrate-legacy-permissions'
+import { notifyN8nNewUser } from '@/lib/purchases/notify-n8n-new-user'
+import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
 const bodySchema = z.object({
   email: z.string().email(),
   nome: z.string().optional(),
+  cpf: z.string().optional().nullable(),
   permissoes: z.object({
     audioterapia: z.boolean(),
     pdf: z.boolean(),
@@ -21,6 +23,10 @@ const bodySchema = z.object({
   })
 })
 
+/**
+ * @deprecated Use webhooks Hotmart/Stone diretos. Mantido para transição do n8n antigo.
+ * Grava product_entitlements (não library_permissions).
+ */
 export async function PUT(request: NextRequest) {
   const authError = validateWebhookBearer(request)
   if (authError) return authError
@@ -36,48 +42,67 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    const { email, nome, permissoes } = parsed.data
+    const { email, nome, cpf, permissoes } = parsed.data
     const normalizedEmail = normalizeLibraryEmail(email)
 
-    const row = await upsertLibraryPermissions(normalizedEmail, nome ?? null, {
-      audioterapia: permissoes.audioterapia,
-      pdf: permissoes.pdf,
-      livro_digital: permissoes.livro_digital
-    })
-
-    const existingUser = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      select: { id: true }
-    })
-
-    let userCreated = false
-
-    if (!existingUser) {
-      const temporaryPassword = generateTemporaryPassword(10)
-      const passwordHash = await hashPassword(temporaryPassword)
-
-      await prisma.user.create({
-        data: {
-          email: normalizedEmail,
-          name: nome ?? null,
-          passwordHash,
-          temporaryPasswordPlain: temporaryPassword,
-          mustResetPassword: true,
-          emailVerified: new Date()
-        }
-      })
-      userCreated = true
+    const cpfDigits =
+      cpf == null || cpf === '' ? null : normalizeCpf(String(cpf))
+    if (cpfDigits && !isValidCpf(cpfDigits)) {
+      return NextResponse.json({ error: 'CPF inválido' }, { status: 400 })
     }
 
-    return NextResponse.json({
-      ok: true,
-      user_created: userCreated,
-      permissions: {
-        audioterapia: row.audioterapia,
-        pdf: row.pdf,
-        livro_digital: row.livro_digital
-      }
+    const { userCreated, temporaryPassword } = await ensureLibraryUser({
+      email: normalizedEmail,
+      nome: nome ?? null,
+      cpf: cpfDigits
     })
+
+    const grant = await grantEntitlementsFromLegacyFlags({
+      email: normalizedEmail,
+      permissoes: {
+        audioterapia: permissoes.audioterapia,
+        pdf: permissoes.pdf,
+        livro_digital: permissoes.livro_digital
+      },
+      source: 'library_permissions_api',
+      transactionSuffix: `api_${Date.now()}`
+    })
+
+    const productsGranted = await prisma.catalogProduct.findMany({
+      where: { id: { in: grant.productIds } },
+      select: { id: true, title: true }
+    })
+
+    await notifyN8nNewUser({
+      userCreated,
+      email: normalizedEmail,
+      nome: nome ?? null,
+      telefone: null,
+      temporaryPassword: userCreated ? temporaryPassword : null,
+      transactionId: `legacy_api_${Date.now()}`,
+      provider: 'hotmart',
+      productsGranted
+    })
+
+    return NextResponse.json(
+      {
+        ok: true,
+        deprecated: true,
+        user_created: userCreated,
+        entitlements_created: grant.entitlementsCreated,
+        permissions: {
+          audioterapia: permissoes.audioterapia,
+          pdf: permissoes.pdf,
+          livro_digital: permissoes.livro_digital
+        }
+      },
+      {
+        headers: {
+          Deprecation: 'true',
+          Link: '</api/hotmart>; rel="successor-version"'
+        }
+      }
+    )
   } catch (error) {
     console.error('[library/permissions] PUT error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

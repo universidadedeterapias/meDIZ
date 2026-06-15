@@ -1,11 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
-import type { CatalogSection } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/requireAuth'
 import { serializeProduct } from '@/lib/catalog/products'
-import { mediaItemsToJson } from '@/lib/catalog/media-items'
 import { formatCatalogDbError } from '@/lib/catalog/prisma-errors'
 import { catalogProductBodySchema } from '@/lib/catalog/schemas'
+import { catalogProductWriteData } from '@/lib/purchases/catalog-product-write'
+import {
+  loadGrantsProductIds,
+  syncCatalogProductGrants
+} from '@/lib/purchases/catalog-grants'
+import {
+  loadExtraHotmartProductIds,
+  syncCatalogProductExternalIds
+} from '@/lib/purchases/catalog-external-ids'
+
+async function serializeAdminProduct(row: {
+  id: string
+  section: import('@prisma/client').CatalogSection
+  title: string
+  description: string | null
+  tagLabel: string | null
+  coverImageUrl: string | null
+  purchaseUrl: string
+  permissionKey: import('@prisma/client').CatalogPermissionKey
+  locale: string | null
+  pdfIndex: number
+  mediaFileName: string | null
+  mediaItems: unknown
+  stoneProductId: string | null
+  hotmartProductId: string | null
+  paymentProvider: import('@prisma/client').PaymentProvider
+  unlockedLabel: string | null
+  freeAccess: boolean
+  sortOrder: number
+  active: boolean
+}) {
+  const [grantsProductIds, extraHotmartProductIds] = await Promise.all([
+    loadGrantsProductIds(row.id),
+    loadExtraHotmartProductIds(row.id)
+  ])
+  return serializeProduct({ ...row, grantsProductIds, extraHotmartProductIds })
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -30,26 +65,20 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const data = parsed.data
     const row = await prisma.catalogProduct.update({
       where: { id },
-      data: {
-        section: data.section as CatalogSection,
-        title: data.title.trim(),
-        description: data.description?.trim() || null,
-        tagLabel: data.tagLabel?.trim() || null,
-        coverImageUrl: data.coverImageUrl?.trim() || null,
-        purchaseUrl: data.purchaseUrl.trim(),
-        permissionKey: data.permissionKey,
-        locale: data.locale ?? null,
-        pdfIndex: data.pdfIndex,
-        mediaFileName: data.mediaFileName?.trim() || null,
-        mediaItems: mediaItemsToJson(data.mediaItems ?? null),
-        unlockedLabel: data.unlockedLabel?.trim() || null,
-        freeAccess: data.freeAccess,
-        sortOrder: data.sortOrder,
-        active: data.active
-      }
+      data: catalogProductWriteData(data)
     })
 
-    return NextResponse.json({ product: serializeProduct(row) })
+    await syncCatalogProductGrants(row.id, data.grantsProductIds ?? [])
+    await syncCatalogProductExternalIds(
+      row.id,
+      'HOTMART',
+      data.extraHotmartProductIds ?? [],
+      data.hotmartProductId
+    )
+
+    return NextResponse.json({
+      product: await serializeAdminProduct(row)
+    })
   } catch (error) {
     console.error('[admin/catalog-products] PATCH:', error)
     const message = formatCatalogDbError(error)

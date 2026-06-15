@@ -3,6 +3,7 @@
 import { Slot } from '@radix-ui/react-slot'
 import { VariantProps, cva } from 'class-variance-authority'
 import { Menu } from 'lucide-react'
+import { usePathname } from 'next/navigation'
 import * as React from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -57,7 +58,7 @@ const SidebarProvider = React.forwardRef<
 >(
   (
     {
-      defaultOpen = true,
+      defaultOpen = false,
       open: openProp,
       onOpenChange: setOpenProp,
       className,
@@ -68,7 +69,18 @@ const SidebarProvider = React.forwardRef<
     ref
   ) => {
     const isMobile = useIsMobile()
+    const pathname = usePathname()
     const [openMobile, setOpenMobile] = React.useState(false)
+
+    React.useEffect(() => {
+      setOpenMobile(false)
+    }, [pathname])
+
+    React.useEffect(() => {
+      if (isMobile) {
+        setOpenMobile(false)
+      }
+    }, [isMobile])
 
     // This is the internal state of the sidebar.
     // We use openProp and setOpenProp for control from outside the component.
@@ -269,14 +281,14 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
-      className={cn('h-12 w-12', className)}
+      className={cn('h-9 w-9 shrink-0 md:h-12 md:w-12', className)}
       onClick={event => {
         onClick?.(event)
         toggleSidebar()
       }}
       {...props}
     >
-      <Menu style={{ width: '28px', height: '28px' }} />
+      <Menu className="size-5 md:size-7" />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )

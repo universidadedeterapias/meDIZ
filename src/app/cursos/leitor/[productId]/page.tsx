@@ -3,12 +3,18 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Loader2 } from 'lucide-react'
+import { FileText, Loader2 } from 'lucide-react'
 import type { CatalogProductOffer } from '@/lib/catalog/types'
 import { AudioterapiaPlayer } from '@/components/audioterapia/AudioterapiaPlayer'
+import { LibraryDocumentViewer } from '@/components/library/LibraryDocumentViewer'
 import { Button } from '@/components/ui/button'
 import { useTranslation } from '@/i18n/useTranslation'
 import { apiFetch } from '@/lib/fetchClient'
+
+type CourseMaterials = {
+  video: { url: string; title?: string } | null
+  pdf: { url: string; title?: string } | null
+}
 
 export default function CursosLeitorPage() {
   const router = useRouter()
@@ -17,11 +23,12 @@ export default function CursosLeitorPage() {
   const { status } = useSession()
   const { t } = useTranslation()
   const [product, setProduct] = useState<CatalogProductOffer | null>(null)
-  const [streamUrl, setStreamUrl] = useState<string | null>(null)
+  const [materials, setMaterials] = useState<CourseMaterials | null>(null)
+  const [showPdf, setShowPdf] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadVideo = useCallback(async () => {
+  const loadCourse = useCallback(async () => {
     if (!productId) return
     setLoading(true)
     setError(null)
@@ -52,14 +59,16 @@ export default function CursosLeitorPage() {
       }
 
       const mediaRes = await apiFetch(
-        `/api/catalog/products/${productId}/media`,
+        `/api/catalog/products/${productId}/media?list=1`,
         { cache: 'no-store' }
       )
       if (!mediaRes.ok) throw new Error('media_not_available')
 
-      const mediaData = await mediaRes.json()
-      if (!mediaData.url) throw new Error('media_not_available')
-      setStreamUrl(mediaData.url)
+      const mediaData = (await mediaRes.json()) as CourseMaterials
+      if (!mediaData.video?.url && !mediaData.pdf?.url) {
+        throw new Error('media_not_available')
+      }
+      setMaterials(mediaData)
     } catch {
       setError('load_failed')
     } finally {
@@ -73,9 +82,9 @@ export default function CursosLeitorPage() {
       return
     }
     if (status === 'authenticated') {
-      void loadVideo()
+      void loadCourse()
     }
-  }, [status, router, loadVideo])
+  }, [status, router, loadCourse])
 
   if (status === 'loading' || loading) {
     return (
@@ -109,11 +118,11 @@ export default function CursosLeitorPage() {
     )
   }
 
-  if (!product || !streamUrl || error) {
+  if (!product || !materials || error) {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-sm text-muted-foreground">
-          {t('cursos.error.open', 'Não foi possível abrir o vídeo.')}
+          {t('cursos.error.open', 'Não foi possível abrir o curso.')}
         </p>
         <Button variant="outline" onClick={() => router.push('/cursos')}>
           {t('cursos.back', 'Voltar')}
@@ -122,21 +131,68 @@ export default function CursosLeitorPage() {
     )
   }
 
+  if (showPdf && materials.pdf?.url) {
+    return (
+      <LibraryDocumentViewer
+        title={materials.pdf.title ?? product.title}
+        streamUrl={materials.pdf.url}
+        backHref="/cursos"
+        variant="pdf"
+        productId={productId}
+        onBack={() => setShowPdf(false)}
+      />
+    )
+  }
+
+  if (!materials.video?.url) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="text-sm text-muted-foreground">
+          {t('cursos.error.video', 'Vídeo ainda não disponível para este curso.')}
+        </p>
+        {materials.pdf?.url && (
+          <Button onClick={() => setShowPdf(true)}>
+            <FileText className="mr-2 h-4 w-4" />
+            {t('cursos.openPdf', 'Abrir material PDF')}
+          </Button>
+        )}
+        <Button variant="outline" onClick={() => router.push('/cursos')}>
+          {t('cursos.back', 'Voltar')}
+        </Button>
+      </div>
+    )
+  }
+
   return (
-    <AudioterapiaPlayer
-      coverSrc={product.imageSrc}
-      productTitle={product.title}
-      trackTitle={product.description ?? ''}
-      tagLabel={product.tagLabel ?? t('cursos.videoTag', 'Vídeo')}
-      author=""
-      mediaUrl={streamUrl}
-      isVideo
-      showVideoInFrame
-      hasPrev={false}
-      hasNext={false}
-      onPrev={() => {}}
-      onNext={() => {}}
-      backHref="/cursos"
-    />
+    <div className="relative min-h-[100dvh]">
+      {materials.pdf?.url && (
+        <div className="absolute right-3 top-3 z-20 sm:right-4 sm:top-4">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="shadow-md"
+            onClick={() => setShowPdf(true)}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            {t('cursos.openPdf', 'Material PDF')}
+          </Button>
+        </div>
+      )}
+      <AudioterapiaPlayer
+        coverSrc={product.imageSrc}
+        productTitle={product.title}
+        trackTitle={product.description ?? ''}
+        tagLabel={product.tagLabel ?? t('cursos.videoTag', 'Vídeo')}
+        author=""
+        mediaUrl={materials.video.url}
+        isVideo
+        showVideoInFrame
+        hasPrev={false}
+        hasNext={false}
+        onPrev={() => {}}
+        onNext={() => {}}
+        backHref="/cursos"
+      />
+    </div>
   )
 }

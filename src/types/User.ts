@@ -29,6 +29,7 @@ export type UserFullProps = {
 
   fullName: string | null
   whatsapp: string | null
+  cpf: string | null
   age: number | null
   gender: Gender | null
   profession: string | null

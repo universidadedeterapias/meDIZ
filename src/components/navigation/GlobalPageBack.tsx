@@ -7,6 +7,7 @@ import { PageBackButton } from './PageBackButton'
 const PAGES_WITH_HEADER_BACK = [
   '/audioterapia',
   '/biblioteca',
+  '/cursos',
   '/symptoms-dashboard',
   '/myAccount',
   '/account/payments-history'
@@ -16,6 +17,8 @@ const PAGES_WITH_HEADER_BACK = [
 const HIDE_EXACT = new Set([
   '/',
   '/chat',
+  '/prof',
+  '/simulador',
   '/admin-login',
   '/form',
   '/success',
@@ -57,8 +60,8 @@ export function GlobalPageBack() {
   if (!shouldShowGlobalBack(pathname)) return null
 
   return (
-    <div className="pointer-events-none fixed left-3 top-3 z-[60] sm:left-4 sm:top-4">
-      <div className="pointer-events-auto rounded-full bg-background/95 p-1 shadow-md ring-1 ring-border backdrop-blur-sm">
+    <div className="pointer-events-none fixed left-2 top-2 z-[60] sm:left-4 sm:top-4">
+      <div className="pointer-events-auto rounded-xl bg-background/98 p-0.5 shadow-lg ring-1 ring-indigo-200/80 backdrop-blur-md dark:ring-indigo-800">
         <PageBackButton fallbackHref={getFallback(pathname)} />
       </div>
     </div>
