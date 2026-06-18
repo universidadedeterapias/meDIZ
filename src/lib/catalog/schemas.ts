@@ -71,3 +71,27 @@ export const catalogProductBodySchema = z.object({
 })
 
 export type CatalogProductBody = z.infer<typeof catalogProductBodySchema>
+
+const courseModuleMediaSchema = z.object({
+  id: z.string().uuid().optional(),
+  kind: z.enum(['video', 'pdf', 'audio']),
+  title: z.string().min(1).max(255),
+  mediaFileName: z.string().min(1).max(2048),
+  locale: z.enum(['pt', 'en', 'es']).nullable().optional(),
+  sortOrder: z.number().int().min(0)
+})
+
+const courseModuleSchema = z.object({
+  id: z.string().uuid().optional(),
+  title: z.string().min(1).max(255),
+  description: z.string().max(5000).nullable().optional(),
+  coverImageUrl: z.string().max(2048).nullable().optional(),
+  sortOrder: z.number().int().min(0),
+  media: z.array(courseModuleMediaSchema)
+})
+
+export const courseModulesBodySchema = z.object({
+  modules: z.array(courseModuleSchema)
+})
+
+export type CourseModulesBody = z.infer<typeof courseModulesBodySchema>

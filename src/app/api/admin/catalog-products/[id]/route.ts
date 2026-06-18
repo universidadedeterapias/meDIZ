@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/requireAuth'
 import { serializeProduct } from '@/lib/catalog/products'
 import { formatCatalogDbError } from '@/lib/catalog/prisma-errors'
+import { findCatalogProductIdConflict } from '@/lib/catalog/catalog-product-id-conflict'
 import { catalogProductBodySchema } from '@/lib/catalog/schemas'
 import { catalogProductWriteData } from '@/lib/purchases/catalog-product-write'
 import {
@@ -63,6 +64,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const data = parsed.data
+    const idConflict = await findCatalogProductIdConflict(data, id)
+    if (idConflict) {
+      return NextResponse.json({ error: idConflict }, { status: 400 })
+    }
+
     const row = await prisma.catalogProduct.update({
       where: { id },
       data: catalogProductWriteData(data)

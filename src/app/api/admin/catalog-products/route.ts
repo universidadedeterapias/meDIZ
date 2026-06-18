@@ -6,6 +6,7 @@ import {
   serializeProduct
 } from '@/lib/catalog/products'
 import { formatCatalogDbError } from '@/lib/catalog/prisma-errors'
+import { findCatalogProductIdConflict } from '@/lib/catalog/catalog-product-id-conflict'
 import { catalogProductBodySchema } from '@/lib/catalog/schemas'
 import { catalogProductWriteData } from '@/lib/purchases/catalog-product-write'
 import {
@@ -105,6 +106,11 @@ export async function POST(request: NextRequest) {
     }
 
     const data = parsed.data
+    const idConflict = await findCatalogProductIdConflict(data)
+    if (idConflict) {
+      return NextResponse.json({ error: idConflict }, { status: 400 })
+    }
+
     const row = await prisma.catalogProduct.create({
       data: catalogProductWriteData(data)
     })

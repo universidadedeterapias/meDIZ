@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import Image from 'next/image'
 import {
   Loader2,
@@ -33,7 +33,9 @@ import type { CatalogProductDto } from '@/lib/catalog/types'
 import { catalogLocaleLabel } from '@/lib/catalog/locale'
 import { stripAnsi } from '@/lib/catalog/prisma-errors'
 import { uploadArquivoR2 } from '@/lib/upload-r2'
-import { CourseMediaEditor } from '@/components/admin/CourseMediaEditor'
+import { cn } from '@/lib/utils'
+import { CourseModuleEditor } from '@/components/admin/CourseModuleEditor'
+import type { CourseModuleInput } from '@/lib/catalog/course-modules'
 import type { CatalogMediaItem } from '@/lib/catalog/types'
 
 type FormState = {
@@ -49,6 +51,7 @@ type FormState = {
   pdfIndex: string
   mediaFileName: string
   mediaItems: CatalogMediaItem[]
+  courseModules: CourseModuleInput[]
   hotmartProductId: string
   extraHotmartProductIdsText: string
   stoneProductId: string
@@ -73,6 +76,7 @@ const emptyForm = (): FormState => ({
   pdfIndex: '0',
   mediaFileName: '',
   mediaItems: [],
+  courseModules: [],
   hotmartProductId: '',
   extraHotmartProductIdsText: '',
   stoneProductId: '',
@@ -98,6 +102,7 @@ function productToForm(p: CatalogProductDto): FormState {
     pdfIndex: String(p.pdfIndex),
     mediaFileName: p.mediaFileName ?? '',
     mediaItems: p.mediaItems ?? [],
+    courseModules: [],
     hotmartProductId: p.hotmartProductId ?? '',
     extraHotmartProductIdsText: (p.extraHotmartProductIds ?? []).join(', '),
     stoneProductId: p.stoneProductId ?? '',
@@ -108,6 +113,69 @@ function productToForm(p: CatalogProductDto): FormState {
     sortOrder: String(p.sortOrder),
     active: p.active
   }
+}
+
+function emptyCourseModule(sortOrder: number): CourseModuleInput {
+  return { title: `Módulo ${sortOrder + 1}`, sortOrder, media: [] }
+}
+
+type AccessMode = 'FREE' | 'HOTMART' | 'STONE'
+
+function accessModeFromForm(form: Pick<FormState, 'freeAccess' | 'paymentProvider'>): AccessMode {
+  if (form.freeAccess) return 'FREE'
+  return form.paymentProvider === 'STONE' ? 'STONE' : 'HOTMART'
+}
+
+function accessModeLabel(mode: AccessMode): string {
+  switch (mode) {
+    case 'FREE':
+      return 'Gratuito'
+    case 'HOTMART':
+      return 'Hotmart (webhook / bônus)'
+    case 'STONE':
+      return 'Stone (webhook)'
+  }
+}
+
+function accessModeHelperText(
+  mode: AccessMode,
+  permissionKey: FormState['permissionKey']
+): string {
+  if (mode === 'FREE') {
+    return 'Qualquer usuário logado pode abrir o curso inteiro, sem liberação no banco.'
+  }
+  if (mode === 'HOTMART') {
+    return permissionKey === 'VIDEO'
+      ? 'Um único ID Hotmart libera o curso completo (todos os módulos). Bônus liberam outros produtos na mesma compra.'
+      : 'Liberação via webhook Hotmart ou bônus de outro produto do catálogo.'
+  }
+  return permissionKey === 'VIDEO'
+    ? 'Um único ID Stone libera o curso completo (todos os módulos) via webhook.'
+    : 'Liberação via webhook Stone ao confirmar o pagamento.'
+}
+
+function AdminFormSection({
+  title,
+  description,
+  children,
+  className
+}: {
+  title: string
+  description?: string
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <div className={cn('space-y-4 rounded-lg border p-4', className)}>
+      <div>
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {description ? (
+          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+        ) : null}
+      </div>
+      <div className="space-y-4">{children}</div>
+    </div>
+  )
 }
 
 async function readJsonResponse<T>(res: Response): Promise<T | null> {
@@ -359,6 +427,13 @@ export default function AdminCatalogProductsPage() {
     setSaving(true)
     setError(null)
     try {
+      const primaryVideo =
+        form.permissionKey === 'VIDEO'
+          ? form.courseModules
+              .flatMap((m) => m.media)
+              .find((m) => m.kind === 'video')?.mediaFileName
+          : null
+
       const body = {
         section: form.section,
         title: form.title,
@@ -369,11 +444,9 @@ export default function AdminCatalogProductsPage() {
         permissionKey: form.permissionKey,
         locale: form.locale || null,
         pdfIndex: Number(form.pdfIndex) || 0,
-        mediaFileName: form.mediaFileName.trim() || null,
-        mediaItems:
-          form.permissionKey === 'VIDEO' && form.mediaItems.length > 0
-            ? form.mediaItems
-            : null,
+        mediaFileName:
+          primaryVideo?.trim() || form.mediaFileName.trim() || null,
+        mediaItems: null,
         hotmartProductId: form.hotmartProductId.trim() || null,
         extraHotmartProductIds: form.extraHotmartProductIdsText
           .split(/[,;\s]+/)
@@ -400,9 +473,10 @@ export default function AdminCatalogProductsPage() {
         }
       )
 
-      const data = await readJsonResponse<{ error?: string | Record<string, string[]> }>(
-        res
-      )
+      const data = await readJsonResponse<{
+        error?: string | Record<string, string[]>
+        product?: { id: string }
+      }>(res)
       if (!res.ok) {
         let msg = 'Não foi possível salvar o produto'
         if (typeof data?.error === 'string') {
@@ -414,6 +488,38 @@ export default function AdminCatalogProductsPage() {
           if (fields) msg = fields
         }
         throw new Error(msg)
+      }
+
+      const savedId = form.id ?? data?.product?.id
+      if (
+        form.permissionKey === 'VIDEO' &&
+        savedId &&
+        form.courseModules.length > 0
+      ) {
+        const modRes = await fetch(
+          `/api/admin/catalog-products/${savedId}/modules`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ modules: form.courseModules })
+          }
+        )
+        const modData = await readJsonResponse<{
+          error?: string | Record<string, string[]>
+        }>(modRes)
+        if (!modRes.ok) {
+          let modMsg = 'Produto salvo, mas falha ao salvar módulos'
+          if (typeof modData?.error === 'string') {
+            modMsg = modData.error
+          } else if (modData?.error && typeof modData.error === 'object') {
+            const fields = Object.entries(modData.error as Record<string, string[]>)
+              .map(([k, v]) => `${k}: ${v?.join(', ')}`)
+              .join(' · ')
+            if (fields) modMsg = fields
+          }
+          throw new Error(modMsg)
+        }
       }
 
       setForm(emptyForm())
@@ -458,7 +564,9 @@ export default function AdminCatalogProductsPage() {
       section: 'BIBLIOTECA',
       permissionKey: 'VIDEO',
       tagLabel: 'Vídeo',
-      unlockedLabel: 'Assistir vídeo'
+      unlockedLabel: 'Assistir vídeo',
+      paymentProvider: 'STONE',
+      courseModules: [emptyCourseModule(0)]
     })
     setEditing(true)
   }
@@ -476,8 +584,25 @@ export default function AdminCatalogProductsPage() {
     }
   }
 
-  const startEdit = (p: CatalogProductDto) => {
-    setForm(productToForm(p))
+  const startEdit = async (p: CatalogProductDto) => {
+    const base = productToForm(p)
+    if (p.permissionKey === 'VIDEO') {
+      try {
+        const res = await fetch(`/api/admin/catalog-products/${p.id}/modules`, {
+          credentials: 'include'
+        })
+        if (res.ok) {
+          const data = await readJsonResponse<{ modules: CourseModuleInput[] }>(res)
+          base.courseModules =
+            data?.modules?.length ? data.modules : [emptyCourseModule(0)]
+        } else {
+          base.courseModules = [emptyCourseModule(0)]
+        }
+      } catch {
+        base.courseModules = [emptyCourseModule(0)]
+      }
+    }
+    setForm(base)
     setEditing(true)
   }
 
@@ -628,8 +753,14 @@ export default function AdminCatalogProductsPage() {
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                      {p.freeAccess ? 'Acesso gratuito' : 'Requer liberação'} ·{' '}
-                      {p.tagLabel} · {permissionLabel(p.permissionKey)}
+                      {accessModeLabel(
+                        p.freeAccess
+                          ? 'FREE'
+                          : p.paymentProvider === 'STONE'
+                            ? 'STONE'
+                            : 'HOTMART'
+                      )}{' '}
+                      · {p.tagLabel} · {permissionLabel(p.permissionKey)}
                       {p.permissionKey === 'PDF' ? ` #${p.pdfIndex}` : ''}
                       {p.locale
                         ? ` · ${catalogLocaleLabel(p.locale as 'pt' | 'en' | 'es')}`
@@ -669,9 +800,9 @@ export default function AdminCatalogProductsPage() {
               {form.id ? 'Editar produto' : 'Novo produto'}
             </CardTitle>
             <CardDescription>
-              Escolha se o conteúdo é gratuito para todos os usuários logados ou
-              se exige liberação via Hotmart/n8n. A permissão indica qual bônus
-              desbloqueia o produto quando o acesso não é gratuito.
+              {form.permissionKey === 'VIDEO'
+                ? 'Cadastre o curso, configure a venda (um ID por curso) e organize o conteúdo em módulos com várias aulas.'
+                : 'Escolha se o conteúdo é gratuito ou exige liberação via Hotmart/Stone. A permissão indica qual bônus desbloqueia o produto.'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -718,6 +849,13 @@ export default function AdminCatalogProductsPage() {
                           (fixo para esta seção)
                         </span>
                       </div>
+                    ) : form.permissionKey === 'VIDEO' ? (
+                      <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted/40 px-3 text-sm text-foreground">
+                        Curso (vídeo)
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          (tipo fixo — venda é do curso inteiro)
+                        </span>
+                      </div>
                     ) : (
                       <Select
                         value={form.permissionKey}
@@ -744,7 +882,7 @@ export default function AdminCatalogProductsPage() {
                       {form.section === 'AUDIOTERAPIA'
                         ? 'Desbloqueia com a permissão audioterapia enviada pelo n8n/Hotmart.'
                         : form.permissionKey === 'VIDEO'
-                          ? 'Liberação via Stone: cadastre o ID do produto abaixo e configure o webhook /api/stone/webhook.'
+                          ? 'Cursos usam liberação por produto (entitlement), não por módulo.'
                           : 'Define qual bônus da compra libera este conteúdo.'}
                     </p>
                   </div>
@@ -778,133 +916,152 @@ export default function AdminCatalogProductsPage() {
                   </p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Modo de acesso</Label>
-                  <Select
-                    value={form.freeAccess ? 'FREE' : 'PERMISSION'}
-                    onValueChange={(v) =>
-                      setForm((f) => ({
-                        ...f,
-                        freeAccess: v === 'FREE'
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PERMISSION">
-                        Requer liberação (bônus Hotmart)
-                      </SelectItem>
-                      <SelectItem value="FREE">
-                        Gratuito para todos (usuários logados)
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    {form.freeAccess
-                      ? 'Qualquer usuário logado pode abrir o conteúdo, sem liberação no banco.'
-                      : form.permissionKey === 'VIDEO'
-                        ? 'Só quem comprou na Stone (webhook) ou tem acesso gratuito pode ver o curso.'
-                        : 'Só quem recebeu a permissão correspondente via webhook/n8n pode acessar.'}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="title">Título *</Label>
-                  <Input
-                    id="title"
-                    value={form.title}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, title: e.target.value }))
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrição</Label>
-                  <Textarea
-                    id="description"
-                    rows={3}
-                    value={form.description}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, description: e.target.value }))
-                    }
-                  />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
+                <AdminFormSection
+                  title={
+                    form.permissionKey === 'VIDEO'
+                      ? 'Informações do curso'
+                      : 'Informações do produto'
+                  }
+                >
                   <div className="space-y-2">
-                    <Label htmlFor="tag">Etiqueta (ex.: PDF)</Label>
+                    <Label htmlFor="title">Título *</Label>
                     <Input
-                      id="tag"
-                      value={form.tagLabel}
+                      id="title"
+                      value={form.title}
                       onChange={(e) =>
-                        setForm((f) => ({ ...f, tagLabel: e.target.value }))
+                        setForm((f) => ({ ...f, title: e.target.value }))
                       }
                     />
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="unlockedLabel">Texto botão liberado</Label>
-                    <Input
-                      id="unlockedLabel"
-                      placeholder="Acessar PDF"
-                      value={form.unlockedLabel}
+                    <Label htmlFor="description">Descrição</Label>
+                    <Textarea
+                      id="description"
+                      rows={3}
+                      value={form.description}
                       onChange={(e) =>
+                        setForm((f) => ({ ...f, description: e.target.value }))
+                      }
+                    />
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="tag">Etiqueta (ex.: PDF)</Label>
+                      <Input
+                        id="tag"
+                        value={form.tagLabel}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, tagLabel: e.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="unlockedLabel">Texto botão liberado</Label>
+                      <Input
+                        id="unlockedLabel"
+                        placeholder="Acessar PDF"
+                        value={form.unlockedLabel}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            unlockedLabel: e.target.value
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                </AdminFormSection>
+
+                <AdminFormSection
+                  title={
+                    form.permissionKey === 'VIDEO'
+                      ? 'Venda e liberação do curso'
+                      : 'Venda e liberação'
+                  }
+                  description={
+                    form.permissionKey === 'VIDEO'
+                      ? 'O ID de compra (Hotmart ou Stone) é único para o curso inteiro — uma compra libera todos os módulos.'
+                      : undefined
+                  }
+                  className="border-emerald-200 bg-emerald-50/40 dark:border-emerald-900 dark:bg-emerald-950/20"
+                >
+                  <div className="space-y-2">
+                    <Label>Modo de acesso</Label>
+                    <Select
+                      value={accessModeFromForm(form)}
+                      onValueChange={(v) => {
+                        const mode = v as AccessMode
                         setForm((f) => ({
                           ...f,
-                          unlockedLabel: e.target.value
+                          freeAccess: mode === 'FREE',
+                          paymentProvider:
+                            mode === 'STONE'
+                              ? 'STONE'
+                              : mode === 'HOTMART'
+                                ? 'HOTMART'
+                                : f.paymentProvider
                         }))
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="HOTMART">
+                          Liberação via Hotmart (webhook / bônus)
+                        </SelectItem>
+                        <SelectItem value="STONE">
+                          Liberação via Stone (webhook)
+                        </SelectItem>
+                        <SelectItem value="FREE">
+                          Gratuito para todos (usuários logados)
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {accessModeHelperText(
+                        accessModeFromForm(form),
+                        form.permissionKey
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="purchaseUrl">
+                      {form.permissionKey === 'VIDEO'
+                        ? 'Link de compra do curso *'
+                        : 'Link de compra (Hotmart) *'}
+                    </Label>
+                    <Input
+                      id="purchaseUrl"
+                      type="url"
+                      placeholder={
+                        form.permissionKey === 'VIDEO'
+                          ? 'https://checkout...'
+                          : 'https://pay.hotmart.com/...'
+                      }
+                      value={form.purchaseUrl}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, purchaseUrl: e.target.value }))
                       }
                     />
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="purchaseUrl">
-                    {form.permissionKey === 'VIDEO'
-                      ? 'Link de compra (Stone / checkout) *'
-                      : 'Link de compra (Hotmart) *'}
-                  </Label>
-                  <Input
-                    id="purchaseUrl"
-                    type="url"
-                    placeholder={
-                      form.permissionKey === 'VIDEO'
-                        ? 'https://...'
-                        : 'https://pay.hotmart.com/...'
-                    }
-                    value={form.purchaseUrl}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, purchaseUrl: e.target.value }))
-                    }
-                  />
-                </div>
 
                 {!form.freeAccess && (
-                  <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 dark:border-emerald-900 dark:bg-emerald-950/20">
-                    <Label>Pagamento e liberação (webhook)</Label>
+                  <div className="space-y-3">
+                    <Label>
+                      {form.paymentProvider === 'STONE'
+                        ? 'ID Stone do curso'
+                        : 'ID Hotmart do curso'}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {form.paymentProvider === 'STONE'
+                        ? 'Informe o ID Stone para o webhook liberar este produto após o pagamento.'
+                        : 'Informe o ID Hotmart do produto. Use “também libera” para bônus na mesma compra.'}
+                    </p>
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Provedor</Label>
-                        <Select
-                          value={form.paymentProvider}
-                          onValueChange={(v) =>
-                            setForm((f) => ({
-                              ...f,
-                              paymentProvider: v as FormState['paymentProvider']
-                            }))
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="HOTMART">Hotmart</SelectItem>
-                            <SelectItem value="STONE">Stone</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
                       {form.paymentProvider === 'HOTMART' ? (
                         <>
                           <div className="space-y-2">
@@ -942,7 +1099,7 @@ export default function AdminCatalogProductsPage() {
                           </div>
                         </>
                       ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-2 sm:col-span-2">
                           <Label htmlFor="stoneProductId">ID Stone</Label>
                           <Input
                             id="stoneProductId"
@@ -959,7 +1116,11 @@ export default function AdminCatalogProductsPage() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label>Ao comprar, também libera</Label>
+                      <Label>
+                        {form.paymentProvider === 'HOTMART'
+                          ? 'Bônus: ao comprar, também libera'
+                          : 'Também libera (opcional)'}
+                      </Label>
                       <p className="text-xs text-muted-foreground">
                         Marque os produtos extras liberados nesta compra.
                       </p>
@@ -1000,18 +1161,7 @@ export default function AdminCatalogProductsPage() {
                     </div>
                   </div>
                 )}
-
-                {form.permissionKey === 'VIDEO' ? (
-                  <CourseMediaEditor
-                    mediaItems={form.mediaItems}
-                    onChange={(items) =>
-                      setForm((f) => ({ ...f, mediaItems: items }))
-                    }
-                    onPrimaryVideoChange={(url) =>
-                      setForm((f) => ({ ...f, mediaFileName: url }))
-                    }
-                  />
-                ) : null}
+                </AdminFormSection>
 
                 {showProductMedia && form.permissionKey !== 'VIDEO' && (
                   <div className="space-y-2 rounded-lg border border-dashed border-violet-200 bg-violet-50/30 p-3 dark:border-violet-900 dark:bg-violet-950/20">
@@ -1143,7 +1293,11 @@ export default function AdminCatalogProductsPage() {
                 )}
 
                 <div className="space-y-2">
-                  <Label>Capa do produto</Label>
+                  <Label>
+                    {form.permissionKey === 'VIDEO'
+                      ? 'Capa do curso'
+                      : 'Capa do produto'}
+                  </Label>
                   {form.coverImageUrl && (
                     <div className="relative mx-auto h-40 w-32 overflow-hidden rounded-lg border">
                       <Image
@@ -1194,6 +1348,15 @@ export default function AdminCatalogProductsPage() {
                     </Button>
                   </div>
                 </div>
+
+                {form.permissionKey === 'VIDEO' ? (
+                  <CourseModuleEditor
+                    modules={form.courseModules}
+                    onChange={(modules) =>
+                      setForm((f) => ({ ...f, courseModules: modules }))
+                    }
+                  />
+                ) : null}
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">

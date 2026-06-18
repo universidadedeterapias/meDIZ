@@ -11,12 +11,19 @@ import {
 } from '@/lib/library/permissions'
 import {
   filterMediaItemsForUserLanguage,
-  productMatchesUserLanguage
+  productMatchesUserLanguage,
+  languageToCatalogLocale
 } from '@/lib/catalog/locale'
 import { resolveLibraryLocale } from '@/lib/library/locale'
 import { serveLibraryContent } from '@/lib/library/serveContent'
 import { protectMediaPayload } from '@/lib/library/protect-media-url'
 import { getProductEntitlementIdsForUser } from '@/lib/purchases/entitlements'
+import {
+  ensureCourseModulesMigrated,
+  buildCourseModulePlayback,
+  firstModuleVideo,
+  firstModulePdf
+} from '@/lib/catalog/course-modules'
 import {
   listCourseMaterials,
   pickCourseMedia
@@ -131,49 +138,119 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   if (product.permissionKey === 'VIDEO') {
+    const fullProduct = await prisma.catalogProduct.findUnique({ where: { id } })
+    const moduleDtos = fullProduct
+      ? await ensureCourseModulesMigrated(fullProduct)
+      : []
+
+    const resolveCourseUrl = (
+      mediaRef: string,
+      kind: CourseMediaKind
+    ): string | null => {
+      const permission =
+        kind === 'pdf' ? 'PDF' : kind === 'audio' ? 'AUDIOTERAPIA' : 'VIDEO'
+      return (
+        resolveProductMediaUrl(permission, mediaRef, locale, baseUrl)?.url ??
+        null
+      )
+    }
+
+    const playback = buildCourseModulePlayback(
+      moduleDtos,
+      languageToCatalogLocale(language),
+      resolveCourseUrl
+    )
+
     if (listAll) {
-      const materials = listCourseMaterials(
+      const legacyMaterials = listCourseMaterials(
         allItems,
         language,
         product.mediaFileName
       )
-      const videoRes = materials.video
+      const legacyVideo = legacyMaterials.video
         ? resolveProductMediaUrl(
             'VIDEO',
-            materials.video.mediaFileName,
+            legacyMaterials.video.mediaFileName,
             locale,
             baseUrl
           )
         : null
-      const pdfRes = materials.pdf
+      const legacyPdf = legacyMaterials.pdf
         ? resolveProductMediaUrl(
             'PDF',
-            materials.pdf.mediaFileName,
+            legacyMaterials.pdf.mediaFileName,
             locale,
             baseUrl
           )
         : null
 
+      const videoFromModules = firstModuleVideo(playback)
+      const pdfFromModules = firstModulePdf(playback)
+
       return NextResponse.json(
         {
           locale,
-          video: videoRes
-            ? { url: videoRes.url, title: materials.video?.title }
-            : null,
-          pdf: pdfRes
-            ? { url: pdfRes.url, title: materials.pdf?.title }
-            : null
+          modules: playback.map((mod) => ({
+            id: mod.id,
+            title: mod.title,
+            description: mod.description,
+            coverImageUrl: mod.coverImageUrl,
+            sortOrder: mod.sortOrder,
+            media: mod.media
+          })),
+          video: videoFromModules ??
+            (legacyVideo
+              ? { url: legacyVideo.url, title: legacyMaterials.video?.title }
+              : null),
+          pdf: pdfFromModules ??
+            (legacyPdf
+              ? { url: legacyPdf.url, title: legacyMaterials.pdf?.title }
+              : null)
         },
         { headers: { 'Cache-Control': 'no-store' } }
       )
     }
 
+    const moduleId = request.nextUrl.searchParams.get('moduleId')
+    const mediaId = request.nextUrl.searchParams.get('mediaId')
     const courseKind: CourseMediaKind =
-      kindParam === 'pdf' ? 'pdf' : 'video'
+      kindParam === 'pdf' ? 'pdf' : kindParam === 'audio' ? 'audio' : 'video'
+    const mediaListKey =
+      courseKind === 'video' ? 'videos' : courseKind === 'pdf' ? 'pdfs' : 'audios'
+
+    const pickFromModule = (mod: (typeof playback)[number]) => {
+      const list = mod.media[mediaListKey]
+      if (mediaId) return list.find((m) => m.id === mediaId) ?? null
+      return list[0] ?? null
+    }
+
+    if (moduleId && playback.length > 0) {
+      const mod = playback.find((m) => m.id === moduleId)
+      const picked = mod ? pickFromModule(mod) : null
+      if (picked?.url) {
+        const response = resolveMediaRef(
+          picked.url,
+          courseKind === 'pdf' ? 'pdf' : courseKind === 'video' ? 'video' : undefined
+        )
+        if (response) return response
+      }
+    }
+
+    for (const mod of playback) {
+      const picked = pickFromModule(mod)
+      if (picked?.url) {
+        const response = resolveMediaRef(
+          picked.url,
+          courseKind === 'pdf' ? 'pdf' : courseKind === 'video' ? 'video' : undefined
+        )
+        if (response) return response
+      }
+    }
+
     const picked = pickCourseMedia(
       allItems,
       language,
-      courseKind,
+      courseKind === 'audio' ? 'video' : courseKind,
       product.mediaFileName
     )
     if (picked) {

@@ -1,4 +1,7 @@
-# 📡 URLs de API - ExemploApp
+# 📡 URLs de API - meDIZ
+
+> **Documentação atualizada:** use [DOCUMENTACAO-API.md](./DOCUMENTACAO-API.md) e [DOCUMENTACAO-TECNICA.md](./DOCUMENTACAO-TECNICA.md).  
+> Este arquivo é legado e pode estar desatualizado.
 
 Documentação completa de todos os endpoints da aplicação.
 

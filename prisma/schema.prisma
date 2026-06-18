@@ -402,6 +402,12 @@ enum PaymentProvider {
   FREE
 }
 
+enum CatalogModuleMediaKind {
+  VIDEO
+  PDF
+  AUDIO
+}
+
 /// Produtos exibidos nas páginas Biblioteca e Audioterapia (gerenciados no admin).
 model CatalogProduct {
   id               String               @id @default(uuid())
@@ -434,9 +440,45 @@ model CatalogProduct {
   grantsAsTarget   CatalogProductGrant[] @relation("GrantTarget")
   productEntitlements ProductEntitlement[]
   externalIds      CatalogProductExternalId[]
+  courseModules    CatalogCourseModule[]
 
   @@index([section, active, sortOrder])
   @@map("catalog_products")
+}
+
+/// Módulo de um curso (ex.: Módulo 1, Módulo 2).
+model CatalogCourseModule {
+  id               String               @id @default(uuid())
+  catalogProductId String               @map("catalog_product_id")
+  title            String               @db.VarChar(255)
+  description      String?              @db.Text
+  coverImageUrl    String?              @map("cover_image_url") @db.VarChar(2048)
+  sortOrder        Int                  @default(0) @map("sort_order")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  catalogProduct   CatalogProduct       @relation(fields: [catalogProductId], references: [id], onDelete: Cascade)
+  media            CatalogModuleMedia[]
+
+  @@index([catalogProductId, sortOrder])
+  @@map("catalog_course_modules")
+}
+
+/// Mídia de um módulo (vídeo, PDF ou áudio).
+model CatalogModuleMedia {
+  id            String                 @id @default(uuid())
+  moduleId      String                 @map("module_id")
+  kind          CatalogModuleMediaKind
+  title         String                 @db.VarChar(255)
+  mediaFileName String                 @map("media_file_name") @db.VarChar(2048)
+  /// pt | en | es — null = todos os idiomas
+  locale        String?                @db.VarChar(10)
+  sortOrder     Int                    @default(0) @map("sort_order")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+  module        CatalogCourseModule    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@index([moduleId, sortOrder])
+  @@map("catalog_module_media")
 }
 
 /// IDs Hotmart/Stone adicionais que resolvem para o mesmo produto (ex.: físico + digital).

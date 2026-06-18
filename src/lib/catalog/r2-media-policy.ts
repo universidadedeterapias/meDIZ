@@ -1,5 +1,8 @@
 export const R2_MAX_BYTES = 200 * 1024 * 1024
 
+/** Upload via API (sem CORS no browser) — capas, PDFs pequenos, etc. */
+export const R2_PROXY_MAX_BYTES = 25 * 1024 * 1024
+
 export const R2_ALLOWED_CONTENT_TYPES = [
   'application/pdf',
   'audio/mpeg',
