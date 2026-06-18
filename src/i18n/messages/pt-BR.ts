@@ -96,6 +96,7 @@ const messages = {
   'catalog.action.readBook': 'Acessar livro',
   'catalog.action.accessPdf': 'Acessar PDF',
   'catalog.action.listen': 'Ouvir agora',
+  'catalog.action.accessCourse': 'Acessar curso',
   'catalog.livro.title': 'O CORPO DIZ',
   'catalog.livro.description':
     'Versão digital do livro para consultar os significados biológicos dos sintomas.',

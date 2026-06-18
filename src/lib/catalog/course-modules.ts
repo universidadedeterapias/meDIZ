@@ -1,6 +1,10 @@
 import type { CatalogModuleMediaKind, CatalogProduct } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import type { CatalogMediaItem, CourseMediaKind } from '@/lib/catalog/types'
+import type {
+  CatalogMediaItem,
+  CatalogProductOffer,
+  CourseMediaKind
+} from '@/lib/catalog/types'
 import { parseMediaItems } from '@/lib/catalog/media-items'
 
 export type CourseModuleMediaInput = {
@@ -293,4 +297,109 @@ export function firstModulePdf(
 
 export function legacyItemsFromProduct(product: CatalogProduct): CatalogMediaItem[] {
   return parseMediaItems(product.mediaItems) ?? []
+}
+
+export type CourseMediaKinds = {
+  hasVideo: boolean
+  hasPdf: boolean
+  hasAudio: boolean
+}
+
+const EMPTY_COURSE_MEDIA_KINDS: CourseMediaKinds = {
+  hasVideo: false,
+  hasPdf: false,
+  hasAudio: false
+}
+
+function mergeCourseMediaKind(
+  current: CourseMediaKinds,
+  kind: CatalogModuleMediaKind | CourseMediaKind
+): CourseMediaKinds {
+  const normalized = String(kind).toUpperCase()
+  return {
+    hasVideo: current.hasVideo || normalized === 'VIDEO',
+    hasPdf: current.hasPdf || normalized === 'PDF',
+    hasAudio: current.hasAudio || normalized === 'AUDIO'
+  }
+}
+
+export function formatCourseMediaTagLabel(kinds: CourseMediaKinds): string {
+  const parts: string[] = []
+  if (kinds.hasVideo) parts.push('Vídeo')
+  if (kinds.hasPdf) parts.push('PDF')
+  if (kinds.hasAudio) parts.push('Áudio')
+  if (parts.length === 0) return 'Curso'
+  if (parts.length === 1) return parts[0]!
+  if (parts.length === 2) return `${parts[0]} e ${parts[1]}`
+  return `${parts[0]}, ${parts[1]} e ${parts[2]}`
+}
+
+export async function getCourseMediaKindsByProductIds(
+  productIds: string[]
+): Promise<Map<string, CourseMediaKinds>> {
+  const result = new Map<string, CourseMediaKinds>()
+  if (productIds.length === 0) return result
+
+  const moduleRows = await prisma.catalogCourseModule.findMany({
+    where: { catalogProductId: { in: productIds } },
+    select: {
+      catalogProductId: true,
+      media: { select: { kind: true } }
+    }
+  })
+
+  for (const row of moduleRows) {
+    let kinds = result.get(row.catalogProductId) ?? { ...EMPTY_COURSE_MEDIA_KINDS }
+    for (const media of row.media) {
+      kinds = mergeCourseMediaKind(kinds, media.kind)
+    }
+    result.set(row.catalogProductId, kinds)
+  }
+
+  const missingIds = productIds.filter((id) => {
+    const kinds = result.get(id)
+    return !kinds || (!kinds.hasVideo && !kinds.hasPdf && !kinds.hasAudio)
+  })
+
+  if (missingIds.length > 0) {
+    const legacyProducts = await prisma.catalogProduct.findMany({
+      where: { id: { in: missingIds }, permissionKey: 'VIDEO' },
+      select: { id: true, mediaItems: true, mediaFileName: true }
+    })
+
+    for (const product of legacyProducts) {
+      let kinds = { ...EMPTY_COURSE_MEDIA_KINDS }
+      for (const item of parseMediaItems(product.mediaItems) ?? []) {
+        if (item.kind) kinds = mergeCourseMediaKind(kinds, item.kind)
+      }
+      if (product.mediaFileName?.trim()) {
+        kinds = mergeCourseMediaKind(kinds, 'VIDEO')
+      }
+      result.set(product.id, kinds)
+    }
+  }
+
+  return result
+}
+
+export async function enrichVideoCourseOffers(
+  offers: CatalogProductOffer[]
+): Promise<CatalogProductOffer[]> {
+  const videoIds = offers
+    .filter((offer) => offer.permissionKey === 'VIDEO')
+    .map((offer) => offer.id)
+
+  if (videoIds.length === 0) return offers
+
+  const kindsMap = await getCourseMediaKindsByProductIds(videoIds)
+
+  return offers.map((offer) => {
+    if (offer.permissionKey !== 'VIDEO') return offer
+    const kinds = kindsMap.get(offer.id)
+    if (!kinds) return offer
+    return {
+      ...offer,
+      tagLabel: formatCourseMediaTagLabel(kinds)
+    }
+  })
 }

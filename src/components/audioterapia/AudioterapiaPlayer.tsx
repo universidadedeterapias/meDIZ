@@ -16,6 +16,7 @@ import {
 import { PageBackButton } from '@/components/navigation/PageBackButton'
 import { Button } from '@/components/ui/button'
 import { formatMediaTime } from '@/lib/format-media-time'
+import { cn } from '@/lib/utils'
 
 type AudioterapiaPlayerProps = {
   coverSrc: string
@@ -27,6 +28,14 @@ type AudioterapiaPlayerProps = {
   isVideo?: boolean
   /** Exibe o vídeo no quadro central (Biblioteca) em vez da capa estática */
   showVideoInFrame?: boolean
+  /** square = audioterapia; video = 16:9 para cursos */
+  frameAspect?: 'square' | 'video'
+  videoFit?: 'cover' | 'contain'
+  maxFrameClassName?: string
+  /** Oculta cabeçalho com voltar (quando o layout pai já tem navegação) */
+  showHeader?: boolean
+  /** Preenche o painel pai em vez de ocupar a tela inteira */
+  fillContainer?: boolean
   hasPrev: boolean
   hasNext: boolean
   onPrev: () => void
@@ -52,6 +61,11 @@ export function AudioterapiaPlayer({
   mediaUrl,
   isVideo = false,
   showVideoInFrame = false,
+  frameAspect = 'square',
+  videoFit = 'cover',
+  maxFrameClassName,
+  showHeader = true,
+  fillContainer = false,
   hasPrev,
   hasNext,
   onPrev,
@@ -151,10 +165,20 @@ export function AudioterapiaPlayer({
   const videoInFrame = isVideo && showVideoInFrame
   const TagIcon = videoInFrame ? Video : Headphones
   const showTrackNav = hasPrev || hasNext
+  const isWideVideo = frameAspect === 'video'
+  const frameMaxClass = maxFrameClassName ?? (isWideVideo ? 'max-w-4xl' : 'max-w-[280px]')
+  const frameAspectClass = isWideVideo ? 'aspect-video' : 'aspect-square'
+  const videoFitClass = videoFit === 'contain' ? 'object-contain' : 'object-cover'
 
   return (
     <div
-      className="relative flex min-h-[100dvh] flex-col bg-gradient-to-b from-violet-100/90 via-violet-50/40 to-white"
+      className={cn(
+        'relative flex flex-col',
+        fillContainer ? 'min-h-0 flex-1' : 'min-h-[100dvh]',
+        isWideVideo
+          ? 'bg-background'
+          : 'bg-gradient-to-b from-violet-100/90 via-violet-50/40 to-white'
+      )}
       onContextMenu={(e) => e.preventDefault()}
     >
       {isVideo && !videoInFrame ? (
@@ -176,24 +200,38 @@ export function AudioterapiaPlayer({
         />
       ) : null}
 
-      <header className="flex items-center justify-between gap-2 px-3 pb-2 pt-3 sm:px-6 sm:pt-4">
-        <PageBackButton href={backHref} showLabel className="shadow-sm" />
-        <p className="text-lg font-bold tracking-tight">
-          <span className="text-violet-600">me</span>
-          <span className="text-indigo-600">DIZ</span>
-          <span className="text-amber-500">!</span>
-        </p>
-        <div className="w-10" />
-      </header>
+      {showHeader ? (
+        <header className="flex items-center justify-between gap-2 px-3 pb-2 pt-3 sm:px-6 sm:pt-4">
+          <PageBackButton href={backHref} showLabel className="shadow-sm" />
+          <p className="text-lg font-bold tracking-tight">
+            <span className="text-violet-600">me</span>
+            <span className="text-indigo-600">DIZ</span>
+            <span className="text-amber-500">!</span>
+          </p>
+          <div className="w-10" />
+        </header>
+      ) : null}
 
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-5 pb-8 pt-2">
-        <div className="mx-auto w-full max-w-[280px]">
-          <div className="relative aspect-square overflow-hidden rounded-[28px] bg-black shadow-[0_20px_50px_-20px_rgba(91,33,182,0.45)]">
+      <main
+        className={cn(
+          'mx-auto flex w-full flex-1 flex-col px-5 pb-8 pt-2',
+          isWideVideo ? 'max-w-5xl' : 'max-w-md'
+        )}
+      >
+        <div className={cn('mx-auto w-full', frameMaxClass)}>
+          <div
+            className={cn(
+              'relative w-full overflow-hidden rounded-2xl bg-black shadow-lg',
+              frameAspectClass,
+              !isWideVideo &&
+                'rounded-[28px] shadow-[0_20px_50px_-20px_rgba(91,33,182,0.45)]'
+            )}
+          >
             {videoInFrame ? (
               <video
                 ref={mediaRef as React.RefObject<HTMLVideoElement>}
                 src={mediaUrl}
-                className="h-full w-full object-cover"
+                className={cn('h-full w-full', videoFitClass)}
                 playsInline
                 preload="metadata"
                 controlsList="nodownload noremoteplayback"
@@ -213,8 +251,13 @@ export function AudioterapiaPlayer({
           </div>
         </div>
 
-        <div className="mt-6 space-y-2 text-center">
-          <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-foreground sm:text-[1.65rem]">
+        <div className={cn('space-y-2 text-center', isWideVideo ? 'mt-4' : 'mt-6')}>
+          <h1
+            className={cn(
+              'font-extrabold leading-tight tracking-tight text-foreground',
+              isWideVideo ? 'text-lg sm:text-xl' : 'text-2xl sm:text-[1.65rem]'
+            )}
+          >
             {lead}
             {accent ? (
               <>

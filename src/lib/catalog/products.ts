@@ -4,7 +4,7 @@ import { BIBLIOTECA_CATALOG } from '@/lib/library/productCatalog'
 import {
   type CatalogProductDto,
   type CatalogProductOffer,
-  defaultUnlockedLabel,
+  resolveUnlockedLabelForProduct,
   permissionKeyToLib
 } from './types'
 import { parseMediaItems } from '@/lib/catalog/media-items'
@@ -164,9 +164,7 @@ export function mapProductsToOffers(
       title,
       unlocked: isUnlocked(product, permissoes, productEntitlements),
       lockedLabel,
-      resolvedUnlockedLabel:
-        product.unlockedLabel?.trim() ||
-        defaultUnlockedLabel(product.permissionKey),
+      resolvedUnlockedLabel: resolveUnlockedLabelForProduct(product),
       imageSrc: product.coverImageUrl || PLACEHOLDER_COVER
     }
   })

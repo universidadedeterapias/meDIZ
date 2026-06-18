@@ -60,6 +60,17 @@ export function permissionKeyToLib(
   }
 }
 
+export function resolveUnlockedLabelForProduct(
+  product: Pick<CatalogProductDto, 'permissionKey' | 'unlockedLabel'>
+): string {
+  const custom = product.unlockedLabel?.trim()
+  if (product.permissionKey === 'VIDEO') {
+    if (!custom || custom === 'Assistir vídeo') return 'Acessar curso'
+    return custom
+  }
+  return custom || defaultUnlockedLabel(product.permissionKey)
+}
+
 export function defaultUnlockedLabel(key: CatalogPermissionKey): string {
   switch (key) {
     case 'LIVRO_DIGITAL':
@@ -67,7 +78,7 @@ export function defaultUnlockedLabel(key: CatalogPermissionKey): string {
     case 'PDF':
       return 'Acessar PDF'
     case 'VIDEO':
-      return 'Assistir vídeo'
+      return 'Acessar curso'
     case 'AUDIOTERAPIA':
       return 'Ouvir agora'
   }

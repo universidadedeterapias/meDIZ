@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { FileText, Headphones, Loader2 } from 'lucide-react'
+import { FileText, Headphones, Loader2, Play } from 'lucide-react'
 import type { CatalogProductOffer } from '@/lib/catalog/types'
 import { AudioterapiaPlayer } from '@/components/audioterapia/AudioterapiaPlayer'
 import { LibraryDocumentViewer } from '@/components/library/LibraryDocumentViewer'
+import { PageBackButton } from '@/components/navigation/PageBackButton'
 import { Button } from '@/components/ui/button'
 import { useTranslation } from '@/i18n/useTranslation'
 import { apiFetch } from '@/lib/fetchClient'
@@ -33,6 +34,15 @@ type CourseMaterials = {
   modules: CourseModule[]
   video: { url: string; title?: string } | null
   pdf: { url: string; title?: string } | null
+}
+
+type VideoPlaylistItem = {
+  key: string
+  moduleIndex: number
+  videoIndex: number
+  moduleTitle: string
+  title: string
+  url: string
 }
 
 function normalizeModuleMedia(raw: unknown): ModuleMedia {
@@ -66,6 +76,24 @@ function normalizeModuleMedia(raw: unknown): ModuleMedia {
   }
 }
 
+function buildVideoPlaylist(modules: CourseModule[]): VideoPlaylistItem[] {
+  const list: VideoPlaylistItem[] = []
+  modules.forEach((mod, moduleIndex) => {
+    mod.media.videos.forEach((video, videoIndex) => {
+      if (!video.url) return
+      list.push({
+        key: `${mod.id}-${video.id}-${videoIndex}`,
+        moduleIndex,
+        videoIndex,
+        moduleTitle: mod.title,
+        title: video.title ?? `Vídeo ${videoIndex + 1}`,
+        url: video.url
+      })
+    })
+  })
+  return list
+}
+
 export default function CursosLeitorPage() {
   const router = useRouter()
   const params = useParams()
@@ -74,12 +102,15 @@ export default function CursosLeitorPage() {
   const { t } = useTranslation()
   const [product, setProduct] = useState<CatalogProductOffer | null>(null)
   const [materials, setMaterials] = useState<CourseMaterials | null>(null)
-  const [activeModuleIndex, setActiveModuleIndex] = useState(0)
-  const [activeVideoIndex, setActiveVideoIndex] = useState(0)
-  const [activePdfIndex, setActivePdfIndex] = useState(0)
-  const [activeAudioIndex, setActiveAudioIndex] = useState(0)
-  const [showPdf, setShowPdf] = useState(false)
-  const [showAudio, setShowAudio] = useState(false)
+  const [playlistIndex, setPlaylistIndex] = useState(0)
+  const [showPdf, setShowPdf] = useState<{ url: string; title: string } | null>(
+    null
+  )
+  const [showAudio, setShowAudio] = useState<{
+    url: string
+    title: string
+    moduleIndex: number
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -88,13 +119,11 @@ export default function CursosLeitorPage() {
     [materials?.modules]
   )
 
-  const activeModule = modules[activeModuleIndex] ?? null
-  const videos = activeModule?.media.videos ?? []
-  const pdfs = activeModule?.media.pdfs ?? []
-  const audios = activeModule?.media.audios ?? []
-  const video = videos[activeVideoIndex] ?? videos[0] ?? null
-  const pdf = pdfs[activePdfIndex] ?? pdfs[0] ?? null
-  const audio = audios[activeAudioIndex] ?? audios[0] ?? null
+  const playlist = useMemo(() => buildVideoPlaylist(modules), [modules])
+  const current = playlist[playlistIndex] ?? null
+  const activeModule = current
+    ? (modules[current.moduleIndex] ?? null)
+    : (modules[0] ?? null)
 
   const loadCourse = useCallback(async () => {
     if (!productId) return
@@ -143,22 +172,19 @@ export default function CursosLeitorPage() {
         })
       )
 
-      const hasModules = normalizedModules.length > 0
       const hasLegacy = !!mediaData.video?.url || !!mediaData.pdf?.url
-      const hasModuleContent =
-        hasModules &&
-        normalizedModules.some(
-          (m) =>
-            m.media.videos.length > 0 ||
-            m.media.pdfs.length > 0 ||
-            m.media.audios.length > 0
-        )
+      const hasModuleContent = normalizedModules.some(
+        (m) =>
+          m.media.videos.length > 0 ||
+          m.media.pdfs.length > 0 ||
+          m.media.audios.length > 0
+      )
 
       if (!hasModuleContent && !hasLegacy) {
         throw new Error('media_not_available')
       }
 
-      if (!hasModules && (mediaData.video || mediaData.pdf)) {
+      if (normalizedModules.length === 0 && hasLegacy) {
         normalizedModules.push({
           id: 'legacy',
           title: loadedProduct.title,
@@ -190,10 +216,7 @@ export default function CursosLeitorPage() {
       }
 
       setMaterials({ ...mediaData, modules: normalizedModules })
-      setActiveModuleIndex(0)
-      setActiveVideoIndex(0)
-      setActivePdfIndex(0)
-      setActiveAudioIndex(0)
+      setPlaylistIndex(0)
     } catch {
       setError('load_failed')
     } finally {
@@ -211,18 +234,10 @@ export default function CursosLeitorPage() {
     }
   }, [status, router, loadCourse])
 
-  useEffect(() => {
-    setShowPdf(false)
-    setShowAudio(false)
-    setActiveVideoIndex(0)
-    setActivePdfIndex(0)
-    setActiveAudioIndex(0)
-  }, [activeModuleIndex])
-
   if (status === 'loading' || loading) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-emerald-50">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+      <div className="flex min-h-[100dvh] items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
       </div>
     )
   }
@@ -237,7 +252,7 @@ export default function CursosLeitorPage() {
           )}
         </p>
         <Button
-          className="bg-emerald-600 hover:bg-emerald-700"
+          className="bg-violet-600 hover:bg-violet-700"
           onClick={() =>
             window.open(product.purchaseUrl, '_blank', 'noopener,noreferrer')
           }
@@ -264,81 +279,87 @@ export default function CursosLeitorPage() {
     )
   }
 
-  if (showPdf && pdf?.url) {
+  if (showPdf) {
     return (
       <LibraryDocumentViewer
-        title={pdf.title ?? activeModule?.title ?? product.title}
-        streamUrl={pdf.url}
+        title={showPdf.title}
+        streamUrl={showPdf.url}
         backHref="/cursos"
         variant="pdf"
         productId={productId}
-        onBack={() => setShowPdf(false)}
+        onBack={() => setShowPdf(null)}
       />
     )
   }
 
-  if (showAudio && audio?.url) {
+  if (showAudio) {
+    const mod = modules[showAudio.moduleIndex]
     return (
       <AudioterapiaPlayer
-        coverSrc={activeModule?.coverImageUrl ?? product.imageSrc}
+        coverSrc={mod?.coverImageUrl ?? product.imageSrc}
         productTitle={product.title}
-        trackTitle={audio.title ?? activeModule?.title ?? ''}
+        trackTitle={showAudio.title}
         tagLabel={product.tagLabel ?? t('cursos.audioTag', 'Áudio')}
         author=""
-        mediaUrl={audio.url}
-        hasPrev={activeModuleIndex > 0 || activeAudioIndex > 0}
-        hasNext={
-          activeModuleIndex < modules.length - 1 ||
-          activeAudioIndex < audios.length - 1
-        }
-        onPrev={() => {
-          if (activeAudioIndex > 0) {
-            setActiveAudioIndex((i) => i - 1)
-          } else if (activeModuleIndex > 0) {
-            setActiveModuleIndex((i) => i - 1)
-          }
-        }}
-        onNext={() => {
-          if (activeAudioIndex < audios.length - 1) {
-            setActiveAudioIndex((i) => i + 1)
-          } else if (activeModuleIndex < modules.length - 1) {
-            setActiveModuleIndex((i) => i + 1)
-          }
-        }}
+        mediaUrl={showAudio.url}
+        hasPrev={false}
+        hasNext={false}
+        onPrev={() => {}}
+        onNext={() => {}}
         backHref="/cursos"
       />
     )
   }
 
-  const topOffset = modules.length > 1 || videos.length > 1
+  const goToPlaylistIndex = (index: number) => {
+    if (index >= 0 && index < playlist.length) {
+      setPlaylistIndex(index)
+      setShowPdf(null)
+      setShowAudio(null)
+    }
+  }
 
-  if (!video?.url) {
+  const sidebar = (
+    <CourseSidebar
+      modules={modules}
+      playlist={playlist}
+      playlistIndex={playlistIndex}
+      onSelectVideo={goToPlaylistIndex}
+      onOpenPdf={(pdf, moduleTitle) =>
+        setShowPdf({
+          url: pdf.url,
+          title: pdf.title ?? moduleTitle
+        })
+      }
+      onOpenAudio={(audio, moduleIndex) =>
+        setShowAudio({
+          url: audio.url,
+          title: audio.title ?? 'Áudio',
+          moduleIndex
+        })
+      }
+    />
+  )
+
+  if (!current?.url) {
     return (
-      <div className="flex min-h-[100dvh] flex-col">
-        <CourseNav
-          modules={modules}
-          activeModuleIndex={activeModuleIndex}
-          onModuleSelect={setActiveModuleIndex}
-          videos={videos}
-          activeVideoIndex={activeVideoIndex}
-          onVideoSelect={setActiveVideoIndex}
-        />
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+      <div className="flex min-h-[100dvh] flex-col bg-background lg:flex-row">
+        <aside className="border-b lg:w-80 lg:shrink-0 lg:border-b-0 lg:border-r">
+          <div className="flex items-center gap-2 border-b px-3 py-3">
+            <PageBackButton href="/cursos" showLabel className="shadow-sm" />
+            <p className="min-w-0 truncate text-sm font-semibold">
+              {product.title}
+            </p>
+          </div>
+          {sidebar}
+        </aside>
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-12 text-center">
           <p className="text-sm text-muted-foreground">
-            {t('cursos.error.video', 'Vídeo ainda não disponível neste módulo.')}
+            {t(
+              'cursos.error.video',
+              'Nenhum vídeo disponível. Abra um PDF ou áudio na lista ao lado.'
+            )}
           </p>
-          {pdfs.length > 0 && (
-            <Button onClick={() => setShowPdf(true)}>
-              <FileText className="mr-2 h-4 w-4" />
-              {t('cursos.openPdf', 'Abrir material PDF')}
-            </Button>
-          )}
-          {audios.length > 0 && (
-            <Button variant="secondary" onClick={() => setShowAudio(true)}>
-              <Headphones className="mr-2 h-4 w-4" />
-              {t('cursos.openAudio', 'Ouvir áudio')}
-            </Button>
-          )}
           <Button variant="outline" onClick={() => router.push('/cursos')}>
             {t('cursos.back', 'Voltar')}
           </Button>
@@ -348,173 +369,134 @@ export default function CursosLeitorPage() {
   }
 
   return (
-    <div className="relative min-h-[100dvh]">
-      <div className="absolute left-0 right-0 top-0 z-20 border-b bg-background/95 px-2 py-2 backdrop-blur sm:px-4">
-        <CourseNav
-          modules={modules}
-          activeModuleIndex={activeModuleIndex}
-          onModuleSelect={setActiveModuleIndex}
-          videos={videos}
-          activeVideoIndex={activeVideoIndex}
-          onVideoSelect={setActiveVideoIndex}
+    <div className="flex min-h-[100dvh] flex-col bg-background lg:flex-row">
+      <aside className="max-h-[40vh] overflow-y-auto border-b lg:max-h-none lg:w-80 lg:shrink-0 lg:border-b-0 lg:border-r">
+        <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-background/95 px-3 py-3 backdrop-blur">
+          <PageBackButton href="/cursos" showLabel className="shadow-sm" />
+          <p className="min-w-0 truncate text-sm font-semibold">
+            {product.title}
+          </p>
+        </div>
+        {sidebar}
+      </aside>
+
+      <div className="flex min-h-0 flex-1 flex-col">
+        <AudioterapiaPlayer
+          key={current.key}
+          coverSrc={activeModule?.coverImageUrl ?? product.imageSrc}
+          productTitle={product.title}
+          trackTitle={`${current.moduleTitle} · ${current.title}`}
+          tagLabel={product.tagLabel ?? t('cursos.videoTag', 'Vídeo')}
+          author=""
+          mediaUrl={current.url}
+          isVideo
+          showVideoInFrame
+          frameAspect="video"
+          videoFit="contain"
+          maxFrameClassName="w-full"
+          showHeader={false}
+          fillContainer
+          hasPrev={playlistIndex > 0}
+          hasNext={playlistIndex < playlist.length - 1}
+          onPrev={() => goToPlaylistIndex(playlistIndex - 1)}
+          onNext={() => goToPlaylistIndex(playlistIndex + 1)}
+          backHref="/cursos"
         />
       </div>
-
-      <div
-        className={cn(
-          'absolute right-3 z-20 flex flex-wrap gap-2 sm:right-4',
-          topOffset ? 'top-20 sm:top-24' : 'top-3 sm:top-4'
-        )}
-      >
-        {pdfs.length > 0 && (
-          <PdfPicker
-            pdfs={pdfs}
-            activeIndex={activePdfIndex}
-            onSelect={(i) => {
-              setActivePdfIndex(i)
-              setShowPdf(true)
-            }}
-          />
-        )}
-        {audios.length > 0 && (
-          <Button
-            size="sm"
-            variant="secondary"
-            className="shadow-md"
-            onClick={() => setShowAudio(true)}
-          >
-            <Headphones className="mr-2 h-4 w-4" />
-            {audios.length > 1
-              ? `${t('cursos.openAudio', 'Áudio')} (${activeAudioIndex + 1}/${audios.length})`
-              : t('cursos.openAudio', 'Áudio')}
-          </Button>
-        )}
-      </div>
-
-      <AudioterapiaPlayer
-        coverSrc={activeModule?.coverImageUrl ?? product.imageSrc}
-        productTitle={product.title}
-        trackTitle={video.title ?? activeModule?.title ?? product.description ?? ''}
-        tagLabel={product.tagLabel ?? t('cursos.videoTag', 'Vídeo')}
-        author=""
-        mediaUrl={video.url}
-        isVideo
-        showVideoInFrame
-        hasPrev={activeModuleIndex > 0 || activeVideoIndex > 0}
-        hasNext={
-          activeModuleIndex < modules.length - 1 ||
-          activeVideoIndex < videos.length - 1
-        }
-        onPrev={() => {
-          if (activeVideoIndex > 0) {
-            setActiveVideoIndex((i) => i - 1)
-          } else if (activeModuleIndex > 0) {
-            setActiveModuleIndex((i) => i - 1)
-          }
-        }}
-        onNext={() => {
-          if (activeVideoIndex < videos.length - 1) {
-            setActiveVideoIndex((i) => i + 1)
-          } else if (activeModuleIndex < modules.length - 1) {
-            setActiveModuleIndex((i) => i + 1)
-          }
-        }}
-        backHref="/cursos"
-      />
     </div>
   )
 }
 
-function CourseNav({
+function CourseSidebar({
   modules,
-  activeModuleIndex,
-  onModuleSelect,
-  videos,
-  activeVideoIndex,
-  onVideoSelect
+  playlist,
+  playlistIndex,
+  onSelectVideo,
+  onOpenPdf,
+  onOpenAudio
 }: {
   modules: CourseModule[]
-  activeModuleIndex: number
-  onModuleSelect: (index: number) => void
-  videos: MediaItem[]
-  activeVideoIndex: number
-  onVideoSelect: (index: number) => void
+  playlist: VideoPlaylistItem[]
+  playlistIndex: number
+  onSelectVideo: (playlistIndex: number) => void
+  onOpenPdf: (pdf: MediaItem, moduleTitle: string) => void
+  onOpenAudio: (audio: MediaItem, moduleIndex: number) => void
 }) {
+  const { t } = useTranslation()
+
   return (
-    <div className="space-y-2">
-      {modules.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {modules.map((mod, index) => (
-            <Button
-              key={mod.id}
-              type="button"
-              size="sm"
-              variant={index === activeModuleIndex ? 'default' : 'outline'}
-              className="shrink-0"
-              onClick={() => onModuleSelect(index)}
-            >
+    <nav className="space-y-3 p-3" aria-label="Conteúdo do curso">
+      {modules.map((mod, moduleIndex) => {
+        const moduleVideos = playlist.filter((p) => p.moduleIndex === moduleIndex)
+        const hasMedia =
+          moduleVideos.length > 0 ||
+          mod.media.pdfs.length > 0 ||
+          mod.media.audios.length > 0
+        if (!hasMedia) return null
+
+        return (
+          <div key={mod.id} className="rounded-lg border bg-card p-2">
+            <p className="px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {mod.title}
-            </Button>
-          ))}
-        </div>
-      )}
-      {videos.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {videos.map((item, index) => (
-            <Button
-              key={item.id}
-              type="button"
-              size="sm"
-              variant={index === activeVideoIndex ? 'secondary' : 'ghost'}
-              className="shrink-0 text-xs"
-              onClick={() => onVideoSelect(index)}
-            >
-              {item.title ?? `Vídeo ${index + 1}`}
-            </Button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function PdfPicker({
-  pdfs,
-  activeIndex,
-  onSelect
-}: {
-  pdfs: MediaItem[]
-  activeIndex: number
-  onSelect: (index: number) => void
-}) {
-  if (pdfs.length === 1) {
-    return (
-      <Button
-        size="sm"
-        variant="secondary"
-        className="shadow-md"
-        onClick={() => onSelect(0)}
-      >
-        <FileText className="mr-2 h-4 w-4" />
-        PDF
-      </Button>
-    )
-  }
-
-  return (
-    <div className="flex flex-wrap gap-1">
-      {pdfs.map((item, index) => (
-        <Button
-          key={item.id}
-          size="sm"
-          variant={index === activeIndex ? 'default' : 'secondary'}
-          className="shadow-md text-xs"
-          onClick={() => onSelect(index)}
-        >
-          <FileText className="mr-1.5 h-3.5 w-3.5" />
-          {item.title ?? `PDF ${index + 1}`}
-        </Button>
-      ))}
-    </div>
+            </p>
+            <ul className="space-y-1">
+              {moduleVideos.map((item) => {
+                const globalIndex = playlist.findIndex((p) => p.key === item.key)
+                const active = globalIndex === playlistIndex
+                return (
+                  <li key={item.key}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectVideo(globalIndex)}
+                      className={cn(
+                        'flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors',
+                        active
+                          ? 'bg-violet-600 text-white'
+                          : 'hover:bg-muted'
+                      )}
+                    >
+                      <Play className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span className="min-w-0">
+                        <span className="block font-medium leading-snug">
+                          {item.title}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+              {mod.media.pdfs.map((pdf) => (
+                <li key={pdf.id}>
+                  <button
+                    type="button"
+                    onClick={() => onOpenPdf(pdf, mod.title)}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
+                  >
+                    <FileText className="h-4 w-4 shrink-0 text-violet-600" />
+                    <span className="truncate">
+                      {pdf.title ?? t('cursos.openPdf', 'Material PDF')}
+                    </span>
+                  </button>
+                </li>
+              ))}
+              {mod.media.audios.map((audio) => (
+                <li key={audio.id}>
+                  <button
+                    type="button"
+                    onClick={() => onOpenAudio(audio, moduleIndex)}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
+                  >
+                    <Headphones className="h-4 w-4 shrink-0 text-violet-600" />
+                    <span className="truncate">
+                      {audio.title ?? t('cursos.openAudio', 'Áudio')}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      })}
+    </nav>
   )
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { FileText, Headphones, Lock, Loader2, BookOpen, PlaySquare } from 'lucide-react'
+import { FileText, Headphones, Lock, Loader2, BookOpen, PlaySquare, GraduationCap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -26,6 +26,12 @@ export type ProductOfferCardProps = {
 
 function TagIcon({ tag }: { tag: string }) {
   const lower = tag.toLowerCase()
+  const mediaHints = ['vídeo', 'video', 'áudio', 'audio', 'pdf'].filter((hint) =>
+    lower.includes(hint)
+  )
+  if (mediaHints.length > 1 || lower.includes(' e ')) {
+    return <GraduationCap className="h-3.5 w-3.5 shrink-0" />
+  }
   if (lower.includes('vídeo') || lower.includes('video')) {
     return <PlaySquare className="h-3.5 w-3.5 shrink-0" />
   }

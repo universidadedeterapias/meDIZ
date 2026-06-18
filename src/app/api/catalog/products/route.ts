@@ -9,6 +9,7 @@ import { listCatalogProducts } from '@/lib/catalog/products'
 import { getProductEntitlementIdsForUser } from '@/lib/purchases/entitlements'
 import { getLibraryPermissionsForUser } from '@/lib/library/permissions'
 import { mapProductsToOffers } from '@/lib/catalog/products'
+import { enrichVideoCourseOffers } from '@/lib/catalog/course-modules'
 import { requireUser } from '@/lib/requireAuth'
 
 export const dynamic = 'force-dynamic'
@@ -49,14 +50,14 @@ export async function GET(request: NextRequest) {
 
   const lockedLabel = 'Desbloquear acesso'
   const language = await getCurrentLanguage()
-  const offers = mapProductsToOffers(
-    products,
-    permissoes,
-    lockedLabel,
-    undefined,
-    productEntitlements
-  ).filter(
-    (product) => productMatchesUserLanguage(product.locale, language)
+  const offers = await enrichVideoCourseOffers(
+    mapProductsToOffers(
+      products,
+      permissoes,
+      lockedLabel,
+      undefined,
+      productEntitlements
+    ).filter((product) => productMatchesUserLanguage(product.locale, language))
   )
 
   return NextResponse.json(

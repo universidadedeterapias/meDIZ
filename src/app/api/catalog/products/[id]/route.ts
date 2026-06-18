@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getCurrentLanguage } from '@/i18n/server'
 import { productMatchesUserLanguage } from '@/lib/catalog/locale'
 import { serializeProduct, mapProductsToOffers } from '@/lib/catalog/products'
+import { enrichVideoCourseOffers } from '@/lib/catalog/course-modules'
 import { getProductEntitlementIdsForUser } from '@/lib/purchases/entitlements'
 import { loadGrantsProductIds } from '@/lib/purchases/catalog-grants'
 import { getLibraryPermissionsForUser } from '@/lib/library/permissions'
@@ -33,12 +34,14 @@ export async function GET(_request: Request, context: RouteContext) {
   const permissoes = await getLibraryPermissionsForUser(auth.user)
   const productEntitlements = await getProductEntitlementIdsForUser(auth.user)
   const lockedLabel = 'Desbloquear acesso'
-  const [offer] = mapProductsToOffers(
-    [product],
-    permissoes,
-    lockedLabel,
-    undefined,
-    productEntitlements
+  const [offer] = await enrichVideoCourseOffers(
+    mapProductsToOffers(
+      [product],
+      permissoes,
+      lockedLabel,
+      undefined,
+      productEntitlements
+    )
   )
 
   return NextResponse.json(

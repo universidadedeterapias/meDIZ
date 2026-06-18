@@ -563,8 +563,8 @@ export default function AdminCatalogProductsPage() {
       ...emptyForm(),
       section: 'BIBLIOTECA',
       permissionKey: 'VIDEO',
-      tagLabel: 'Vídeo',
-      unlockedLabel: 'Assistir vídeo',
+      tagLabel: 'Vídeo, PDF e Áudio',
+      unlockedLabel: 'Acessar curso',
       paymentProvider: 'STONE',
       courseModules: [emptyCourseModule(0)]
     })
