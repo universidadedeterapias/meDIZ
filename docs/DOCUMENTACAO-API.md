@@ -744,6 +744,68 @@ GET /api/audioterapia
 
 ---
 
+### Consultar cliente (webhook / n8n)
+
+```
+GET /api/webhooks/customer?email=cliente@email.com
+```
+
+**Auth:** `Bearer {WEBHOOK_SECRET_TOKEN}` (mesmo token de `/api/library/permissions`)
+
+**Resposta — cliente cadastrado:**
+
+```json
+{
+  "exists": true,
+  "email": "cliente@email.com",
+  "user": {
+    "id": "uuid",
+    "email": "cliente@email.com",
+    "name": "Maria",
+    "full_name": "Maria Silva",
+    "whatsapp": "11999999999",
+    "cpf": "12345678901",
+    "must_reset_password": true,
+    "has_temporary_password": true,
+    "email_verified": true,
+    "created_at": "2026-06-15T12:00:00.000Z"
+  },
+  "permissoes": {
+    "audioterapia": true,
+    "pdf": true,
+    "livro_digital": false
+  },
+  "products_granted": [
+    {
+      "id": "uuid",
+      "title": "Nome do produto",
+      "permissionKey": "VIDEO",
+      "source": "hotmart"
+    }
+  ]
+}
+```
+
+**Resposta — e-mail sem cadastro:**
+
+```json
+{
+  "exists": false,
+  "email": "cliente@email.com",
+  "user": null,
+  "permissoes": {
+    "audioterapia": false,
+    "pdf": false,
+    "livro_digital": false
+  },
+  "products_granted": []
+}
+```
+
+**Notas:** não retorna senha nem `temporary_password_plain`. `has_temporary_password` indica se ainda há senha temporária pendente de envio/troca.
+
+---
+
 ### Permissões via webhook (deprecated)
 
 ```
