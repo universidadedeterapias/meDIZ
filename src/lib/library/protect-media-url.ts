@@ -2,13 +2,14 @@ import {
   createMediaAccessToken,
   type LibraryMediaPermission
 } from '@/lib/library/media-access-token'
-import { inferLibraryMediaKind } from '@/lib/library/media-origin'
+import { inferLibraryMediaKind, type LibraryMediaKind } from '@/lib/library/media-origin'
 import { normalizeMediaStreamSource } from '@/lib/library/normalize-stream-source'
 
 export type ProtectMediaUrlOptions = {
   productId?: string
   permission?: LibraryMediaPermission
   freeAccess?: boolean
+  kind?: LibraryMediaKind
 }
 
 export function isProtectedMediaPath(url: string): boolean {
@@ -30,7 +31,7 @@ export function protectMediaUrl(
     pid: options?.productId,
     perm: options?.permission,
     free: options?.freeAccess === true,
-    kind: inferLibraryMediaKind(src, options?.permission)
+    kind: options?.kind ?? inferLibraryMediaKind(src, options?.permission)
   })
 
   return `/api/library/stream?token=${encodeURIComponent(token)}`

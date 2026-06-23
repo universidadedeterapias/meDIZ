@@ -17,6 +17,7 @@ import {
 import { resolveLibraryLocale } from '@/lib/library/locale'
 import { serveLibraryContent } from '@/lib/library/serveContent'
 import { protectMediaPayload } from '@/lib/library/protect-media-url'
+import type { LibraryMediaKind } from '@/lib/library/media-origin'
 import { getProductEntitlementIdsForUser } from '@/lib/purchases/entitlements'
 import {
   ensureCourseModulesMigrated,
@@ -34,6 +35,19 @@ import { requireUser } from '@/lib/requireAuth'
 export const dynamic = 'force-dynamic'
 
 type RouteContext = { params: Promise<{ id: string }> }
+
+function protectCourseMediaItem<T extends { id: string; url: string; title: string }>(
+  item: T,
+  userId: string,
+  options: {
+    productId: string
+    permission: ReturnType<typeof permissionKeyToLib>
+    freeAccess: boolean
+    kind: LibraryMediaKind
+  }
+): T {
+  return protectMediaPayload(item, userId, options)
+}
 
 export async function GET(request: NextRequest, context: RouteContext) {
   const auth = await requireUser({ pathname: '/api/catalog/products/media' })
@@ -129,7 +143,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
       {
         productId: id,
         permission: permissionKeyToLib(product.permissionKey),
-        freeAccess: isFree
+        freeAccess: isFree,
+        kind:
+          mediaKind === 'pdf'
+            ? 'pdf'
+            : mediaKind === 'video'
+              ? 'audio'
+              : undefined
       }
     )
     return NextResponse.json(body, {
@@ -186,26 +206,74 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
       const videoFromModules = firstModuleVideo(playback)
       const pdfFromModules = firstModulePdf(playback)
+      const protectOptions = {
+        productId: id,
+        permission: permissionKeyToLib(product.permissionKey),
+        freeAccess: isFree
+      }
+
+      const protectedPlayback = playback.map((mod) => ({
+        ...mod,
+        media: {
+          videos: mod.media.videos.map((item) =>
+            protectCourseMediaItem(item, auth.user.id, {
+              ...protectOptions,
+              kind: 'audio'
+            })
+          ),
+          pdfs: mod.media.pdfs.map((item) =>
+            protectCourseMediaItem(item, auth.user.id, {
+              ...protectOptions,
+              kind: 'pdf'
+            })
+          ),
+          audios: mod.media.audios.map((item) =>
+            protectCourseMediaItem(item, auth.user.id, {
+              ...protectOptions,
+              kind: 'audio'
+            })
+          )
+        }
+      }))
 
       return NextResponse.json(
         {
           locale,
-          modules: playback.map((mod) => ({
-            id: mod.id,
-            title: mod.title,
-            description: mod.description,
-            coverImageUrl: mod.coverImageUrl,
-            sortOrder: mod.sortOrder,
-            media: mod.media
-          })),
-          video: videoFromModules ??
-            (legacyVideo
-              ? { url: legacyVideo.url, title: legacyMaterials.video?.title }
-              : null),
-          pdf: pdfFromModules ??
-            (legacyPdf
-              ? { url: legacyPdf.url, title: legacyMaterials.pdf?.title }
-              : null)
+          modules: protectedPlayback,
+          video: videoFromModules
+            ? protectCourseMediaItem(
+                { id: 'video', ...videoFromModules },
+                auth.user.id,
+                { ...protectOptions, kind: 'audio' }
+              )
+            : legacyVideo
+              ? protectCourseMediaItem(
+                  {
+                    id: 'legacy-video',
+                    url: legacyVideo.url,
+                    title: legacyMaterials.video?.title ?? 'Vídeo'
+                  },
+                  auth.user.id,
+                  { ...protectOptions, kind: 'audio' }
+                )
+              : null,
+          pdf: pdfFromModules
+            ? protectCourseMediaItem(
+                { id: 'pdf', ...pdfFromModules },
+                auth.user.id,
+                { ...protectOptions, kind: 'pdf' }
+              )
+            : legacyPdf
+              ? protectCourseMediaItem(
+                  {
+                    id: 'legacy-pdf',
+                    url: legacyPdf.url,
+                    title: legacyMaterials.pdf?.title ?? 'PDF'
+                  },
+                  auth.user.id,
+                  { ...protectOptions, kind: 'pdf' }
+                )
+              : null
         },
         { headers: { 'Cache-Control': 'no-store' } }
       )
@@ -279,7 +347,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   if (mediaRef?.trim()) {
-    const response = resolveMediaRef(mediaRef, undefined)
+    const mediaKind =
+      product.permissionKey === 'PDF' || product.permissionKey === 'LIVRO_DIGITAL'
+        ? ('pdf' as const)
+        : undefined
+    const response = resolveMediaRef(mediaRef, mediaKind)
     if (response) return response
   }
 
@@ -311,11 +383,21 @@ export async function GET(request: NextRequest, context: RouteContext) {
         legacyJson.urls[0]
       if (target?.url) {
         return NextResponse.json(
-          {
-            url: target.url,
-            label: target.label,
-            locale: legacyJson.locale
-          },
+          protectMediaPayload(
+            {
+              url: target.url,
+              label: target.label,
+              locale: legacyJson.locale,
+              mediaKind: 'pdf' as const
+            },
+            auth.user.id,
+            {
+              productId: id,
+              permission: permissionKeyToLib(product.permissionKey),
+              freeAccess: isFree,
+              kind: 'pdf'
+            }
+          ),
           { headers: { 'Cache-Control': 'no-store' } }
         )
       }

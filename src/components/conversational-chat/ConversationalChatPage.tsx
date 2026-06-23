@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 
 import { AppSidebar } from '@/components/app-sidebar'
@@ -38,6 +39,7 @@ import { useUser } from '@/contexts/user'
 import { useSubscriptionStatus } from '@/hooks/use-subscription-status'
 import { useLanguage } from '@/i18n/useLanguage'
 import type { ConversationalChatKind } from '@/lib/conversational-chat/config'
+import type { SimulatorMode } from '@/lib/conversational-chat/simulator-modes'
 import { FirstName } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
@@ -60,14 +62,26 @@ type ConversationalChatPageProps = {
   title: string
   subtitle: string
   emptyHint: string
+  /** Nova conversa sem carregar o último histórico */
+  startFresh?: boolean
+  /** Mensagem enviada automaticamente ao abrir (ex.: escolha do simulador) */
+  initialMessage?: string
+  simulatorMode?: SimulatorMode
+  /** Link para voltar à tela de escolha de modo */
+  modePickerHref?: string
 }
 
 export function ConversationalChatPage({
   chatKind,
   title,
   subtitle,
-  emptyHint
+  emptyHint,
+  startFresh = false,
+  initialMessage,
+  simulatorMode,
+  modePickerHref
 }: ConversationalChatPageProps) {
+  const router = useRouter()
   const { language } = useLanguage()
   const { user: userContext } = useUser()
   const { isPremium, isLoading: isLoadingPremium } = useSubscriptionStatus()
@@ -84,6 +98,7 @@ export function ConversationalChatPage({
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const autoStartedRef = useRef(false)
 
   const userName = userContext?.name
     ? FirstName(userContext.name)
@@ -131,6 +146,11 @@ export function ConversationalChatPage({
       return
     }
 
+    if (startFresh) {
+      setLoadingHistory(false)
+      return
+    }
+
     let cancelled = false
     ;(async () => {
       try {
@@ -153,7 +173,117 @@ export function ConversationalChatPage({
     return () => {
       cancelled = true
     }
-  }, [isLoadingPremium, isPremium, loadSessions, loadThread])
+  }, [isLoadingPremium, isPremium, loadSessions, loadThread, startFresh])
+
+  const sendMessageWithText = useCallback(
+    async (rawText: string) => {
+      if (openUpgradeForFreeUser()) return
+
+      const text = rawText.trim()
+      if (!text || loading) return
+
+      setLoading(true)
+      setError(null)
+      setInput('')
+
+      const optimisticId = `temp-${Date.now()}`
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: optimisticId,
+          role: 'USER',
+          content: text,
+          createdAt: new Date().toISOString()
+        }
+      ])
+
+      try {
+        const res = await fetch('/api/conversational-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            threadId: threadId ?? undefined,
+            chatKind,
+            language,
+            ...(simulatorMode ? { simulatorMode } : {})
+          })
+        })
+
+        const rawBody = await res.text()
+        let data: {
+          error?: string
+          details?: string
+          threadId?: string
+          messages?: ChatMessage[]
+        } = {}
+
+        if (rawBody.trim()) {
+          try {
+            data = JSON.parse(rawBody) as typeof data
+          } catch {
+            throw new Error('Resposta inválida do servidor. Tente novamente.')
+          }
+        } else if (!res.ok) {
+          throw new Error('Erro ao enviar mensagem. Tente novamente.')
+        }
+
+        if (!res.ok) {
+          if (res.status === 403) {
+            setShowUpgrade(true)
+            setMessages((prev) => prev.filter((m) => m.id !== optimisticId))
+            setInput(text)
+            return
+          }
+          if (data.details) {
+            console.error('[conversational-chat]', data.details)
+          }
+          throw new Error(data.error || 'Erro ao enviar mensagem')
+        }
+
+        setThreadId(data.threadId ?? null)
+        setMessages(data.messages ?? [])
+
+        const list = await loadSessions()
+        setSessions(list)
+      } catch (err) {
+        setMessages((prev) => prev.filter((m) => m.id !== optimisticId))
+        setInput(text)
+        setError(err instanceof Error ? err.message : 'Erro ao enviar')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [
+      chatKind,
+      language,
+      loadSessions,
+      loading,
+      openUpgradeForFreeUser,
+      simulatorMode,
+      threadId
+    ]
+  )
+
+  useEffect(() => {
+    if (
+      !initialMessage ||
+      autoStartedRef.current ||
+      isLoadingPremium ||
+      !isPremium ||
+      loadingHistory
+    ) {
+      return
+    }
+    autoStartedRef.current = true
+    void sendMessageWithText(initialMessage)
+  }, [
+    initialMessage,
+    isLoadingPremium,
+    isPremium,
+    loadingHistory,
+    sendMessageWithText
+  ])
 
   useEffect(() => {
     scrollToBottom()
@@ -161,6 +291,10 @@ export function ConversationalChatPage({
 
   const startNewConversation = () => {
     if (openUpgradeForFreeUser()) return
+    if (modePickerHref) {
+      router.push(modePickerHref)
+      return
+    }
     setThreadId(null)
     setMessages([])
     setError(null)
@@ -190,70 +324,7 @@ export function ConversationalChatPage({
   }
 
   const sendMessage = async () => {
-    if (openUpgradeForFreeUser()) return
-
-    const text = input.trim()
-    if (!text || loading) return
-
-    setLoading(true)
-    setError(null)
-    setInput('')
-
-    const optimisticId = `temp-${Date.now()}`
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: optimisticId,
-        role: 'USER',
-        content: text,
-        createdAt: new Date().toISOString()
-      }
-    ])
-
-    try {
-      const res = await fetch('/api/conversational-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          threadId: threadId ?? undefined,
-          chatKind,
-          language
-        })
-      })
-
-      const data = (await res.json()) as {
-        error?: string
-        details?: string
-        threadId?: string
-        messages?: ChatMessage[]
-      }
-
-      if (!res.ok) {
-        if (res.status === 403) {
-          setShowUpgrade(true)
-          setMessages((prev) => prev.filter((m) => m.id !== optimisticId))
-          setInput(text)
-          return
-        }
-        if (data.details) {
-          console.error('[conversational-chat]', data.details)
-        }
-        throw new Error(data.error || 'Erro ao enviar mensagem')
-      }
-
-      setThreadId(data.threadId ?? null)
-      setMessages(data.messages ?? [])
-
-      const list = await loadSessions()
-      setSessions(list)
-    } catch (err) {
-      setMessages((prev) => prev.filter((m) => m.id !== optimisticId))
-      setInput(text)
-      setError(err instanceof Error ? err.message : 'Erro ao enviar')
-    } finally {
-      setLoading(false)
-    }
+    await sendMessageWithText(input)
   }
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -349,6 +420,16 @@ export function ConversationalChatPage({
             <p className="mt-1.5 text-center text-[10px] text-[#7c5cad] dark:text-violet-400 sm:mt-2 sm:text-xs">
               {subtitle}
             </p>
+            {modePickerHref ? (
+              <p className="mt-1 text-center">
+                <a
+                  href={modePickerHref}
+                  className="text-[10px] font-medium text-violet-600 underline-offset-2 hover:underline dark:text-violet-300 sm:text-xs"
+                >
+                  Trocar modo de simulação
+                </a>
+              </p>
+            ) : null}
           </header>
 
           <main className="flex min-h-0 flex-1 flex-col">

@@ -11,6 +11,7 @@ import {
   isConversationalChatKind,
   type ConversationalChatKind
 } from '@/lib/conversational-chat/config'
+import { isSimulatorMode } from '@/lib/conversational-chat/simulator-modes'
 import {
   requestConversationalResponse,
   resolveRequestLanguage
@@ -112,6 +113,11 @@ export async function POST(req: Request) {
   const language = resolveRequestLanguage(
     typeof body?.language === 'string' ? body.language : undefined
   )
+  const simulatorModeRaw =
+    typeof body?.simulatorMode === 'string' ? body.simulatorMode : ''
+  const simulatorMode = isSimulatorMode(simulatorModeRaw)
+    ? simulatorModeRaw
+    : undefined
 
   if (!message) {
     return NextResponse.json({ error: 'Mensagem inválida' }, { status: 400 })
@@ -166,7 +172,8 @@ export async function POST(req: Request) {
       threadId,
       message,
       language,
-      chatKind
+      chatKind,
+      simulatorMode
     })
 
     await saveChatMessage({

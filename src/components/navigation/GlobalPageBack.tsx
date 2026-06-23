@@ -27,6 +27,8 @@ const HIDE_EXACT = new Set([
 
 function shouldShowGlobalBack(pathname: string): boolean {
   if (HIDE_EXACT.has(pathname)) return false
+  if (pathname.startsWith('/simulador/')) return false
+  if (pathname.startsWith('/prof/')) return false
   if (pathname.startsWith('/admin')) return false
   if (
     PAGES_WITH_HEADER_BACK.some(

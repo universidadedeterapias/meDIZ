@@ -6,6 +6,7 @@ import {
 } from '@/i18n/config'
 import { withRetryAndCircuitBreaker, isRetryableError } from '@/lib/retry'
 import type { ConversationalChatKind } from '@/lib/conversational-chat/config'
+import type { SimulatorMode } from '@/lib/conversational-chat/simulator-modes'
 import { getConversationalWebhookUrl } from '@/lib/conversational-chat/config'
 import { parseN8nAssistantReply } from '@/lib/conversational-chat/parse-webhook-response'
 
@@ -34,6 +35,7 @@ export async function requestConversationalResponse(input: {
   message: string
   language: LanguageCode
   chatKind: ConversationalChatKind
+  simulatorMode?: SimulatorMode
 }): Promise<string> {
   const langMapping = getLanguageMapping(input.language)
   let messageWithLanguage = input.message
@@ -55,7 +57,9 @@ export async function requestConversationalResponse(input: {
     sintoma: messageWithLanguage,
     sintomaOriginal: input.message,
     chatKind: input.chatKind.toLowerCase(),
-    mode: input.chatKind.toLowerCase(),
+    mode: input.simulatorMode ?? input.chatKind.toLowerCase(),
+    simulatorMode: input.simulatorMode ?? null,
+    simulator_mode: input.simulatorMode ?? null,
     language: input.language,
     lang: langMapping.iso6391,
     locale: input.language,

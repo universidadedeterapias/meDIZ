@@ -344,14 +344,9 @@ export default function CursosLeitorPage() {
   if (!current?.url) {
     return (
       <div className="flex min-h-[100dvh] flex-col bg-background lg:flex-row">
-        <aside className="border-b lg:w-80 lg:shrink-0 lg:border-b-0 lg:border-r">
-          <div className="flex items-center gap-2 border-b px-3 py-3">
-            <PageBackButton href="/cursos" showLabel className="shadow-sm" />
-            <p className="min-w-0 truncate text-sm font-semibold">
-              {product.title}
-            </p>
-          </div>
-          {sidebar}
+        <aside className="flex min-h-0 flex-1 flex-col border-b lg:w-80 lg:shrink-0 lg:border-b-0 lg:border-r">
+          <CoursePageHeader title={product.title} />
+          <div className="min-h-0 flex-1 overflow-y-auto">{sidebar}</div>
         </aside>
         <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-12 text-center">
           <p className="text-sm text-muted-foreground">
@@ -369,40 +364,66 @@ export default function CursosLeitorPage() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-background lg:flex-row">
-      <aside className="max-h-[40vh] overflow-y-auto border-b lg:max-h-none lg:w-80 lg:shrink-0 lg:border-b-0 lg:border-r">
-        <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-background/95 px-3 py-3 backdrop-blur">
-          <PageBackButton href="/cursos" showLabel className="shadow-sm" />
-          <p className="min-w-0 truncate text-sm font-semibold">
-            {product.title}
-          </p>
-        </div>
-        {sidebar}
-      </aside>
+    <div className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-background lg:flex-row">
+      <header className="flex shrink-0 items-center gap-2 border-b bg-background px-3 py-3 lg:hidden">
+        <PageBackButton href="/cursos" showLabel className="shadow-sm" />
+        <p className="min-w-0 flex-1 truncate text-sm font-semibold">
+          {product.title}
+        </p>
+      </header>
 
-      <div className="flex min-h-0 flex-1 flex-col">
-        <AudioterapiaPlayer
-          key={current.key}
-          coverSrc={activeModule?.coverImageUrl ?? product.imageSrc}
-          productTitle={product.title}
-          trackTitle={`${current.moduleTitle} · ${current.title}`}
-          tagLabel={product.tagLabel ?? t('cursos.videoTag', 'Vídeo')}
-          author=""
-          mediaUrl={current.url}
-          isVideo
-          showVideoInFrame
-          frameAspect="video"
-          videoFit="contain"
-          maxFrameClassName="w-full"
-          showHeader={false}
-          fillContainer
-          hasPrev={playlistIndex > 0}
-          hasNext={playlistIndex < playlist.length - 1}
-          onPrev={() => goToPlaylistIndex(playlistIndex - 1)}
-          onNext={() => goToPlaylistIndex(playlistIndex + 1)}
-          backHref="/cursos"
-        />
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+        <div className="order-1 shrink-0 overflow-hidden lg:order-2 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+          <AudioterapiaPlayer
+            key={current.key}
+            coverSrc={activeModule?.coverImageUrl ?? product.imageSrc}
+            productTitle={product.title}
+            trackTitle={`${current.moduleTitle} · ${current.title}`}
+            tagLabel={product.tagLabel ?? t('cursos.videoTag', 'Vídeo')}
+            author=""
+            mediaUrl={current.url}
+            isVideo
+            showVideoInFrame
+            frameAspect="video"
+            videoFit="contain"
+            maxFrameClassName="w-full"
+            showHeader={false}
+            fillContainer
+            hasPrev={playlistIndex > 0}
+            hasNext={playlistIndex < playlist.length - 1}
+            onPrev={() => goToPlaylistIndex(playlistIndex - 1)}
+            onNext={() => goToPlaylistIndex(playlistIndex + 1)}
+            backHref="/cursos"
+          />
+        </div>
+
+        <aside className="order-2 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t lg:order-1 lg:w-80 lg:flex-none lg:border-t-0 lg:border-r">
+          <CoursePageHeader title={product.title} className="hidden lg:flex" />
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            {sidebar}
+          </div>
+        </aside>
       </div>
+    </div>
+  )
+}
+
+function CoursePageHeader({
+  title,
+  className
+}: {
+  title: string
+  className?: string
+}) {
+  return (
+    <div
+      className={cn(
+        'flex shrink-0 items-center gap-2 border-b bg-background/95 px-3 py-3 backdrop-blur',
+        className
+      )}
+    >
+      <PageBackButton href="/cursos" showLabel className="shadow-sm" />
+      <p className="min-w-0 flex-1 truncate text-sm font-semibold">{title}</p>
     </div>
   )
 }
@@ -425,7 +446,13 @@ function CourseSidebar({
   const { t } = useTranslation()
 
   return (
-    <nav className="space-y-3 p-3" aria-label="Conteúdo do curso">
+    <nav
+      className="space-y-3 p-3 pb-6"
+      aria-label="Conteúdo do curso"
+    >
+      <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground lg:hidden">
+        Conteúdo do curso
+      </p>
       {modules.map((mod, moduleIndex) => {
         const moduleVideos = playlist.filter((p) => p.moduleIndex === moduleIndex)
         const hasMedia =
@@ -435,8 +462,8 @@ function CourseSidebar({
         if (!hasMedia) return null
 
         return (
-          <div key={mod.id} className="rounded-lg border bg-card p-2">
-            <p className="px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <div key={mod.id} className="rounded-xl border border-border/80 bg-card p-2.5 shadow-sm">
+            <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               {mod.title}
             </p>
             <ul className="space-y-1">

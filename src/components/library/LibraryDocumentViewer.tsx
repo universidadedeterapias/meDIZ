@@ -5,6 +5,7 @@ import { Download, Loader2, ArrowLeft } from 'lucide-react'
 import { PageBackButton } from '@/components/navigation/PageBackButton'
 import { Button } from '@/components/ui/button'
 import { apiFetch } from '@/lib/fetchClient'
+import { LibraryPdfViewer } from '@/components/library/LibraryPdfViewer'
 import { cn } from '@/lib/utils'
 
 const backButtonClassName = cn(
@@ -92,10 +93,10 @@ export function LibraryDocumentViewer({
 
   return (
     <div
-      className="flex min-h-[100dvh] flex-col bg-gradient-to-b from-violet-50 to-white dark:from-background dark:to-background"
+      className="flex h-[100dvh] max-h-[100dvh] min-h-0 w-full max-w-[100vw] flex-col overflow-hidden bg-gradient-to-b from-violet-50 to-white dark:from-background dark:to-background"
       onContextMenu={(e) => e.preventDefault()}
     >
-      <header className="flex items-center gap-2 border-b border-violet-100 bg-white/95 px-3 py-2.5 backdrop-blur dark:border-border dark:bg-background/95 sm:gap-3 sm:px-4 sm:py-3">
+      <header className="flex shrink-0 items-center gap-2 border-b border-violet-100 bg-white/95 px-3 py-2.5 backdrop-blur dark:border-border dark:bg-background/95 sm:gap-3 sm:px-4 sm:py-3">
         {onBack ? (
           <Button
             type="button"
@@ -138,30 +139,33 @@ export function LibraryDocumentViewer({
         </p>
       ) : null}
 
-      <div className="relative flex flex-1 items-center justify-center bg-black/5 p-3 dark:bg-muted/20 sm:p-6">
-        {!ready && (
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-neutral-100 dark:bg-muted/30">
+        {!ready && variant !== 'pdf' && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-background/70">
             <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
           </div>
         )}
         {variant === 'video' ? (
-          <video
-            title={title}
-            src={streamUrl}
-            controls
-            controlsList="nodownload noplaybackrate"
-            disablePictureInPicture
-            playsInline
-            className="max-h-[calc(100dvh-5rem)] w-full max-w-4xl rounded-lg bg-black shadow-lg"
-            onLoadedData={() => setReady(true)}
-            onContextMenu={(e) => e.preventDefault()}
-          />
+          <div className="flex flex-1 items-center justify-center p-3 sm:p-6">
+            <video
+              title={title}
+              src={streamUrl}
+              controls
+              controlsList="nodownload noplaybackrate"
+              disablePictureInPicture
+              playsInline
+              className="max-h-[calc(100dvh-5rem)] w-full max-w-4xl rounded-lg bg-black shadow-lg"
+              onLoadedData={() => setReady(true)}
+              onContextMenu={(e) => e.preventDefault()}
+            />
+          </div>
         ) : (
-          <iframe
+          <LibraryPdfViewer
+            streamUrl={streamUrl}
             title={title}
-            src={streamUrl}
-            className="h-[calc(100dvh-4rem)] w-full border-0 bg-white"
-            onLoad={() => setReady(true)}
+            className="flex-1"
+            onReady={() => setReady(true)}
+            onError={() => setReady(true)}
           />
         )}
       </div>

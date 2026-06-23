@@ -166,6 +166,7 @@ export function AudioterapiaPlayer({
   const TagIcon = videoInFrame ? Video : Headphones
   const showTrackNav = hasPrev || hasNext
   const isWideVideo = frameAspect === 'video'
+  const expandedCourseLayout = fillContainer && isWideVideo
   const frameMaxClass = maxFrameClassName ?? (isWideVideo ? 'max-w-4xl' : 'max-w-[280px]')
   const frameAspectClass = isWideVideo ? 'aspect-video' : 'aspect-square'
   const videoFitClass = videoFit === 'contain' ? 'object-contain' : 'object-cover'
@@ -174,7 +175,9 @@ export function AudioterapiaPlayer({
     <div
       className={cn(
         'relative flex flex-col',
-        fillContainer ? 'min-h-0 flex-1' : 'min-h-[100dvh]',
+        fillContainer
+          ? 'min-h-0 max-lg:flex-none lg:flex-1'
+          : 'min-h-[100dvh]',
         isWideVideo
           ? 'bg-background'
           : 'bg-gradient-to-b from-violet-100/90 via-violet-50/40 to-white'
@@ -214,17 +217,30 @@ export function AudioterapiaPlayer({
 
       <main
         className={cn(
-          'mx-auto flex w-full flex-1 flex-col px-5 pb-8 pt-2',
-          isWideVideo ? 'max-w-5xl' : 'max-w-md'
+          'mx-auto flex w-full min-h-0 flex-col',
+          expandedCourseLayout
+            ? 'max-w-none px-3 pb-3 pt-1 max-lg:flex-none sm:px-4 sm:pb-4 lg:flex-1 lg:px-5 lg:pb-8 lg:pt-2'
+            : cn('flex-1 px-5 pb-8 pt-2', isWideVideo ? 'max-w-5xl' : 'max-w-md')
         )}
       >
-        <div className={cn('mx-auto w-full', frameMaxClass)}>
+        <div
+          className={cn(
+            'mx-auto w-full',
+            expandedCourseLayout && 'lg:flex lg:min-h-0 lg:flex-1 lg:flex-col',
+            frameMaxClass
+          )}
+        >
           <div
             className={cn(
-              'relative w-full overflow-hidden rounded-2xl bg-black shadow-lg',
-              frameAspectClass,
-              !isWideVideo &&
-                'rounded-[28px] shadow-[0_20px_50px_-20px_rgba(91,33,182,0.45)]'
+              'relative w-full overflow-hidden bg-black shadow-lg',
+              expandedCourseLayout
+                ? 'aspect-video w-full flex-none rounded-lg max-lg:max-h-[42dvh] lg:min-h-0 lg:flex-1 lg:max-h-none lg:rounded-2xl'
+                : cn(
+                    frameAspectClass,
+                    !isWideVideo &&
+                      'rounded-[28px] shadow-[0_20px_50px_-20px_rgba(91,33,182,0.45)]',
+                    isWideVideo && 'rounded-2xl'
+                  )
             )}
           >
             {videoInFrame ? (
@@ -251,20 +267,35 @@ export function AudioterapiaPlayer({
           </div>
         </div>
 
-        <div className={cn('space-y-2 text-center', isWideVideo ? 'mt-4' : 'mt-6')}>
+        <div
+          className={cn(
+            'shrink-0 space-y-1.5 text-center sm:space-y-2',
+            expandedCourseLayout ? 'mt-2 max-lg:px-1 sm:mt-3' : isWideVideo ? 'mt-4' : 'mt-6'
+          )}
+        >
           <h1
             className={cn(
               'font-extrabold leading-tight tracking-tight text-foreground',
-              isWideVideo ? 'text-lg sm:text-xl' : 'text-2xl sm:text-[1.65rem]'
+              expandedCourseLayout
+                ? 'line-clamp-2 text-base sm:text-xl'
+                : isWideVideo
+                  ? 'text-lg sm:text-xl'
+                  : 'text-2xl sm:text-[1.65rem]'
             )}
           >
-            {lead}
-            {accent ? (
+            {expandedCourseLayout ? (
+              <span>{productTitle}</span>
+            ) : (
               <>
-                <br />
-                <span className="text-violet-600">{accent}</span>
+                {lead}
+                {accent ? (
+                  <>
+                    <br />
+                    <span className="text-violet-600">{accent}</span>
+                  </>
+                ) : null}
               </>
-            ) : null}
+            )}
           </h1>
           <div className="flex justify-center">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-3 py-1 text-xs font-medium text-violet-700">
@@ -276,11 +307,25 @@ export function AudioterapiaPlayer({
             <p className="text-sm font-semibold text-foreground">{author}</p>
           ) : null}
           {trackTitle?.trim() ? (
-            <p className="text-xs text-muted-foreground">{trackTitle}</p>
+            <p
+              className={cn(
+                'text-muted-foreground',
+                expandedCourseLayout
+                  ? 'line-clamp-2 text-[11px] sm:text-xs'
+                  : 'text-xs'
+              )}
+            >
+              {trackTitle}
+            </p>
           ) : null}
         </div>
 
-        <div className="mt-8 space-y-2">
+        <div
+          className={cn(
+            'shrink-0 space-y-2',
+            expandedCourseLayout ? 'mt-2 sm:mt-4' : 'mt-8'
+          )}
+        >
           <input
             type="range"
             min={0}
@@ -297,7 +342,14 @@ export function AudioterapiaPlayer({
           </div>
         </div>
 
-        <div className="mt-6 flex items-center justify-center gap-5 sm:gap-6">
+        <div
+          className={cn(
+            'flex shrink-0 items-center justify-center',
+            expandedCourseLayout
+              ? 'mt-2 gap-2 sm:mt-4 sm:gap-4'
+              : 'mt-6 gap-5 sm:gap-6'
+          )}
+        >
           <Button
             type="button"
             variant="ghost"
@@ -324,7 +376,12 @@ export function AudioterapiaPlayer({
           <Button
             type="button"
             size="icon"
-            className="h-16 w-16 rounded-full bg-violet-600 text-white shadow-lg shadow-violet-300/60 hover:bg-violet-700"
+            className={cn(
+              'rounded-full bg-violet-600 text-white shadow-lg shadow-violet-300/60 hover:bg-violet-700',
+              expandedCourseLayout
+                ? 'h-12 w-12 sm:h-14 sm:w-14'
+                : 'h-16 w-16'
+            )}
             onClick={togglePlay}
             aria-label={playing ? 'Pausar' : 'Reproduzir'}
           >
