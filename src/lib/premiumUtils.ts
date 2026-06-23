@@ -1,4 +1,5 @@
 // src/lib/premiumUtils.ts
+import { hasComplimentaryAccess } from '@/lib/complimentaryAccess'
 import { prisma } from '@/lib/prisma'
 import type { Prisma } from '@prisma/client'
 
@@ -88,6 +89,14 @@ export function prismaWhereCanceledSubscriptionEnded(
  */
 export async function isUserPremium(userId: string): Promise<boolean> {
   try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true }
+    })
+    if (user?.email && hasComplimentaryAccess(user.email, userId)) {
+      return true
+    }
+
     const activeSubscription = await prisma.subscription.findFirst({
       where: {
         userId,

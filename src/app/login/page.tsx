@@ -5,8 +5,7 @@ import { LoginForm } from '@/components/login-form'
 export default function LoginPage() {
   return (
     <div
-      className="flex flex-col justify-center items-center
-                  min-w-screen min-h-screen p-4 pb-16 gap-8 sm:p-8 sm:pb-20 sm:gap-16 md:p-20
+      className="flex w-full min-h-screen flex-col items-center justify-center gap-8 p-4 pb-16 sm:gap-16 sm:p-8 sm:pb-20 md:p-20
                   font-[family-name:var(--font-geist-sans)]
                   bg-gradient-to-br from-indigo-600 to-purple-600"
     >

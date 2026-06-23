@@ -1,4 +1,20 @@
 import { prisma } from '@/lib/prisma'
+import {
+  getBuyerCpf,
+  getBuyerEmail,
+  getBuyerName,
+  getBuyerPhone,
+  getOfferCode,
+  getProductId,
+  getPurchaseTransaction
+} from '@/lib/hotmart/buyer'
+import {
+  isMedizSubscriptionProduct
+} from '@/lib/hotmart/library-product-map'
+import { validateHotmartHottok } from '@/lib/hotmart/validate-hottok'
+import { grantPurchaseAccess } from '@/lib/purchases/grant-purchase'
+import { notifyN8nNewUser } from '@/lib/purchases/notify-n8n-new-user'
+import { resolveCatalogProductByHotmartId } from '@/lib/purchases/resolve-product'
 import { HotmartEvent, HotmartPayload, PurchaseStatus } from '@/types/hotmart'
 import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
@@ -120,14 +136,6 @@ async function cancelSubscriptionByEmail(email: string): Promise<boolean> {
     logError('❌ Erro ao cancelar assinatura por email:', err)
     return false
   }
-}
-
-function getBuyerEmail(p: HotmartPayload): string {
-  return p.data.buyer?.email || p.data.subscriber?.email || ''
-}
-
-function getProductId(p: HotmartPayload): string {
-  return String(p.data.product.id)
 }
 
 function buildSyntheticSubId(p: HotmartPayload): string {
@@ -302,6 +310,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Method not allowed' }, { status: 405 })
     }
 
+    const hottokError = validateHotmartHottok(req)
+    if (hottokError) return hottokError
+
     const bodyText = await req.text()
     log('Body recebido, tamanho:', `${bodyText.length} bytes`)
 
@@ -396,16 +407,97 @@ export async function POST(req: NextRequest) {
     }
     log('✅ Evento é compra aprovada')
 
-    // 3) Filtra pelo produto de interesse (Mediz)
-    const medizProductId = process.env.HOTMART_MEDIZ_PRODUCT_ID
     const incomingProductId = getProductId(parsed)
-    
+    const offerCode = getOfferCode(parsed)
+
     log('Verificando produto:', {
       recebido: incomingProductId,
-      esperado: medizProductId,
-      configurado: !!medizProductId
+      offerCode: offerCode ?? 'não informado'
     })
 
+    if (!incomingProductId) {
+      logError('❌ Product ID não encontrado no payload')
+      logError('Estrutura do payload recebido', undefined, '[hotmart]', { payload: JSON.stringify(parsed, null, 2) })
+      return NextResponse.json(
+        { error: 'Product ID missing in payload', received: true },
+        { status: 200 }
+      )
+    }
+
+    const catalogProduct = await resolveCatalogProductByHotmartId(
+      incomingProductId
+    )
+
+    if (catalogProduct) {
+      const email = getBuyerEmail(parsed)
+      if (!email) {
+        logError('❌ Compra de catálogo sem e-mail do comprador')
+        return NextResponse.json(
+          { error: 'Buyer email missing', received: true },
+          { status: 200 }
+        )
+      }
+
+      const transactionId = getPurchaseTransaction(parsed)
+
+      log('📦 Produto de catálogo (admin) — liberando entitlements', {
+        productId: incomingProductId,
+        catalogProductId: catalogProduct.id
+      })
+
+      try {
+        const grant = await grantPurchaseAccess({
+          email,
+          nome: getBuyerName(parsed),
+          cpf: getBuyerCpf(parsed),
+          sourceCatalogProductId: catalogProduct.id,
+          externalTransactionId: transactionId,
+          source: 'hotmart'
+        })
+
+        await notifyN8nNewUser({
+          userCreated: grant.userCreated,
+          email,
+          nome: getBuyerName(parsed),
+          telefone: getBuyerPhone(parsed),
+          temporaryPassword: grant.temporaryPassword,
+          transactionId,
+          provider: 'hotmart',
+          productsGranted: grant.productsGranted
+        })
+
+        return NextResponse.json({
+          received: true,
+          success: true,
+          action: 'catalog_access_granted',
+          user_created: grant.userCreated,
+          temporary_password: grant.temporaryPassword,
+          products_granted: grant.productsGranted,
+          entitlements_created: grant.entitlementsCreated
+        })
+      } catch (error) {
+        logError('❌ Falha ao liberar catálogo', error)
+        return NextResponse.json(
+          { received: true, error: 'CATALOG_GRANT_FAILED' },
+          { status: 200 }
+        )
+      }
+    }
+
+    if (!isMedizSubscriptionProduct(incomingProductId)) {
+      log('⏭️ Produto Hotmart não mapeado no catálogo (admin):', {
+        recebido: incomingProductId,
+        offerCode
+      })
+      return NextResponse.json({
+        received: true,
+        ignored: true,
+        reason: 'UNMAPPED_CATALOG_PRODUCT',
+        hint: 'Cadastre o ID Hotmart no admin ou execute npm run sync:catalog-purchase-mapping'
+      })
+    }
+
+    const medizProductId = process.env.HOTMART_MEDIZ_PRODUCT_ID
     if (!medizProductId) {
       logError('❌ HOTMART_MEDIZ_PRODUCT_ID não está definido nas variáveis de ambiente!')
       return NextResponse.json(
@@ -414,25 +506,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (!incomingProductId) {
-      logError('❌ Product ID não encontrado no payload')
-      logError('Estrutura do payload recebido', undefined, '[hotmart]', { payload: JSON.stringify(parsed, null, 2) })
-      return NextResponse.json(
-        { error: 'Product ID missing in payload', received: true },
-        { status: 200 } // Retorna 200 para evitar retry desnecessário
-      )
-    }
+    log('✅ Produto correto (Mediz assinatura)')
 
-    if (incomingProductId !== medizProductId) {
-      log('⏭️ Produto diferente, ignorando:', {
-        recebido: incomingProductId,
-        esperado: medizProductId
-      })
-      return NextResponse.json({ received: true, ignored: true })
-    }
-    log('✅ Produto correto (Mediz)')
-
-    // 3) Periodicidade → plano
+    // Periodicidade → plano
     const periodicityResult = inferPeriodicity(parsed)
     const periodicity = periodicityResult.value
     log('Periodicidade inferida:', { periodicity, reason: periodicityResult.reason })
@@ -449,11 +525,10 @@ export async function POST(req: NextRequest) {
     
     let plan = null
     const hotmartPlanIdRaw = parsed.data.subscription?.plan?.id
-    const offerCode = parsed.data.purchase.offer?.code // Apenas para logs
     
     log('📋 Informações do payload:', {
       hotmartPlanIdRaw: hotmartPlanIdRaw || 'não disponível',
-      offerCode: offerCode || 'não disponível',
+      offerCode: offerCode ?? 'não disponível',
       subscriptionPlanName: parsed.data.subscription?.plan?.name,
       priceValue: parsed.data.purchase.price.value,
       currency: parsed.data.purchase.price.currency_value || 'não disponível',
@@ -684,7 +759,11 @@ export async function POST(req: NextRequest) {
 
     // 4) Usuário (cria se não existir)
     const email = getBuyerEmail(parsed)
+    const buyerCpf = getBuyerCpf(parsed)
     log('Email do comprador:', email)
+    if (buyerCpf) {
+      log('CPF do comprador recebido (Hotmart buyer.document)')
+    }
 
     let user = await prisma.user.findUnique({ where: { email } })
     
@@ -717,22 +796,26 @@ export async function POST(req: NextRequest) {
           logError('Falha ao salvar compra pendente (não bloqueia fluxo)', pendingErr)
         }
       }
-      const userName =
-        parsed.data.buyer?.name ||
-        [parsed.data.buyer?.first_name, parsed.data.buyer?.last_name]
-          .filter(Boolean)
-          .join(' ') ||
-        null
+      const userName = getBuyerName(parsed)
       
       user = await prisma.user.create({
         data: {
           email,
-          name: userName
+          name: userName,
+          fullName: userName,
+          cpf: buyerCpf
         }
       })
       log('✅ Usuário criado:', { id: user.id, email: user.email })
     } else {
       log('✅ Usuário já existe:', { id: user.id, email: user.email })
+      if (buyerCpf && !user.cpf) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { cpf: buyerCpf }
+        })
+        log('✅ CPF gravado a partir do webhook Hotmart')
+      }
     }
 
     // 5) Subscrição (idempotente por transaction)

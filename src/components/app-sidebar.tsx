@@ -4,16 +4,13 @@
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarRail,
   useSidebar
 } from '@/components/ui/sidebar'
 import { useUser } from '@/contexts/user'
-import { sidebarOptions } from '@/lib/sidebarOptions'
-import { FirstName, SurName } from '@/lib/utils'
+import { FirstName, SurName, cn } from '@/lib/utils'
 import { NavOptions } from './nav-options'
-import { NavFolders } from './nav-folders'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { SidebarSkeleton } from './SidebarSkeleton'
 import { useTranslation } from '@/i18n/useTranslation'
@@ -59,18 +56,33 @@ function SidebarHeaderContent({
     <SidebarHeader className="border-b-2">
       {/* Conteúdo completo quando expandido */}
       {!isCollapsed && (
-        <div className="p-4 flex items-center gap-6">
-          <Avatar className="w-16 h-16 border-2 border-indigo-600">
+        <div
+          className={cn(
+            'flex items-center',
+            isMobile ? 'gap-3 p-3' : 'gap-6 p-4'
+          )}
+        >
+          <Avatar
+            className={cn(
+              'border-2 border-indigo-600',
+              isMobile ? 'h-12 w-12' : 'h-16 w-16'
+            )}
+          >
             <AvatarImage src={sidebarUser.image ? sidebarUser.image : ''} alt="User avatar" />
             <AvatarFallback>
               {userInitial}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1">
-            <h4 className="scroll-m-20 text-xl font-normal tracking-tight">
+          <div className="min-w-0 flex-1">
+            <h4
+              className={cn(
+                'scroll-m-20 font-normal tracking-tight text-sidebar-foreground',
+                isMobile ? 'text-base' : 'text-xl'
+              )}
+            >
               {displayName}
             </h4>
-            <a href="/myAccount" className="text-primary">
+            <a href="/myAccount" className="text-sm text-indigo-600 hover:underline dark:text-indigo-400">
               {t('navbar.account', 'Conta')}
             </a>
           </div>
@@ -120,8 +132,7 @@ export function AppSidebar({ history: _history, selectedThread: _selectedThread,
           <SidebarSkeleton />
         </SidebarHeader>
         <SidebarContent>
-          <NavOptions options={sidebarOptions} />
-          <NavFolders onSelectSymptom={onSelectSymptom} />
+          <NavOptions onSelectSymptom={onSelectSymptom} />
         </SidebarContent>
       </Sidebar>
     )
@@ -148,8 +159,7 @@ export function AppSidebar({ history: _history, selectedThread: _selectedThread,
       />
 
       <SidebarContent>
-        <NavOptions options={sidebarOptions} />
-        <NavFolders onSelectSymptom={onSelectSymptom} />
+        <NavOptions onSelectSymptom={onSelectSymptom} />
         {/*
           Quando quiser renderizar o histórico de sessões:
           descomente abaixo e passe as props corretas para o componente NavHistory,
@@ -163,10 +173,6 @@ export function AppSidebar({ history: _history, selectedThread: _selectedThread,
         />
         */}
       </SidebarContent>
-
-      <SidebarFooter className="border-t px-4 py-6">
-        {/* Seletor de idioma removido - agora está apenas no header do chat */}
-      </SidebarFooter>
 
       <SidebarRail />
     </Sidebar>

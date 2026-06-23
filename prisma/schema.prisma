@@ -41,6 +41,12 @@ model User {
   symptomFolders          SymptomFolder[]
   pushSubscriptions       PushSubscription[]
   reminders               Reminder[]
+  mustResetPassword       Boolean            @default(false) @map("must_reset_password")
+  temporaryPasswordPlain  String?            @map("temporary_password_plain") @db.VarChar(32)
+  whatsappSentAt          DateTime?          @map("whatsapp_sent_at")
+  cpf                     String?            @db.VarChar(14)
+  pdfDownloads            PdfDownload[]
+  pdfDownloadTokens       PdfDownloadToken[]
 
   @@index([mensagem_enviada])
   @@index([status_verificacao])
@@ -57,6 +63,7 @@ model ChatSession {
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
   threadId   String?       @unique
+  chatKind   ChatKind      @default(SEARCH) @map("chat_kind")
   isFavorite Boolean       @default(false)
   messages   ChatMessage[]
   user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -64,6 +71,7 @@ model ChatSession {
   // Índices compostos para otimizar queries de sessões
   @@index([userId, startedAt]) // Busca de sessões por usuário ordenadas por data
   @@index([userId, isFavorite]) // Busca de sessões favoritas
+  @@index([userId, chatKind, createdAt])
 }
 
 model Account {
@@ -343,6 +351,12 @@ enum ChatMessageRole {
   ASSISTANT
 }
 
+enum ChatKind {
+  SEARCH
+  SIMULADOR
+  PROF
+}
+
 enum StatusVerificacao {
   ENVIADA
   PROCESSADO
@@ -368,4 +382,186 @@ enum CopingStrategy {
   SOUGHT_INFO_ALONE             // Busquei informações sozinho
   SHARED_WITH_FAMILY_FRIENDS    // Compartilhei com familiares/amigos
   OTHER                         // Outro
+}
+
+enum CatalogSection {
+  BIBLIOTECA
+  AUDIOTERAPIA
+}
+
+enum CatalogPermissionKey {
+  LIVRO_DIGITAL
+  PDF
+  VIDEO
+  AUDIOTERAPIA
+}
+
+enum PaymentProvider {
+  HOTMART
+  STONE
+  FREE
+}
+
+enum CatalogModuleMediaKind {
+  VIDEO
+  PDF
+  AUDIO
+}
+
+/// Produtos exibidos nas páginas Biblioteca e Audioterapia (gerenciados no admin).
+model CatalogProduct {
+  id               String               @id @default(uuid())
+  section          CatalogSection
+  title            String               @db.VarChar(255)
+  description      String?              @db.Text
+  tagLabel         String?              @map("tag_label") @db.VarChar(80)
+  coverImageUrl    String?              @map("cover_image_url")
+  purchaseUrl      String               @map("purchase_url")
+  permissionKey    CatalogPermissionKey @map("permission_key")
+  /// pt | en | es — null = visível em todos os idiomas (pt-BR e pt-PT usam pt)
+  locale           String?              @db.VarChar(10)
+  pdfIndex         Int                  @default(0) @map("pdf_index")
+  /// URL pública do áudio/PDF/capa no Cloudflare R2
+  mediaFileName    String?              @map("media_file_name") @db.VarChar(2048)
+  /// Faixas: [{ id, title, mediaFileName, locale, sortOrder, kind? }]
+  mediaItems       Json?                @map("media_items")
+  unlockedLabel    String?              @map("unlocked_label") @db.VarChar(80)
+  /// ID numérico do produto na Hotmart (webhook product.id)
+  hotmartProductId String?              @unique @map("hotmart_product_id") @db.VarChar(120)
+  /// Código/SKU do produto na Stone (Pagar.me)
+  stoneProductId   String?              @unique @map("stone_product_id") @db.VarChar(120)
+  paymentProvider  PaymentProvider      @default(HOTMART) @map("payment_provider")
+  freeAccess       Boolean              @default(false) @map("free_access")
+  sortOrder        Int                  @default(0) @map("sort_order")
+  active           Boolean              @default(true)
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  grantsAsSource   CatalogProductGrant[] @relation("GrantSource")
+  grantsAsTarget   CatalogProductGrant[] @relation("GrantTarget")
+  productEntitlements ProductEntitlement[]
+  externalIds      CatalogProductExternalId[]
+  courseModules    CatalogCourseModule[]
+
+  @@index([section, active, sortOrder])
+  @@map("catalog_products")
+}
+
+/// Módulo de um curso (ex.: Módulo 1, Módulo 2).
+model CatalogCourseModule {
+  id               String               @id @default(uuid())
+  catalogProductId String               @map("catalog_product_id")
+  title            String               @db.VarChar(255)
+  description      String?              @db.Text
+  coverImageUrl    String?              @map("cover_image_url") @db.VarChar(2048)
+  sortOrder        Int                  @default(0) @map("sort_order")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  catalogProduct   CatalogProduct       @relation(fields: [catalogProductId], references: [id], onDelete: Cascade)
+  media            CatalogModuleMedia[]
+
+  @@index([catalogProductId, sortOrder])
+  @@map("catalog_course_modules")
+}
+
+/// Mídia de um módulo (vídeo, PDF ou áudio).
+model CatalogModuleMedia {
+  id            String                 @id @default(uuid())
+  moduleId      String                 @map("module_id")
+  kind          CatalogModuleMediaKind
+  title         String                 @db.VarChar(255)
+  mediaFileName String                 @map("media_file_name") @db.VarChar(2048)
+  /// pt | en | es — null = todos os idiomas
+  locale        String?                @db.VarChar(10)
+  sortOrder     Int                    @default(0) @map("sort_order")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+  module        CatalogCourseModule    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@index([moduleId, sortOrder])
+  @@map("catalog_module_media")
+}
+
+/// IDs Hotmart/Stone adicionais que resolvem para o mesmo produto (ex.: físico + digital).
+model CatalogProductExternalId {
+  id               String         @id @default(uuid())
+  catalogProductId String         @map("catalog_product_id")
+  provider         PaymentProvider
+  externalId       String         @map("external_id") @db.VarChar(120)
+  catalogProduct   CatalogProduct @relation(fields: [catalogProductId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalId])
+  @@index([catalogProductId])
+  @@map("catalog_product_external_ids")
+}
+
+/// Ao comprar o produto origem, também libera os produtos destino (admin).
+model CatalogProductGrant {
+  id               String         @id @default(uuid())
+  sourceProductId  String         @map("source_product_id")
+  grantedProductId String         @map("granted_product_id")
+  sourceProduct    CatalogProduct @relation("GrantSource", fields: [sourceProductId], references: [id], onDelete: Cascade)
+  grantedProduct   CatalogProduct @relation("GrantTarget", fields: [grantedProductId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceProductId, grantedProductId])
+  @@index([sourceProductId])
+  @@map("catalog_product_grants")
+}
+
+/// Acesso a um produto do catálogo comprado (Hotmart / Stone) — por e-mail.
+model ProductEntitlement {
+  id                    String         @id @default(uuid())
+  email                 String         @db.VarChar(255)
+  catalogProductId      String         @map("catalog_product_id")
+  source                String         @default("hotmart") @db.VarChar(32)
+  externalTransactionId String         @unique @map("external_transaction_id") @db.VarChar(120)
+  createdAt             DateTime       @default(now()) @map("created_at")
+  catalogProduct        CatalogProduct @relation(fields: [catalogProductId], references: [id], onDelete: Cascade)
+
+  @@unique([email, catalogProductId])
+  @@index([email])
+  @@map("product_entitlements")
+}
+
+/// Permissões da biblioteca (Hotmart via n8n) — independente de assinatura premium.
+model LibraryPermission {
+  id            String   @id @default(uuid())
+  email         String   @unique @db.VarChar(255)
+  nome          String?  @db.VarChar(255)
+  audioterapia  Boolean  @default(false)
+  pdf           Boolean  @default(false)
+  livroDigital  Boolean  @default(false) @map("livro_digital")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("library_permissions")
+}
+
+/// Trilha de auditoria — downloads de PDF com marca d'água.
+model PdfDownload {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  productId String?  @map("product_id") @db.VarChar(36)
+  fileLabel String   @map("file_label") @db.VarChar(255)
+  clientIp  String?  @map("client_ip") @db.VarChar(45)
+  userAgent String?  @map("user_agent") @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("pdf_downloads")
+}
+
+/// Token de uso único para entrega do PDF personalizado (URL assinada, ~15 min).
+model PdfDownloadToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  productId String    @map("product_id") @db.VarChar(36)
+  jti       String    @unique @db.VarChar(64)
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("pdf_download_tokens")
 }

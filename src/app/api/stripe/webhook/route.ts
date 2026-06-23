@@ -10,7 +10,6 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
 // Helper para coletar o raw body como Buffer
 // No App Router, req.body é um ReadableStream
-// eslint-disable-next-line no-undef
 async function buffer(readable: ReadableStream<Uint8Array> | null): Promise<Buffer> {
   if (!readable) {
     throw new Error('Request body is null')

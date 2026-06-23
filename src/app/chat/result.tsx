@@ -215,8 +215,8 @@ export function Result({
   }, [])
 
   return (
-    <Card className="w-full mb-6">
-      <CardHeader className="space-y-6 p-6">
+    <Card className="mb-6 w-full min-w-0 overflow-hidden">
+      <CardHeader className="space-y-4 p-4 sm:space-y-6 sm:p-6">
         {/* Header com botão PDF */}
         <div className="flex justify-between items-start gap-2 sm:gap-4">
           <div className="flex-1">
@@ -228,13 +228,13 @@ export function Result({
                     {t('result.scientificName', 'Nome científico')}
                   </span>
                 </div>
-                <CardTitle className="text-2xl font-bold text-foreground mb-6">
+                <CardTitle className="mb-4 text-xl font-bold text-foreground sm:mb-6 sm:text-2xl">
                   {data.scientific}
                 </CardTitle>
               </>
             )}
             {data.popular && (
-              <div className="w-full py-4 text-center text-2xl font-bold text-primary bg-indigo-50 rounded-2xl mb-4">
+              <div className="mb-4 w-full break-words rounded-2xl bg-indigo-50 py-3 text-center text-lg font-bold text-primary sm:py-4 sm:text-2xl dark:bg-indigo-950/40">
                 {data.popular}
               </div>
             )}
@@ -259,7 +259,7 @@ export function Result({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-8 p-6 pt-0">
+      <CardContent className="space-y-6 p-4 pt-0 sm:space-y-8 sm:p-6">
         {/* Contexto Geral */}
         <section className="space-y-3">
           <div className="flex items-center gap-2">
@@ -268,11 +268,8 @@ export function Result({
               {t('result.generalContext', 'Contexto geral')}
             </span>
           </div>
-          <div className="prose prose-sm max-w-none text-justify">
-            {/* <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {data.contextoGeral}
-            </ReactMarkdown> */}
-            <div 
+          <div className="prose prose-sm max-w-none break-words text-justify [&_img]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto">
+            <div
               dangerouslySetInnerHTML={{ 
                 __html: (() => {
                   const processed = processMarkdownContent(data.contextoGeral)
@@ -292,7 +289,7 @@ export function Result({
               {t('result.biologicalImpact', 'Impacto biológico')}
             </span>
           </div>
-          <div className="prose prose-sm max-w-none text-justify font-normal">
+          <div className="prose prose-sm max-w-none break-words text-justify font-normal [&_img]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto">
             {/* <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {data.impactoBiologico}
             </ReactMarkdown> */}
@@ -325,7 +322,7 @@ export function Result({
                 value={sec.title}
                 className="border rounded-md border-zinc-200"
               >
-                <AccordionTrigger className="flex items-center gap-2 font-medium bg-zinc-50 rounded-md px-2 hover:no-underline">
+                <AccordionTrigger className="flex items-center gap-2 rounded-md bg-muted px-2 font-medium hover:no-underline">
                   <div className="flex flex-row gap-1 justify-start items-center flex-1 capitalize">
                     {Icon && (
                       <Icon className="h-4 w-4 flex-shrink-0 text-primary" />
@@ -333,7 +330,7 @@ export function Result({
                     {translateSectionTitle(sec.title, language).toLowerCase()}
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className="prose prose-sm max-w-none p-3 text-left">
+                <AccordionContent className="prose prose-sm max-w-none break-words p-3 text-left [&_img]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto">
                   {shouldBlur ? (
                     <BlurredAccordionContent onSubscribe={handleSubscribe}>
                       {/* <ReactMarkdown
@@ -403,7 +400,7 @@ export function Result({
         {/* FOOTER */}
         <div className="mt-6 space-y-2">
           {/* Tempo de resposta */}
-          <div className="flex items-center text-sm text-gray-500">
+          <div className="flex items-center text-sm text-muted-foreground">
             <Clock className="w-4 h-4 mr-1 flex-shrink-0" />
             <span>
               {t('result.responseTime', 'Tempo de resposta')}{' '}

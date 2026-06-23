@@ -12,13 +12,31 @@ import { LANGUAGE_OPTIONS, SUPPORTED_LANGUAGES, type LanguageCode } from '@/i18n
 import { useLanguage } from '@/i18n/useLanguage'
 import { useTranslation } from '@/i18n/useTranslation'
 import { FLAG_COMPONENTS } from '@/components/flags'
+import { cn } from '@/lib/utils'
+
+const SHORT_LANGUAGE_LABEL: Record<LanguageCode, string> = {
+  'pt-BR': 'BR',
+  'pt-PT': 'PT',
+  en: 'EN',
+  es: 'ES'
+}
 
 type LanguageSwitcherProps = {
   showLabel?: boolean
   className?: string
+  /** Versão menor (ex.: login) */
+  compact?: boolean
+  /** Cabeçalho do chat: bandeira no mobile, texto curto a partir de sm */
+  variant?: 'default' | 'compact' | 'header'
 }
 
-export function LanguageSwitcher({ showLabel = true, className }: LanguageSwitcherProps) {
+export function LanguageSwitcher({
+  showLabel = true,
+  className,
+  compact = false,
+  variant
+}: LanguageSwitcherProps) {
+  const resolvedVariant = variant ?? (compact ? 'compact' : 'default')
   const { t } = useTranslation()
   const { language, setLanguage } = useLanguage()
   const [isPending, startTransition] = useTransition()
@@ -40,7 +58,12 @@ export function LanguageSwitcher({ showLabel = true, className }: LanguageSwitch
   const CurrentFlag = FLAG_COMPONENTS[language]
 
   return (
-    <div className={`space-y-1 ${className ?? ''}`}>
+    <div
+      className={cn(
+        resolvedVariant === 'header' ? 'space-y-0' : 'space-y-1',
+        className
+      )}
+    >
       {showLabel && (
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           {t('language.selector.label', 'Idioma')}
@@ -51,17 +74,49 @@ export function LanguageSwitcher({ showLabel = true, className }: LanguageSwitch
         onValueChange={handleChange}
         disabled={isPending}
       >
-        <SelectTrigger className="h-11 sm:h-12 w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm sm:text-base font-medium shadow-lg border-0 hover:from-indigo-600 hover:to-purple-700 transition-all duration-200 min-w-[140px] sm:min-w-[160px]">
-          <div className="flex items-center gap-2 flex-1">
+        <SelectTrigger
+          aria-label={t('language.selector.label', 'Idioma')}
+          className={cn(
+            'border-0 bg-gradient-to-r from-indigo-500 to-purple-600 font-medium text-white transition-all duration-200 hover:from-indigo-600 hover:to-purple-700',
+            resolvedVariant === 'header' &&
+              'h-9 w-9 shrink-0 justify-center p-0 shadow-md [&>svg]:hidden sm:h-8 sm:w-[7.25rem] sm:justify-between sm:px-2.5 sm:[&>svg]:block',
+            resolvedVariant === 'compact' &&
+              'h-8 w-[8.5rem] px-2.5 text-xs shadow-md',
+            resolvedVariant === 'default' &&
+              'h-11 w-full min-w-[140px] text-sm shadow-lg sm:h-12 sm:min-w-[160px] sm:text-base'
+          )}
+        >
+          <div
+            className={cn(
+              'flex flex-1 items-center',
+              resolvedVariant === 'header' ? 'justify-center gap-0 sm:gap-1.5' : 'gap-1.5'
+            )}
+          >
             {CurrentFlag && (
-              <CurrentFlag className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+              <CurrentFlag
+                className={cn(
+                  'shrink-0',
+                  resolvedVariant === 'header' && 'h-4 w-4 sm:h-3.5 sm:w-3.5',
+                  resolvedVariant === 'compact' && 'h-3.5 w-3.5',
+                  resolvedVariant === 'default' && 'h-5 w-5 sm:h-6 sm:w-6'
+                )}
+              />
             )}
             <SelectValue placeholder={LANGUAGE_OPTIONS[language].label}>
-              {LANGUAGE_OPTIONS[language].label}
+              {resolvedVariant === 'header' ? (
+                <>
+                  <span className="sr-only">{LANGUAGE_OPTIONS[language].label}</span>
+                  <span className="hidden text-xs sm:inline">
+                    {SHORT_LANGUAGE_LABEL[language]}
+                  </span>
+                </>
+              ) : (
+                LANGUAGE_OPTIONS[language].label
+              )}
             </SelectValue>
           </div>
         </SelectTrigger>
-        <SelectContent className="bg-white">
+        <SelectContent className="bg-popover text-popover-foreground">
           {SUPPORTED_LANGUAGES.map(code => {
             const FlagComponent = FLAG_COMPONENTS[code]
             return (

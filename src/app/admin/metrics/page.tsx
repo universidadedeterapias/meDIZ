@@ -18,6 +18,12 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import {
+  adminChartAxisStroke,
+  adminChartAxisTick,
+  adminChartGridProps,
+  adminChartTooltipProps
+} from '@/components/admin/chart-theme'
 
 interface MetricsData {
   users: {
@@ -261,7 +267,7 @@ export default function MetricsPage() {
           <CardDescription>Estatísticas de usuários da plataforma</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-5">
             <div>
               <p className="text-sm text-gray-600">Total</p>
               <p className="text-2xl font-bold">{metrics.users.total.toLocaleString()}</p>
@@ -285,10 +291,10 @@ export default function MetricsPage() {
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={userGrowthData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
+              <CartesianGrid {...adminChartGridProps} />
+              <XAxis dataKey="name" stroke={adminChartAxisStroke} tick={adminChartAxisTick} />
+              <YAxis stroke={adminChartAxisStroke} tick={adminChartAxisTick} />
+              <Tooltip {...adminChartTooltipProps} />
               <Bar dataKey="value" fill="#3b82f6" />
             </BarChart>
           </ResponsiveContainer>
@@ -352,7 +358,7 @@ export default function MetricsPage() {
                   {metrics.subscriptions.cancelled.toLocaleString()}
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                 <div>
                   <p className="text-gray-600">Cancel. c/ período vigente</p>
                   <p className="text-lg font-semibold text-amber-600">
@@ -369,10 +375,10 @@ export default function MetricsPage() {
             </div>
             <ResponsiveContainer width="100%" height={150}>
               <BarChart data={subscriptionData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
+                <CartesianGrid {...adminChartGridProps} />
+                <XAxis dataKey="name" stroke={adminChartAxisStroke} tick={adminChartAxisTick} />
+                <YAxis stroke={adminChartAxisStroke} tick={adminChartAxisTick} />
+                <Tooltip {...adminChartTooltipProps} />
                 <Bar dataKey="value" fill="#10b981" />
               </BarChart>
             </ResponsiveContainer>

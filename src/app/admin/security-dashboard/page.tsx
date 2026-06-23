@@ -256,7 +256,7 @@ export default function SecurityDashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
             <div>
               <div className="text-sm text-gray-600">Total de Logs</div>
               <div className="text-2xl font-bold">{metrics.logs.totalAuditLogs.toLocaleString()}</div>

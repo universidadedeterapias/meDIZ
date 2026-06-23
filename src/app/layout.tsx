@@ -3,6 +3,9 @@ import { UserProvider } from '@/contexts/user'
 import SessionProvider from '@/components/SessionProvider'
 import { HydrationBoundary } from '@/components/hydration-boundary'
 import { GlobalErrorHandler } from '@/components/GlobalErrorHandler'
+import { FetchInterceptor } from '@/components/FetchInterceptor'
+import { AuthPageChrome } from '@/components/AuthPageChrome'
+import { GlobalPageBack } from '@/components/navigation/GlobalPageBack'
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
 import PushNotificationBanner from '@/components/PushNotificationBanner'
 import type { Metadata, Viewport } from 'next'
@@ -61,17 +64,21 @@ export default async function RootLayout({
       >
         <HydrationBoundary>
           <GlobalErrorHandler />
+          <FetchInterceptor />
           <ServiceWorkerRegistration />
           <LanguageProvider initialLanguage={language}>
             <ThemeProvider
               attribute="class"
               defaultTheme="light"
-              enableSystem
+              enableSystem={false}
+              storageKey="mediz-theme"
               disableTransitionOnChange
             >
               <SessionProvider>
                 <UserProvider>
                   <PushNotificationBanner />
+                  <GlobalPageBack />
+                  <AuthPageChrome />
                   {children}
                 </UserProvider>
               </SessionProvider>

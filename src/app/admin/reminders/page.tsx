@@ -388,7 +388,7 @@ export default function AdminRemindersPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="w-full min-w-0 space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/admin">
@@ -727,7 +727,7 @@ export default function AdminRemindersPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <Label>Horário</Label>
                   <div className="mt-1 p-2 bg-gray-50 rounded">
@@ -757,7 +757,7 @@ export default function AdminRemindersPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <Label>Criado em</Label>
                   <div className="mt-1 p-2 bg-gray-50 rounded text-sm">

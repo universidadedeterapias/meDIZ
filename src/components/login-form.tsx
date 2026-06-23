@@ -20,8 +20,9 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { Eye, EyeOff, AlertCircle, Info } from 'lucide-react'
 import GoogleIcon from './icons/Google'
-import { useTranslation } from '@/i18n/useTranslation'
 import { LanguageSwitcher } from '@/components/language-switcher'
+import { useTranslation } from '@/i18n/useTranslation'
+import { authFormCardClass, authFormInputClass } from '@/lib/auth-form-styles'
 
 const REMEMBER_ME_EMAIL_KEY = 'mediz_remembered_email'
 
@@ -126,7 +127,7 @@ export function LoginForm({
 
   return (
     <div className={cn('flex flex-col gap-4 sm:gap-6', className)} {...props}>
-      <Card className="bg-zinc-50 border-zinc-300 shadow-lg w-full">
+      <Card className={authFormCardClass}>
         <CardHeader className="text-center flex flex-col items-center px-4 pt-6 sm:px-6 sm:pt-8">
           <p className="text-primary font-bold text-3xl sm:text-4xl">
             me<span className="uppercase">diz</span>
@@ -167,7 +168,8 @@ export function LoginForm({
               placeholder={t('login.email', 'E-mail')}
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="h-10 sm:h-11 text-sm sm:text-base"
+              className={authFormInputClass}
+              autoComplete="email"
               required
             />
             <div className="relative">
@@ -177,13 +179,14 @@ export function LoginForm({
                 placeholder={t('login.password', 'Senha')}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className="h-10 sm:h-11 text-sm sm:text-base pr-10"
+                className={cn(authFormInputClass, 'relative z-[1] pr-10')}
+                autoComplete="current-password"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-700"
+                className="absolute right-3 top-1/2 z-[2] -translate-y-1/2 text-zinc-500 hover:text-zinc-700"
                 aria-label={t('login.password.toggle', 'Alternar visibilidade da senha')}
               >
                 {showPassword ? <EyeOff size={18} className="sm:w-5 sm:h-5" /> : <Eye size={18} className="sm:w-5 sm:h-5" />}
@@ -211,9 +214,8 @@ export function LoginForm({
             </Button>
           </form>
 
-          {/* Seletor de idioma */}
-          <div className="flex justify-center mt-4">
-            <LanguageSwitcher showLabel={false} />
+          <div className="mt-3 flex justify-center">
+            <LanguageSwitcher showLabel={false} compact />
           </div>
 
           {/* Link/ação: Esqueci minha senha (WhatsApp) */}

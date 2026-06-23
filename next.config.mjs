@@ -1,3 +1,14 @@
+function r2RemotePatterns() {
+  const url = process.env.R2_PUBLIC_URL?.trim();
+  if (!url) return [];
+  try {
+    const { hostname } = new URL(url);
+    return [{ protocol: 'https', hostname, pathname: '/**' }];
+  } catch {
+    return [];
+  }
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   webpack: (config, { isServer }) => {
@@ -28,6 +39,25 @@ const nextConfig = {
   },
   // Output standalone para Docker
   output: 'standalone',
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/**',
+      },
+      ...r2RemotePatterns(),
+      ...(process.env.NEXT_PUBLIC_LIBRARY_MEDIA_HOSTNAME
+        ? [
+            {
+              protocol: 'https',
+              hostname: process.env.NEXT_PUBLIC_LIBRARY_MEDIA_HOSTNAME,
+              pathname: '/**',
+            },
+          ]
+        : []),
+    ],
+  },
 };
 
 export default nextConfig;

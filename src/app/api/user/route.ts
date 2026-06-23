@@ -1,4 +1,5 @@
 import { auth } from '@/auth'
+import { isValidCpf, normalizeCpf } from '@/lib/cpf'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
@@ -19,6 +20,7 @@ export async function GET() {
         image: true,
         fullName: true,
         whatsapp: true,
+        cpf: true,
         age: true,
         gender: true,
         profession: true,
@@ -60,8 +62,14 @@ export async function PATCH(request: Request) {
   const {
     fullName,
     email,
-    whatsapp
-  }: { fullName?: string; email?: string; whatsapp?: string } = body
+    whatsapp,
+    cpf
+  }: {
+    fullName?: string
+    email?: string
+    whatsapp?: string
+    cpf?: string | null
+  } = body
 
   // Validação básica: todos obrigatórios
   if (!fullName || !email || !whatsapp) {
@@ -71,13 +79,19 @@ export async function PATCH(request: Request) {
     )
   }
 
+  const cpfDigits = cpf == null || cpf === '' ? null : normalizeCpf(String(cpf))
+  if (cpfDigits && !isValidCpf(cpfDigits)) {
+    return NextResponse.json({ error: 'CPF inválido' }, { status: 400 })
+  }
+
   try {
     const updated = await prisma.user.update({
       where: { id: session.user.id },
       data: {
         fullName,
         email,
-        whatsapp
+        whatsapp,
+        cpf: cpfDigits
       }
     })
 
@@ -87,6 +101,7 @@ export async function PATCH(request: Request) {
       fullName: updated.fullName,
       email: updated.email,
       whatsapp: updated.whatsapp,
+      cpf: updated.cpf,
       image: updated.image
     })
   } catch (error) {

@@ -15,6 +15,7 @@ import { useForm } from 'react-hook-form'
 import * as z from 'zod'
 import GoogleIcon from './icons/Google'
 import { useTranslation } from '@/i18n/useTranslation'
+import { authFormCardClass, authFormInputClass } from '@/lib/auth-form-styles'
 
 export function SignupForm({
   className,
@@ -90,7 +91,7 @@ export function SignupForm({
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
-      <Card className="bg-zinc-50 border-zinc-300 shadow-lg">
+      <Card className={authFormCardClass}>
         <CardHeader className="text-center flex flex-col items-center">
           <p className="text-primary font-bold text-4xl">
             me<span className="uppercase">diz</span>
@@ -109,7 +110,12 @@ export function SignupForm({
         <CardContent className="space-y-6">
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
             <div>
-              <Input {...register('email')} type="email" placeholder={t('signup.email', 'E-mail')} />
+              <Input
+                {...register('email')}
+                type="email"
+                placeholder={t('signup.email', 'E-mail')}
+                className={authFormInputClass}
+              />
               {errors.email && (
                 <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
               )}
@@ -120,6 +126,7 @@ export function SignupForm({
                 {...register('whatsapp')}
                 type="tel"
                 placeholder={t('signup.whatsapp.placeholder', 'WhatsApp (ex: 11999999999)')}
+                className={authFormInputClass}
               />
               {errors.whatsapp && (
                 <p className="text-red-500 text-sm mt-1">{errors.whatsapp.message}</p>
@@ -131,11 +138,12 @@ export function SignupForm({
                 {...register('password')}
                 type={showPassword ? 'text' : 'password'}
                 placeholder={t('signup.password', 'Senha')}
+                className={cn(authFormInputClass, 'relative z-[1] pr-10')}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
+                className="absolute right-3 top-1/2 z-[2] -translate-y-1/2"
                 aria-label={t('signup.password.toggle', 'Alternar visibilidade da senha')}
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -150,11 +158,12 @@ export function SignupForm({
                 {...register('confirm')}
                 type={showConfirm ? 'text' : 'password'}
                 placeholder={t('signup.confirmPassword', 'Confirme a senha')}
+                className={cn(authFormInputClass, 'relative z-[1] pr-10')}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirm(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
+                className="absolute right-3 top-1/2 z-[2] -translate-y-1/2"
                 aria-label={t('signup.confirmPassword.toggle', 'Alternar visibilidade da confirmação')}
               >
                 {showConfirm ? <EyeOff size={20} /> : <Eye size={20} />}

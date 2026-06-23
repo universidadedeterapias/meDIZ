@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Smartphone, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import { useTranslation } from '@/i18n/useTranslation'
-import { LanguageSwitcher } from '@/components/language-switcher'
 
 export default function VerifyWhatsAppPage() {
   const searchParams = useSearchParams()
@@ -69,12 +68,7 @@ export default function VerifyWhatsAppPage() {
 
   if (!email) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100 relative">
-        {/* Seletor de idioma no canto superior direito */}
-        <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10">
-          <LanguageSwitcher showLabel={false} className="min-w-[120px] sm:min-w-[160px]" />
-        </div>
-        
+      <div className="relative flex min-h-screen items-center justify-center bg-muted">
         <Card className="w-full max-w-md">
           <CardContent className="p-6">
             <Alert variant="destructive">
@@ -90,12 +84,7 @@ export default function VerifyWhatsAppPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 relative">
-      {/* Seletor de idioma no canto superior direito */}
-      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10">
-        <LanguageSwitcher showLabel={false} className="min-w-[120px] sm:min-w-[160px]" />
-      </div>
-      
+    <div className="relative flex min-h-screen items-center justify-center bg-muted">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">

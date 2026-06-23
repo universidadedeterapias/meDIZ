@@ -15,7 +15,7 @@
     "LICENSE*"
   ],
   "scripts": {
-    "dev": "next dev",
+    "dev": "prisma generate && next dev",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
@@ -25,6 +25,9 @@
     "start-node": "node dist/index.js",
     "postinstall": "prisma generate --no-engine",
     "create-admin": "tsx src/scripts/create-admin.ts",
+    "grant:library-access": "tsx src/scripts/grant-library-access.ts",
+    "sync:catalog-purchase-mapping": "tsx src/scripts/sync-catalog-purchase-mapping.ts",
+    "migrate:library-permissions": "tsx src/scripts/migrate-library-permissions-to-entitlements.ts",
     "ensure-admin": "node src/scripts/ensure-admin.js",
     "seed-popup": "tsx src/scripts/seed-popup-data.ts",
     "sync-hotmart-plans": "tsx src/scripts/sync-hotmart-plans.ts",
@@ -93,6 +96,7 @@
     "test-popup-no-scroll": "tsx src/scripts/test-popup-no-scroll.ts",
     "test-popup-final-adjustments": "tsx src/scripts/test-popup-final-adjustments.ts",
     "check-popup-image": "tsx src/scripts/check-popup-image.ts",
+    "sync:library-cloudinary": "tsx scripts/sync-library-pdfs-cloudinary.ts",
     "check:deploy": "node scripts/pre-deploy-check.js",
     "deploy-check": "node scripts/pre-deploy-check.js",
     "clean": "node scripts/clean-build.js",
@@ -121,6 +125,8 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.9.0",
+    "@aws-sdk/client-s3": "^3.1065.0",
+    "@aws-sdk/s3-request-presigner": "^3.1065.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -163,6 +169,8 @@
     "next": "15.2.6",
     "next-auth": "^5.0.0-beta.25",
     "next-themes": "^0.4.4",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^4.10.38",
     "pdfkit": "^0.17.2",
     "puppeteer": "^24.35.0",
     "puppeteer-core": "^24.34.0",
@@ -191,6 +199,8 @@
     "@types/node": "^20.19.19",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cypress": "^13.15.0",
+    "cypress-mochawesome-reporter": "^4.0.2",
     "eslint": "^9.37.0",
     "eslint-config-next": "15.1.7",
     "eslint-plugin-react": "^7.37.5",
@@ -201,8 +211,6 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
-    "typescript-eslint": "^8.46.1",
-    "cypress": "^13.15.0",
-    "cypress-mochawesome-reporter": "^4.0.2"
+    "typescript-eslint": "^8.46.1"
   }
 }

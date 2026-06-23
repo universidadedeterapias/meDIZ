@@ -2,7 +2,6 @@
 
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale/pt-BR'
-import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -16,7 +15,8 @@ import {
   TableRow
 } from '@/components/ui/table'
 import { useUser } from '@/contexts/user'
-import { ArrowLeft } from 'lucide-react'
+import { SimpleAppHeader } from '@/components/navigation/SimpleAppHeader'
+import { PageBackButton } from '@/components/navigation/PageBackButton'
 
 type Invoice = {
   id: string
@@ -68,45 +68,24 @@ export default function PaymentsHistoryPage() {
         </CardHeader>
         <CardContent>
           <p>Você ainda não tem cobranças registradas.</p>
-          <Link href="/myAccount">
-            <Button className="mt-2" variant="outline" size="sm">
-              Voltar
-            </Button>
-          </Link>
+          <PageBackButton fallbackHref="/myAccount" showLabel />
         </CardContent>
       </Card>
     )
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-6">
-      <header className="w-full sticky top-0 z-10 bg-white shadow-sm">
-        <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
-          <a href="/myAccount" className="text-primary">
-            <ArrowLeft />
-          </a>
-          <p className="text-primary font-bold text-2xl">
-            me<span className="uppercase">diz</span>
-            <span className="text-yellow-400">!</span>
-          </p>
-          <div />
-        </div>
-      </header>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Histórico de Pagamentos</h1>
-        <Link href="/myAccount">
-          <Button variant="outline" size="sm">
-            Voltar
-          </Button>
-        </Link>
-      </div>
+    <>
+      <SimpleAppHeader backFallback="/myAccount" />
+      <div className="page-content mx-auto max-w-4xl space-y-4 py-4 sm:space-y-6 sm:py-6">
+      <h1 className="text-xl font-semibold sm:text-2xl">Histórico de Pagamentos</h1>
 
       <Card className="shadow-sm">
         <CardHeader>
           <CardTitle>Últimas {invoices.length} faturas</CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
+        <CardContent className="-mx-1 overflow-x-auto px-1 sm:mx-0 sm:px-0">
+          <Table className="min-w-[520px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Data</TableHead>
@@ -147,6 +126,7 @@ export default function PaymentsHistoryPage() {
           </Table>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </>
   )
 }

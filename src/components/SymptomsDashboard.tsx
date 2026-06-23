@@ -20,13 +20,10 @@ import {
   TrendingUp, 
   Calendar, 
   FileText, 
-  Globe, 
-  Activity,
-  ArrowLeft
+  Globe
 } from 'lucide-react'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useLanguage } from '@/i18n/useLanguage'
-import Link from 'next/link'
 
 interface DashboardData {
   searchedSymptoms: {
@@ -165,20 +162,6 @@ export function SymptomsDashboard() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="flex items-center gap-2 md:gap-4">
-        <Link 
-          href="/chat"
-          className="flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors group -ml-4 md:-ml-12"
-          aria-label={t('dashboard.symptoms.backToChat', 'Voltar para o chat')}
-        >
-          <ArrowLeft className="h-4 w-4 md:h-5 md:w-5 text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors" />
-        </Link>
-        <h1 className="text-xl md:text-3xl font-bold flex items-center gap-2 md:gap-3">
-          <Activity className="h-6 w-6 md:h-8 md:w-8 text-indigo-600" />
-          {t('dashboard.symptoms.title', 'Dashboard de Sintomas')}
-        </h1>
-      </div>
-
       <Tabs value={activeTab} onValueChange={(v) => {
         setActiveTab(v as 'personal' | 'global')
       }}>
@@ -204,7 +187,7 @@ export function SymptomsDashboard() {
             <CardContent>
               <div className="h-[250px] md:h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={frequencyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <BarChart data={frequencyData} margin={{ top: 5, right: 4, left: -8, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
@@ -230,10 +213,10 @@ export function SymptomsDashboard() {
             <CardContent>
               <div className="h-[250px] md:h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={topSymptomsData} layout="vertical" margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <BarChart data={topSymptomsData} layout="vertical" margin={{ top: 5, right: 4, left: 4, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" tick={{ fontSize: 12 }} />
-                    <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 10 }} />
+                    <XAxis type="number" tick={{ fontSize: 11 }} />
+                    <YAxis dataKey="name" type="category" width={64} tick={{ fontSize: 9 }} />
                     <Tooltip 
                       formatter={(value: number) => [value, t('dashboard.symptoms.searches', 'Pesquisas')]}
                       labelFormatter={(label, payload) => {

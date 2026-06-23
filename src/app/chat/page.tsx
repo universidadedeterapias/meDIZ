@@ -8,8 +8,9 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { AppSidebar } from '@/components/app-sidebar'
+import { LanguageSwitcher } from '@/components/language-switcher'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { ClientOnly } from '@/components/ClientOnly'
-import { ExternalLinks } from '@/components/ExternalLinks'
 import { Footer } from '@/components/Footer'
 import OptionSelector from '@/components/form/OptionSelector'
 import DynamicOptionSelector from '@/components/form/DynamicOptionSelector'
@@ -374,7 +375,7 @@ export default function Page() {
   // Loading enquanto checa o perfil
   if (checkingProfile || !user) {
     return (
-      <div className="flex flex-col justify-center items-center min-w-screen min-h-screen p-8 gap-8 bg-gradient-to-br from-indigo-600 to-purple-600">
+      <div className="flex min-h-screen w-full flex-col items-center justify-center gap-8 bg-gradient-to-br from-indigo-600 to-purple-600 p-6 sm:p-8">
         <div className="flex flex-1 flex-col items-center justify-center">
           <p className="text-zinc-100 font-bold text-6xl drop-shadow-lg">
             me<span className="uppercase">diz</span>
@@ -411,63 +412,77 @@ export default function Page() {
         }}
       />
 
-      <SidebarInset>
-        <div className="flex flex-col min-h-screen">
+      <SidebarInset className="min-w-0 overflow-x-hidden">
+        <div className="flex min-h-svh flex-col bg-background text-foreground">
           {/* Header */}
-          <header className="w-full sticky top-0 z-30 flex items-center h-16 bg-zinc-50 p-4 shadow-sm">
-            <div className="w-full flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
-                <SidebarTrigger className="-ml-1 flex-shrink-0" />
-                <div className="flex flex-row items-center min-w-0">
-                  <Avatar className="w-8 h-8 border-2 border-indigo-600 flex-shrink-0">
-                    <AvatarImage
-                      src={userContext?.image ?? undefined}
-                      alt="User"
-                    />
-                    <AvatarFallback>
-                      {FirstName(user.name).charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <h2 className="ml-2 scroll-m-20 text-base sm:text-xl font-semibold tracking-tight text-indigo-600 truncate">
-                    {t('chat.greeting.prefix', 'Olá')}, {FirstName(user.name)}!
-                  </h2>
-                </div>
+          <header className="sticky top-0 z-30 flex w-full min-w-0 flex-col border-b border-border bg-background/95 px-2 py-2 shadow-sm backdrop-blur-md sm:h-16 sm:flex-row sm:items-center sm:px-4 sm:py-0">
+            <div className="flex w-full min-w-0 items-center justify-between gap-1 sm:gap-2">
+              <SidebarTrigger className="-ml-0.5 shrink-0 md:-ml-1" />
+              <div className="hidden min-w-0 flex-1 items-center gap-3 sm:flex">
+                <Avatar className="h-8 w-8 shrink-0 border-2 border-indigo-600">
+                  <AvatarImage
+                    src={userContext?.image ?? undefined}
+                    alt="User"
+                  />
+                  <AvatarFallback>
+                    {FirstName(user.name).charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <h2 className="truncate text-base font-semibold tracking-tight text-indigo-600 dark:text-indigo-400 sm:text-xl">
+                  {t('chat.greeting.prefix', 'Olá')}, {FirstName(user.name)}!
+                </h2>
               </div>
-              <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+              <div className="flex shrink-0 items-center gap-0.5 sm:gap-4">
                 <div className="relative group cursor-pointer" onClick={() => router.push('/suggestion')}>
                   <Button
                     onClick={(e) => {
                       e.stopPropagation()
                       router.push('/suggestion')
                     }}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 group-hover:scale-105"
+                    className="flex h-9 items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 px-2.5 text-white shadow-md transition-all duration-200 hover:from-purple-700 hover:to-indigo-700 hover:shadow-lg group-hover:scale-105 sm:h-10 sm:px-4"
                     size="default"
                   >
-                    <MessageSquarePlus className="h-4 w-4" />
+                    <MessageSquarePlus className="h-4 w-4 shrink-0" />
                     <span className="hidden sm:inline">{t('sidebar.suggestion.button', 'Sugestão')}</span>
                   </Button>
                   <Badge 
-                    className="absolute -top-2 -left-2 bg-green-500 hover:bg-green-600 text-white border-none shadow-lg animate-pulse cursor-pointer z-10"
+                    className="absolute -top-2 -left-2 z-10 hidden cursor-pointer border-none bg-green-500 text-white shadow-lg animate-pulse hover:bg-green-600 sm:flex"
                   >
                     <span className="relative z-10">{t('badge.new.lowercase', 'Novo')}</span>
                     <span className="absolute inset-0 bg-green-400 rounded-md animate-ping opacity-75"></span>
                   </Badge>
                 </div>
-                <Bell className="mr-2" />
+                <LanguageSwitcher showLabel={false} variant="header" />
+                <ThemeToggle variant="icon" />
+                <Bell className="hidden h-5 w-5 shrink-0 text-foreground md:block" />
               </div>
+            </div>
+            <div className="mt-2 flex items-center justify-center gap-2 sm:hidden">
+              <Avatar className="h-7 w-7 shrink-0 border-2 border-indigo-600">
+                <AvatarImage
+                  src={userContext?.image ?? undefined}
+                  alt="User"
+                />
+                <AvatarFallback className="text-xs">
+                  {FirstName(user.name).charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <h2 className="truncate text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                {t('chat.greeting.prefix', 'Olá')}, {FirstName(user.name)}!
+              </h2>
             </div>
           </header>
 
           {/* Busca */}
-          <div className="flex flex-col items-center gap-4 py-6 px-4 bg-zinc-100">
-            <p className="text-indigo-600 font-bold text-3xl">
+          <div className="flex flex-col items-center gap-3 border-b border-border bg-muted/40 px-3 py-4 sm:gap-4 sm:px-4 sm:py-6">
+            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 sm:text-3xl">
               me<span className="uppercase">diz</span>
               <span className="text-yellow-400">!</span>
             </p>
             <div className="w-full max-w-4xl space-y-4">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="w-5 h-5 text-gray-400" />
+                  <Search className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <Input
                   type="text"
@@ -476,35 +491,36 @@ export default function Page() {
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
                   disabled={loading}
-                  className="w-full pl-10 pr-24 py-6 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors placeholder:text-sm"
+                  className="w-full rounded-md border border-input bg-background py-4 pl-10 pr-[4.5rem] text-base transition-colors placeholder:text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:py-6 sm:pr-28"
                 />
                 <Button
                   onClick={handleSendMessage}
                   disabled={loading}
-                  className="absolute inset-y-1 right-1 rounded-sm px-6 py-4 min-h-[41.5px] bg-indigo-600 text-white hover:bg-indigo-700"
+                  className="absolute inset-y-1 right-1 min-h-[38px] rounded-sm bg-indigo-600 px-3 py-2 text-sm text-white hover:bg-indigo-700 sm:min-h-[41.5px] sm:px-6 sm:py-4 sm:text-base"
+                  aria-label={t('general.search', 'Buscar')}
                 >
-                  {loading ? '...' : t('general.search', 'Buscar')}
+                  {loading ? (
+                    '...'
+                  ) : (
+                    <>
+                      <Search className="h-4 w-4 sm:hidden" />
+                      <span className="hidden sm:inline">{t('general.search', 'Buscar')}</span>
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
           </div>
 
-          {/* Links externos se houver resposta */}
-          {responses.length > 0 && (
-            <section className="w-full px-6 bg-zinc-100 pb-4">
-              <ExternalLinks />
-            </section>
-          )}
-
           {/* Corpo da conversa */}
-          <main className="flex-1 overflow-y-auto px-4 pb-6 bg-zinc-100">
+          <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col overflow-x-hidden overflow-y-auto bg-background px-3 pb-6 sm:px-4">
             {loading ? (
               <ClientOnly>
                 <LoadingPlaceholder />
               </ClientOnly>
             ) : responses.length === 0 ? (
-              <div className="w-full max-w-4xl mt-4 flex flex-col gap-4">
-                <Label className="text-zinc-400">
+              <div className="mx-auto mt-4 flex w-full max-w-4xl flex-col gap-4">
+                <Label className="text-sm font-medium text-muted-foreground">
                   {t('chat.popularQueries', 'Mais buscados:')}
                 </Label>
                 {symptomsLoaded && dynamicSymptoms.length > 0 ? (

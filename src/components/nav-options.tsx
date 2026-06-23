@@ -1,177 +1,321 @@
 'use client'
-import { LogOut, type LucideIcon } from 'lucide-react'
-import { signOut } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
 
+import {
+  Activity,
+  BarChart3,
+  FileText,
+  GraduationCap,
+  Headphones,
+  Library,
+  LogOut,
+  PlaySquare,
+  Search,
+  Star,
+  type LucideIcon
+} from 'lucide-react'
+import { signOut } from 'next-auth/react'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { FaWhatsapp } from 'react-icons/fa'
+
+import { UpgradeModal } from '@/components/UpgradeModal'
+import { NavFolders } from '@/components/nav-folders'
+import { SidebarNavSection } from '@/components/sidebar/SidebarNavSection'
 import { Button } from '@/components/ui/button'
 import {
-  SidebarGroup,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem
 } from '@/components/ui/sidebar'
-import { useUser } from '@/contexts/user'
-import { IconType } from 'react-icons/lib'
+import { useSubscriptionStatus } from '@/hooks/use-subscription-status'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useLanguage } from '@/i18n/useLanguage'
 import { getUpgradeLink } from '@/lib/upgradeLinks'
+import { cn } from '@/lib/utils'
 
-type SubscriptionAPI = {
-  status: string
-  currentPeriodEnd: string | null
-  /** Fonte de verdade do servidor (cancelado com período vigente = true) */
-  hasPremiumAccess?: boolean
+const navLinkClass =
+  'flex items-center gap-2 text-sm font-normal text-sidebar-foreground w-full group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 [&_svg]:size-4 [&_svg]:shrink-0'
+
+const navItemButtonClass =
+  'h-9 px-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground'
+
+const newFeatureBadgeClass =
+  'shrink-0 rounded-full bg-green-500 px-2 py-0.5 text-[10px] font-bold leading-none text-white'
+
+type NavItemProps = {
+  href: string
+  label: string
+  icon: LucideIcon
+  isActive?: boolean
+  iconClassName?: string
+  showNewBadge?: boolean
+  external?: boolean
+  onClick?: (event: React.MouseEvent) => void
 }
 
-type NavOption = {
-  name: string
-  translationKey?: string
-  url: string
-  icon: LucideIcon | IconType
+function NavItem({
+  href,
+  label,
+  icon: Icon,
+  isActive,
+  iconClassName,
+  showNewBadge,
+  external,
+  onClick
+}: NavItemProps) {
+  const content = (
+    <>
+      <Icon
+        className={cn('size-4 shrink-0', iconClassName ?? 'text-sidebar-foreground')}
+        strokeWidth={1.5}
+      />
+      <span className="flex min-w-0 flex-1 items-center gap-2 group-data-[collapsible=icon]:hidden">
+        <span className="truncate">{label}</span>
+        {showNewBadge ? (
+          <span className={newFeatureBadgeClass}>NOVO</span>
+        ) : null}
+      </span>
+    </>
+  )
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        asChild
+        isActive={isActive}
+        tooltip={label}
+        className={navItemButtonClass}
+      >
+        {onClick ? (
+          <button type="button" className={navLinkClass} onClick={onClick}>
+            {content}
+          </button>
+        ) : external ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={navLinkClass}
+          >
+            {content}
+          </a>
+        ) : (
+          <Link href={href} className={navLinkClass}>
+            {content}
+          </Link>
+        )}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  )
 }
 
-interface NavOptionsProps {
-  options: readonly NavOption[]
-}
-
-export function NavOptions({ options }: NavOptionsProps) {
+export function NavOptions({
+  onSelectSymptom
+}: {
+  onSelectSymptom?: (symptom: string) => void
+}) {
   const router = useRouter()
-  const { user } = useUser()
-  const [subscription, setSubscription] = useState<SubscriptionAPI | null>(null)
+  const pathname = usePathname()
   const { t } = useTranslation()
   const { language } = useLanguage()
+  const { isPremium, isLoading: isLoadingPremium } = useSubscriptionStatus()
+  const [openUpgradeModal, setOpenUpgradeModal] = useState(false)
 
-  // Carrega status da assinatura
-  useEffect(() => {
-    if (!user?.id) return
-    fetch('/api/stripe/subscription')
-      .then(res => (res.ok ? res.json() : Promise.reject()))
-      .then(setSubscription)
-      .catch(() =>
-        setSubscription({
-          status: 'canceled',
-          currentPeriodEnd: null,
-          hasPremiumAccess: false
-        })
-      )
-  }, [user?.id])
-
-  const legacyPremiumHint =
-    subscription?.hasPremiumAccess === undefined &&
-    subscription?.currentPeriodEnd &&
-    new Date(subscription.currentPeriodEnd) > new Date() &&
-    [
-      'active',
-      'trialing',
-      'cancel_at_period_end',
-      'past_due',
-      'paused',
-      'canceled',
-      'cancelled'
-    ].includes((subscription?.status ?? '').toLowerCase())
-
-  const isSubscribed =
-    subscription?.hasPremiumAccess === true || legacyPremiumHint
+  const handlePremiumNav = (
+    event: React.MouseEvent,
+    href: string
+  ) => {
+    if (!isPremium && !isLoadingPremium) {
+      event.preventDefault()
+      setOpenUpgradeModal(true)
+      return
+    }
+    router.push(href)
+  }
 
   const handleLogout = async () => {
-    // Limpar todos os caches ANTES do logout
     const { clearAllCaches } = await import('@/lib/logout-utils')
     clearAllCaches()
-    
-    // Fazer logout
     await signOut({ redirect: false })
-    
-    // Forçar refresh completo da página para limpar cache do Next.js
     router.refresh()
-    
-    // Redirecionar para login
     router.push('/login')
-    
-    // Forçar reload completo da página após um pequeno delay
-    // Isso garante que todos os caches sejam limpos
     setTimeout(() => {
       window.location.href = '/login'
     }, 100)
   }
 
   return (
-    <SidebarGroup className="group">
-      <SidebarMenu className="gap-1 pt-4">
-        {options.map((item, idx) => {
-          // Opção premium em destaque e só se não for assinante
-          const label = item.translationKey
-            ? t(item.translationKey, item.name)
-            : t(item.name, item.name)
-          
-          // Para a primeira opção (assinatura), usar link baseado no idioma
-          const itemUrl = idx === 0 ? getUpgradeLink(language) : item.url
+    <>
+      <SidebarNavSection title={t('sidebar.section.search', 'Pesquisar')}>
+        <SidebarMenu className="gap-0.5">
+          <NavItem
+            href="/chat"
+            label={t('sidebar.search', 'Pesquisar')}
+            icon={Search}
+            isActive={pathname === '/chat' || pathname.startsWith('/chat/')}
+            iconClassName="text-violet-600 dark:text-violet-400"
+          />
+        </SidebarMenu>
+      </SidebarNavSection>
 
-          if (idx === 0 && !isSubscribed) {
-            return (
-              <SidebarMenuItem key={item.name}>
-                <SidebarMenuButton
-                  asChild
-                  className="px-4 py-6 bg-yellow-100 rounded-lg border border-yellow-300 border-l-4"
-                >
-                  <a
-                    href={itemUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-4 text-yellow-800 font-semibold text-lg group-data-[collapsed=true]:hidden"
-                  >
-                    <item.icon
-                      style={{ width: 24, height: 24 }}
-                      className="text-yellow-800"
-                      strokeWidth="1"
-                      fill="yellow"
-                    />
-                    {label}
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )
-          }
-
-          // Pula a opção premium se já for assinante
-          if (idx === 0 && isSubscribed) {
-            return null
-          }
-
-          // Itens normais (idx > 0)
-          const isExternal = idx !== options.length - 1
-          return (
-            <SidebarMenuItem key={item.name}>
-              <SidebarMenuButton asChild className="px-4 py-6">
+      <SidebarNavSection
+        title={t('sidebar.section.premium', 'Acesso Premium')}
+      >
+        <SidebarMenu className="gap-0.5">
+          {!isPremium && !isLoadingPremium ? (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                className="mx-2 mb-1 h-9 rounded-lg border border-yellow-300 border-l-4 bg-yellow-50 px-2 dark:border-yellow-700 dark:bg-yellow-950/40"
+              >
                 <a
-                  href={itemUrl}
-                  className="flex items-center gap-4 text-zinc-800 text-lg group-data-[collapsed=true]:hidden"
-                  {...(isExternal
-                    ? { target: '_blank', rel: 'noopener noreferrer' }
-                    : {})}
+                  href={getUpgradeLink(language)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${navLinkClass} font-semibold text-yellow-900 dark:text-yellow-200`}
                 >
-                  <item.icon style={{ width: 24, height: 24 }} />
-                  {label}
+                  <Star
+                    className="size-4 text-yellow-700 dark:text-yellow-300"
+                    strokeWidth={1.5}
+                  />
+                  <span className="group-data-[collapsible=icon]:hidden">
+                    {t('sidebar.subscriptionPlus', 'Assinatura Plus')}
+                  </span>
                 </a>
               </SidebarMenuButton>
             </SidebarMenuItem>
-          )
-        })}
+          ) : null}
 
-        {/* Logout */}
-        <SidebarMenuItem>
-          <SidebarMenuButton asChild className="px-4 py-6">
-            <Button
-              variant="link"
-              onClick={handleLogout}
-              className="w-full justify-start text-zinc-800 font-normal flex items-center gap-4 text-base group-data-[collapsed=true]:hidden pl-4"
+          <NavItem
+            href="/simulador"
+            label={t('sidebar.simulador', 'Simulador')}
+            icon={BarChart3}
+            isActive={
+              pathname === '/simulador' ||
+              pathname.startsWith('/simulador/')
+            }
+            showNewBadge
+            onClick={(event) => handlePremiumNav(event, '/simulador')}
+          />
+          <NavItem
+            href="/prof"
+            label={t('sidebar.prof', 'PROF')}
+            icon={GraduationCap}
+            isActive={pathname === '/prof' || pathname.startsWith('/prof/')}
+            showNewBadge
+            onClick={(event) => handlePremiumNav(event, '/prof')}
+          />
+        </SidebarMenu>
+      </SidebarNavSection>
+
+      <SidebarNavSection title={t('sidebar.section.collection', 'Meu Acervo')}>
+        <SidebarMenu className="gap-0.5">
+          <NavItem
+            href="/biblioteca"
+            label={t('sidebar.library', 'Biblioteca')}
+            icon={Library}
+            isActive={
+              pathname === '/biblioteca' || pathname.startsWith('/biblioteca/')
+            }
+            iconClassName="text-indigo-600 dark:text-indigo-400"
+            showNewBadge
+          />
+          <NavItem
+            href="/audioterapia"
+            label={t('sidebar.audioterapias', 'Audioterapias')}
+            icon={Headphones}
+            isActive={
+              pathname === '/audioterapia' ||
+              pathname.startsWith('/audioterapia/')
+            }
+            iconClassName="text-violet-600 dark:text-violet-400"
+            showNewBadge
+          />
+          <NavItem
+            href="/cursos"
+            label={t('sidebar.cursos', 'Cursos')}
+            icon={PlaySquare}
+            isActive={
+              pathname === '/cursos' || pathname.startsWith('/cursos/')
+            }
+            iconClassName="text-indigo-600 dark:text-indigo-400"
+            showNewBadge
+          />
+        </SidebarMenu>
+      </SidebarNavSection>
+
+      <SidebarNavSection
+        title={t('sidebar.section.organization', 'Organização')}
+      >
+        <NavFolders embedded onSelectSymptom={onSelectSymptom} />
+        <SidebarMenu className="gap-0.5">
+          <NavItem
+            href="/symptoms-dashboard"
+            label={t(
+              'dashboard.symptoms.title',
+              'Dashboard de Sintomas'
+            )}
+            icon={Activity}
+            isActive={pathname === '/symptoms-dashboard'}
+            iconClassName="text-indigo-600 dark:text-indigo-400"
+            onClick={(event) => handlePremiumNav(event, '/symptoms-dashboard')}
+          />
+        </SidebarMenu>
+      </SidebarNavSection>
+
+      <SidebarNavSection title={t('sidebar.section.support', 'Suporte e Conta')}>
+        <SidebarMenu className="gap-0.5">
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              className="h-9 px-2"
+              tooltip={t('sidebar.supportWhatsapp', 'Suporte (WhatsApp)')}
             >
-              <LogOut style={{ width: 24, height: 24 }} />
-              {t('navbar.logout', 'Sair')}
-            </Button>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      </SidebarMenu>
-    </SidebarGroup>
+              <a
+                href="https://wa.me/5555997230707?text=Ol%C3%A1!%0AEstou%20no%20app%20_me_*DIZ!*%20e%20preciso%20de%20ajuda"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={navLinkClass}
+              >
+                <FaWhatsapp size={16} className="shrink-0" />
+                <span className="truncate group-data-[collapsible=icon]:hidden">
+                  {t('sidebar.supportWhatsapp', 'Suporte (WhatsApp)')}
+                </span>
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <NavItem
+            href="https://universidadedeterapias.com.br/termos-de-uso"
+            label={t('sidebar.termsPolicies', 'Termos e Políticas')}
+            icon={FileText}
+            external
+          />
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild className="h-9 px-2">
+              <Button
+                variant="link"
+                onClick={() => void handleLogout()}
+                className="flex h-auto w-full items-center justify-start gap-2 p-0 text-sm font-normal text-sidebar-foreground"
+              >
+                <LogOut className="size-4 shrink-0" />
+                <span className="truncate group-data-[collapsible=icon]:hidden">
+                  {t('navbar.logout', 'Sair')}
+                </span>
+              </Button>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarNavSection>
+
+      <p className="px-4 pb-4 pt-2 text-center text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+        meDIZ v0.1.0
+      </p>
+
+      <UpgradeModal
+        open={openUpgradeModal}
+        onOpenChange={setOpenUpgradeModal}
+      />
+    </>
   )
 }

@@ -157,7 +157,7 @@ export default function SuggestionPage() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center p-4">
+      <div className="flex min-h-[100dvh] items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50 p-3 py-6 sm:p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center text-center space-y-4">
@@ -183,26 +183,26 @@ export default function SuggestionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center p-4">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50 p-3 py-6 sm:p-4">
       <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <div className="flex items-center gap-4 mb-2">
-            <Button variant="ghost" size="icon" asChild>
+        <CardHeader className="p-4 sm:p-6">
+          <div className="mb-2 flex items-start gap-3 sm:gap-4">
+            <Button variant="ghost" size="icon" className="shrink-0" asChild>
               <Link href="/chat">
                 <ArrowLeft className="h-5 w-5" />
               </Link>
             </Button>
-            <div className="flex-1">
-              <CardTitle className="text-2xl">{t('suggestion.title', 'Enviar Sugestão')}</CardTitle>
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-xl sm:text-2xl">{t('suggestion.title', 'Enviar Sugestão')}</CardTitle>
               <CardDescription>
                 {t('suggestion.description', 'Sua opinião é muito importante para melhorarmos o meDIZ!')}
               </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
               <FormField
                 control={form.control}
                 name="name"
@@ -272,19 +272,19 @@ export default function SuggestionPage() {
                 </div>
               )}
 
-              <div className="flex gap-4">
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:gap-4">
                 <Button
                   type="button"
                   variant="outline"
                   asChild
-                  className="flex-1"
+                  className="w-full flex-1"
                   disabled={isSubmitting}
                 >
                   <Link href="/chat">{t('suggestion.cancel', 'Cancelar')}</Link>
                 </Button>
                 <Button
                   type="submit"
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                  className="w-full flex-1 bg-indigo-600 hover:bg-indigo-700"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (

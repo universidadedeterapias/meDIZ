@@ -8,6 +8,15 @@ body,
   height: 100%;
 }
 
+html {
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -86,6 +95,56 @@ body,
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overflow-x-hidden max-w-[100vw];
+  }
+
+  /* Login/cadastro: card claro com tema escuro global — evita senha “invisível” */
+  .dark input.login-field {
+    color: hsl(240 5.9% 10%) !important;
+    caret-color: hsl(240 5.9% 10%);
+    -webkit-text-fill-color: hsl(240 5.9% 10%);
+    background-color: hsl(0 0% 100%) !important;
+    color-scheme: light;
+  }
+
+  .dark input.login-field[type='password'] {
+    color: hsl(240 5.9% 10%) !important;
+    caret-color: hsl(240 5.9% 10%);
+    -webkit-text-fill-color: hsl(240 5.9% 10%);
+  }
+
+  /* Autofill do navegador: texto escuro em fundo claro */
+  input.login-field:-webkit-autofill,
+  input.login-field:-webkit-autofill:hover,
+  input.login-field:-webkit-autofill:focus,
+  .dark input.login-field:-webkit-autofill,
+  .dark input.login-field:-webkit-autofill:hover,
+  .dark input.login-field:-webkit-autofill:focus,
+  .dark input.login-field[type='password']:-webkit-autofill,
+  .dark input.login-field[type='password']:-webkit-autofill:hover,
+  .dark input.login-field[type='password']:-webkit-autofill:focus {
+    -webkit-text-fill-color: hsl(240 5.9% 10%) !important;
+    caret-color: hsl(240 5.9% 10%);
+    -webkit-box-shadow: 0 0 0 1000px hsl(0 0% 100%) inset !important;
+    box-shadow: 0 0 0 1000px hsl(0 0% 100%) inset !important;
+    color-scheme: light;
+  }
+}
+
+@layer utilities {
+  .page-content {
+    @apply mx-auto w-full min-w-0 max-w-7xl px-3 sm:px-4 md:px-6;
+  }
+
+  .touch-target {
+    @apply min-h-11 min-w-11;
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
   }
 }

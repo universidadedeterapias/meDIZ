@@ -408,11 +408,15 @@ export default function UsersPage() {
   }
 
   const getPlanBadgeColor = (plan: string) => {
-    return plan === 'premium' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+    return plan === 'premium'
+      ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300'
+      : 'bg-muted text-muted-foreground'
   }
 
   const getRoleBadgeColor = (isAdmin: boolean) => {
-    return isAdmin ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+    return isAdmin
+      ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+      : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
   }
 
   return (
@@ -567,7 +571,7 @@ export default function UsersPage() {
                   <select
                     value={filterPlan}
                     onChange={(e) => setFilterPlan(e.target.value as 'all' | 'free' | 'premium')}
-                    className="px-3 py-2 border border-gray-300 rounded-md"
+                    className="px-3 py-2 border border-input bg-background rounded-md text-foreground"
                   >
                     <option value="all">Todos os planos</option>
                     <option value="free">Plano Gratuito</option>
@@ -577,7 +581,7 @@ export default function UsersPage() {
                   <select
                     value={filterRole}
                     onChange={(e) => setFilterRole(e.target.value as 'all' | 'admin' | 'user')}
-                    className="px-3 py-2 border border-gray-300 rounded-md"
+                    className="px-3 py-2 border border-input bg-background rounded-md text-foreground"
                   >
                     <option value="all">Todos os tipos</option>
                     <option value="admin">Administradores</option>
@@ -590,7 +594,7 @@ export default function UsersPage() {
                       setFilterProvider(e.target.value as 'all' | 'stripe' | 'hotmart')
                       setCurrentPage(1) // Resetar página ao mudar filtro
                     }}
-                    className="px-3 py-2 border border-gray-300 rounded-md"
+                    className="px-3 py-2 border border-input bg-background rounded-md text-foreground"
                   >
                     <option value="all">Todos os provedores</option>
                     <option value="hotmart">Hotmart</option>
@@ -603,7 +607,7 @@ export default function UsersPage() {
                       setFilterPlanName(e.target.value)
                       setCurrentPage(1) // Resetar página ao mudar filtro
                     }}
-                    className="px-3 py-2 border border-gray-300 rounded-md min-w-[200px]"
+                    className="px-3 py-2 border border-input bg-background rounded-md text-foreground min-w-[200px]"
                     disabled={loadingPlanNames}
                     title="Filtrar por nome específico do plano (apenas assinaturas ativas)"
                   >
@@ -630,23 +634,23 @@ export default function UsersPage() {
                   )}
                   
                   <div className="flex flex-col">
-                    <label className="text-xs text-gray-500 mb-1">Data inicial</label>
+                    <label className="text-xs text-muted-foreground mb-1">Data inicial</label>
                     <Input
                       type="date"
                       value={subscriptionDateStart}
                       onChange={(e) => setSubscriptionDateStart(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-md"
+                      className="px-3 py-2 border border-input bg-background rounded-md text-foreground"
                       title="Filtrar por data de criação de assinatura (inicial)"
                     />
                   </div>
                   
                   <div className="flex flex-col">
-                    <label className="text-xs text-gray-500 mb-1">Data final</label>
+                    <label className="text-xs text-muted-foreground mb-1">Data final</label>
                     <Input
                       type="date"
                       value={subscriptionDateEnd}
                       onChange={(e) => setSubscriptionDateEnd(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-md"
+                      className="px-3 py-2 border border-input bg-background rounded-md text-foreground"
                       title="Filtrar por data de criação de assinatura (final)"
                     />
                   </div>
@@ -692,10 +696,13 @@ export default function UsersPage() {
               ) : !error && (
                 <div className="space-y-4">
                   {filteredUsers.map((user) => (
-                    <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                    <div
+                      key={user.id}
+                      className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
+                    >
                       <div className="flex items-center space-x-4">
-                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                          <Users className="h-5 w-5 text-indigo-600" />
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-950">
+                          <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                         </div>
                         <div>
                           <div className="flex items-center space-x-2">
@@ -715,8 +722,8 @@ export default function UsersPage() {
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-gray-500">{user.email}</p>
-                          <div className="flex items-center space-x-4 text-xs text-gray-400 mt-1">
+                          <p className="text-sm text-muted-foreground">{user.email}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                             <span className="flex items-center">
                               <Calendar className="h-3 w-3 mr-1" />
                               Registrado em {formatDate(user.createdAt)}
@@ -747,9 +754,9 @@ export default function UsersPage() {
                                     <Badge 
                                       variant="outline" 
                                       className={`ml-1 text-xs ${
-                                        user.subscriptionDetails.planProvider === 'Hotmart' 
-                                          ? 'bg-blue-50 text-blue-700 border-blue-200' 
-                                          : 'bg-purple-50 text-purple-700 border-purple-200'
+                                        user.subscriptionDetails.planProvider === 'Hotmart'
+                                          ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800'
+                                          : 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800'
                                       }`}
                                     >
                                       {user.subscriptionDetails.planProvider}
@@ -765,7 +772,7 @@ export default function UsersPage() {
                           </div>
                           {user.providers && user.providers.length > 0 && (
                             <div className="flex items-center space-x-2 mt-1">
-                              <span className="text-xs text-gray-400">Login via:</span>
+                              <span className="text-xs text-muted-foreground">Login via:</span>
                               {user.providers.map(provider => (
                                 <Badge key={provider} variant="outline" className="text-xs">
                                   {provider}
@@ -776,7 +783,7 @@ export default function UsersPage() {
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
+                      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                         <Button 
                           variant="outline" 
                           size="sm"
@@ -829,8 +836,8 @@ export default function UsersPage() {
                   
                   {filteredUsers.length === 0 && !loading && (
                     <div className="text-center py-12">
-                      <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">Nenhum usuário encontrado</p>
+                      <Users className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+                      <p className="text-muted-foreground">Nenhum usuário encontrado</p>
                     </div>
                   )}
                 </div>
@@ -839,7 +846,7 @@ export default function UsersPage() {
               {/* Paginação */}
               {pagination && pagination.totalPages > 1 && (
                 <div className="flex items-center justify-between mt-6">
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-muted-foreground">
                     Mostrando {((currentPage - 1) * 50) + 1} a {Math.min(currentPage * 50, pagination.total)} de {pagination.total} usuários
                   </div>
                   <div className="flex items-center space-x-2">

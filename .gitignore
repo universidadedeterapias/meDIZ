@@ -3,6 +3,20 @@ logs/
 cache/
 .data/
 
+# Biblioteca — mídia local (MP3/MP4/PDF); ver public/biblioteca/README.md
+public/biblioteca/**
+!public/biblioteca/README.md
+
+# Uploads gerados em runtime (admin/popup)
+public/uploads/
+
+# Dados sensíveis e artefatos locais de teste
+telefones-notificacoes-ativadas.*
+temp_migration.sql
+test-pdf.html
+test-reset-banner.js
+*.sql.gz
+
 # Backups de banco (podem conter dados sensíveis) — manter só o marcador da pasta
 backups/*
 !backups/.gitkeep

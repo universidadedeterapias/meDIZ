@@ -98,7 +98,7 @@ export default function ExportSintomasPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="w-full min-w-0 space-y-4 sm:space-y-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Exportar Sintomas Pesquisados</h1>
         <p className="text-gray-600">
@@ -140,7 +140,7 @@ export default function ExportSintomasPage() {
               </Select>
               
               {period === 'custom' && (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div>
                     <Label htmlFor="startDate" className="text-sm">Data inicial</Label>
                     <Input
@@ -217,7 +217,7 @@ export default function ExportSintomasPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="text-center p-3 bg-blue-50 rounded-lg">
                   <div className="text-2xl font-bold text-blue-600">
                     {summary.totalSintomas}

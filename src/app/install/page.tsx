@@ -138,8 +138,8 @@ const Install: FC = () => {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-slate-50 to-white">
+      <div className="page-content mx-auto max-w-5xl py-6 sm:py-8">
         {/* Header */}
         <div className="text-center mb-8">
           <Image
@@ -149,7 +149,7 @@ const Install: FC = () => {
             height={80}
             className="mx-auto mb-4 rounded-2xl shadow-lg"
           />
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <h1 className="mb-2 text-3xl font-bold text-gray-900 sm:text-4xl">
             meDIZ<span style={{ color: '#fbbf24' }}>!</span>
           </h1>
           <p className="text-lg text-gray-600 mb-6">
@@ -190,7 +190,7 @@ const Install: FC = () => {
           <h2 className="text-2xl font-bold text-center mb-8 text-gray-900">
             Como Instalar o meDIZ!
           </h2>
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
             <InstallSteps
               title="Android (Chrome)"
               icon={Smartphone}
@@ -209,7 +209,7 @@ const Install: FC = () => {
           <h3 className="text-xl font-bold text-center mb-6 text-gray-900">
             Por que instalar o app?
           </h3>
-          <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+          <div className="mx-auto grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 md:gap-6">
             {[
               {
                 title: 'Acesso Rápido',
@@ -240,7 +240,7 @@ const Install: FC = () => {
           <h3 className="text-xl font-bold text-center mb-6 text-gray-900">
             Conheça o meDIZ!
           </h3>
-          <div className="grid md:grid-cols-3 gap-4 max-w-3xl mx-auto">
+          <div className="mx-auto grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
             <Image
               src={tela1}
               alt="Tela 1"

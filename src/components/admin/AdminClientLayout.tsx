@@ -4,6 +4,9 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { signOut } from 'next-auth/react'
 import AdminSidebar from './AdminSidebar'
+import { AdminMobileNav } from './AdminMobileNav'
+import { PageBackButton } from '@/components/navigation/PageBackButton'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { User, Bell, LogOut, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -46,7 +49,11 @@ export default function AdminClientLayout({
       'settings': 'Configurações',
       'ab-testing': 'Testes A/B',
       'analytics': 'Análises',
-      'support': 'Suporte'
+      'support': 'Suporte',
+      'clientes-pendentes': 'Biblioteca (WhatsApp)',
+      'biblioteca': 'Biblioteca',
+      'catalogo': 'Catálogo',
+      'produtos': 'Produtos do catálogo'
     }
     
     return titles[lastPart] || 'Admin'
@@ -85,7 +92,7 @@ export default function AdminClientLayout({
   // Não renderizar até estar montado no cliente
   if (!mounted) {
     return (
-      <div className="flex min-h-screen bg-gray-50">
+      <div className="flex min-h-screen bg-muted/40">
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
@@ -97,19 +104,32 @@ export default function AdminClientLayout({
   }
   
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar responsiva */}
-      <div className="hidden md:block">
+    <div className="flex min-h-screen min-w-0 bg-muted/40">
+      <div className="hidden shrink-0 md:block">
         <AdminSidebar />
       </div>
-      
-      {/* Conteúdo principal */}
-      <div className="flex-1 flex flex-col">
-        <header className="bg-white border-b py-3 px-6 flex items-center justify-between">
-          <h2 className="font-medium text-gray-800">{getPageTitle(pathname)}</h2>
-          
-          <div className="flex items-center gap-4">
-            <button className="text-gray-500 hover:text-gray-800">
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex items-center justify-between gap-2 border-b border-border bg-background px-3 py-2.5 sm:px-4 sm:py-3 md:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+            <AdminMobileNav />
+            <PageBackButton
+              fallbackHref={pathname === '/admin' ? '/chat' : '/admin'}
+              variant="outline"
+              className="hidden sm:inline-flex"
+            />
+            <h2 className="truncate text-sm font-medium text-foreground sm:text-base">
+              {getPageTitle(pathname)}
+            </h2>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-3 md:gap-4">
+            <ThemeToggle variant="icon" />
+            <button
+              type="button"
+              className="hidden text-muted-foreground hover:text-foreground sm:block"
+              aria-label="Notificações"
+            >
               <Bell className="h-5 w-5" />
             </button>
             
@@ -146,10 +166,10 @@ export default function AdminClientLayout({
           </div>
         </header>
         
-        <main className="flex-1 overflow-auto p-6">
-          {children}
-          
-          <footer className="mt-12 py-4 border-t text-center text-sm text-gray-500">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 md:p-6">
+          <div className="page-content mx-auto max-w-7xl !px-0">{children}</div>
+
+          <footer className="mt-8 border-t py-4 text-center text-xs text-muted-foreground sm:mt-12 sm:text-sm">
             &copy; {new Date().getFullYear()} meDIZ! - Painel Administrativo
           </footer>
         </main>

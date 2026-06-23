@@ -22,9 +22,11 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { useUser } from '@/contexts/user'
 import { formatPhone } from '@/lib/formatPhone'
+import { formatCpfDisplay, formatCpfInput, isValidCpf } from '@/lib/cpf'
 import { formatDate } from '@/lib/utils'
-import { ArrowLeft } from 'lucide-react'
 import { signOut } from 'next-auth/react'
+import { AppearanceSettings } from '@/components/AppearanceSettings'
+import { SimpleAppHeader } from '@/components/navigation/SimpleAppHeader'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -46,6 +48,7 @@ type FormValues = {
   fullName: string
   email: string
   whatsapp: string
+  cpf: string
 }
 
 export default function MyAccountPage() {
@@ -68,7 +71,8 @@ export default function MyAccountPage() {
     defaultValues: {
       fullName: user?.fullName ?? '',
       email: user?.email ?? '',
-      whatsapp: user?.whatsapp ?? ''
+      whatsapp: user?.whatsapp ?? '',
+      cpf: user?.cpf ? formatCpfDisplay(user.cpf) : ''
     }
   })
 
@@ -77,7 +81,8 @@ export default function MyAccountPage() {
       reset({
         fullName: user.fullName!,
         email: user.email,
-        whatsapp: user.whatsapp!
+        whatsapp: user.whatsapp!,
+        cpf: user.cpf ? formatCpfDisplay(user.cpf) : ''
       })
     }
   }, [editing, reset, user])
@@ -114,7 +119,8 @@ export default function MyAccountPage() {
               ...u,
               fullName: updated.fullName,
               email: updated.email,
-              whatsapp: updated.whatsapp
+              whatsapp: updated.whatsapp,
+              cpf: updated.cpf ?? null
             }
           : u
       )
@@ -218,23 +224,12 @@ export default function MyAccountPage() {
   }
   return (
     <>
-      <header className="w-full sticky top-0 z-10 bg-white shadow-sm">
-        <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
-          <a href="/chat" className="text-primary">
-            <ArrowLeft />
-          </a>
-          <p className="text-primary font-bold text-2xl">
-            me<span className="uppercase">diz</span>
-            <span className="text-yellow-400">!</span>
-          </p>
-          <div />
-        </div>
-      </header>
+      <SimpleAppHeader backFallback="/chat" />
 
-      <div className="max-w-3xl mx-auto p-4 space-y-6">
+      <div className="mx-auto w-full min-w-0 max-w-3xl space-y-4 px-3 py-4 sm:space-y-6 sm:p-4">
         {/* Perfil */}
         <Card className="shadow-sm">
-          <CardHeader className="flex items-center gap-4 p-4">
+          <CardHeader className="flex flex-col items-center gap-4 p-4 sm:flex-row sm:items-center">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Avatar className="w-14 h-14 cursor-pointer">
@@ -263,6 +258,20 @@ export default function MyAccountPage() {
               <p className="text-sm text-gray-500">{user.email}</p>
             </div>
           </CardHeader>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-base">
+              {t('language.selector.label', 'Idioma')}
+            </CardTitle>
+            <CardDescription className="text-sm">
+              {t('language.section.hint', 'Idioma da interface do aplicativo')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <AppearanceSettings />
+          </CardContent>
         </Card>
 
         {/* Cartão de Assinatura / Oferta */}
@@ -311,7 +320,7 @@ export default function MyAccountPage() {
 
         {/* Dados do Usuário */}
         <Card className="shadow-sm">
-          <CardHeader className="flex flex-row justify-between items-center p-4">
+          <CardHeader className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-medium">{t('account.data.title', 'Seus dados')}</CardTitle>
             {!editing ? (
               <Button
@@ -375,6 +384,46 @@ export default function MyAccountPage() {
               {errors.email && (
                 <p className="text-xs text-red-500">{errors.email.message}</p>
               )}
+            </div>
+
+            {/* CPF */}
+            <div>
+              <Label className="text-xs">
+                {t('account.data.cpf', 'CPF')}
+              </Label>
+              {editing ? (
+                <Input
+                  {...register('cpf', {
+                    required: t(
+                      'account.data.cpfRequired',
+                      'CPF é obrigatório para download de PDFs'
+                    ),
+                    validate: (value) =>
+                      isValidCpf(value) ||
+                      t('account.data.cpfInvalid', 'CPF inválido')
+                  })}
+                  className="mt-1 text-sm"
+                  inputMode="numeric"
+                  placeholder="000.000.000-00"
+                  onInput={e => {
+                    const target = e.target as HTMLInputElement
+                    target.value = formatCpfInput(target.value)
+                  }}
+                />
+              ) : (
+                <p className="text-sm">
+                  {user.cpf ? formatCpfDisplay(user.cpf) : '—'}
+                </p>
+              )}
+              {errors.cpf && (
+                <p className="text-xs text-red-500">{errors.cpf.message}</p>
+              )}
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t(
+                  'account.data.cpfHint',
+                  'Usado na marca d\'água dos PDFs baixados da biblioteca.'
+                )}
+              </p>
             </div>
 
             {/* Whatsapp */}
@@ -508,8 +557,8 @@ export default function MyAccountPage() {
 
       {/* Dialog de visualização do avatar */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="p-0 bg-black bg-opacity-75 m-0">
-          <div className="relative w-screen h-screen">
+        <DialogContent className="m-0 max-h-[100dvh] max-w-[100vw] border-0 bg-black/90 p-0">
+          <div className="relative flex h-[100dvh] w-full items-center justify-center">
             <Image
               src={user.image!}
               alt="Avatar full"

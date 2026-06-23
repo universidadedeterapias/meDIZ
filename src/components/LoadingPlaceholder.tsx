@@ -69,7 +69,7 @@ export function LoadingPlaceholder() {
     <div className="max-w-4xl mx-auto space-y-4">
       {/* frase com fade in/out */}
       <p
-        className={`text-center text-gray-600 italic transition-opacity duration-300 ${
+        className={`text-center italic text-muted-foreground transition-opacity duration-300 ${
           visible ? 'opacity-100' : 'opacity-0'
         }`}
       >
@@ -77,7 +77,7 @@ export function LoadingPlaceholder() {
       </p>
 
       {/* barra única */}
-      <div className="w-full h-2 bg-zinc-200 rounded overflow-hidden">
+      <div className="h-2 w-full overflow-hidden rounded bg-muted">
         <div
           ref={barRef}
           className="h-full bg-primary"
@@ -86,11 +86,11 @@ export function LoadingPlaceholder() {
       </div>
 
       {/* skeleton estático abaixo */}
-      <div className="animate-pulse bg-white rounded-lg p-6 space-y-4">
-        <div className="h-6 bg-gray-200 rounded w-3/4" />
-        <div className="h-4 bg-gray-200 rounded w-full" />
-        <div className="h-4 bg-gray-200 rounded w-full" />
-        <div className="h-4 bg-gray-200 rounded w-5/6" />
+      <div className="animate-pulse space-y-4 rounded-lg bg-card p-6">
+        <div className="h-6 w-3/4 rounded bg-muted" />
+        <div className="h-4 w-full rounded bg-muted" />
+        <div className="h-4 w-full rounded bg-muted" />
+        <div className="h-4 w-5/6 rounded bg-muted" />
       </div>
     </div>
   )

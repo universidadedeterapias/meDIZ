@@ -6,27 +6,21 @@ import Step3 from '@/components/form/steps/Step3'
 import Step4 from '@/components/form/steps/Step4'
 import Stepper from '@/components/form/steps/Stepper'
 import SuccessStep from '@/components/form/steps/SuccessStep'
-import { LanguageSwitcher } from '@/components/language-switcher'
 import { UserFormProvider, useUserForm } from '@/hooks/use-form-data'
 
 export default function FormPage() {
   return (
     <UserFormProvider>
       <div
-        className="flex flex-col justify-start items-center
-                  min-w-screen min-h-screen gap-10
-                  font-[family-name:var(--font-geist-sans)] bg-zinc-100 relative"
+        className="relative flex min-h-screen w-full flex-col items-center justify-start gap-6 bg-muted font-[family-name:var(--font-geist-sans)] sm:gap-10"
       >
-        <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10">
-          <LanguageSwitcher showLabel={false} className="min-w-[120px] sm:min-w-[160px]" />
-        </div>
-        <div className="w-full h-auto flex align-middle justify-center bg-zinc-50 shadow-sm py-4">
-          <p className="text-primary font-bold text-3xl">
+        <div className="flex h-auto w-full items-center justify-center border-b border-border bg-background px-3 py-3 shadow-sm sm:py-4">
+          <p className="text-primary text-2xl font-bold sm:text-3xl">
             me
             <span className="text-yellow-400 uppercase">diz!</span>
           </p>
         </div>
-        <div className="max-w-xl w-full px-4">
+        <div className="w-full max-w-xl px-3 pb-8 sm:px-4 sm:pb-10">
           <Stepper />
           <FormStepsRenderer />
         </div>

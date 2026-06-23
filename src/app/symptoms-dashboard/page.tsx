@@ -3,20 +3,27 @@
 
 import { SymptomsDashboard } from '@/components/SymptomsDashboard'
 import { AppSidebar } from '@/components/app-sidebar'
+import { AppPageHeader } from '@/components/navigation/AppPageHeader'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+import { useTranslation } from '@/i18n/useTranslation'
 
 export default function SymptomsDashboardPage() {
+  const { t } = useTranslation()
+
   return (
     <SidebarProvider>
-      <AppSidebar 
+      <AppSidebar
         history={[]}
         selectedThread={null}
         onSelectSession={() => {}}
       />
       <SidebarInset>
-        <div className="flex flex-col h-screen">
-          <div className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-zinc-900">
-            <div className="container mx-auto py-4 md:py-8 px-4 md:px-6 max-w-7xl">
+        <div className="flex min-h-svh flex-col bg-background">
+          <AppPageHeader
+            title={t('dashboard.symptoms.title', 'Dashboard de Sintomas')}
+          />
+          <div className="flex min-h-0 flex-1 overflow-y-auto">
+            <div className="container mx-auto max-w-7xl min-w-0 px-3 py-4 sm:px-4 md:px-6 md:py-8">
               <SymptomsDashboard />
             </div>
           </div>
