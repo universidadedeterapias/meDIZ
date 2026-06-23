@@ -29,7 +29,10 @@ async function main() {
       continue
     }
 
-    const grantIds = await resolveCatalogProductRefs(rule.alsoGrant)
+    const grantIds =
+      rule.source.permissionKey === 'LIVRO_DIGITAL' ?
+        []
+      : await resolveCatalogProductRefs(rule.alsoGrant)
     const [primaryHotmartId, ...extraHotmartIds] = rule.hotmartProductIds
 
     await prisma.catalogProduct.update({

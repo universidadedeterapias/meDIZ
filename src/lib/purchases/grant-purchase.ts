@@ -18,6 +18,8 @@ export type GrantPurchaseAccessInput = {
   source: 'hotmart' | 'stone' | 'manual'
   nome?: string | null
   cpf?: string | null
+  /** Quando definido, ignora grants automáticos do catálogo e libera só estes produtos. */
+  grantProductIds?: string[]
 }
 
 export type GrantPurchaseAccessResult = {
@@ -33,7 +35,10 @@ export async function grantPurchaseAccess(
   const email = normalizeLibraryEmail(input.email)
   const nome = input.nome?.trim() || null
   const cpfDigits = input.cpf?.trim() || null
-  const productIds = await collectProductIdsToGrant(input.sourceCatalogProductId)
+  const productIds =
+    input.grantProductIds?.length ?
+      [...new Set(input.grantProductIds)]
+    : await collectProductIdsToGrant(input.sourceCatalogProductId)
 
   const products = await prisma.catalogProduct.findMany({
     where: { id: { in: productIds }, active: true },

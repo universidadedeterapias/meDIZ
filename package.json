@@ -27,6 +27,7 @@
     "create-admin": "tsx src/scripts/create-admin.ts",
     "grant:library-access": "tsx src/scripts/grant-library-access.ts",
     "sync:catalog-purchase-mapping": "tsx src/scripts/sync-catalog-purchase-mapping.ts",
+    "sync:hotmart-catalog": "tsx src/scripts/sync-all-hotmart-catalog.ts",
     "migrate:library-permissions": "tsx src/scripts/migrate-library-permissions-to-entitlements.ts",
     "ensure-admin": "node src/scripts/ensure-admin.js",
     "seed-popup": "tsx src/scripts/seed-popup-data.ts",

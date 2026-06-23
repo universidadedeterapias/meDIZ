@@ -12,7 +12,10 @@ import {
   isMedizSubscriptionProduct
 } from '@/lib/hotmart/library-product-map'
 import { validateHotmartHottok } from '@/lib/hotmart/validate-hottok'
+import { normalizeLibraryEmail } from '@/lib/library/email'
 import { grantPurchaseAccess } from '@/lib/purchases/grant-purchase'
+import { resolveHotmartGrantProductIds } from '@/lib/purchases/hotmart-grant-rules'
+import { ensureLibraryUser } from '@/lib/purchases/migrate-legacy-permissions'
 import { notifyN8nNewUser } from '@/lib/purchases/notify-n8n-new-user'
 import { resolveCatalogProductByHotmartId } from '@/lib/purchases/resolve-product'
 import { HotmartEvent, HotmartPayload, PurchaseStatus } from '@/types/hotmart'
@@ -446,13 +449,25 @@ export async function POST(req: NextRequest) {
       })
 
       try {
+        const grantProductIds = await resolveHotmartGrantProductIds(
+          incomingProductId,
+          catalogProduct.id
+        )
+
+        log('📦 Plano de liberação Hotmart', {
+          hotmartProductId: incomingProductId,
+          catalogProductId: catalogProduct.id,
+          grantProductIds
+        })
+
         const grant = await grantPurchaseAccess({
           email,
           nome: getBuyerName(parsed),
           cpf: getBuyerCpf(parsed),
           sourceCatalogProductId: catalogProduct.id,
           externalTransactionId: transactionId,
-          source: 'hotmart'
+          source: 'hotmart',
+          grantProductIds
         })
 
         await notifyN8nNewUser({
@@ -757,65 +772,75 @@ export async function POST(req: NextRequest) {
       log('📅 Usando período anual (nome do plano indica anual):', { effectivePeriodicity, intervalCount })
     }
 
-    // 4) Usuário (cria se não existir)
-    const email = getBuyerEmail(parsed)
+    // 4) Usuário (cria se não existir, com senha temporária para onboarding n8n)
+    const email = normalizeLibraryEmail(getBuyerEmail(parsed))
     const buyerCpf = getBuyerCpf(parsed)
     log('Email do comprador:', email)
     if (buyerCpf) {
       log('CPF do comprador recebido (Hotmart buyer.document)')
     }
 
-    let user = await prisma.user.findUnique({ where: { email } })
-    
-    if (!user) {
-      log('Usuário não existe, criando novo...')
-      // Salvar compra pendente ANTES de criar usuário: se algo falhar ou o usuário se cadastrar depois com este email, a assinatura pode ser vinculada no confirm-signup
-      if (email) {
-        try {
-          await prisma.pendingHotmartPurchase.upsert({
-            where: { stripeSubscriptionId: syntheticId },
-            create: {
-              email,
-              transaction: transactionId,
-              stripeSubscriptionId: syntheticId,
-              planId: plan.id,
-              currentPeriodStart: start,
-              currentPeriodEnd: end,
-              status: 'pending'
-            },
-            update: {
-              email,
-              planId: plan.id,
-              currentPeriodStart: start,
-              currentPeriodEnd: end,
-              status: 'pending'
-            }
-          })
-          log('✅ Compra pendente registrada (email) para possível vínculo no cadastro')
-        } catch (pendingErr) {
-          logError('Falha ao salvar compra pendente (não bloqueia fluxo)', pendingErr)
-        }
+    if (!email) {
+      logError('❌ Assinatura Mediz sem e-mail do comprador')
+      return NextResponse.json(
+        { error: 'Buyer email missing', received: true },
+        { status: 200 }
+      )
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true }
+    })
+
+    if (!existingUser) {
+      log('Usuário não existe, registrando compra pendente...')
+      try {
+        await prisma.pendingHotmartPurchase.upsert({
+          where: { stripeSubscriptionId: syntheticId },
+          create: {
+            email,
+            transaction: transactionId,
+            stripeSubscriptionId: syntheticId,
+            planId: plan.id,
+            currentPeriodStart: start,
+            currentPeriodEnd: end,
+            status: 'pending'
+          },
+          update: {
+            email,
+            planId: plan.id,
+            currentPeriodStart: start,
+            currentPeriodEnd: end,
+            status: 'pending'
+          }
+        })
+        log('✅ Compra pendente registrada (email) para possível vínculo no cadastro')
+      } catch (pendingErr) {
+        logError('Falha ao salvar compra pendente (não bloqueia fluxo)', pendingErr)
       }
-      const userName = getBuyerName(parsed)
-      
-      user = await prisma.user.create({
-        data: {
-          email,
-          name: userName,
-          fullName: userName,
-          cpf: buyerCpf
-        }
+    }
+
+    const { userCreated: subscriptionUserCreated, temporaryPassword } =
+      await ensureLibraryUser({
+        email,
+        nome: getBuyerName(parsed),
+        cpf: buyerCpf
       })
-      log('✅ Usuário criado:', { id: user.id, email: user.email })
+
+    const user = await prisma.user.findUnique({ where: { email } })
+    if (!user) {
+      logError('❌ Falha ao criar/recuperar usuário após ensureLibraryUser')
+      return NextResponse.json(
+        { received: true, error: 'USER_CREATE_FAILED' },
+        { status: 200 }
+      )
+    }
+
+    if (subscriptionUserCreated) {
+      log('✅ Usuário criado com senha temporária:', { id: user.id, email: user.email })
     } else {
       log('✅ Usuário já existe:', { id: user.id, email: user.email })
-      if (buyerCpf && !user.cpf) {
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: { cpf: buyerCpf }
-        })
-        log('✅ CPF gravado a partir do webhook Hotmart')
-      }
     }
 
     // 5) Subscrição (idempotente por transaction)
@@ -963,6 +988,18 @@ export async function POST(req: NextRequest) {
       // Ignorar; não falha o webhook
     }
 
+    await notifyN8nNewUser({
+      userCreated: subscriptionUserCreated,
+      email,
+      nome: getBuyerName(parsed),
+      telefone: getBuyerPhone(parsed),
+      temporaryPassword:
+        subscriptionUserCreated ? temporaryPassword : null,
+      transactionId,
+      provider: 'hotmart',
+      productsGranted: [{ id: plan.id, title: plan.name }]
+    })
+
     const duration = Date.now() - startTime
     log('✅✅✅ WEBHOOK PROCESSADO COM SUCESSO ✅✅✅')
     log('Subscription ID:', subscription.id)
@@ -975,7 +1012,8 @@ export async function POST(req: NextRequest) {
       success: true,
       subscriptionId: subscription.id,
       isRenewal,
-      action: isRenewal ? 'renewed' : 'created'
+      action: isRenewal ? 'renewed' : 'created',
+      user_created: subscriptionUserCreated
     })
 
   } catch (err) {

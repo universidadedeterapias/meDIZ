@@ -18,6 +18,7 @@ export type HotmartPurchaseRule = {
  */
 export const HOTMART_PURCHASE_RULES: HotmartPurchaseRule[] = [
   {
+    /** 6667092 = livro físico | 6652189 = livro digital (mesmo produto no catálogo) */
     hotmartProductIds: ['6667092', '6652189'],
     source: {
       section: 'BIBLIOTECA',
