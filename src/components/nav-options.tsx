@@ -50,6 +50,7 @@ type NavItemProps = {
   isActive?: boolean
   iconClassName?: string
   showNewBadge?: boolean
+  badgeLabel?: string
   external?: boolean
   onClick?: (event: React.MouseEvent) => void
 }
@@ -61,6 +62,7 @@ function NavItem({
   isActive,
   iconClassName,
   showNewBadge,
+  badgeLabel,
   external,
   onClick
 }: NavItemProps) {
@@ -72,8 +74,15 @@ function NavItem({
       />
       <span className="flex min-w-0 flex-1 items-center gap-2 group-data-[collapsible=icon]:hidden">
         <span className="truncate">{label}</span>
-        {showNewBadge ? (
-          <span className={newFeatureBadgeClass}>NOVO</span>
+        {showNewBadge || badgeLabel ? (
+          <span
+            className={cn(
+              newFeatureBadgeClass,
+              badgeLabel && 'bg-amber-500 dark:bg-amber-600'
+            )}
+          >
+            {badgeLabel ?? 'NOVO'}
+          </span>
         ) : null}
       </span>
     </>
@@ -195,8 +204,7 @@ export function NavOptions({
               pathname === '/simulador' ||
               pathname.startsWith('/simulador/')
             }
-            showNewBadge
-            onClick={(event) => handlePremiumNav(event, '/simulador')}
+            badgeLabel="EM BREVE"
           />
           <NavItem
             href="/prof"

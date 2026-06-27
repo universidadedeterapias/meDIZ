@@ -1,14 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Leaf, RefreshCw, UserRound } from 'lucide-react'
+import { Clock3, Leaf, Sparkles, UserRound } from 'lucide-react'
 import { AppSidebar } from '@/components/app-sidebar'
 import { MedizChatV2Logo } from '@/components/conversational-chat/MedizChatV2Shell'
-import { UpgradeModal } from '@/components/UpgradeModal'
 import { Button } from '@/components/ui/button'
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
-import { useSubscriptionStatus } from '@/hooks/use-subscription-status'
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger
+} from '@/components/ui/sidebar'
 import {
   SIMULATOR_MODES,
   type SimulatorMode,
@@ -40,23 +40,30 @@ function ModeIllustration({ mode }: { mode: SimulatorMode }) {
   )
 }
 
-function ModeCard({
-  config,
-  onSelect,
-  disabled
-}: {
-  config: SimulatorModeConfig
-  onSelect: () => void
-  disabled?: boolean
-}) {
+function ModeCard({ config }: { config: SimulatorModeConfig }) {
   const BadgeIcon = config.badgeIcon === 'leaf' ? Leaf : UserRound
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-[0_8px_30px_rgba(91,33,182,0.08)] dark:border-violet-900/50 dark:bg-card">
-      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:p-5">
+    <article
+      className={cn(
+        'relative h-full overflow-hidden rounded-3xl border bg-white shadow-[0_14px_45px_rgba(91,33,182,0.10)] dark:bg-card',
+        config.id === 'terapeuta'
+          ? 'border-blue-100 dark:border-blue-900/50'
+          : 'border-emerald-100 dark:border-emerald-900/50'
+      )}
+    >
+      <div
+        className={cn(
+          'absolute inset-x-0 top-0 h-1',
+          config.id === 'terapeuta' ? 'bg-blue-500' : 'bg-emerald-500'
+        )}
+      />
+
+      <div className="flex h-full flex-col gap-5 p-5 sm:p-6">
         <ModeIllustration mode={config.id} />
-        <div className="min-w-0 flex-1 space-y-3">
-          <div className="flex justify-end">
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <span
               className={cn(
                 'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide',
@@ -68,8 +75,13 @@ function ModeCard({
               <BadgeIcon className="h-3 w-3" />
               {config.badge}
             </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/80 bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-800 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+              <Clock3 className="h-3 w-3" />
+              Em breve
+            </span>
           </div>
-          <div>
+
+          <div className="mt-4 flex-1">
             <h2 className="text-lg font-bold text-[#4c1d95] dark:text-violet-100">
               {config.title}
             </h2>
@@ -83,16 +95,19 @@ function ModeCard({
               </p>
             ) : null}
           </div>
+
           <Button
             type="button"
-            disabled={disabled}
+            disabled
             className={cn(
-              'h-11 w-full rounded-xl text-sm font-bold tracking-wide',
-              config.buttonClassName
+              'mt-5 h-11 w-full cursor-not-allowed rounded-xl text-sm font-bold tracking-wide disabled:opacity-100',
+              config.id === 'terapeuta'
+                ? 'bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300'
+                : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300'
             )}
-            onClick={onSelect}
           >
-            {config.buttonLabel}
+            <Clock3 className="mr-2 h-4 w-4" />
+            DISPONÍVEL EM BREVE
           </Button>
         </div>
       </div>
@@ -101,18 +116,6 @@ function ModeCard({
 }
 
 export function SimuladorModePicker() {
-  const router = useRouter()
-  const { isPremium, isLoading: isLoadingPremium } = useSubscriptionStatus()
-  const [showUpgrade, setShowUpgrade] = useState(false)
-
-  const handleSelect = (mode: SimulatorMode) => {
-    if (!isPremium && !isLoadingPremium) {
-      setShowUpgrade(true)
-      return
-    }
-    router.push(`/simulador/chat?mode=${mode}`)
-  }
-
   return (
     <SidebarProvider>
       <AppSidebar history={[]} selectedThread={null} onSelectSession={() => {}} />
@@ -121,38 +124,39 @@ export function SimuladorModePicker() {
           <SidebarTrigger className="text-violet-700 dark:text-violet-300" />
         </header>
 
-        <main className="mx-auto flex w-full max-w-lg flex-1 flex-col px-4 py-6 sm:px-6 sm:py-8">
-          <div className="mb-6 flex flex-col items-center text-center">
+        <main className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col overflow-hidden px-4 py-8 sm:px-6 sm:py-12">
+          <div className="pointer-events-none absolute left-1/2 top-10 -z-10 h-64 w-64 -translate-x-1/2 rounded-full bg-violet-300/20 blur-3xl dark:bg-violet-700/10" />
+
+          <div className="mb-9 flex flex-col items-center text-center">
             <MedizChatV2Logo />
-            <h1 className="mt-5 text-xl font-extrabold tracking-tight text-[#4c1d95] dark:text-violet-100 sm:text-2xl">
-              SIMULAR ATENDIMENTO
+            <span className="mt-6 inline-flex items-center gap-2 rounded-full border border-amber-300/80 bg-amber-50/90 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-amber-800 shadow-sm dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+              <Sparkles className="h-4 w-4" />
+              Novidade em desenvolvimento
+            </span>
+            <h1 className="mt-5 max-w-3xl text-2xl font-extrabold tracking-tight text-[#4c1d95] dark:text-violet-100 sm:text-4xl sm:leading-tight">
+              Uma nova forma de treinar e vivenciar atendimentos está chegando
             </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Escolha como você quer explorar essa experiência.
+            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Conheça antecipadamente o meDIZ! Simulador. Em breve, você poderá
+              praticar a condução de atendimentos ou viver uma experiência
+              guiada pelo Método [RE]Sentir.
             </p>
           </div>
 
-          <div className="space-y-4">
-            <ModeCard
-              config={SIMULATOR_MODES.terapeuta}
-              disabled={isLoadingPremium}
-              onSelect={() => handleSelect('terapeuta')}
-            />
-            <ModeCard
-              config={SIMULATOR_MODES.experiencia}
-              disabled={isLoadingPremium}
-              onSelect={() => handleSelect('experiencia')}
-            />
+          <div className="grid gap-5 md:grid-cols-2 md:gap-6">
+            <ModeCard config={SIMULATOR_MODES.terapeuta} />
+            <ModeCard config={SIMULATOR_MODES.experiencia} />
           </div>
 
-          <p className="mt-8 flex items-center justify-center gap-2 text-center text-xs text-muted-foreground">
-            <RefreshCw className="h-3.5 w-3.5 shrink-0" />
-            Você pode trocar de modo a qualquer momento.
-          </p>
+          <div className="mx-auto mt-8 flex max-w-2xl items-start gap-3 rounded-2xl border border-violet-200/70 bg-white/70 px-4 py-3 text-left shadow-sm backdrop-blur dark:border-violet-800/60 dark:bg-violet-950/20">
+            <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" />
+            <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
+              Estamos preparando cada detalhe para entregar uma experiência
+              segura, útil e alinhada ao Método [RE]Sentir.
+            </p>
+          </div>
         </main>
       </SidebarInset>
-
-      <UpgradeModal open={showUpgrade} onOpenChange={setShowUpgrade} />
     </SidebarProvider>
   )
 }
