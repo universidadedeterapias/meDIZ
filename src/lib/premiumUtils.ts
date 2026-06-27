@@ -17,6 +17,17 @@ const PREMIUM_ACCESS_NORMALIZED = new Set([
 ])
 
 /**
+ * Bypass local para testar recursos premium sem alterar assinaturas no banco.
+ * A checagem exata de NODE_ENV impede que a flag libere acesso em producao.
+ */
+export function isDevelopmentPremiumBypassEnabled(): boolean {
+  return (
+    process.env.NODE_ENV === 'development' &&
+    process.env.DEV_PREMIUM_BYPASS === 'true'
+  )
+}
+
+/**
  * Para filtros Prisma: variantes comuns de capitalização no banco.
  */
 export const PRISMA_PREMIUM_LIKE_STATUSES = [
@@ -88,6 +99,10 @@ export function prismaWhereCanceledSubscriptionEnded(
  * Fonte única: tabela subscriptions com status ativo e período válido
  */
 export async function isUserPremium(userId: string): Promise<boolean> {
+  if (isDevelopmentPremiumBypassEnabled()) {
+    return true
+  }
+
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },

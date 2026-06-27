@@ -1,7 +1,10 @@
 import { auth } from '@/auth'
 import { hasComplimentaryAccess } from '@/lib/complimentaryAccess'
 import { prisma } from '@/lib/prisma'
-import { prismaWhereSubscriptionGrantsPremium } from '@/lib/premiumUtils'
+import {
+  isDevelopmentPremiumBypassEnabled,
+  prismaWhereSubscriptionGrantsPremium
+} from '@/lib/premiumUtils'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -16,6 +19,16 @@ export async function GET() {
 
   if (process.env.NODE_ENV === 'development') {
     console.log('[API /stripe/subscription] 👤 User ID:', session.user.id)
+  }
+
+  if (isDevelopmentPremiumBypassEnabled()) {
+    return NextResponse.json({
+      status: 'active',
+      currentPeriodEnd: new Date('2099-12-31T23:59:59.000Z').toISOString(),
+      currentPeriodStart: new Date().toISOString(),
+      hasPremiumAccess: true,
+      developmentBypass: true
+    })
   }
 
   const sessionEmail = session.user.email?.trim()

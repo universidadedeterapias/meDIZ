@@ -25,7 +25,7 @@ export function useSubscriptionStatus(): SubscriptionStatus {
     async function checkSubscription() {
       try {
         // Verificar cache primeiro
-        const cacheKey = 'subscription-status-v2'
+        const cacheKey = 'subscription-status-v3'
         const cacheTimestamp = localStorage.getItem(`${cacheKey}-timestamp`)
         const cachedStatus = localStorage.getItem(cacheKey)
         
