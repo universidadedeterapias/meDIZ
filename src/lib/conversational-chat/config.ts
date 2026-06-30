@@ -1,11 +1,20 @@
 import type { ChatKind } from '@prisma/client'
 
-export type ConversationalChatKind = Extract<ChatKind, 'SIMULADOR' | 'PROF'>
+export type ConversationalChatKind = Extract<
+  ChatKind,
+  'SEARCH' | 'SIMULADOR' | 'PROF'
+>
+
+export type MedizAgent = 'body' | 'home' | 'pet'
 
 export const CONVERSATIONAL_CHAT_WEBHOOKS: Record<
   ConversationalChatKind,
   { envKey: string; fallbackUrl: string }
 > = {
+  SEARCH: {
+    envKey: 'N8N_CHAT_WEBHOOK_URL_V2',
+    fallbackUrl: 'https://uniterapias.app.n8n.cloud/webhook/chat-texto-v2'
+  },
   SIMULADOR: {
     envKey: 'N8N_SIMULADOR_WEBHOOK_URL',
     fallbackUrl:
@@ -33,5 +42,9 @@ export function getConversationalWebhookUrl(
 export function isConversationalChatKind(
   value: string
 ): value is ConversationalChatKind {
-  return value === 'SIMULADOR' || value === 'PROF'
+  return value === 'SEARCH' || value === 'SIMULADOR' || value === 'PROF'
+}
+
+export function isMedizAgent(value: string): value is MedizAgent {
+  return value === 'body' || value === 'home' || value === 'pet'
 }

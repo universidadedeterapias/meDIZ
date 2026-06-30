@@ -8,7 +8,9 @@ import {
   saveChatMessage
 } from '@/lib/chatMessages'
 import {
+  isMedizAgent,
   isConversationalChatKind,
+  type MedizAgent,
   type ConversationalChatKind
 } from '@/lib/conversational-chat/config'
 import { isSimulatorMode } from '@/lib/conversational-chat/simulator-modes'
@@ -17,6 +19,8 @@ import {
   resolveRequestLanguage
 } from '@/lib/conversational-chat/webhook'
 import { isUserPremium } from '@/lib/premiumUtils'
+import { prisma } from '@/lib/prisma'
+import { getUserLimits, getUserPeriod } from '@/lib/userPeriod'
 
 export const dynamic = 'force-dynamic'
 
@@ -93,6 +97,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     threadId,
     chatKind: chatSession.chatKind,
+    agent: isMedizAgent(chatSession.agent ?? '') ? chatSession.agent : null,
     messages
   })
 }
@@ -118,6 +123,10 @@ export async function POST(req: Request) {
   const simulatorMode = isSimulatorMode(simulatorModeRaw)
     ? simulatorModeRaw
     : undefined
+  const agentRaw = typeof body?.agent === 'string' ? body.agent.toLowerCase() : ''
+  const agent: MedizAgent | undefined = isMedizAgent(agentRaw)
+    ? agentRaw
+    : undefined
 
   if (!message) {
     return NextResponse.json({ error: 'Mensagem inválida' }, { status: 400 })
@@ -129,8 +138,12 @@ export async function POST(req: Request) {
 
   const chatKind = chatKindRaw as ConversationalChatKind
 
+  if (chatKind === 'SEARCH' && !agent) {
+    return NextResponse.json({ error: 'agent inválido' }, { status: 400 })
+  }
+
   const hasPremium = await isUserPremium(userId)
-  if (!hasPremium) {
+  if (chatKind !== 'SEARCH' && !hasPremium) {
     return NextResponse.json(
       { error: 'Recurso disponível apenas para assinantes premium' },
       { status: 403 }
@@ -155,10 +168,63 @@ export async function POST(req: Request) {
           { status: 400 }
         )
       }
+      if (chatKind === 'SEARCH' && agent) {
+        if (existing.agent && existing.agent !== agent) {
+          return NextResponse.json(
+            { error: 'Esta conversa pertence a outro agente' },
+            { status: 409 }
+          )
+        }
+        if (!existing.agent) {
+          await prisma.chatSession.update({
+            where: { id: existing.id },
+            data: { agent }
+          })
+        }
+      }
       chatSessionId = existing.id
     } else {
+      if (chatKind === 'SEARCH' && !hasPremium) {
+        const startOfDay = new Date()
+        startOfDay.setHours(0, 0, 0, 0)
+        const [todayCount, user] = await Promise.all([
+          prisma.chatSession.count({
+            where: {
+              userId,
+              chatKind: 'SEARCH',
+              createdAt: { gte: startOfDay }
+            }
+          }),
+          prisma.user.findUnique({
+            where: { id: userId },
+            select: { createdAt: true }
+          })
+        ])
+
+        if (!user) {
+          return NextResponse.json(
+            { error: 'Usuário não encontrado' },
+            { status: 404 }
+          )
+        }
+
+        const userPeriod = getUserPeriod(user.createdAt)
+        const { searchLimit } = getUserLimits(userPeriod)
+        if (todayCount >= searchLimit) {
+          return NextResponse.json(
+            { limitReached: true, period: userPeriod, searchLimit },
+            { status: 403 }
+          )
+        }
+      }
+
       threadId = randomUUID()
-      const created = await createChatSessionWithThread(userId, threadId, chatKind)
+      const created = await createChatSessionWithThread(
+        userId,
+        threadId,
+        chatKind,
+        agent
+      )
       chatSessionId = created.id
     }
 
@@ -168,26 +234,52 @@ export async function POST(req: Request) {
       content: message
     })
 
-    const assistantReply = await requestConversationalResponse({
+    const assistantResponse = await requestConversationalResponse({
       threadId,
       message,
       language,
       chatKind,
+      agent,
       simulatorMode
     })
 
-    await saveChatMessage({
-      chatSessionId,
-      role: 'ASSISTANT',
-      content: assistantReply
-    })
+    const newMessages = []
+    for (const assistantMessage of assistantResponse.messages) {
+      const saved = await saveChatMessage({
+        chatSessionId,
+        role: 'ASSISTANT',
+        content: assistantMessage.content
+      })
+      newMessages.push(saved)
+    }
 
     const messages = await getOrderedThreadMessages(threadId)
+
+    const accessMetadata =
+      chatKind === 'SEARCH' && !hasPremium
+        ? await prisma.user
+            .findUnique({ where: { id: userId }, select: { createdAt: true } })
+            .then((user) => {
+              if (!user) return {}
+              const userPeriod = getUserPeriod(user.createdAt)
+              const { fullVisualization } = getUserLimits(userPeriod)
+              return {
+                userPeriod,
+                fullVisualization,
+                shouldShowPopup: true
+              }
+            })
+        : {}
 
     return NextResponse.json({
       threadId,
       chatKind,
-      messages
+      agent,
+      messages,
+      newMessages,
+      responseStatus: assistantResponse.status,
+      action: assistantResponse.action,
+      ...accessMetadata
     })
   } catch (err) {
     console.error('[conversational-chat] POST error:', err)

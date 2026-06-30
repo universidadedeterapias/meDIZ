@@ -1,6 +1,7 @@
 // lib/chatService.ts
 
 import type { ChatKind } from '@prisma/client'
+import type { MedizAgent } from '@/lib/conversational-chat/config'
 import { prisma } from './prisma'
 
 /**
@@ -9,13 +10,15 @@ import { prisma } from './prisma'
 export async function createChatSessionWithThread(
   userId: string,
   threadId: string,
-  chatKind: ChatKind = 'SEARCH'
+  chatKind: ChatKind = 'SEARCH',
+  agent?: MedizAgent
 ) {
   return prisma.chatSession.create({
     data: {
       userId,
       threadId,
-      chatKind
+      chatKind,
+      agent
     }
   })
 }

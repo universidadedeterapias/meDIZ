@@ -64,6 +64,7 @@ model ChatSession {
   updatedAt  DateTime      @updatedAt
   threadId   String?       @unique
   chatKind   ChatKind      @default(SEARCH) @map("chat_kind")
+  agent      String?       @db.VarChar(16)
   isFavorite Boolean       @default(false)
   messages   ChatMessage[]
   user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
-import { isConversationalChatKind } from '@/lib/conversational-chat/config'
+import {
+  isConversationalChatKind,
+  isMedizAgent
+} from '@/lib/conversational-chat/config'
 import { isUserPremium } from '@/lib/premiumUtils'
 
 export const dynamic = 'force-dynamic'
@@ -37,6 +40,7 @@ export async function GET(req: Request) {
     select: {
       id: true,
       threadId: true,
+      agent: true,
       createdAt: true,
       messages: {
         where: { role: 'USER' },
@@ -51,6 +55,7 @@ export async function GET(req: Request) {
     sessions: sessions.map((row) => ({
       id: row.id,
       threadId: row.threadId!,
+      agent: isMedizAgent(row.agent ?? '') ? row.agent : null,
       createdAt: row.createdAt.toISOString(),
       firstUserMessage: row.messages[0]?.content ?? ''
     }))

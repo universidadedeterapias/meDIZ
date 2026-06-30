@@ -3,33 +3,32 @@
 
 /// <reference lib="dom" />
 
-import { Bell, MessageSquarePlus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { AppSidebar } from '@/components/app-sidebar'
-import { LanguageSwitcher } from '@/components/language-switcher'
-import { ThemeToggle } from '@/components/ThemeToggle'
-import { ClientOnly } from '@/components/ClientOnly'
+import {
+  AppSidebar,
+  type SessionHistoryItem
+} from '@/components/app-sidebar'
+import { ChatAppHeader } from '@/components/chat/ChatAppHeader'
+import {
+  ChatConversation,
+  type ChatMessage
+} from '@/components/chat/ChatConversation'
 import { ChatHomeExperience } from '@/components/chat/ChatHomeExperience'
-import { ChatComposer } from '@/components/chat/ChatComposer'
+import type { AgentId } from '@/components/chat/ChatHomeExperience'
 import { Footer } from '@/components/Footer'
-import { LoadingPlaceholder } from '@/components/LoadingPlaceholder'
 import PromotionPopup from '@/components/PromotionPopup'
 import Spinner from '@/components/Spinner'
-import { MedizChatV2Logo } from '@/components/conversational-chat/MedizChatV2Shell'
-import { Button } from '@/components/ui/button'
 import {
   SidebarInset,
-  SidebarProvider,
-  SidebarTrigger
+  SidebarProvider
 } from '@/components/ui/sidebar'
 import { useTranslation } from '@/i18n/useTranslation'
-import { UserPeriod } from '@/lib/userPeriod'
 import { FirstName } from '@/lib/utils'
+import { isMedizAgent } from '@/lib/conversational-chat/config'
 import { getUpgradeLink } from '@/lib/upgradeLinks'
 import { User } from '@/types/User'
-import { Result } from './result'
 
 // Tipo exato que vem da sua API
 type RawUser = {
@@ -54,16 +53,30 @@ export default function Page() {
   const [user, setUser] = useState<User | null>(null)
   const [checkingProfile, setCheckingProfile] = useState(true)
   const [input, setInput] = useState('')
-  const [responses, setResponses] = useState<string[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(false)
+  const [revealingMessages, setRevealingMessages] = useState(false)
   const [selectedThread, setSelectedThread] = useState<string | null>(null)
+  const [selectedAgent, setSelectedAgent] = useState<AgentId>('body')
+  const [history, setHistory] = useState<SessionHistoryItem[]>([])
+  const [chatError, setChatError] = useState<string | null>(null)
   const [limitReached, setLimitReached] = useState(false)
-  const [elapsedMs, setElapsedMs] = useState<number | null>(null)
-  const [originalQuestion, setOriginalQuestion] = useState<string>('')
+  const revealTimersRef = useRef<number[]>([])
+  const skipNextThreadLoadRef = useRef(false)
+
+  const clearRevealTimers = () => {
+    revealTimersRef.current.forEach((timer) => window.clearTimeout(timer))
+    revealTimersRef.current = []
+    setRevealingMessages(false)
+  }
+
+  useEffect(() => {
+    return () => {
+      revealTimersRef.current.forEach((timer) => window.clearTimeout(timer))
+    }
+  }, [])
   
   // Estados relacionados às regras de uso do plano gratuito
-  const [userPeriod, setUserPeriod] = useState<'first-week' | 'first-month' | 'beyond-month'>('first-week')
-  const [fullVisualization, setFullVisualization] = useState(true)
   const [showPopup, setShowPopup] = useState(false)
   
   // 1) Confira perfil e normalize o nome
@@ -129,22 +142,58 @@ export default function Page() {
     }
   }, [router])
 
+  const loadHistory = useCallback(async () => {
+    try {
+      const response = await fetch(
+        '/api/conversational-chat/sessions?chatKind=SEARCH'
+      )
+      if (response.status === 403) {
+        setHistory([])
+        return
+      }
+      if (!response.ok) return
+
+      const data = await response.json()
+      setHistory(Array.isArray(data.sessions) ? data.sessions : [])
+    } catch (error) {
+      console.error('[chat-history] Falha ao carregar histórico', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!checkingProfile) void loadHistory()
+  }, [checkingProfile, loadHistory])
+
   // 2) Carrega respostas do chat quando selecionar uma thread
   useEffect(() => {
     if (checkingProfile || !selectedThread) return
+    if (skipNextThreadLoadRef.current) {
+      skipNextThreadLoadRef.current = false
+      return
+    }
     let cancelled = false
+    clearRevealTimers()
     setLoading(true)
 
     // Timeout de 60 segundos para carregamento de mensagens
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 segundos
     
-    fetch(`/api/openai/messages?threadId=${selectedThread}`, {
+    fetch(`/api/conversational-chat?threadId=${selectedThread}`, {
       signal: controller.signal
     })
-      .then(r => r.json())
+      .then(async (response) => {
+        const data = await response.json()
+        if (!response.ok) {
+          throw new Error(data.error || 'Erro ao carregar conversa')
+        }
+        return data
+      })
       .then(data => {
-        if (!cancelled) setResponses(data.responses.assistant || [])
+        if (!cancelled) {
+          setMessages(data.messages || [])
+          setSelectedAgent(isMedizAgent(data.agent) ? data.agent : 'body')
+        }
       })
       .catch(console.error)
       .finally(() => {
@@ -161,123 +210,130 @@ export default function Page() {
 
   // 3) Envia mensagem
   const handleSendMessage = async () => {
-    if (!input.trim() || loading) return // Evita múltiplas chamadas
+    if (!input.trim() || loading || revealingMessages) return // Evita múltiplas chamadas
     handleSendMessageFromText(input.trim())
   }
 
   // Função reutilizável para enviar mensagem
-  const handleSendMessageFromText = async (text: string) => {
-    if (loading) return
-    setLoading(true)
-    setResponses([])
-    setElapsedMs(null)
-    
-    // Armazena a pergunta original para o PDF
-    setOriginalQuestion(text)
-    setInput(text) // Atualiza o input
+  const handleSendMessageFromText = async (
+    text: string,
+    threadOverride: string | null = selectedThread
+  ) => {
+    if (loading || revealingMessages) return
+    const trimmedText = text.trim()
+    if (!trimmedText) return
 
-    const t0 = performance.now()
+    setLoading(true)
+    setChatError(null)
+    setInput('')
+
+    const optimisticId = `temp-${Date.now()}`
+    setMessages((current) => [
+      ...current,
+      {
+        id: optimisticId,
+        role: 'USER',
+        content: trimmedText,
+        createdAt: new Date().toISOString()
+      }
+    ])
 
     try {
-      // Timeout de 60 segundos para requisições de chat
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 segundos
-      
-      const res = await fetch('/api/openai', {
+      const timeoutId = setTimeout(() => controller.abort(), 90000)
+      const res = await fetch('/api/conversational-chat', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Inclui cookies na requisição
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         signal: controller.signal,
-        body: JSON.stringify({ message: text, language })
-      }).finally(() => {
-        clearTimeout(timeoutId)
-      })
+        body: JSON.stringify({
+          message: trimmedText,
+          language,
+          threadId: threadOverride ?? undefined,
+          chatKind: 'SEARCH',
+          agent: selectedAgent
+        })
+      }).finally(() => clearTimeout(timeoutId))
 
-      // Verifica se houve erro de autenticação
       if (res.status === 401) {
-        console.error('[Chat] Não autenticado, redirecionando para login...')
         router.replace('/login')
-        setLoading(false)
         return
       }
 
-      if (res.status === 403) {
-        const data = await res.json()
-        if (data.limitReached) {
-          setLimitReached(true)
-          setLoading(false)
-          return
-        }
-      }
-
-      // Verifica se a resposta é JSON válida
-      if (!res.ok) {
-        const errorText = await res.text()
-        console.error('[Chat] Erro na API:', res.status, errorText)
-        throw new Error(`Erro na API: ${res.status} - ${errorText}`)
-      }
-
       const data = await res.json()
+      if (res.status === 403 && data.limitReached) {
+        setLimitReached(true)
+        return
+      }
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro ao enviar mensagem')
+      }
 
-      if (data.threadId) {
+      if (data.threadId && data.threadId !== selectedThread) {
+        skipNextThreadLoadRef.current = true
         setSelectedThread(data.threadId)
       }
-      
-      // Processa informações do período do usuário e visualização
-      if (data.userPeriod) {
-        setUserPeriod(data.userPeriod as UserPeriod)
-        setFullVisualization(data.fullVisualization || false)
-      }
-      
-      // Verifica se deve mostrar o popup entre pesquisas
-      if (data.shouldShowPopup) {
-        // Atrasa a exibição do popup para após a exibição da resposta
-        setTimeout(() => {
-          setShowPopup(true)
-        }, 2000)
-      }
-      
-      // Valida e processa as respostas
-      if (data.responses?.assistant && Array.isArray(data.responses.assistant) && data.responses.assistant.length > 0) {
-        setResponses(data.responses.assistant)
-      } else if (data.responses?.assistant && typeof data.responses.assistant === 'string') {
-        // Fallback: se assistant for uma string ao invés de array
-        setResponses([data.responses.assistant])
-      } else {
-        console.error('[Chat] Resposta inválida ou vazia')
+      if (!Array.isArray(data.messages)) {
         throw new Error('Resposta inválida do servidor')
       }
-      const t1 = performance.now()
-      setElapsedMs(t1 - t0)
-    } catch (err) {
-      // Evita logar objetos Event diretamente
-      if (err instanceof Error) {
-        console.error('[Chat] Erro ao enviar mensagem:', {
-          name: err.name,
-          message: err.message,
-          stack: err.stack
-        })
-        alert(`${t('chat.error.prefix', 'Erro ao processar sua mensagem')}: ${err.message}`)
-      } else if (err && typeof err === 'object' && 'type' in err) {
-        // Pode ser um Event object
-        console.error('[Chat] Erro (tipo: Event):', (err as { type?: string }).type || 'Unknown')
-        alert(t('chat.error.generic', 'Erro ao processar sua mensagem. Tente novamente.'))
+      const newMessages: ChatMessage[] = Array.isArray(data.newMessages)
+        ? data.newMessages
+        : []
+      const shouldReduceMotion = window.matchMedia(
+        '(prefers-reduced-motion: reduce)'
+      ).matches
+
+      if (newMessages.length <= 1 || shouldReduceMotion) {
+        setMessages(data.messages)
       } else {
-        console.error('[Chat] Erro ao enviar mensagem:', err)
-        alert(t('chat.error.generic', 'Erro ao processar sua mensagem. Tente novamente.'))
+        const newIds = new Set(newMessages.map((message) => message.id))
+        setMessages(
+          data.messages.filter((message: ChatMessage) => !newIds.has(message.id))
+        )
+        setRevealingMessages(true)
+
+        newMessages.forEach((message, index) => {
+          const timer = window.setTimeout(() => {
+            setMessages((current) => [...current, message])
+            if (index === newMessages.length - 1) {
+              revealTimersRef.current = []
+              setRevealingMessages(false)
+            }
+          }, 280 * (index + 1))
+          revealTimersRef.current.push(timer)
+        })
       }
+
+      if (data.shouldShowPopup) {
+        setTimeout(() => setShowPopup(true), 2000)
+      }
+      void loadHistory()
+    } catch (err) {
+      setMessages((current) =>
+        current.filter((message) => message.id !== optimisticId)
+      )
+      setInput(trimmedText)
+      setChatError(
+        err instanceof Error
+          ? err.message
+          : t('chat.error.generic', 'Erro ao processar sua mensagem. Tente novamente.')
+      )
     } finally {
-      setInput('')
       setLoading(false)
     }
   }
-  
-  // Função para lidar com clique no botão de assinatura
+
   const handleSubscribe = () => {
     const upgradeLink = getUpgradeLink(language)
     window.location.href = upgradeLink
+  }
+
+  const startNewConversation = () => {
+    clearRevealTimers()
+    setSelectedThread(null)
+    setMessages([])
+    setInput('')
+    setChatError(null)
   }
 
   // Loading enquanto checa o perfil
@@ -307,97 +363,54 @@ export default function Page() {
 
   // Layout principal do chat
   return (
-    <SidebarProvider>
+    <SidebarProvider className="relative isolate overflow-hidden bg-gradient-to-br from-violet-50 via-slate-50 to-violet-100/70 before:pointer-events-none before:fixed before:-left-28 before:-top-24 before:z-0 before:size-96 before:rounded-full before:bg-violet-300/20 before:blur-3xl after:pointer-events-none after:fixed after:-bottom-32 after:right-0 after:z-0 after:size-80 after:rounded-full after:bg-slate-200/25 after:blur-3xl dark:from-[#0f0e14] dark:via-[#111017] dark:to-[#17131f] dark:before:bg-violet-700/10 dark:after:bg-violet-950/10">
       <AppSidebar
-        history={[]} // implemente seu histórico se quiser
+        history={history}
         selectedThread={selectedThread}
-        onSelectSession={setSelectedThread}
+        onSelectSession={(threadId) => {
+          const target = history.find((item) => item.threadId === threadId)
+          setSelectedAgent(
+            target && isMedizAgent(target.agent) ? target.agent : 'body'
+          )
+          setSelectedThread(threadId)
+        }}
         onSelectSymptom={(symptomText) => {
           setInput(symptomText)
-          setResponses([])
+          setMessages([])
           setSelectedThread(null)
-          handleSendMessageFromText(symptomText)
+          handleSendMessageFromText(symptomText, null)
         }}
       />
 
-      <SidebarInset className="min-w-0 overflow-x-hidden">
-        <div className="flex min-h-svh flex-col bg-background text-foreground">
-          <header className="sticky top-0 z-30 flex h-16 w-full min-w-0 items-center justify-between bg-background/80 px-2 shadow-lg shadow-violet-950/5 backdrop-blur-xl dark:shadow-black/20 sm:px-4">
-            <SidebarTrigger className="shrink-0 text-violet-700 dark:text-violet-300" />
+      <SidebarInset className="min-w-0 overflow-x-hidden !bg-transparent">
+        <div className="flex min-h-svh flex-col bg-transparent text-foreground">
+          <ChatAppHeader onSuggestion={() => router.push('/suggestion')} />
 
-            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2">
-              <MedizChatV2Logo />
-            </div>
-
-            <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => router.push('/suggestion')}
-                className="text-violet-700 hover:bg-violet-100 dark:text-violet-300 dark:hover:bg-violet-950"
-                aria-label={t('sidebar.suggestion.button', 'Sugestão')}
-              >
-                <MessageSquarePlus className="size-4" />
-              </Button>
-              <div className="hidden sm:block">
-                <LanguageSwitcher showLabel={false} variant="header" />
-              </div>
-              <ThemeToggle variant="icon" />
-              <button
-                type="button"
-                className="relative hidden min-h-11 min-w-11 items-center justify-center text-violet-700 dark:text-violet-300 sm:flex"
-                aria-label={t('notifications.title', 'Notificações')}
-              >
-                <Bell className="size-5" />
-                <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-amber-400" />
-              </button>
-            </div>
-          </header>
-
-          <main className="flex w-full flex-1 flex-col overflow-x-hidden bg-gradient-to-br from-violet-50/90 via-background to-fuchsia-50/70 dark:from-violet-950/25 dark:via-background dark:to-fuchsia-950/20">
-            {loading ? (
-              <div className="mx-auto flex w-full max-w-4xl flex-1 px-3 pb-6 sm:px-4">
-                <ClientOnly>
-                  <LoadingPlaceholder />
-                </ClientOnly>
-              </div>
-            ) : responses.length === 0 ? (
+          <main className="flex w-full flex-1 flex-col overflow-x-hidden bg-transparent">
+            {messages.length === 0 && !loading ? (
               <ChatHomeExperience
                 userName={FirstName(user.name)}
                 input={input}
-                loading={loading}
+                loading={loading || revealingMessages}
+                selectedAgent={selectedAgent}
                 onInputChange={setInput}
+                onAgentChange={setSelectedAgent}
                 onSubmit={handleSendMessage}
               />
             ) : (
-              <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-3 py-5 sm:px-4 sm:py-7">
-                <div className="space-y-4">
-                  {responses.map((md, idx) => (
-                    <Result
-                      key={idx}
-                      markdown={md}
-                      elapsedMs={elapsedMs ?? 0}
-                      userPeriod={userPeriod}
-                      fullVisualization={fullVisualization}
-                      onSubscribe={handleSubscribe}
-                      userQuestion={originalQuestion}
-                      sessionId={selectedThread || undefined}
-                    />
-                  ))}
-                </div>
-
-                <ChatComposer
-                  value={input}
-                  loading={loading}
-                  onChange={setInput}
-                  onSubmit={handleSendMessage}
-                  placeholder={t('chat.home.input.continue', 'Continue a conversa…')}
-                  className="sticky bottom-3 z-10 mt-6"
-                />
-              </div>
+              <ChatConversation
+                agent={selectedAgent}
+                messages={messages}
+                input={input}
+                loading={loading || revealingMessages}
+                showThinking={loading}
+                error={chatError}
+                onInputChange={setInput}
+                onSubmit={handleSendMessage}
+                onNewConversation={startNewConversation}
+              />
             )}
-            
+
             {/* Pop-up entre pesquisas */}
             <PromotionPopup
               open={showPopup}
