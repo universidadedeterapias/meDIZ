@@ -3,7 +3,7 @@
 
 /// <reference lib="dom" />
 
-import { Bell, Search, MessageSquarePlus } from 'lucide-react'
+import { Bell, MessageSquarePlus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -11,23 +11,19 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { ClientOnly } from '@/components/ClientOnly'
+import { ChatHomeExperience } from '@/components/chat/ChatHomeExperience'
+import { ChatComposer } from '@/components/chat/ChatComposer'
 import { Footer } from '@/components/Footer'
-import OptionSelector from '@/components/form/OptionSelector'
-import DynamicOptionSelector from '@/components/form/DynamicOptionSelector'
 import { LoadingPlaceholder } from '@/components/LoadingPlaceholder'
 import PromotionPopup from '@/components/PromotionPopup'
 import Spinner from '@/components/Spinner'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
+import { MedizChatV2Logo } from '@/components/conversational-chat/MedizChatV2Shell'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger
 } from '@/components/ui/sidebar'
-import { useUser } from '@/contexts/user'
 import { useTranslation } from '@/i18n/useTranslation'
 import { UserPeriod } from '@/lib/userPeriod'
 import { FirstName } from '@/lib/utils'
@@ -52,7 +48,6 @@ type RawUser = {
 
 export default function Page() {
   const router = useRouter()
-  const { user: userContext } = useUser()
   const { t, language } = useTranslation()
 
   // Estados principais
@@ -71,93 +66,6 @@ export default function Page() {
   const [fullVisualization, setFullVisualization] = useState(true)
   const [showPopup, setShowPopup] = useState(false)
   
-  // Estados para sintomas dinâmicos
-  const [dynamicSymptoms, setDynamicSymptoms] = useState<{sintoma: string, quantidade: number}[]>([])
-  const [symptomsLoaded, setSymptomsLoaded] = useState(false)
-
-  const presetSymptomOptions = [
-    {
-      label: t('symptoms.backPain', 'Dor nas costas'),
-      value: t('symptoms.backPain', 'Dor nas costas')
-    },
-    {
-      label: t('symptoms.highBloodPressure', 'Pressão alta'),
-      value: t('symptoms.highBloodPressure', 'Pressão alta')
-    },
-    {
-      label: t('symptoms.fatigue', 'Cansaço'),
-      value: t('symptoms.fatigue', 'Cansaço')
-    },
-    {
-      label: t('symptoms.migraine', 'Enxaqueca'),
-      value: t('symptoms.migraine', 'Enxaqueca')
-    },
-    {
-      label: t('symptoms.insomnia', 'Insônia'),
-      value: t('symptoms.insomnia', 'Insônia')
-    },
-    {
-      label: t('symptoms.anxiety', 'Ansiedade'),
-      value: t('symptoms.anxiety', 'Ansiedade')
-    },
-    {
-      label: t('symptoms.rhinitis', 'Rinite'),
-      value: t('symptoms.rhinitis', 'Rinite')
-    },
-    {
-      label: t('symptoms.kneePain', 'Dor no joelho'),
-      value: t('symptoms.kneePain', 'Dor no joelho')
-    },
-    {
-      label: t('symptoms.stress', 'Estresse'),
-      value: t('symptoms.stress', 'Estresse')
-    },
-    {
-      label: t('symptoms.headache', 'Dor de cabeça'),
-      value: t('symptoms.headache', 'Dor de cabeça')
-    }
-  ]
-
-  // Carrega sintomas dinâmicos
-  useEffect(() => {
-    async function loadDynamicSymptoms() {
-      try {
-        // Timeout de 30 segundos para carregamento de sintomas
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 segundos
-        
-        const response = await fetch('/api/symptoms/popular', {
-          signal: controller.signal
-        }).finally(() => {
-          clearTimeout(timeoutId)
-        })
-        const data = await response.json()
-        
-        if (data.success && data.sintomas) {
-          setDynamicSymptoms(data.sintomas)
-          setSymptomsLoaded(true)
-        } else {
-          // Fallback para sintomas fixos
-          setSymptomsLoaded(true)
-        }
-      } catch (error) {
-        // Evita logar objetos Event diretamente
-        if (error instanceof Error) {
-          console.error('Erro ao carregar sintomas dinâmicos:', {
-            name: error.name,
-            message: error.message
-          })
-        } else {
-          console.error('Erro ao carregar sintomas dinâmicos:', error)
-        }
-        // Fallback para sintomas fixos
-        setSymptomsLoaded(true)
-      }
-    }
-
-    loadDynamicSymptoms()
-  }, [])
-
   // 1) Confira perfil e normalize o nome
   useEffect(() => {
     let cancelled = false
@@ -414,149 +322,79 @@ export default function Page() {
 
       <SidebarInset className="min-w-0 overflow-x-hidden">
         <div className="flex min-h-svh flex-col bg-background text-foreground">
-          {/* Header */}
-          <header className="sticky top-0 z-30 flex w-full min-w-0 flex-col border-b border-border bg-background/95 px-2 py-2 shadow-sm backdrop-blur-md sm:h-16 sm:flex-row sm:items-center sm:px-4 sm:py-0">
-            <div className="flex w-full min-w-0 items-center justify-between gap-1 sm:gap-2">
-              <SidebarTrigger className="-ml-0.5 shrink-0 md:-ml-1" />
-              <div className="hidden min-w-0 flex-1 items-center gap-3 sm:flex">
-                <Avatar className="h-8 w-8 shrink-0 border-2 border-indigo-600">
-                  <AvatarImage
-                    src={userContext?.image ?? undefined}
-                    alt="User"
-                  />
-                  <AvatarFallback>
-                    {FirstName(user.name).charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <h2 className="truncate text-base font-semibold tracking-tight text-indigo-600 dark:text-indigo-400 sm:text-xl">
-                  {t('chat.greeting.prefix', 'Olá')}, {FirstName(user.name)}!
-                </h2>
-              </div>
-              <div className="flex shrink-0 items-center gap-0.5 sm:gap-4">
-                <div className="relative group cursor-pointer" onClick={() => router.push('/suggestion')}>
-                  <Button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      router.push('/suggestion')
-                    }}
-                    className="flex h-9 items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 px-2.5 text-white shadow-md transition-all duration-200 hover:from-purple-700 hover:to-indigo-700 hover:shadow-lg group-hover:scale-105 sm:h-10 sm:px-4"
-                    size="default"
-                  >
-                    <MessageSquarePlus className="h-4 w-4 shrink-0" />
-                    <span className="hidden sm:inline">{t('sidebar.suggestion.button', 'Sugestão')}</span>
-                  </Button>
-                  <Badge 
-                    className="absolute -top-2 -left-2 z-10 hidden cursor-pointer border-none bg-green-500 text-white shadow-lg animate-pulse hover:bg-green-600 sm:flex"
-                  >
-                    <span className="relative z-10">{t('badge.new.lowercase', 'Novo')}</span>
-                    <span className="absolute inset-0 bg-green-400 rounded-md animate-ping opacity-75"></span>
-                  </Badge>
-                </div>
-                <LanguageSwitcher showLabel={false} variant="header" />
-                <ThemeToggle variant="icon" />
-                <Bell className="hidden h-5 w-5 shrink-0 text-foreground md:block" />
-              </div>
+          <header className="sticky top-0 z-30 flex h-16 w-full min-w-0 items-center justify-between bg-background/80 px-2 shadow-lg shadow-violet-950/5 backdrop-blur-xl dark:shadow-black/20 sm:px-4">
+            <SidebarTrigger className="shrink-0 text-violet-700 dark:text-violet-300" />
+
+            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2">
+              <MedizChatV2Logo />
             </div>
-            <div className="mt-2 flex items-center justify-center gap-2 sm:hidden">
-              <Avatar className="h-7 w-7 shrink-0 border-2 border-indigo-600">
-                <AvatarImage
-                  src={userContext?.image ?? undefined}
-                  alt="User"
-                />
-                <AvatarFallback className="text-xs">
-                  {FirstName(user.name).charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-              <h2 className="truncate text-sm font-semibold text-indigo-600 dark:text-indigo-400">
-                {t('chat.greeting.prefix', 'Olá')}, {FirstName(user.name)}!
-              </h2>
+
+            <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => router.push('/suggestion')}
+                className="text-violet-700 hover:bg-violet-100 dark:text-violet-300 dark:hover:bg-violet-950"
+                aria-label={t('sidebar.suggestion.button', 'Sugestão')}
+              >
+                <MessageSquarePlus className="size-4" />
+              </Button>
+              <div className="hidden sm:block">
+                <LanguageSwitcher showLabel={false} variant="header" />
+              </div>
+              <ThemeToggle variant="icon" />
+              <button
+                type="button"
+                className="relative hidden min-h-11 min-w-11 items-center justify-center text-violet-700 dark:text-violet-300 sm:flex"
+                aria-label={t('notifications.title', 'Notificações')}
+              >
+                <Bell className="size-5" />
+                <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-amber-400" />
+              </button>
             </div>
           </header>
 
-          {/* Busca */}
-          <div className="flex flex-col items-center gap-3 border-b border-border bg-muted/40 px-3 py-4 sm:gap-4 sm:px-4 sm:py-6">
-            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 sm:text-3xl">
-              me<span className="uppercase">diz</span>
-              <span className="text-yellow-400">!</span>
-            </p>
-            <div className="w-full max-w-4xl space-y-4">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <Input
-                  type="text"
-                  placeholder={t('chat.input.placeholder', 'Digite uma dor, doença ou sintoma')}
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                  disabled={loading}
-                  className="w-full rounded-md border border-input bg-background py-4 pl-10 pr-[4.5rem] text-base transition-colors placeholder:text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:py-6 sm:pr-28"
-                />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={loading}
-                  className="absolute inset-y-1 right-1 min-h-[38px] rounded-sm bg-indigo-600 px-3 py-2 text-sm text-white hover:bg-indigo-700 sm:min-h-[41.5px] sm:px-6 sm:py-4 sm:text-base"
-                  aria-label={t('general.search', 'Buscar')}
-                >
-                  {loading ? (
-                    '...'
-                  ) : (
-                    <>
-                      <Search className="h-4 w-4 sm:hidden" />
-                      <span className="hidden sm:inline">{t('general.search', 'Buscar')}</span>
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Corpo da conversa */}
-          <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col overflow-x-hidden overflow-y-auto bg-background px-3 pb-6 sm:px-4">
+          <main className="flex w-full flex-1 flex-col overflow-x-hidden bg-gradient-to-br from-violet-50/90 via-background to-fuchsia-50/70 dark:from-violet-950/25 dark:via-background dark:to-fuchsia-950/20">
             {loading ? (
-              <ClientOnly>
-                <LoadingPlaceholder />
-              </ClientOnly>
-            ) : responses.length === 0 ? (
-              <div className="mx-auto mt-4 flex w-full max-w-4xl flex-col gap-4">
-                <Label className="text-sm font-medium text-muted-foreground">
-                  {t('chat.popularQueries', 'Mais buscados:')}
-                </Label>
-                {symptomsLoaded && dynamicSymptoms.length > 0 ? (
-                  <DynamicOptionSelector
-                    value={input}
-                    onChange={val => {
-                      setInput(val)
-                      handleSendMessage()
-                    }}
-                    options={dynamicSymptoms}
-                  />
-                ) : (
-                  <OptionSelector
-                    value={input}
-                    onChange={val => {
-                      setInput(val)
-                      handleSendMessage()
-                    }}
-                    options={presetSymptomOptions}
-                  />
-                )}
+              <div className="mx-auto flex w-full max-w-4xl flex-1 px-3 pb-6 sm:px-4">
+                <ClientOnly>
+                  <LoadingPlaceholder />
+                </ClientOnly>
               </div>
+            ) : responses.length === 0 ? (
+              <ChatHomeExperience
+                userName={FirstName(user.name)}
+                input={input}
+                loading={loading}
+                onInputChange={setInput}
+                onSubmit={handleSendMessage}
+              />
             ) : (
-              <div className="max-w-4xl mx-auto space-y-4">
-                {responses.map((md, idx) => (
-                  <Result 
-                    key={idx} 
-                    markdown={md} 
-                    elapsedMs={elapsedMs ?? 0} 
-                    userPeriod={userPeriod}
-                    fullVisualization={fullVisualization}
-                    onSubscribe={handleSubscribe}
-                    userQuestion={originalQuestion}
-                    sessionId={selectedThread || undefined}
-                  />
-                ))}
+              <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-3 py-5 sm:px-4 sm:py-7">
+                <div className="space-y-4">
+                  {responses.map((md, idx) => (
+                    <Result
+                      key={idx}
+                      markdown={md}
+                      elapsedMs={elapsedMs ?? 0}
+                      userPeriod={userPeriod}
+                      fullVisualization={fullVisualization}
+                      onSubscribe={handleSubscribe}
+                      userQuestion={originalQuestion}
+                      sessionId={selectedThread || undefined}
+                    />
+                  ))}
+                </div>
+
+                <ChatComposer
+                  value={input}
+                  loading={loading}
+                  onChange={setInput}
+                  onSubmit={handleSendMessage}
+                  placeholder={t('chat.home.input.continue', 'Continue a conversa…')}
+                  className="sticky bottom-3 z-10 mt-6"
+                />
               </div>
             )}
             

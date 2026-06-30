@@ -2,20 +2,21 @@
 
 import {
   Activity,
-  BarChart3,
   FileText,
   GraduationCap,
+  HeartHandshake,
   Headphones,
   Library,
   LogOut,
   PlaySquare,
   Search,
   Star,
+  UserRound,
   type LucideIcon
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { FaWhatsapp } from 'react-icons/fa'
 
@@ -126,6 +127,7 @@ export function NavOptions({
 }) {
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { t } = useTranslation()
   const { language } = useLanguage()
   const { isPremium, isLoading: isLoadingPremium } = useSubscriptionStatus()
@@ -197,14 +199,24 @@ export function NavOptions({
           ) : null}
 
           <NavItem
-            href="/simulador"
-            label={t('sidebar.simulador', 'Simulador')}
-            icon={BarChart3}
+            href="/simulador/chat?mode=experiencia"
+            label={t('sidebar.simulateTherapy', 'Simular terapia')}
+            icon={HeartHandshake}
             isActive={
-              pathname === '/simulador' ||
-              pathname.startsWith('/simulador/')
+              pathname === '/simulador/chat' &&
+              searchParams.get('mode') === 'experiencia'
             }
-            badgeLabel="EM BREVE"
+            iconClassName="text-emerald-600 dark:text-emerald-400"
+          />
+          <NavItem
+            href="/simulador/chat?mode=terapeuta"
+            label={t('sidebar.simulateService', 'Simular atendimento')}
+            icon={UserRound}
+            isActive={
+              pathname === '/simulador/chat' &&
+              searchParams.get('mode') === 'terapeuta'
+            }
+            iconClassName="text-blue-600 dark:text-blue-400"
           />
           <NavItem
             href="/prof"
