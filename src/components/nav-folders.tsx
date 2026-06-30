@@ -599,7 +599,7 @@ export function NavFolders({
     const loadingMenu = (
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton className="px-4 py-5" disabled>
+          <SidebarMenuButton className="h-9 rounded-xl px-2.5" disabled>
             <Folder style={{ width: 22, height: 22 }} className="shrink-0" />
             <span className="group-data-[collapsible=icon]:hidden">
               {t('folders.loading', 'Carregando pastas...')}
@@ -617,11 +617,13 @@ export function NavFolders({
         <SidebarMenuItem>
           <CollapsibleTrigger asChild>
             <SidebarMenuButton
-              className="h-9 px-2"
+              className="h-9 rounded-xl px-2.5 transition-colors hover:bg-white/40 hover:shadow-sm hover:shadow-violet-950/5 dark:hover:bg-white/[0.07] group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:!p-2"
               tooltip={t('folders.title', 'Pastas de Pacientes')}
             >
-              <Folder className="size-4 shrink-0 text-sidebar-foreground" strokeWidth={1.5} />
-              <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-normal group-data-[collapsible=icon]:hidden">
+              <span className="flex size-5 shrink-0 items-center justify-center">
+                <Folder className="size-[18px] text-zinc-600 dark:text-zinc-300" />
+              </span>
+              <span className="flex min-w-0 flex-1 items-center gap-2 text-[13px] font-medium leading-5 group-data-[collapsible=icon]:hidden">
                 <span className="truncate">
                   {t('folders.title', 'Pastas de Pacientes')}
                 </span>

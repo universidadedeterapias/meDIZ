@@ -28,13 +28,13 @@ export const ChatComposer = forwardRef<HTMLInputElement, ChatComposerProps>(
     return (
       <div
         className={cn(
-          'flex w-full items-center gap-1.5 rounded-[1.35rem] bg-gradient-to-r from-white via-white to-violet-50/80 p-1.5 shadow-2xl shadow-violet-950/15 transition-all duration-300 focus-within:-translate-y-0.5 focus-within:ring-2 focus-within:ring-violet-500 focus-within:ring-offset-2 dark:from-zinc-900 dark:via-zinc-900 dark:to-violet-950/70 dark:shadow-black/35',
+          'flex w-full items-center gap-1.5 rounded-[1.35rem] bg-gradient-to-r from-white via-white to-violet-50/70 p-1.5 shadow-2xl shadow-violet-950/15 transition-all duration-300 focus-within:-translate-y-0.5 focus-within:ring-2 focus-within:ring-violet-500 focus-within:ring-offset-2 dark:from-zinc-900 dark:via-zinc-900 dark:to-violet-950/20 dark:shadow-black/35',
           className
         )}
       >
         <span
           role="img"
-          className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-100 to-fuchsia-100 text-violet-700 shadow-inner dark:from-violet-500/20 dark:to-fuchsia-500/15 dark:text-violet-200"
+          className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-100 to-purple-100 text-violet-700 shadow-inner dark:from-violet-500/20 dark:to-purple-500/10 dark:text-violet-200"
           aria-label={t('chat.home.microphone.unavailable', 'Áudio em breve')}
           title={t('chat.home.microphone.unavailable', 'Áudio em breve')}
         >
@@ -61,7 +61,7 @@ export const ChatComposer = forwardRef<HTMLInputElement, ChatComposerProps>(
           size="icon"
           onClick={onSubmit}
           disabled={!canSubmit}
-          className="size-11 shrink-0 rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/30 transition-all hover:scale-[1.03] hover:shadow-xl hover:shadow-violet-500/35 focus-visible:ring-violet-500 disabled:shadow-none"
+          className="size-11 shrink-0 rounded-2xl bg-gradient-to-br from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/25 transition-all hover:scale-[1.03] hover:shadow-xl hover:shadow-violet-500/30 focus-visible:ring-violet-500 disabled:shadow-none"
           aria-label={t('chat.send', 'Enviar')}
         >
           <Send className="size-4" />

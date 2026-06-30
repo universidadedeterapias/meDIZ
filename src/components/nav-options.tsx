@@ -11,8 +11,7 @@ import {
   PlaySquare,
   Search,
   Star,
-  UserRound,
-  type LucideIcon
+  UserRound
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Link from 'next/link'
@@ -23,7 +22,6 @@ import { FaWhatsapp } from 'react-icons/fa'
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { NavFolders } from '@/components/nav-folders'
 import { SidebarNavSection } from '@/components/sidebar/SidebarNavSection'
-import { Button } from '@/components/ui/button'
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -36,18 +34,18 @@ import { getUpgradeLink } from '@/lib/upgradeLinks'
 import { cn } from '@/lib/utils'
 
 const navLinkClass =
-  'flex items-center gap-2 text-sm font-normal text-sidebar-foreground w-full group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 [&_svg]:size-4 [&_svg]:shrink-0'
+  'flex w-full items-center gap-2.5 text-[13px] font-medium leading-5 text-zinc-700 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 dark:text-zinc-200'
 
 const navItemButtonClass =
-  'h-9 px-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground'
+  'h-9 rounded-xl px-2.5 transition-all duration-200 hover:bg-white/40 hover:shadow-sm hover:shadow-violet-950/5 data-[active=true]:bg-gradient-to-r data-[active=true]:from-violet-500/20 data-[active=true]:via-purple-500/[0.15] data-[active=true]:to-fuchsia-500/[0.15] data-[active=true]:font-semibold data-[active=true]:text-violet-900 data-[active=true]:shadow-sm data-[active=true]:shadow-violet-500/10 dark:hover:bg-white/[0.07] dark:data-[active=true]:text-violet-100 group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:!p-2'
 
 const newFeatureBadgeClass =
-  'shrink-0 rounded-full bg-green-500 px-2 py-0.5 text-[10px] font-bold leading-none text-white'
+  'shrink-0 rounded-full bg-emerald-500/[0.15] px-1.5 py-0.5 text-[9px] font-bold leading-none text-emerald-700 dark:bg-emerald-400/[0.15] dark:text-emerald-300'
 
 type NavItemProps = {
   href: string
   label: string
-  icon: LucideIcon
+  icon: React.ElementType
   isActive?: boolean
   iconClassName?: string
   showNewBadge?: boolean
@@ -69,17 +67,21 @@ function NavItem({
 }: NavItemProps) {
   const content = (
     <>
-      <Icon
-        className={cn('size-4 shrink-0', iconClassName ?? 'text-sidebar-foreground')}
-        strokeWidth={1.5}
-      />
+      <span className="flex size-5 shrink-0 items-center justify-center">
+        <Icon
+          className={cn(
+            'size-[18px] shrink-0 transition-colors',
+            isActive ? 'text-violet-700 dark:text-violet-200' : iconClassName ?? 'text-zinc-600 dark:text-zinc-300'
+          )}
+        />
+      </span>
       <span className="flex min-w-0 flex-1 items-center gap-2 group-data-[collapsible=icon]:hidden">
         <span className="truncate">{label}</span>
         {showNewBadge || badgeLabel ? (
           <span
             className={cn(
               newFeatureBadgeClass,
-              badgeLabel && 'bg-amber-500 dark:bg-amber-600'
+              badgeLabel && 'bg-amber-500/15 text-amber-700 ring-amber-500/20 dark:bg-amber-400/15 dark:text-amber-300'
             )}
           >
             {badgeLabel ?? 'NOVO'}
@@ -178,7 +180,7 @@ export function NavOptions({
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                className="mx-2 mb-1 h-9 rounded-lg border border-yellow-300 border-l-4 bg-yellow-50 px-2 dark:border-yellow-700 dark:bg-yellow-950/40"
+                className="mx-0.5 mb-1 h-9 rounded-xl bg-gradient-to-r from-amber-100/80 via-yellow-50/75 to-orange-100/65 px-2.5 text-amber-950 shadow-sm shadow-amber-900/10 transition-colors hover:from-amber-100 dark:from-amber-500/15 dark:via-yellow-500/10 dark:to-orange-500/10 dark:text-amber-100"
               >
                 <a
                   href={getUpgradeLink(language)}
@@ -186,10 +188,9 @@ export function NavOptions({
                   rel="noopener noreferrer"
                   className={`${navLinkClass} font-semibold text-yellow-900 dark:text-yellow-200`}
                 >
-                  <Star
-                    className="size-4 text-yellow-700 dark:text-yellow-300"
-                    strokeWidth={1.5}
-                  />
+                  <span className="flex size-5 shrink-0 items-center justify-center">
+                    <Star className="size-[18px] text-amber-700 dark:text-amber-300" />
+                  </span>
                   <span className="group-data-[collapsible=icon]:hidden">
                     {t('sidebar.subscriptionPlus', 'Assinatura Plus')}
                   </span>
@@ -286,51 +287,28 @@ export function NavOptions({
 
       <SidebarNavSection title={t('sidebar.section.support', 'Suporte e Conta')}>
         <SidebarMenu className="gap-0.5">
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="h-9 px-2"
-              tooltip={t('sidebar.supportWhatsapp', 'Suporte (WhatsApp)')}
-            >
-              <a
-                href="https://wa.me/5555997230707?text=Ol%C3%A1!%0AEstou%20no%20app%20_me_*DIZ!*%20e%20preciso%20de%20ajuda"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={navLinkClass}
-              >
-                <FaWhatsapp size={16} className="shrink-0" />
-                <span className="truncate group-data-[collapsible=icon]:hidden">
-                  {t('sidebar.supportWhatsapp', 'Suporte (WhatsApp)')}
-                </span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          <NavItem
+            href="https://wa.me/5555997230707?text=Ol%C3%A1!%0AEstou%20no%20app%20_me_*DIZ!*%20e%20preciso%20de%20ajuda"
+            label={t('sidebar.supportWhatsapp', 'Suporte (WhatsApp)')}
+            icon={FaWhatsapp}
+            iconClassName="text-emerald-600 dark:text-emerald-400"
+            external
+          />
           <NavItem
             href="https://universidadedeterapias.com.br/termos-de-uso"
             label={t('sidebar.termsPolicies', 'Termos e Políticas')}
             icon={FileText}
             external
           />
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="h-9 px-2">
-              <Button
-                variant="link"
-                onClick={() => void handleLogout()}
-                className="flex h-auto w-full items-center justify-start gap-2 p-0 text-sm font-normal text-sidebar-foreground"
-              >
-                <LogOut className="size-4 shrink-0" />
-                <span className="truncate group-data-[collapsible=icon]:hidden">
-                  {t('navbar.logout', 'Sair')}
-                </span>
-              </Button>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          <NavItem
+            href="/login"
+            label={t('navbar.logout', 'Sair')}
+            icon={LogOut}
+            iconClassName="text-zinc-600 dark:text-zinc-300"
+            onClick={() => void handleLogout()}
+          />
         </SidebarMenu>
       </SidebarNavSection>
-
-      <p className="px-4 pb-4 pt-2 text-center text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-        meDIZ v0.1.0
-      </p>
 
       <UpgradeModal
         open={openUpgradeModal}
