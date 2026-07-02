@@ -12,11 +12,11 @@ import {
 import { useUser } from '@/contexts/user'
 import { FirstName, SurName, cn } from '@/lib/utils'
 import { NavOptions } from './nav-options'
-import { NavHistory } from './nav-history'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { SidebarSkeleton } from './SidebarSkeleton'
 import { useTranslation } from '@/i18n/useTranslation'
 import { glassPanelClass, glassShellClass } from '@/lib/glassStyles'
+import type { MedizAgent } from '@/lib/conversational-chat/config'
 import {
   Tooltip,
   TooltipContent,
@@ -36,6 +36,8 @@ type AppSidebarProps = {
   selectedThread: string | null
   onSelectSession: (threadId: string) => void
   onSelectSymptom?: (symptomText: string) => void
+  onNewChat?: () => void
+  onStartAgentChat?: (agent: MedizAgent) => void
 }
 
 const sidebarGlassSurface = cn(
@@ -142,9 +144,31 @@ function SidebarHeaderContent({
  * - enquanto carrega user: mostra header de loading
  * - depois que o user está pronto: avatar + nome e opções de navegação
  */
-export function AppSidebar({ history, selectedThread, onSelectSession, onSelectSymptom }: AppSidebarProps) {
+export function AppSidebar({
+  history: _history,
+  selectedThread: _selectedThread,
+  onSelectSession: _onSelectSession,
+  onSelectSymptom,
+  onNewChat,
+  onStartAgentChat
+}: AppSidebarProps) {
   const { sidebarUser, isLoadingSidebar } = useUser()
   const { t } = useTranslation()
+  const { setOpenMobile } = useSidebar()
+
+  const handleNewChat = onNewChat
+    ? () => {
+        onNewChat()
+        setOpenMobile(false)
+      }
+    : undefined
+
+  const handleStartAgentChat = onStartAgentChat
+    ? (agent: MedizAgent) => {
+        onStartAgentChat(agent)
+        setOpenMobile(false)
+      }
+    : undefined
   
   // Loading inicial - usa dados otimizados da sidebar
   if (isLoadingSidebar || !sidebarUser) {
@@ -160,7 +184,11 @@ export function AppSidebar({ history, selectedThread, onSelectSession, onSelectS
           <SidebarSkeleton />
         </SidebarHeader>
         <SidebarContent className={sidebarContentClass}>
-          <NavOptions onSelectSymptom={onSelectSymptom} />
+          <NavOptions
+            onSelectSymptom={onSelectSymptom}
+            onNewChat={handleNewChat}
+            onStartAgentChat={handleStartAgentChat}
+          />
         </SidebarContent>
       </Sidebar>
     )
@@ -193,7 +221,11 @@ export function AppSidebar({ history, selectedThread, onSelectSession, onSelectS
       />
 
       <SidebarContent className={sidebarContentClass}>
-        <NavOptions onSelectSymptom={onSelectSymptom} />
+        <NavOptions
+          onSelectSymptom={onSelectSymptom}
+          onNewChat={handleNewChat}
+          onStartAgentChat={handleStartAgentChat}
+        />
         {/*
           Quando quiser renderizar o histórico de sessões:
           descomente abaixo e passe as props corretas para o componente NavHistory,
@@ -206,13 +238,6 @@ export function AppSidebar({ history, selectedThread, onSelectSession, onSelectS
           onSelect={onSelectSession}
         />
         */}
-        {history.length > 0 ? (
-          <NavHistory
-            items={history}
-            selectedThread={selectedThread}
-            onSelect={onSelectSession}
-          />
-        ) : null}
       </SidebarContent>
 
       <SidebarFooter className="px-3 pb-3 pt-1 group-data-[collapsible=icon]:hidden">

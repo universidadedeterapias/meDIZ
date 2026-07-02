@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, MessageSquarePlus } from 'lucide-react'
+import { ArrowLeft, Bell, MessageSquarePlus } from 'lucide-react'
 
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -13,28 +13,42 @@ import { cn } from '@/lib/utils'
 
 type ChatAppHeaderProps = {
   onSuggestion: () => void
+  onBack?: () => void
 }
 
-export function ChatAppHeader({ onSuggestion }: ChatAppHeaderProps) {
+export function ChatAppHeader({ onSuggestion, onBack }: ChatAppHeaderProps) {
   const { t } = useTranslation()
 
   return (
     <header
       className={cn(
         glassShellClass,
-        'sticky top-0 z-40 w-full overflow-hidden rounded-b-2xl pt-[env(safe-area-inset-top)]',
+        'sticky top-0 z-40 w-full shrink-0 overflow-hidden rounded-b-2xl pt-[env(safe-area-inset-top)]',
         'md:top-2 md:mx-2 md:mt-2 md:w-auto md:rounded-2xl'
       )}
     >
       <div className="relative flex h-14 min-w-0 items-center justify-between px-2 sm:px-3">
         <div className="pointer-events-none absolute -right-10 -top-16 size-40 rounded-full bg-violet-300/25 blur-3xl dark:bg-violet-500/15" />
 
-        <SidebarTrigger
-          className={cn(
-            glassControlClass,
-            'relative size-9 shrink-0 rounded-xl md:size-9 [&_svg]:size-[18px]'
+        <div className="relative flex shrink-0 items-center gap-1.5">
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex size-9 items-center justify-center border-0 bg-transparent p-0 text-violet-700 shadow-none outline-none transition-colors hover:text-violet-950 focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:text-violet-200 dark:hover:text-white"
+              aria-label="Voltar"
+            >
+              <ArrowLeft className="size-5" strokeWidth={2} />
+            </button>
+          ) : (
+            <SidebarTrigger
+              className={cn(
+                glassControlClass,
+                'size-9 shrink-0 rounded-xl md:size-9 [&_svg]:size-[18px]'
+              )}
+            />
           )}
-        />
+        </div>
 
         <div className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2">
           <MedizChatV2Logo />

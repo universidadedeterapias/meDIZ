@@ -5,11 +5,15 @@ import {
   FileText,
   GraduationCap,
   HeartHandshake,
+  HeartPulse,
   Headphones,
+  History,
+  Home,
   Library,
   LogOut,
+  MessageSquarePlus,
+  PawPrint,
   PlaySquare,
-  Search,
   Star,
   UserRound
 } from 'lucide-react'
@@ -32,6 +36,7 @@ import { useTranslation } from '@/i18n/useTranslation'
 import { useLanguage } from '@/i18n/useLanguage'
 import { getUpgradeLink } from '@/lib/upgradeLinks'
 import { cn } from '@/lib/utils'
+import type { MedizAgent } from '@/lib/conversational-chat/config'
 
 const navLinkClass =
   'flex w-full items-center gap-2.5 text-[13px] font-medium leading-5 text-zinc-700 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 dark:text-zinc-200'
@@ -123,9 +128,13 @@ function NavItem({
 }
 
 export function NavOptions({
-  onSelectSymptom
+  onSelectSymptom,
+  onNewChat,
+  onStartAgentChat
 }: {
   onSelectSymptom?: (symptom: string) => void
+  onNewChat?: () => void
+  onStartAgentChat?: (agent: MedizAgent) => void
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -160,14 +169,74 @@ export function NavOptions({
 
   return (
     <>
-      <SidebarNavSection title={t('sidebar.section.search', 'Pesquisar')}>
+      <SidebarNavSection title={t('sidebar.section.chat', 'Chat')}>
         <SidebarMenu className="gap-0.5">
           <NavItem
             href="/chat"
-            label={t('sidebar.search', 'Pesquisar')}
-            icon={Search}
-            isActive={pathname === '/chat' || pathname.startsWith('/chat/')}
+            label={t('sidebar.newChat', 'Novo chat')}
+            icon={MessageSquarePlus}
+            isActive={pathname === '/chat' && !searchParams.get('start')}
             iconClassName="text-violet-600 dark:text-violet-400"
+            onClick={
+              onNewChat
+                ? (event) => {
+                    event.preventDefault()
+                    onNewChat()
+                  }
+                : undefined
+            }
+          />
+          <NavItem
+            href="/chat?start=body"
+            label={t('chat.home.agent.body.title', 'Meu corpo')}
+            icon={HeartPulse}
+            isActive={pathname === '/chat' && searchParams.get('start') === 'body'}
+            iconClassName="text-violet-600 dark:text-violet-400"
+            onClick={
+              onStartAgentChat
+                ? (event) => {
+                    event.preventDefault()
+                    onStartAgentChat('body')
+                  }
+                : undefined
+            }
+          />
+          <NavItem
+            href="/chat?start=home"
+            label={t('chat.home.agent.home.title', 'Minha casa')}
+            icon={Home}
+            isActive={pathname === '/chat' && searchParams.get('start') === 'home'}
+            iconClassName="text-sky-600 dark:text-sky-400"
+            onClick={
+              onStartAgentChat
+                ? (event) => {
+                    event.preventDefault()
+                    onStartAgentChat('home')
+                  }
+                : undefined
+            }
+          />
+          <NavItem
+            href="/chat?start=pet"
+            label={t('chat.home.agent.pet.title', 'Meu pet')}
+            icon={PawPrint}
+            isActive={pathname === '/chat' && searchParams.get('start') === 'pet'}
+            iconClassName="text-amber-600 dark:text-amber-400"
+            onClick={
+              onStartAgentChat
+                ? (event) => {
+                    event.preventDefault()
+                    onStartAgentChat('pet')
+                  }
+                : undefined
+            }
+          />
+          <NavItem
+            href="/chat/history"
+            label={t('sidebar.chatHistory', 'Histórico')}
+            icon={History}
+            isActive={pathname === '/chat/history'}
+            iconClassName="text-zinc-600 dark:text-zinc-300"
           />
         </SidebarMenu>
       </SidebarNavSection>
