@@ -1,7 +1,14 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { HeartPulse, Home, PawPrint, Plus, Sparkles } from 'lucide-react'
+import {
+  HeartPulse,
+  Home,
+  MessageCircleMore,
+  PawPrint,
+  Plus,
+  Sparkles
+} from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 
 import { ChatComposer } from '@/components/chat/ChatComposer'
@@ -29,6 +36,7 @@ type ChatConversationProps = {
 }
 
 const agentMeta = {
+  concierge: { label: 'meDIZ!', Icon: MessageCircleMore },
   body: { label: 'Meu corpo', Icon: HeartPulse },
   home: { label: 'Minha casa', Icon: Home },
   pet: { label: 'Meu pet', Icon: PawPrint }
@@ -53,7 +61,7 @@ export function ChatConversation({
   }, [loading, messages])
 
   return (
-    <section className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-3 pb-4 sm:px-5 sm:pb-6">
+    <section className="mx-auto flex h-full min-h-0 w-full max-w-4xl flex-1 flex-col overflow-hidden px-3 pb-4 sm:px-5 sm:pb-6">
       <div className="relative z-10 flex shrink-0 items-center justify-between gap-3 bg-transparent py-3">
         <div className="flex min-w-0 items-center gap-2.5 rounded-full bg-white/70 px-3 py-2 shadow-lg shadow-violet-950/5 backdrop-blur-xl dark:bg-zinc-900/70 dark:shadow-black/20">
           <span className="flex size-8 items-center justify-center rounded-full bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-200">
@@ -87,12 +95,14 @@ export function ChatConversation({
             <div
               key={message.id}
               className={cn(
-                'flex items-end gap-2.5',
-                message.role === 'USER' ? 'justify-end' : 'justify-start'
+                'flex gap-2.5',
+                message.role === 'USER'
+                  ? 'items-end justify-end'
+                  : 'items-start justify-start'
               )}
             >
               {message.role === 'ASSISTANT' ? (
-                <span className="mb-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-white/75 text-violet-700 shadow-md shadow-violet-950/10 backdrop-blur-xl dark:bg-zinc-900/80 dark:text-violet-200">
+                <span className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-white/75 text-violet-700 shadow-md shadow-violet-950/10 backdrop-blur-xl dark:bg-zinc-900/80 dark:text-violet-200">
                   <Sparkles className="size-4" />
                 </span>
               ) : null}
@@ -102,7 +112,7 @@ export function ChatConversation({
                   'max-w-[min(86%,36rem)] px-4 py-3 text-sm leading-relaxed shadow-lg',
                   message.role === 'USER'
                     ? 'rounded-[1.35rem] rounded-br-md bg-gradient-to-br from-violet-600 to-purple-600 text-white shadow-violet-600/15'
-                    : 'rounded-[1.35rem] rounded-bl-md bg-white/80 text-zinc-800 shadow-violet-950/5 backdrop-blur-xl dark:bg-zinc-900/80 dark:text-zinc-100 dark:shadow-black/20'
+                    : 'rounded-[1.35rem] rounded-tl-md bg-white/80 text-zinc-800 shadow-violet-950/5 backdrop-blur-xl dark:bg-zinc-900/80 dark:text-zinc-100 dark:shadow-black/20'
                 )}
               >
                 {message.role === 'ASSISTANT' ? (
@@ -141,7 +151,7 @@ export function ChatConversation({
         onChange={onInputChange}
         onSubmit={onSubmit}
         placeholder="Continue a conversa…"
-        className="mx-auto max-w-2xl"
+        className="mx-auto shrink-0 max-w-2xl"
       />
     </section>
   )

@@ -41,6 +41,13 @@ export async function requestConversationalResponse(input: {
   chatKind: ConversationalChatKind
   agent?: MedizAgent
   simulatorMode?: SimulatorMode
+  routingState?: {
+    status?: string | null
+    destination?: string | null
+    intentSummary?: string | null
+    questionCount?: number
+  }
+  conciergeEntryPoint?: string
 }): Promise<N8nAssistantResponse> {
   const langMapping = getLanguageMapping(input.language)
   let messageWithLanguage = input.message
@@ -77,7 +84,9 @@ export async function requestConversationalResponse(input: {
     instrucaoIdioma: langMapping.instruction,
     languageInstruction: langMapping.instruction,
     languageName: langMapping.nameEnglish,
-    nomeIdioma: langMapping.namePortuguese
+    nomeIdioma: langMapping.namePortuguese,
+    routingState: input.routingState ?? null,
+    conciergeEntryPoint: input.conciergeEntryPoint ?? null
   }
 
   const webhookUrl = getConversationalWebhookUrl(input.chatKind)

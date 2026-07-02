@@ -1,4 +1,9 @@
 import { z } from 'zod'
+import type {
+  ConciergeDestination,
+  ConciergeRouteStatus,
+  SpecialistAgent
+} from '@/lib/conversational-chat/config'
 
 const assistantMessageSchema = z.object({
   type: z.literal('text'),
@@ -18,12 +23,55 @@ const structuredResponseSchema = z.object({
   action: assistantActionSchema.optional()
 })
 
+const conciergeResponseSchema = z.object({
+  version: z.literal('3.0'),
+  agent: z.literal('concierge'),
+  messages: z.array(assistantMessageSchema).min(1).max(2),
+  routing: z.object({
+    status: z.enum([
+      'collecting',
+      'awaiting_confirmation',
+      'ready_to_route',
+      'needs_selection'
+    ]),
+    intentSummary: z.string().trim().max(1000),
+    suggestedDestination: z.enum([
+      'medizpesquisa',
+      'minha_casa',
+      'meu_pet',
+      'meatende',
+      'simulador',
+      'professor',
+      'indefinido'
+    ]),
+    confidence: z.number().min(0).max(1),
+    requiresConfirmation: z.boolean(),
+    shouldRoute: z.boolean(),
+    clarificationCount: z.number().int().min(0).max(3),
+    detectedLanguage: z.string().trim().min(2).max(20),
+    handoffMessage: z.string().trim().max(2000)
+  })
+})
+
+type ConciergeRouting = {
+  status: ConciergeRouteStatus
+  intentSummary: string
+  suggestedDestination: ConciergeDestination
+  confidence: number
+  requiresConfirmation: boolean
+  shouldRoute: boolean
+  clarificationCount: number
+  detectedLanguage: string
+  handoffMessage: string
+}
+
 export type N8nAssistantResponse = {
-  version: '2.0' | 'legacy'
-  agent?: 'body' | 'home' | 'pet'
+  version: '3.0' | '2.0' | 'legacy'
+  agent?: SpecialistAgent
   status: 'completed' | 'awaiting_confirmation'
   messages: Array<{ type: 'text'; content: string }>
   action?: { type: 'share' | 'none'; label?: string }
+  routing?: ConciergeRouting
 }
 
 function normalizeReplyText(text: string): string {
@@ -74,6 +122,8 @@ function findStructuredResponse(value: unknown, depth = 0): unknown {
   const parsed = tryParseJson(value)
   const direct = structuredResponseSchema.safeParse(parsed)
   if (direct.success) return direct.data
+  const concierge = conciergeResponseSchema.safeParse(parsed)
+  if (concierge.success) return concierge.data
 
   if (Array.isArray(parsed)) {
     for (const item of parsed) {
@@ -133,6 +183,22 @@ export function parseN8nAssistantReply(
   const parsed = tryParseJson(trimmed)
   const structured = findStructuredResponse(parsed)
   if (structured) {
+    const concierge = conciergeResponseSchema.safeParse(structured)
+    if (concierge.success) {
+      return {
+        version: '3.0',
+        agent: undefined,
+        status:
+          concierge.data.routing.status === 'awaiting_confirmation'
+            ? 'awaiting_confirmation'
+            : 'completed',
+        messages: concierge.data.messages.map((message) => ({
+          type: 'text' as const,
+          content: normalizeReplyText(message.content)
+        })),
+        routing: concierge.data.routing as ConciergeRouting
+      }
+    }
     const result = structuredResponseSchema.parse(structured)
     return {
       version: '2.0',

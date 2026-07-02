@@ -3,13 +3,10 @@
 
 /// <reference lib="dom" />
 
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import {
-  AppSidebar,
-  type SessionHistoryItem
-} from '@/components/app-sidebar'
+import { AppSidebar } from '@/components/app-sidebar'
 import { ChatAppHeader } from '@/components/chat/ChatAppHeader'
 import {
   ChatConversation,
@@ -26,7 +23,11 @@ import {
 } from '@/components/ui/sidebar'
 import { useTranslation } from '@/i18n/useTranslation'
 import { FirstName } from '@/lib/utils'
-import { isMedizAgent } from '@/lib/conversational-chat/config'
+import {
+  type ConciergeEntryPoint,
+  getAgentWelcomeMessage,
+  isMedizAgent
+} from '@/lib/conversational-chat/config'
 import { getUpgradeLink } from '@/lib/upgradeLinks'
 import { User } from '@/types/User'
 
@@ -47,6 +48,7 @@ type RawUser = {
 
 export default function Page() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { t, language } = useTranslation()
 
   // Estados principais
@@ -57,12 +59,14 @@ export default function Page() {
   const [loading, setLoading] = useState(false)
   const [revealingMessages, setRevealingMessages] = useState(false)
   const [selectedThread, setSelectedThread] = useState<string | null>(null)
-  const [selectedAgent, setSelectedAgent] = useState<AgentId>('body')
-  const [history, setHistory] = useState<SessionHistoryItem[]>([])
+  const [selectedAgent, setSelectedAgent] = useState<AgentId>('concierge')
+  const [conciergeEntryPoint, setConciergeEntryPoint] =
+    useState<ConciergeEntryPoint>('free')
   const [chatError, setChatError] = useState<string | null>(null)
   const [limitReached, setLimitReached] = useState(false)
   const revealTimersRef = useRef<number[]>([])
   const skipNextThreadLoadRef = useRef(false)
+  const handledSidebarStartRef = useRef<string | null>(null)
 
   const clearRevealTimers = () => {
     revealTimersRef.current.forEach((timer) => window.clearTimeout(timer))
@@ -142,28 +146,6 @@ export default function Page() {
     }
   }, [router])
 
-  const loadHistory = useCallback(async () => {
-    try {
-      const response = await fetch(
-        '/api/conversational-chat/sessions?chatKind=SEARCH'
-      )
-      if (response.status === 403) {
-        setHistory([])
-        return
-      }
-      if (!response.ok) return
-
-      const data = await response.json()
-      setHistory(Array.isArray(data.sessions) ? data.sessions : [])
-    } catch (error) {
-      console.error('[chat-history] Falha ao carregar histórico', error)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!checkingProfile) void loadHistory()
-  }, [checkingProfile, loadHistory])
-
   // 2) Carrega respostas do chat quando selecionar uma thread
   useEffect(() => {
     if (checkingProfile || !selectedThread) return
@@ -217,7 +199,8 @@ export default function Page() {
   // Função reutilizável para enviar mensagem
   const handleSendMessageFromText = async (
     text: string,
-    threadOverride: string | null = selectedThread
+    threadOverride: string | null = selectedThread,
+    agentOverride: AgentId = selectedAgent
   ) => {
     if (loading || revealingMessages) return
     const trimmedText = text.trim()
@@ -251,7 +234,9 @@ export default function Page() {
           language,
           threadId: threadOverride ?? undefined,
           chatKind: 'SEARCH',
-          agent: selectedAgent
+          agent: agentOverride,
+          conciergeEntryPoint:
+            agentOverride === 'concierge' ? conciergeEntryPoint : undefined
         })
       }).finally(() => clearTimeout(timeoutId))
 
@@ -267,6 +252,10 @@ export default function Page() {
       }
       if (!res.ok) {
         throw new Error(data.error || 'Erro ao enviar mensagem')
+      }
+
+      if (isMedizAgent(data.agent)) {
+        setSelectedAgent(data.agent)
       }
 
       if (data.threadId && data.threadId !== selectedThread) {
@@ -307,7 +296,9 @@ export default function Page() {
       if (data.shouldShowPopup) {
         setTimeout(() => setShowPopup(true), 2000)
       }
-      void loadHistory()
+      if (typeof data.redirectTo === 'string' && data.redirectTo.startsWith('/')) {
+        window.setTimeout(() => router.push(data.redirectTo), 650)
+      }
     } catch (err) {
       setMessages((current) =>
         current.filter((message) => message.id !== optimisticId)
@@ -331,10 +322,74 @@ export default function Page() {
   const startNewConversation = () => {
     clearRevealTimers()
     setSelectedThread(null)
+    setSelectedAgent('concierge')
+    setConciergeEntryPoint('free')
     setMessages([])
     setInput('')
     setChatError(null)
   }
+
+  const startConversationFromHome = (
+    agent: AgentId,
+    welcomeMessage: string,
+    entryPoint: ConciergeEntryPoint = 'free'
+  ) => {
+    if (loading || revealingMessages) return
+    clearRevealTimers()
+    setSelectedAgent(agent)
+    setConciergeEntryPoint(agent === 'concierge' ? entryPoint : 'free')
+    setSelectedThread(null)
+    setMessages([
+      {
+        id: `welcome-${agent}`,
+        role: 'ASSISTANT',
+        content: welcomeMessage,
+        createdAt: new Date().toISOString()
+      }
+    ])
+    setInput('')
+    setChatError(null)
+  }
+
+  const getAgentStarter = useCallback(
+    (agent: AgentId) => {
+      return t(`chat.agent.${agent}.welcome`, getAgentWelcomeMessage(agent))
+    },
+    [t]
+  )
+
+  useEffect(() => {
+    if (checkingProfile || loading || revealingMessages) return
+    const requestedThread = searchParams.get('threadId')?.trim()
+    if (requestedThread) {
+      const requestKey = `thread:${requestedThread}`
+      if (handledSidebarStartRef.current === requestKey) return
+      handledSidebarStartRef.current = requestKey
+      router.replace('/chat', { scroll: false })
+      setSelectedThread(requestedThread)
+      return
+    }
+
+    const requestedAgent = searchParams.get('start')
+    if (!isMedizAgent(requestedAgent)) return
+
+    const requestKey = `${requestedAgent}:${searchParams.toString()}`
+    if (handledSidebarStartRef.current === requestKey) return
+    handledSidebarStartRef.current = requestKey
+
+    router.replace('/chat', { scroll: false })
+    startConversationFromHome(
+      requestedAgent,
+      getAgentStarter(requestedAgent)
+    )
+  }, [
+    checkingProfile,
+    getAgentStarter,
+    loading,
+    revealingMessages,
+    router,
+    searchParams
+  ])
 
   // Loading enquanto checa o perfil
   if (checkingProfile || !user) {
@@ -363,17 +418,15 @@ export default function Page() {
 
   // Layout principal do chat
   return (
-    <SidebarProvider className="relative isolate overflow-hidden bg-gradient-to-br from-violet-50 via-slate-50 to-violet-100/70 before:pointer-events-none before:fixed before:-left-28 before:-top-24 before:z-0 before:size-96 before:rounded-full before:bg-violet-300/20 before:blur-3xl after:pointer-events-none after:fixed after:-bottom-32 after:right-0 after:z-0 after:size-80 after:rounded-full after:bg-slate-200/25 after:blur-3xl dark:from-[#0f0e14] dark:via-[#111017] dark:to-[#17131f] dark:before:bg-violet-700/10 dark:after:bg-violet-950/10">
+    <SidebarProvider className="relative isolate h-svh overflow-hidden bg-gradient-to-br from-violet-50 via-slate-50 to-violet-100/70 before:pointer-events-none before:fixed before:-left-28 before:-top-24 before:z-0 before:size-96 before:rounded-full before:bg-violet-300/20 before:blur-3xl after:pointer-events-none after:fixed after:-bottom-32 after:right-0 after:z-0 after:size-80 after:rounded-full after:bg-slate-200/25 after:blur-3xl dark:from-[#0f0e14] dark:via-[#111017] dark:to-[#17131f] dark:before:bg-violet-700/10 dark:after:bg-violet-950/10">
       <AppSidebar
-        history={history}
+        history={[]}
         selectedThread={selectedThread}
-        onSelectSession={(threadId) => {
-          const target = history.find((item) => item.threadId === threadId)
-          setSelectedAgent(
-            target && isMedizAgent(target.agent) ? target.agent : 'body'
-          )
-          setSelectedThread(threadId)
-        }}
+        onSelectSession={setSelectedThread}
+        onNewChat={startNewConversation}
+        onStartAgentChat={(agent) =>
+          startConversationFromHome(agent, getAgentStarter(agent))
+        }
         onSelectSymptom={(symptomText) => {
           setInput(symptomText)
           setMessages([])
@@ -382,20 +435,19 @@ export default function Page() {
         }}
       />
 
-      <SidebarInset className="min-w-0 overflow-x-hidden !bg-transparent">
-        <div className="flex min-h-svh flex-col bg-transparent text-foreground">
+      <SidebarInset className="h-svh min-w-0 overflow-hidden !bg-transparent">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden bg-transparent text-foreground">
           <ChatAppHeader onSuggestion={() => router.push('/suggestion')} />
 
-          <main className="flex w-full flex-1 flex-col overflow-x-hidden bg-transparent">
+          <main className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-transparent">
             {messages.length === 0 && !loading ? (
               <ChatHomeExperience
                 userName={FirstName(user.name)}
                 input={input}
                 loading={loading || revealingMessages}
-                selectedAgent={selectedAgent}
                 onInputChange={setInput}
-                onAgentChange={setSelectedAgent}
                 onSubmit={handleSendMessage}
+                onStartConversation={startConversationFromHome}
               />
             ) : (
               <ChatConversation

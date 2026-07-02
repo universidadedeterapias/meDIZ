@@ -75,7 +75,16 @@ export async function getOrderedThreadMessages(
 export async function getChatSessionForUser(threadId: string, userId: string) {
   return prisma.chatSession.findFirst({
     where: { threadId, userId },
-    select: { id: true, threadId: true, chatKind: true, agent: true }
+    select: {
+      id: true,
+      threadId: true,
+      chatKind: true,
+      agent: true,
+      routingStatus: true,
+      routingDestination: true,
+      routingIntentSummary: true,
+      routingQuestionCount: true
+    }
   })
 }
 
