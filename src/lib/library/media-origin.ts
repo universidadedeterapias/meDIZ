@@ -79,11 +79,11 @@ export function isAllowedStreamFetchDest(
   fetchDest: string | null,
   kind: LibraryMediaKind
 ): boolean {
-  if (fetchDest === 'document' || fetchDest === 'embed') return false
+  if (fetchDest === 'document') return false
 
   if (kind === 'pdf') {
     // iframe: visualizador legado; empty/null: pdf.js no app (mesma origem + token)
-    return fetchDest === 'iframe' || fetchDest === 'empty' || !fetchDest
+    return fetchDest === 'iframe' || fetchDest === 'embed' || fetchDest === 'empty' || !fetchDest
   }
   if (kind === 'audio') {
     return !fetchDest || fetchDest === 'audio' || fetchDest === 'video'

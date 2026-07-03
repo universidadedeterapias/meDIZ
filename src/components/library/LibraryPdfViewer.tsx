@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
-import { apiFetch } from '@/lib/fetchClient'
 import { cn } from '@/lib/utils'
 
 type LibraryPdfViewerProps = {
@@ -20,67 +19,31 @@ export function LibraryPdfViewer({
   onReady,
   onError
 }: LibraryPdfViewerProps) {
-  const [blobUrl, setBlobUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
-  const blobRef = useRef<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const [isIOS, setIsIOS] = useState(false)
 
   useEffect(() => {
-    let cancelled = false
+    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent))
+    setMounted(true)
+  }, [])
 
-    async function loadPdf() {
-      setLoading(true)
-      setError(false)
-      setBlobUrl(null)
+  useEffect(() => {
+    setLoading(true)
+    setError(false)
+  }, [streamUrl])
 
-      if (blobRef.current) {
-        URL.revokeObjectURL(blobRef.current)
-        blobRef.current = null
-      }
+  const handleLoad = () => {
+    setLoading(false)
+    onReady?.()
+  }
 
-      try {
-        const response = await apiFetch(streamUrl, { credentials: 'include' })
-        if (!response.ok) throw new Error('fetch_failed')
-
-        const buffer = await response.arrayBuffer()
-        if (buffer.byteLength === 0) throw new Error('empty_pdf')
-
-        const header = new Uint8Array(buffer.slice(0, 4))
-        if (!String.fromCharCode(...header).startsWith('%PDF')) {
-          throw new Error('invalid_pdf')
-        }
-
-        const blob = new Blob([buffer], { type: 'application/pdf' })
-        const objectUrl = URL.createObjectURL(blob)
-
-        if (cancelled) {
-          URL.revokeObjectURL(objectUrl)
-          return
-        }
-
-        blobRef.current = objectUrl
-        setBlobUrl(objectUrl)
-        setLoading(false)
-        onReady?.()
-      } catch {
-        if (!cancelled) {
-          setLoading(false)
-          setError(true)
-          onError?.()
-        }
-      }
-    }
-
-    void loadPdf()
-
-    return () => {
-      cancelled = true
-      if (blobRef.current) {
-        URL.revokeObjectURL(blobRef.current)
-        blobRef.current = null
-      }
-    }
-  }, [streamUrl, onReady, onError])
+  const handleError = () => {
+    setLoading(false)
+    setError(true)
+    onError?.()
+  }
 
   if (error) {
     return (
@@ -106,22 +69,25 @@ export function LibraryPdfViewer({
         </div>
       ) : null}
 
-      {blobUrl ? (
-        typeof navigator !== 'undefined' &&
-        /iPad|iPhone|iPod/.test(navigator.userAgent) ? (
-          <embed
-            title={title}
-            src={blobUrl}
-            type="application/pdf"
-            className={viewerClassName}
-          />
-        ) : (
-          <iframe
-            title={title}
-            src={`${blobUrl}#view=FitH`}
-            className={viewerClassName}
-          />
-        )
+      {mounted && isIOS ? (
+        <embed
+          key={streamUrl}
+          title={title}
+          src={streamUrl}
+          type="application/pdf"
+          className={viewerClassName}
+          onLoad={handleLoad}
+          onError={handleError}
+        />
+      ) : mounted ? (
+        <iframe
+          key={streamUrl}
+          title={title}
+          src={`${streamUrl}#view=FitH`}
+          className={viewerClassName}
+          onLoad={handleLoad}
+          onError={handleError}
+        />
       ) : null}
     </div>
   )
