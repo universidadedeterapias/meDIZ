@@ -47,6 +47,7 @@ model User {
   cpf                     String?            @db.VarChar(14)
   pdfDownloads            PdfDownload[]
   pdfDownloadTokens       PdfDownloadToken[]
+  pdfDownloadJobs         PdfDownloadJob[]
 
   @@index([mensagem_enviada])
   @@index([status_verificacao])
@@ -564,4 +565,44 @@ model PdfDownloadToken {
 
   @@index([userId, expiresAt])
   @@map("pdf_download_tokens")
+}
+
+enum PdfDownloadJobStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+  EXPIRED
+}
+
+/// Preparacao assincrona de copias licenciadas para entrega direta pelo R2.
+model PdfDownloadJob {
+  id               String               @id @default(uuid())
+  userId           String               @map("user_id")
+  productId        String               @map("product_id") @db.VarChar(36)
+  status           PdfDownloadJobStatus @default(PENDING)
+  dedupeKey        String               @unique @map("dedupe_key") @db.VarChar(160)
+  watermarkVersion String               @default("v1") @map("watermark_version") @db.VarChar(16)
+  locale           String               @default("pt-BR") @db.VarChar(8)
+  sourceMediaFile  String               @map("source_media_file") @db.Text
+  sourcePermission String               @map("source_permission") @db.VarChar(32)
+  fileLabel        String               @map("file_label") @db.VarChar(255)
+  r2Key            String?              @map("r2_key") @db.Text
+  fileName         String?              @map("file_name") @db.VarChar(160)
+  sizeBytes        Int?                 @map("size_bytes")
+  errorCode        String?              @map("error_code") @db.VarChar(80)
+  attempts         Int                  @default(0)
+  countedAt        DateTime?            @map("counted_at")
+  startedAt        DateTime?            @map("started_at")
+  completedAt      DateTime?            @map("completed_at")
+  expiresAt        DateTime              @map("expires_at")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, productId, status])
+  @@index([status, createdAt])
+  @@index([expiresAt])
+  @@map("pdf_download_jobs")
 }
