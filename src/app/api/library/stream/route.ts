@@ -147,8 +147,9 @@ export async function GET(request: NextRequest) {
 
   const mediaKind = resolveMediaKind(payload.src, payload.kind, payload.perm)
   const fetchDest = request.headers.get('sec-fetch-dest')
+  const fetchSite = request.headers.get('sec-fetch-site')
 
-  if (!isAllowedStreamFetchDest(fetchDest, mediaKind)) {
+  if (!isAllowedStreamFetchDest(fetchDest, mediaKind, fetchSite)) {
     return NextResponse.json(
       {
         error:
