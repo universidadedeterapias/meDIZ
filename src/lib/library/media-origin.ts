@@ -77,14 +77,12 @@ export function buildOriginFetchHeaders(): HeadersInit {
 /** Bloqueia abrir o stream direto no navegador (barra de endereço / nova aba). */
 export function isAllowedStreamFetchDest(
   fetchDest: string | null,
-  kind: LibraryMediaKind,
-  fetchSite: string | null = null
+  kind: LibraryMediaKind
 ): boolean {
-  // Safari no iOS pode promover um PDF embutido para uma navegação de
-  // documento. Aceitamos esse caso apenas quando o próprio navegador atesta
-  // que a requisição veio da mesma origem; navegação direta continua bloqueada.
+  // Navegadores mobile podem promover o PDF embutido para uma navegação de
+  // documento. O endpoint ainda exige sessão, token assinado e autorização.
   if (fetchDest === 'document') {
-    return kind === 'pdf' && fetchSite === 'same-origin'
+    return kind === 'pdf'
   }
 
   if (kind === 'pdf') {
