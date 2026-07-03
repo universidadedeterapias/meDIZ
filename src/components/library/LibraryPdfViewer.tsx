@@ -22,10 +22,8 @@ export function LibraryPdfViewer({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [isIOS, setIsIOS] = useState(false)
 
   useEffect(() => {
-    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent))
     setMounted(true)
   }, [])
 
@@ -69,17 +67,7 @@ export function LibraryPdfViewer({
         </div>
       ) : null}
 
-      {mounted && isIOS ? (
-        <embed
-          key={streamUrl}
-          title={title}
-          src={streamUrl}
-          type="application/pdf"
-          className={viewerClassName}
-          onLoad={handleLoad}
-          onError={handleError}
-        />
-      ) : mounted ? (
+      {mounted ? (
         <iframe
           key={streamUrl}
           title={title}
