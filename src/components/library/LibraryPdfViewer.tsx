@@ -134,8 +134,11 @@ export function LibraryPdfViewer({
         const task = pdfjs.getDocument({
           url: streamUrl,
           withCredentials: true,
-          disableAutoFetch: false,
-          disableStream: false
+          // Prioriza os bytes da página visível. Sem essas duas opções, o
+          // PDF.js continua baixando antecipadamente o arquivo inteiro.
+          disableAutoFetch: true,
+          disableStream: true,
+          rangeChunkSize: 256 * 1024
         })
         loadingTask = task
         const pdf = await task.promise
