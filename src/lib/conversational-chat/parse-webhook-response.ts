@@ -144,9 +144,29 @@ function findStructuredResponse(value: unknown, depth = 0): unknown {
   return null
 }
 
+function extractTextFromMessages(value: unknown): string | null {
+  if (!value || typeof value !== 'object') return null
+  const messages = (value as Record<string, unknown>).messages
+  if (!Array.isArray(messages) || !messages.length) return null
+
+  const combined = messages
+    .map((message) =>
+      message && typeof message === 'object'
+        ? (message as Record<string, unknown>).content
+        : null
+    )
+    .filter((content): content is string => typeof content === 'string' && content.trim().length > 0)
+    .join('\n\n')
+
+  return combined || null
+}
+
 function extractTextFromObject(value: unknown): string | null {
   if (typeof value === 'string' && value.trim()) return value
   if (!value || typeof value !== 'object') return null
+
+  const fromMessages = extractTextFromMessages(value)
+  if (fromMessages) return fromMessages
 
   const record = value as Record<string, unknown>
   for (const key of [
