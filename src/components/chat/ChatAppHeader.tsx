@@ -8,7 +8,7 @@ import { MedizChatV2Logo } from '@/components/conversational-chat/MedizChatV2She
 import { Button } from '@/components/ui/button'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { useTranslation } from '@/i18n/useTranslation'
-import { glassControlClass, glassShellClass } from '@/lib/glassStyles'
+import { glassControlClass, glassPanelClass } from '@/lib/glassStyles'
 import { cn } from '@/lib/utils'
 
 type ChatAppHeaderProps = {
@@ -22,7 +22,7 @@ export function ChatAppHeader({ onSuggestion, onBack }: ChatAppHeaderProps) {
   return (
     <header
       className={cn(
-        glassShellClass,
+        glassPanelClass,
         'sticky top-0 z-40 w-full shrink-0 overflow-hidden rounded-b-2xl pt-[env(safe-area-inset-top)]',
         'md:top-2 md:mx-2 md:mt-2 md:w-auto md:rounded-2xl'
       )}

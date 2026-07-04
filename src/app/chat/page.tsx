@@ -447,6 +447,7 @@ export default function Page() {
                 loading={loading || revealingMessages}
                 onInputChange={setInput}
                 onSubmit={handleSendMessage}
+                onSubmitText={handleSendMessageFromText}
                 onStartConversation={startConversationFromHome}
               />
             ) : (
@@ -459,6 +460,7 @@ export default function Page() {
                 error={chatError}
                 onInputChange={setInput}
                 onSubmit={handleSendMessage}
+                onSubmitText={handleSendMessageFromText}
                 onNewConversation={startNewConversation}
               />
             )}

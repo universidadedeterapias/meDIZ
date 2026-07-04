@@ -18,6 +18,7 @@ import type {
   ConciergeEntryPoint,
   SpecialistAgent
 } from '@/lib/conversational-chat/config'
+import { glassPanelClass } from '@/lib/glassStyles'
 import { cn } from '@/lib/utils'
 
 export type AgentId = MedizAgent
@@ -28,6 +29,7 @@ type ChatHomeExperienceProps = {
   loading: boolean
   onInputChange: (value: string) => void
   onSubmit: () => void
+  onSubmitText?: (text: string) => void
   onStartConversation: (
     agent: AgentId,
     starter: string,
@@ -35,17 +37,14 @@ type ChatHomeExperienceProps = {
   ) => void
 }
 
-const agentStyles: Record<SpecialistAgent, { card: string; icon: string }> = {
+const agentStyles: Record<SpecialistAgent, { icon: string }> = {
   body: {
-    card: 'from-white via-white to-violet-50/70 dark:from-zinc-900 dark:via-zinc-900 dark:to-violet-950/20',
     icon: 'bg-gradient-to-br from-violet-100 to-purple-100 text-violet-700 dark:from-violet-500/25 dark:to-purple-500/15 dark:text-violet-200'
   },
   home: {
-    card: 'from-white via-white to-violet-50/70 dark:from-zinc-900 dark:via-zinc-900 dark:to-violet-950/20',
     icon: 'bg-gradient-to-br from-sky-100 to-cyan-100 text-sky-700 dark:from-sky-500/25 dark:to-cyan-500/20 dark:text-sky-200'
   },
   pet: {
-    card: 'from-white via-white to-violet-50/70 dark:from-zinc-900 dark:via-zinc-900 dark:to-violet-950/20',
     icon: 'bg-gradient-to-br from-amber-100 to-orange-100 text-amber-700 dark:from-amber-500/25 dark:to-orange-500/20 dark:text-amber-200'
   }
 }
@@ -56,6 +55,7 @@ export function ChatHomeExperience({
   loading,
   onInputChange,
   onSubmit,
+  onSubmitText,
   onStartConversation
 }: ChatHomeExperienceProps) {
   const { t } = useTranslation()
@@ -185,8 +185,8 @@ export function ChatHomeExperience({
                 disabled={loading}
                 aria-label={`${agent.title}: ${agent.description}`}
                 className={cn(
-                  'group relative flex min-h-24 items-center gap-4 overflow-hidden rounded-[1.5rem] bg-gradient-to-br p-4 text-left shadow-xl shadow-violet-950/10 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-violet-950/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 dark:shadow-black/25 dark:hover:shadow-black/35 sm:min-h-44 sm:flex-col sm:justify-center sm:p-6 sm:text-center',
-                  agentStyles[agent.id].card
+                  glassPanelClass,
+                  'group relative flex min-h-24 items-center gap-4 overflow-hidden rounded-[1.5rem] p-4 text-left shadow-xl shadow-violet-950/10 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-violet-950/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 dark:shadow-black/25 dark:hover:shadow-black/35 sm:min-h-44 sm:flex-col sm:justify-center sm:p-6 sm:text-center'
                 )}
               >
                 <span
@@ -222,6 +222,7 @@ export function ChatHomeExperience({
         loading={loading}
         onChange={onInputChange}
         onSubmit={submit}
+        onSubmitText={onSubmitText}
         placeholder={t('chat.home.input.placeholder', 'Conte o que está acontecendo…')}
         className="mt-9"
       />

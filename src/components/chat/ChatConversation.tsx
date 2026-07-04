@@ -32,6 +32,7 @@ type ChatConversationProps = {
   error?: string | null
   onInputChange: (value: string) => void
   onSubmit: () => void
+  onSubmitText?: (text: string) => void
   onNewConversation: () => void
 }
 
@@ -51,6 +52,7 @@ export function ChatConversation({
   error,
   onInputChange,
   onSubmit,
+  onSubmitText,
   onNewConversation
 }: ChatConversationProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -150,6 +152,7 @@ export function ChatConversation({
         loading={loading}
         onChange={onInputChange}
         onSubmit={onSubmit}
+        onSubmitText={onSubmitText}
         placeholder="Continue a conversa…"
         className="mx-auto shrink-0 max-w-2xl"
       />
