@@ -43,6 +43,9 @@ if (
   throw new Error('Workflow de producao ou template nao contem os nodes esperados')
 }
 
+webhook.parameters.path = 'chat-texto-v2'
+webhook.webhookId = randomUUID()
+
 const cloneNode = (node, name, position) => ({
   ...JSON.parse(JSON.stringify(node)),
   id: randomUUID(),

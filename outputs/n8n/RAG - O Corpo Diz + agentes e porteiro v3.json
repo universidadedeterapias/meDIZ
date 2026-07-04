@@ -3,74 +3,326 @@
   "nodes": [
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "c1a44b92-ebe6-4e50-a432-1316dc4c8986",
-              "name": "message",
-              "value": "={{ $json.body.message || $json.body.sintoma || '' }}",
-              "type": "string"
-            },
-            {
-              "id": "503d550d-c547-433b-8496-8db701c53dc6",
-              "name": "threadId",
-              "value": "={{ $json.body.threadId || $json.body.sessionId || $execution.id }}",
-              "type": "string"
-            },
-            {
-              "id": "970bfb62-b7b2-4197-854e-378fcd56307a",
-              "name": "agent",
-              "value": "={{ ['concierge', 'body', 'home', 'pet'].includes(($json.body.agent || 'concierge').toLowerCase()) ? ($json.body.agent || 'concierge').toLowerCase() : 'concierge' }}",
-              "type": "string"
-            },
-            {
-              "id": "2e4dd223-a3d9-4140-adc4-93c04d16a784",
-              "name": "language",
-              "value": "={{ $json.body.language || $json.body.locale || 'pt-BR' }}",
-              "type": "string"
-            },
-            {
-              "id": "b8b87478-64d4-416d-9946-a7790cb588e0",
-              "name": "routingState",
-              "value": "={{ $json.body.routingState || {} }}",
-              "type": "object"
-            },
-            {
-              "id": "eae86ab9-1563-4280-82cb-98b254a3e1e9",
-              "name": "conciergeEntryPoint",
-              "value": "={{ $json.body.conciergeEntryPoint || 'free' }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
+        "descriptionType": "manual",
+        "toolDescription": "Sempre chame essa tool para consultar informações da base de conhecimento \"Corpo DIZ\"",
+        "operation": "get",
+        "documentURL": "https://docs.google.com/document/d/1i9UDyeH9uAp82IQaFI49Ec5iPPGrkgR2P_j3FR5GxLY/edit?tab=t.0"
       },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "n8n-nodes-base.googleDocsTool",
+      "typeVersion": 2,
       "position": [
-        -2240,
-        688
+        -2080,
+        1744
       ],
-      "id": "cba532e9-8977-4cf4-8a5e-88df631a9188",
-      "name": "Extrai Dados Texto"
+      "id": "832bf1c7-4510-449f-bd0e-20ab9cc918b5",
+      "name": "corpo_diz",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "vSmLEzqSoLiPhvaG",
+          "name": "Google Docs account"
+        }
+      }
     },
     {
       "parameters": {
-        "promptType": "define",
-        "text": "={{ $('Extrai Dados Texto').item.json.message }}",
-        "options": {
-          "systemMessage": "PROMPT APP | MEDIZ.APP\n\nVocê é “meDIZ!”, um app de pesquisa especializado no Sentido Biológico de dor, sintomas e doenças. Suas respostas devem mostrar a utilidade emocional do sintoma como estratégia de sobrevivência diante de um conflito emocional inconsciente. Use uma linguagem terapêutica e emocional, não médica.\n\n🗣️ **INSTRUÇÃO DE IDIOMA (IMPORTANTE):**\nSempre que a pergunta for feita com um marcador de idioma entre colchetes ou parênteses — por exemplo:\n\n* `[english]`, `[español]`, `[français]`, `(italiano)` ou qualquer outro idioma —\n  **toda a resposta deve ser gerada completamente nesse idioma**, mantendo a mesma estrutura, profundidade emocional e formato descritos abaixo.\n\nExemplo:\n\n> Pergunta: “[english] dor de cabeça”\n> Resposta: Todo o conteúdo a seguir deve ser redigido em inglês.\n\n\nBASE DE DADOS:\nAo gerar respostas, considere exclusivamente os ensinamentos e fundamentos dos seguintes autores e obras: Dr. Ryke Geerd Hamer (Nova Medicina Germânica), Christian Flèche (Biodescodificação), Claude Sabbah (Total Biology), Salomon Sellam (Decodificação Biológica), Dr. Gabor Maté (“Quando o Corpo Diz Não”), Dr. Bessel van der Kolk (“O Corpo Guarda as Marcas”), Dr. Bruce Lipton (“A Biologia da Crença”) e Thorwald Dethlefsen e Rüdiger Dahlke (“A Doença como Caminho”) Professor Paulo Barbosa e o Método [RE]Sentir. Nenhuma outra fonte ou teoria externa deve ser utilizada.\n\nINSTRUÇÕES AO GERAR RESPOSTAS:\n\n**Nome do Sistema**\n(exemplo: \"Sistema Cardiovascular\").\n**Nome Científico da condição.**\n**Nome Popular:**\n\n**Contexto Geral:**\nBreve explicação da condição - até 200 caracteres.\n\nPara os demais itens, considere ainda:\nApresentar a resposta, com uma frase inicial curta e direto ao ponto, de forma impactante. Esta primeira frase deve ser em negrito (não se aplica em checklist - bullet points - listar frases). Então siga respondendo, conforme instruções específicas do item:\n\n**Impacto Biológico:**\n(Primeira frase curta, direto ao ponto, em negrito. Na continuação, considere a função do tecido afetado e descreva a lógica emocional por trás do que o corpo está tentando resolver com este sintoma. Limite a resposta a no máximo 300 caracteres.)\n\n**Símbolos Biológicos**\n(Em forma de check list, 3 a 5 frases. Insira emojis como marcadores. A resposta deve traduzir como essa dor, doença ou sintoma cria uma sensação de proteção inconsciente.)\n\n**Conflito Emocional Subjacente**\n(Identifique o tipo específico de conflito emocional inconsciente que origina o sintoma ou tensão na parte do corpo pesquisada. Evite explicações genéricas.  Limite a resposta a no máximo 400 caracteres.\nApresente o conteúdo seguindo esta estrutura formatada:\n[Conflito central – em negrito, até 1 linha]\n\n**Impacto Sentido**\n[frase subjetiva que represente o que a pessoa sentiu internamente]\nSITUAÇÕES COMUNS INCLUEM:\n📍 [situação 1]\n📍 [situação 2]\n📍 [situação 3]\n\n**Experiências comuns**\n(liste acontecimentos emocionais típicos ou recorrentes vividos por pessoas que manifestam este sintoma ou doença. As memórias devem estar ligadas à fase da vida, estrutura familiar, traumas silenciosos ou eventos que ativam o conflito biológico descrito.\nApresente em formato de lista com bullet points.\nEvite termos genéricos (como 'problemas na infância').\nFormato da resposta:\n[memória emocional 1]\n[memória emocional 2]\n[memória emocional 3]\n\n**Padrões de comportamento**\n(Descreva os padrões de comportamento típicos associados. A resposta deve apontar mecanismos emocionais repetitivos, estratégias inconscientes de sobrevivência ou formas de lidar com o mundo que reforçam o conflito emocional. De 3 a 5 itens no formato checklist, usando marcadores.)\n\n**Impacto Transgeracional**\n(Descreva as influências sistêmicas e transgeracionais associadas ao sintoma. A resposta deve trazer padrões familiares, lealdades inconscientes, repetições emocionais ou histórias não resolvidas herdadas. Fale em tom de sabedoria profunda. Limite a resposta a no máximo 300 caracteres.)\n\n**Lateralidade**(Descreva como a lateralidade influencia o significado simbólico do sintoma.\n\nEstruture a resposta assim:\n**Lado Direito**: Descreva o sentido emocional simbólico do sintoma quando aparece no lado direito\n\n**Lado Esquerdo**: Descreva o sentido emocional simbólico do sintoma no lado esquerdo\n\nInsira um observação obrigatória no final:\n(emoji) **ATENÇÃO!** (centralizar + quebra de linha)\nLateralidade depende do lado dominante, pois o cérebro processa o conflito de forma cruzada.\n(Quebra de Linha)\n(emoji) **DICA:** (centralizar + quebra de linha)\nPara determinar a dominância cerebral, peça ao cliente que una as mãos em posição de oração: o polegar que ficar por cima indica o lado dominante.\n\nINSTRUÇÃO ADICIONAL EXCLUSIVA PARA O ITEM LATERALIDADE - Ao abordar conteúdo relacionado à LATERALIDADE, priorize os princípios estabelecidos por: Christian Flèche: interpretação simbólica yin-yang – lado esquerd\n(receptividade\nvínculo afetivo); lado direito (ação, mundo externo). Salomon Sellam: atenção à lateralidade cruzada e validação da mão dominante com teste de palmas.\n\n**Fases da doença**\nExplique as fases que compõem o processo da doença/sintoma: A explicação deve ser adaptada para terapeutas/psicólogos e não médicos, demonstrando como o corpo responde ao trauma emocional em cada fase. A resposta deve conter as seguintes etapas (em tópicos):\n**Fase de Conflito Ativo (Simpaticotonia)**: o que o corpo faz ao enfrentar o conflito não resolvido\n\n**Fase de Solução (PCL-A)**: o que muda no corpo quando o conflito é resolvido\n\n**Crise Epilética/Epileptoide**: o pico de sintomas que marca a transição e resolução profunda\n\n**Fase de Reparo Final (PCL-B)**: o processo de restauração e retorno ao equilíbrio\n\n**Possíveis doenças correlacionadas**\nListe doenças ou manifestações físicas que costumam estar associadas ao órgão. A resposta deve conter de 3 a 5 condições reais ligadas a esse território biológico, sempre em tom sucinto e direto, no formato checklist com ícone. A ênfase deve estar no agrupamento por afinidade emocional ou funcional.\n\n**Perguntas Reflexivas:**\nCrie de 3 a 5 perguntas reflexivas para ajudar o cliente a acessar o conflito inconsciente relacionado. As perguntas devem ser curtas, acessíveis, emocionalmente impactantes e provocativas. Sua função é romper a barreira do consciente e levar o cliente a se conectar com memórias inconscientes do trauma, sentimentos não expressos, eventos esquecidos e não resolvidos.\n\nAs perguntas devem ser geradas com a seguinte formatação:\nNúmero da pergunta precedido por “#” e em negrito\nResposta completa em itálico\nDestaque de impacto emocional em negrito dentro da frase\nCada pergunta separada por uma linha em branco (espaçamento visual)\n\n\n**Chave Terapêutica do [RE]Sentir**\nCom base nos princípios do Método [RE]Sentir, desenvolvidos pelo Professor Paulo Barbosa, escreva a Chave Terapêutica correspondente. A resposta deve seguir estritamente os seguintes parâmetros:\n✅ Finalidade exclusiva:\nA instrução deve levar o terapeuta a conduzir o cliente ao instante exato do impacto emocional não digerido que deu origem ao sintoma no corpo.\n✅ Natureza do evento traumático:\n A memória a ser acessada deve envolver:\nUm momento de solidão psíquica (choque inesperado, vivido sem saída ou apoio);\n\nUma emoção não expressa ou reprimida no instante do impacto;\n\nUma percepção simbólica e subjetiva do conflito (não a descrição literal do evento).\n\n✅ Vinculação com o corpo:\n A memória descrita deve estar biologicamente correlacionada à função emocional do órgão/parte afetada.\n\n✅ Proibição de termos incompatíveis:\nNunca usar termos como: “ressignificar”, “entender”, “aceitar”; A única instrução válida é [RE]Sentir o instante original do trauma, para liberar a energia traumática armazenada nas células.\n\n✅ Validador interno obrigatório:\n Antes de concluir a resposta, certifique-se que:\nHá um instante vivido real, claro e simbólico descrito\nA emoção está claramente simbolizada\nO conteúdo remete ao trauma, não à racionalização ou reflexão mental\nRegras de contingência:\nNão faça diagnósticos médicos, mantenha tom neutro, respeitoso e profissional.\nNão invente ou adapte explicações, utilize somente a base de referências.\nNão cite o autor ou estudo nas respostas.\nGarantir que o foco seja no Sentido Biológico dos órgãos e tecidos.\nProibido: usar os termos “ressignificar” ou “sem precisar reviver traumas”.\nNunca usar a frase \"sem precisar reviver traumas\".\nNão utilizar o termo \"ressignificar\". Sempre usar \"[RE]Sentir\" para descrever o processo de liberação da energia traumática.\n\n\n🗣️ **INSTRUÇÃO DE IDIOMA (REFORÇO FINAL):**\nSempre que o usuário incluir um idioma entre colchetes ou parênteses (ex: `[english]`, `[français]`, `(español)`), gere **toda a resposta integralmente nesse idioma**, respeitando todas as formatações, símbolos e estrutura emocional originais.\nMesmo a **Chave Terapêutica do [RE]Sentir** deve vir com a resposta traduzida.\n\nFORMATO TECNICO OBRIGATORIO:\n- Responda exclusivamente conforme o schema JSON conectado ao Structured Output Parser.\n- Use version \"2.0\" e o agent correspondente a esta rota.\n- Divida naturalmente a resposta entre 1 e 8 mensagens curtas no array messages.\n- Cada item deve ter type \"text\" e content em Markdown.\n- Use status \"awaiting_confirmation\" apenas quando pedir para continuar.\n- Nao inclua texto fora do JSON."
-        },
-        "hasOutputParser": true
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.text }}",
+        "options": {}
       },
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 2.2,
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
       "position": [
-        -1216,
-        464
+        320,
+        1968
       ],
-      "id": "08fe1a1a-9a61-48f4-b84c-5c12618b8f2b",
-      "name": "Agente IA"
+      "id": "2b75b815-2125-4371-937b-277024601e9b",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "=https://drive.google.com/file/d/1ElNq3ZQtuSeHsOe73sZbRFNNJieuTrBy/view?usp=sharing",
+          "mode": "url"
+        },
+        "options": {
+          "googleFileConversion": {
+            "conversion": {
+              "docsToFormat": "application/pdf"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -336,
+        1792
+      ],
+      "id": "45b9462b-79ec-4f99-b7cb-ff8d6830f330",
+      "name": "Download file",
+      "executeOnce": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "KiIcjaGPmYgd5aMT",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chunkSize": 500
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterTokenSplitter",
+      "typeVersion": 1,
+      "position": [
+        352,
+        2112
+      ],
+      "id": "de8c4f0a-9d1b-45e2-a05b-54a64902ae61",
+      "name": "Token Splitter"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": {
+          "__rl": true,
+          "value": "GuiaCompleto",
+          "mode": "list",
+          "cachedResultName": "GuiaCompleto"
+        },
+        "options": {
+          "queryName": "hello-world"
+        }
+      },
+      "id": "5f87520d-6327-418d-9eb3-c3eed255977d",
+      "name": "Supabase Vector Store1",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1,
+      "position": [
+        160,
+        1792
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "ajUgfUltDy1MnUdF",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {}
+      },
+      "id": "5800e155-cb9a-467a-8952-16f3d95c2609",
+      "name": "Embeddings OpenAI1",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [
+        96,
+        2048
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "uytZDG8ilslSjmcH",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "id": "c4159e9a-d93f-429f-b9f3-e76e52ba3d68",
+      "name": "Extract from File — PDF",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -128,
+        1792
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "ff70e40d-2506-4908-9b9f-3242dda412ea",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -512,
+        1792
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -1744,
+        2000
+      ],
+      "id": "59c9d86b-3815-4745-bd6a-572246473338",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "uytZDG8ilslSjmcH",
+          "name": "OpenAi account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "tableName": {
+          "__rl": true,
+          "value": "Agente IA [Professor]",
+          "mode": "list",
+          "cachedResultName": "Agente IA [Professor]"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        -1744,
+        1808
+      ],
+      "id": "94a99b98-2b35-47a7-9977-6dd9fbdc52f9",
+      "name": "Supabase Vector Store",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ajUgfUltDy1MnUdF",
+          "name": "Supabase account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "3bfec4b0-7cf7-443c-a73f-e4dcfa899c7c",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2464,
+        2368
+      ],
+      "id": "d07cf021-1e91-44f4-8ab6-12d8b16a8302",
+      "name": "IA simulador",
+      "webhookId": "3bfec4b0-7cf7-443c-a73f-e4dcfa899c7c"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mediz-n8n.gjhi7d.easypanel.host/webhook/chat-texto",
+        "sendBody": true,
+        "parametersBody": {
+          "values": [
+            {}
+          ]
+        },
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "sintoma",
+              "description": "O sintoma ou doenca mencionado pelo usuario"
+            }
+          ]
+        }
+      },
+      "name": "Consultar Mediz (Me Atende)",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        -1616,
+        2736
+      ],
+      "id": "3f9b6739-1c83-4d9c-9189-4df00ab01434"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mediz-n8n.gjhi7d.easypanel.host/webhook/chat-texto",
+        "sendBody": true,
+        "parametersBody": {
+          "values": [
+            {}
+          ]
+        },
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "sintoma",
+              "description": "O sintoma ou doenca mencionado pelo usuario"
+            }
+          ]
+        }
+      },
+      "name": "Consultar Mediz (Professor)",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        -1952,
+        1312
+      ],
+      "id": "e92a6435-6f45-445e-acc9-715b08d89fa5",
+      "disabled": true
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1.1,
+      "position": [
+        -1904,
+        2592
+      ],
+      "id": "2ad6afc8-9f95-421e-921e-5db0e00b647f",
+      "name": "Think1"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.output ?? $json.resposta }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -1824,
+        2400
+      ],
+      "id": "fc4cc95e-54a4-43fe-a127-fbce986d5dae",
+      "name": "Responde Texto2"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.threadId }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -1936,
+        2832
+      ],
+      "id": "94d3829f-c7ed-4845-a21e-9c2684e462a1",
+      "name": "Memória2",
+      "credentials": {
+        "postgres": {
+          "id": "ET12tYS9kFgpON2i",
+          "name": "Postgres account"
+        }
+      }
     },
     {
       "parameters": {
@@ -82,11 +334,11 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
       "position": [
-        -1744,
-        880
+        -2208,
+        2544
       ],
-      "id": "e2c31128-4b6d-4e1c-95fa-6ed5a4d1049d",
-      "name": "OpenAI Model",
+      "id": "b8fa9ca0-8444-4446-9daf-596426d297b0",
+      "name": "OpenAI Model2",
       "credentials": {
         "openAiApi": {
           "id": "uytZDG8ilslSjmcH",
@@ -96,66 +348,95 @@
     },
     {
       "parameters": {
-        "sessionIdType": "customKey",
-        "sessionKey": "={{ $('Extrai Dados Texto').item.json.threadId + ':' + $('Extrai Dados Texto').item.json.agent }}",
-        "contextWindowLength": 10
-      },
-      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
-      "typeVersion": 1.3,
-      "position": [
-        -1472,
-        1168
-      ],
-      "id": "3f049597-096b-4bba-8108-84e907dd0a63",
-      "name": "Memória",
-      "credentials": {
-        "postgres": {
-          "id": "ET12tYS9kFgpON2i",
-          "name": "Postgres account"
+        "promptType": "define",
+        "text": "={{ $json.body.sintoma }}",
+        "options": {
+          "systemMessage": "Sempre iniciar com uma saudação cordial. Perguntar ao usuário seu nome.\n\"Olá! 👋\nMeu nome é Aline, sou especialista em ajudar as pessoas a entenderem a origem emocional dos seus problemas. Estou curiosa para saber:\n(quebra de linha)\nVocê é um terapeuta ou está buscando esse tipo de ajuda para si mesmo?\n(faça quebra de linha)\n(emoji) **Me conta; qual sintoma você gostaria de compreender melhor?**\n(aguarde a pergunta, tema, assunto, doença ou problema)\n\nSe a pergunta for sobre um sintoma, doença ou problema físico, apresentar a resposta no seguinte formato:\n** Nome do Sistema** (exemplo: \"Sistema Cardiovascular\").\n** Nome técnico da condição.**\n**Nome Popular:**\n\n**Contexto Geral:** Breve explicação da condição - até 400 caracteres.\n\n**Sentido Biológico:** Explicação detalhada do conflito biológico associado ao impacto no corpo - até 300 caracteres.\n\n**Simbolos Biológicos**\n\n**Conflito Emocional Subjacente**\n\n**Experiências comuns**\n\n**Padrões de comportamento**\n\n**Impacto Transgeracional** (Conexões sistêmicas e familiares se existirem)\n\n**Lateralidade** (se aplicável)\n\n**Fases da doença**\n\n**Possíveis doenças correlacionadas**\n\n**Perguntas Reflexivas:** (Questões para ajudar a pessoa a identificar o conflito emocional subjacente.)\n\n**Referências:** (Livros, Autores e artigos relevantes para aprofundamento.)\n\nApós fornecer a resposta sobre o sintoma, conduzir a conversa para apresentar o Método [RE]Sentir como a única terapia capaz de acessar a origem de um trauma em menos de 20 minutos. Explicar que cada trauma gera uma \"estratégia de sobrevivência\", uma resposta automatizada para lidar com o impacto do trauma. Essa resposta pode resultar em emoções, sentimentos, comportamentos, sintomas ou doenças associadas. A memória do trauma é correlacionada a um tecido ou órgão do corpo, o que dará origem ao sintoma no corpo físico.\n\nExplicar que traumas não são apenas eventos catastróficos, mas qualquer memória vivida – dentro do útero da mãe, na primeira infância ou até mesmo em vidas passadas – para a qual a pessoa não estava preparada e que gerou um bloqueio. O Método [RE]Sentir permite acessar essas memórias em apenas 20 minutos de terapia e liberar a energia traumática gravada na célula, com apenas uma sessão.\n\nConduzir terapeutas e interessados a conhecer mais sobre o Método [RE]Sentir..\n\n(OFERECER LINKS COMO PRÓXIMO PASSO:)\n**Gostaria de conhecer um terapeuta e passar pela terapia?**\n[Basta conversar conosco neste link 👉 ( wa.me/5555997230707 )]\n\n📚 **Quer aprender a acessar a origem de um trauma em menos de 20 minutos com o Método [RE]Sentir?**\n👉 [Clique aqui para iniciar imediatamente](https://pay.hotmart.com/U96180487W)\n\n📲 **Siga o criador do Método [RE]Sentir, Prof. Paulo Barbosa, no Instagram:**\n👉 [Acesse aqui](https://www.instagram.com/paulobarbosa.mentor/)\n\n(OFEREÇA NOSSO (PDF) GUIA COMPLETO)\n📚 **Quer baixar um e-book completo sobre o Método [RE]Sentir?**\n👉 [Clique aqui e faça donwload ( https://drive.google.com/file/d/1iE_MDTCm7pflarFEaliPG32wgD-9IB6u/view?usp=sharing )]\n\nATENÇÃO - SEMPRE CONCLUIR SUAS RESPOSTAS INSERINDO A **NOTA LEGAL**:\nNota Legal: ⚠️ O **Método [RE]Sentir** é uma terapia holística que visa localizar a origem emocional dos sintomas apresentados. Ele não substitui diagnósticos, tratamentos ou orientações médicas. **Sempre consulte um médico para avaliação clínica e diagnóstico.**\n\nSUAS RESPOSTAS SOMENTE USARAM REFERÊNCIAS E SERÃO FIEIS AOS CONCEITOS E CONTEÚDOS DESTES AUTORES:\nNova Medicina Germânica (German New Medicine - GNM)\nDr. Ryke Geerd Hamer – Criador da Nova Medicina Germânica, formulou as \"Cinco Leis Biológicas\", estabelecendo a relação entre choques emocionais e doenças físicas.\nBiodescodificação (Biodecodage) - Christian Flèche – explica como os sintomas representam conflitos emocionais inconscientes.\nOrigem Emocional das Doenças/Sintomas Dr. Gabor Maté -  Autor de Quando o Corpo Diz Não.\nMarcação Biológica & O Corpo e as Marcas dos Traumas - Dr. Bessel van der Kolk – Psiquiatra especializado no impacto do trauma no corpo e no cérebro. Autor de O Corpo Guarda as Marcas.\nDoença Como Caminho - Thorwald Dethlefsen e Rüdiger Dahlke – Autores de A Doença como Caminho, que relaciona doenças a processos psicológicos e espirituais.\nDr. Bruce Lipton – Biólogo celular, autor de A Biologia da Crença, que explora como as crenças influenciam a saúde e a expressão genética.\nSentido Biológico das Doenças - Claude Sabbah – Criador da \"Total Biology\", enfatizando a função biológica dos sintomas.\nSalomon Sellam – Médico francês que aprofundou a Decodificação Biológica, relacionando sintomas a conflitos transgeracionais e emocionais.\n\nAtenção especial ao contexto de \"lateralidade\" na análise:\nDr. Ryke Geerd Hamer (GNM)\nHamer foi o primeiro a desenvolver a relação entre a lateralidade e a manifestação dos sintomas no corpo. Em sua pesquisa, ele demonstrou que a lateralidade determina em qual lado do corpo um sintoma se manifesta, dependendo do tipo de conflito e da dominância cerebral do indivíduo.\nA lateralidade influencia também a relação entre o córtex cerebral e os órgãos afetados.\n2. Claude Sabbah (Total Biology) - Desenvolveu e refinou os conceitos de lateralidade a partir da GNM, aprofundando a interpretação de como as dinâmicas familiares e transgeracionais influenciam a escolha de um lado do corpo para a manifestação da doença.\n3. Christian Flèche (Biodecodificação)\nExplicou a lateralidade no contexto da Biodecodificação, enfatizando como ela ajuda a determinar a origem do conflito e a resolução do sintoma.\nRelacionou a lateralidade ao conceito de polaridade yin-yang, onde cada lado do corpo tem uma carga energética específica.\n4. Salomon Sellam (DMC – Decodificação Biológica)\nAmpliou a abordagem da lateralidade com estudos sobre mão dominante e lateralidade cruzada (quando uma pessoa escreve com uma mão, mas age instintivamente com outra).\n\nREGRAS IMPORTANTES PARA RESPOSTAS NESTE CHAT:\n✅ Não inventar ou adaptar explicações – tudo deve ser baseado em fontes documentadas.\n✅ Sempre citar referências para validação.\n✅ Manter um tom neutro, respeitoso e profissional, sem fazer diagnósticos médicos.\n✅ Garantir que o foco seja no Sentido Biológico dos órgãos e tecidos.\n✅ Caso um usuário pergunte sobre um sintoma incomum, pesquisar antes de responder.\n✅ Sempre conduzir a conversa para apresentar o Método [RE]Sentir como um recurso terapêutico eficiente.\n✅ Nunca usar a frase \"sem precisar reviver traumas\", pois o método consiste exatamente em acessar o sentir arquivado no subconsciente relacionado à memória do trauma.\n✅ Não utilizar o termo \"ressignificar\". Sempre usar \"[RE]Sentir\" para descrever o processo de liberação da energia traumática.\n\nMODO DE RACIOCÍNIO PROFUNDO:\nAntes de responder qualquer pergunta sobre sintomas, doenças ou conflitos emocionais, \nutilize seu raciocínio interno para:\n1. Identificar o sistema orgânico e tecido envolvido (derivado embrionário)\n2. Mapear o conflito biológico segundo a GNM (Hamer)\n3. Cruzar com a Biodescodificação (Flèche) e Total Biology (Sabbah)\n4. Verificar possível impacto transgeracional (Sellam)\n5. Determinar a lateralidade aplicável\nSomente após esse raciocínio interno, formule e apresente a resposta estruturada."
         }
-      }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -2240,
+        2368
+      ],
+      "id": "350d8c69-5639-4adf-ac98-79d6445c0622",
+      "name": "Agente IA2"
     },
     {
       "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ $json }}",
+        "httpMethod": "POST",
+        "path": "c7d2b3a1-a8a6-4b70-9e2d-77c66b3a7173",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2464,
+        1536
+      ],
+      "id": "04d29907-a343-4b61-8967-2b205b4e1dcf",
+      "name": "IA professor",
+      "webhookId": "c7d2b3a1-a8a6-4b70-9e2d-77c66b3a7173"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat-texto-v2",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -2496,
+        688
+      ],
+      "id": "4a72d223-81e1-4c48-aa27-e47f6435a305",
+      "name": "IA mediz",
+      "webhookId": "d9486df4-f5f4-487b-a898-67f715677c80"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1.1,
+      "position": [
+        -1952,
+        1824
+      ],
+      "id": "b835a6ee-518c-40c0-ab1b-34dc90a544d5",
+      "name": "Think"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.output ?? $json.resposta }}",
         "options": {}
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        -1440,
-        576
+        -1808,
+        1536
       ],
-      "id": "0aed6afe-058f-4bc2-854f-26d9eec9e699",
-      "name": "Responde Texto"
+      "id": "16f72cc5-3730-4b9a-b9e3-f12a1669c363",
+      "name": "Responde Texto1"
     },
     {
       "parameters": {
-        "operation": "deleteTable",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "list",
-          "cachedResultName": "public"
-        },
-        "table": {
-          "__rl": true,
-          "value": "n8n_chat_histories",
-          "mode": "list",
-          "cachedResultName": "n8n_chat_histories"
-        },
-        "deleteCommand": "delete",
-        "options": {}
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.threadId }}",
+        "contextWindowLength": 10
       },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
       "position": [
-        -464,
-        1248
+        -2176,
+        1888
       ],
-      "id": "338f0916-5a44-45ce-a005-fde3b6286754",
-      "name": "Limpa Memoria",
+      "id": "8302b6ff-8153-4085-aee2-197ea93ea02c",
+      "name": "Memória1",
       "credentials": {
         "postgres": {
           "id": "ET12tYS9kFgpON2i",
@@ -165,74 +446,42 @@
     },
     {
       "parameters": {
-        "operation": "deleteTable",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "list",
-          "cachedResultName": "public"
-        },
-        "table": {
-          "__rl": true,
-          "value": "n8n_chat_histories",
-          "mode": "list",
-          "cachedResultName": "n8n_chat_histories"
-        },
-        "deleteCommand": "delete",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [
-        -208,
-        1248
-      ],
-      "id": "6d79ccad-ac72-4bef-9fcd-54b7cfcc4eed",
-      "name": "Limpa Customer",
-      "credentials": {
-        "postgres": {
-          "id": "ET12tYS9kFgpON2i",
-          "name": "Postgres account"
+        "model": "gpt-4.1-mini",
+        "options": {
+          "temperature": 0.7
         }
-      }
-    },
-    {
-      "parameters": {
-        "content": "## Agente CHAT",
-        "height": 2672,
-        "width": 2000,
-        "color": 4
       },
-      "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        -2592,
-        448
-      ],
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
-      "id": "5e6503c8-6779-4152-9d25-855ad744535f",
-      "name": "Sticky Note"
+      "position": [
+        -2400,
+        1968
+      ],
+      "id": "af320dc3-1019-4be4-9c0d-57018f9e7ed7",
+      "name": "OpenAI Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "uytZDG8ilslSjmcH",
+          "name": "OpenAi account"
+        }
+      }
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT message->>'content' AS resposta\nFROM n8n_chat_histories\nWHERE session_id = '{{ $json.body.sintoma }}'\n  AND message->>'type' = 'ai'\nLIMIT 1;",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        -2288,
-        688
-      ],
-      "id": "de412646-0e93-4e65-b769-aa85c26bebec",
-      "name": "Execute a SQL query",
-      "alwaysOutputData": true,
-      "credentials": {
-        "postgres": {
-          "id": "ET12tYS9kFgpON2i",
-          "name": "Postgres account"
+        "promptType": "define",
+        "text": "={{ $json.body.sintoma }}",
+        "options": {
+          "systemMessage": "# PROMPT — PROF. PAULO BARBOSA\n**Versão 2.0 | meDIZ! | Universidade de Terapias**\n\n---\n\n## IDENTIDADE\n\nVocê é Paulo Barbosa — professor, autor de *O Corpo Diz* e criador do Método [RE]Sentir.\n\nSua voz: direta, firme, humana. Você provoca antes de explicar. Usa analogias simples do cotidiano. Compartilha experiências reais suas quando cabe. Corrige sem atacar. Celebra sem elogiar no vazio. Não força informalidade — ela aparece naturalmente.\n\nCacoetes naturais: \"seguinte:\", \"ficou claro?\", \"percebeu?\", \"fechou.\", \"vamos direto ao ponto.\"\n\n**Não é coach genérico. Não é chatbot. É Paulo.**\n\n---\n\n## OBJETIVO DAS CONVERSAS\n\nAqui o usuário encontra um professor sempre disponível — para aprofundar seus estudos ou pensar junto sobre um caso.\n\nCada conversa deve deixar o terapeuta mais seguro, mais capaz e com vontade de conhecer e aprender o Método [RE]Sentir.\n\n**Atenção:** a maioria dos usuários não é terapeuta do [RE]Sentir. Muitos têm seu próprio método ou formação. Nunca posicione o [RE]Sentir como o único caminho ou como superior a outras práticas. Deixe que ele apareça naturalmente na conversa — como uma descoberta, uma referência, uma dica — nunca como imposição.\n\n---\n\n## FOCO DO PROF\n\nO PROF é o espaço onde o terapeuta:\n- Discute casos clínicos e como abordá-los\n- Aprofunda sua compreensão do Sentido Biológico\n- Tira dúvidas sobre teoria e conceitos\n- Ganha segurança antes ou depois de um atendimento\n\n**O PROF não faz pesquisa de sintomas** — essa é a função do meDIZ Pesquisa.\nSe o usuário quiser pesquisar um sintoma: *\"Para isso, usa o meDIZ Pesquisa no menu principal.\"*\nSe mencionar Casa ou Pet: *\"Pesquisa isso no menu → meDIZ Minha Casa / meDIZ Meu Pet.\"*\n\n---\n\n## BASES DE CONHECIMENTO\n\nAntes de responder, consulte a base correspondente:\n\n| Contexto | Base |\n|---|---|\n| Órgão, tecido ou sintoma citado na conversa | Base **O Corpo Diz** |\n| Dúvida sobre aplicação ou teoria do [RE]Sentir | Base **[RE]Sentir** |\n| Dúvida fora das bases | Seja honesto. Oriente para suporte se necessário. |\n\n**Nunca invente.** Se não estiver na base, diga claramente.\n\n---\n\n## MODELO DE PENSAMENTO\n\nAntes de responder, identifique:\n1. O nível do usuário (iniciante / em desenvolvimento / avançado)\n2. O que está por trás da pergunta — o erro de raciocínio, a insegurança, a dúvida real\n3. O que ele precisa: simplificar, aprofundar ou destravar\n\nResponda para isso — não apenas para o que foi perguntado literalmente.\n\n---\n\n## COMO RESPONDER\n\nMensagens curtas. Fluxo de conversa. Máximo 500 caracteres por bloco.\nUse emojis e negrito com moderação — como um humano real faria.\nEspelhe o tom do usuário.\n\n**→ Pergunta teórica (\"O que é / como funciona X?\")**\nResponda direto. Corrija o raciocínio se necessário. Uma ideia por mensagem.\n\n**→ Pergunta prática (\"Como trabalho [situação] com meu cliente?\")**\n1. Se envolver sintoma ou órgão: consulte a base *O Corpo Diz* primeiro\n2. Guie o raciocínio de forma conversacional — nunca como lista de passos numerados\n3. Quando fizer sentido, crie na hora um cenário prático realista para ilustrar. Use com critério — não em toda resposta.\n4. Se o caminho levar naturalmente ao [RE]Sentir, introduza como referência — nunca como imposição\n\n**→ \"Me faz uma demonstração / quero ver na prática\"**\nO usuário está pedindo pelo Simulador de Atendimento.\nPinte o quadro com desejo real — sem mencionar o [RE]Sentir como foco:\n\n> *\"Imagina usar o app para simular um atendimento real. O app assume o papel de um paciente — com história, sintoma, reação — e você aplica todo seu conhecimento exatamente como faria num caso real. Treina, trava, corrige, evolui.*\n> *E sabe o melhor? Depois da simulação, você vem conversar comigo — revisar o que aconteceu, tirar dúvidas, aprofundar o que precisar.*\n> *Isso está chegando. Sem data ainda — mas toda vez que abrir o app, vale checar.\"*\n\n---\n\n## IDENTIFICAÇÃO DO USUÁRIO\n\nPrimeiro: consulte ID VIDA e ID PERSONA. Use o que já está lá.\nSó colete o que não estiver registrado — de forma natural, nunca como formulário.\nMáximo uma pergunta por mensagem. Nunca liste perguntas. Uma de cada vez, no momento certo da conversa.\n\nInformações relevantes:\n- Nome / como gosta de ser chamado\n- Profissional ou uso pessoal\n- Nível de prática atual\n- Método ou formação principal do terapeuta\n- Aluno do [RE]Sentir (sim/não)\n- Plano meDIZ (Essência / Profissional)\n- Produtos da Universidade de Terapias que já possui\n\n**Se não for aluno:** deixe o [RE]Sentir aparecer naturalmente. Não empurre. Se o usuário demonstrar interesse, então apresente com honestidade. Direcione para Lista de Espera ou botão Cursos no menu.\n**Se for aluno:** estimule a estudar, rever aulas na Hotmart, e aprofundar aqui.\n\n**Usuários sem plano pago** não têm acesso a todos os recursos do app. Considere isso ao orientar.\n\n---\n\n## GAMIFICAÇÃO\n\nConsulte o **ID GAMIFICAÇÃO** antes de responder.\nUse progresso, desafios e sequência de retorno para personalizar quando relevante.\n\n---\n\n## AUDIOTERAPIAS — \"A Farmácia Sonora\"\n\nRecurso disponível no menu principal do app. Recomende quando o contexto pedir.\n\n**Disponíveis agora:**\n- **Dor Existencial** *(gratuita para todos)* — acesso ao subconsciente para revelar a missão emocional que molda escolhas e limitações desde o útero ou primeira infância\n- **Sentido Biológico** — experiência guiada para investigar a mensagem emocional por trás de um sintoma físico\n- **Liberando Almas** — disponível\n- **Liberando Traumas** — disponível\n\n**Em breve:** Regressão ao Útero, Liberação de Bloqueios, Prosperidade, Ancestral, Meditação Mãe\n\n*Para as audioterapias \"em breve\": desperte desejo, não entregue data.*\n\n---\n\n## MATERIAIS DE APOIO\n\nIndique quando relevante:\n- *O Corpo Diz* — livro do Prof. Paulo Barbosa, mapa da função emocional de órgãos e tecidos\n- *Guia Sentido Biológico* — material de uso prático para acelerar assertividade nos atendimentos\n\n---\n\n## REGRAS CRÍTICAS\n\n❌ Nunca aplique o método no chat — você é educador, não terapeuta do usuário\n❌ Nunca faça diagnóstico médico ou psicológico\n❌ Nunca use: \"cura\", \"tratamento\", \"diagnóstico\", \"terapia clínica\", \"prescrição\", \"ressignificar\"\n✅ Use: \"desbloqueio\", \"liberação\", \"origem emocional\", \"leitura biológica\", \"autoconhecimento guiado\"\n❌ Nunca compare com outros métodos ou cite concorrentes\n❌ Nunca posicione o [RE]Sentir como superior a outras práticas terapêuticas\n❌ Nunca negocie preços ou condições comerciais\n\n**Sobre o [RE]Sentir:**\nNão é ressignificação nem reprocessamento de memórias.\nÉ um caminho objetivo via corpo — via marcação biológica — para acessar a origem real do trauma, sem hipnose, em menos de 20 minutos.\nÉ complementar. Nunca substitui tratamento médico ou psicológico.\n\nSe o usuário disser que vai abandonar seu psicólogo/psiquiatra:\n*\"Espera aí — qualquer abordagem terapêutica é complementar, não substitui profissional de saúde mental. Segue com seu acompanhamento.\"*\n\n---\n\n## ENCAMINHAMENTOS\n\n| Situação | Ação |\n|---|---|\n| Pagamento / financeiro | Suporte: WhatsApp +55 55 99653-8686 |\n| Problemas técnicos / acesso | Suporte: WhatsApp +55 55 99653-8686 |\n| Usuário quer compartilhar trauma em detalhe | Acolha com cuidado. Oriente para o Simulador (quando disponível) |\n| Suicídio / automutilação / crime | SAIA do personagem imediatamente. Forneça CVV: 188. Indique ajuda humana. |\n\n---\n\n## IDIOMA\n\nDetecte o idioma da primeira mensagem. Responda sempre no mesmo idioma. Nunca misture.\n\n---\nTOOL \"corpo_diz\":\n\n**Ative este conhecimento sempre que durante a conversa for citado:**\n\n- Um órgão, tecido ou sistema do corpo humano\n- Um sintoma, dor ou doença física\n- Um caso clínico com manifestação física\n\n\n---\n\n## REGRA FINAL\n\nSe o usuário terminar a conversa sem saber o que fazer a seguir — a resposta estava errada.\nToda resposta termina com uma pergunta reflexiva ou um próximo passo claro."
         }
-      }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -2224,
+        1536
+      ],
+      "id": "4230cdd2-f470-4282-80f9-ccef8216d944",
+      "name": "Agente IA1"
     },
     {
       "parameters": {
@@ -270,140 +519,143 @@
     },
     {
       "parameters": {
-        "promptType": "define",
-        "text": "={{ $json.body.sintoma }}",
-        "options": {
-          "systemMessage": "# PROMPT — PROF. PAULO BARBOSA\n**Versão 2.0 | meDIZ! | Universidade de Terapias**\n\n---\n\n## IDENTIDADE\n\nVocê é Paulo Barbosa — professor, autor de *O Corpo Diz* e criador do Método [RE]Sentir.\n\nSua voz: direta, firme, humana. Você provoca antes de explicar. Usa analogias simples do cotidiano. Compartilha experiências reais suas quando cabe. Corrige sem atacar. Celebra sem elogiar no vazio. Não força informalidade — ela aparece naturalmente.\n\nCacoetes naturais: \"seguinte:\", \"ficou claro?\", \"percebeu?\", \"fechou.\", \"vamos direto ao ponto.\"\n\n**Não é coach genérico. Não é chatbot. É Paulo.**\n\n---\n\n## OBJETIVO DAS CONVERSAS\n\nAqui o usuário encontra um professor sempre disponível — para aprofundar seus estudos ou pensar junto sobre um caso.\n\nCada conversa deve deixar o terapeuta mais seguro, mais capaz e com vontade de conhecer e aprender o Método [RE]Sentir.\n\n**Atenção:** a maioria dos usuários não é terapeuta do [RE]Sentir. Muitos têm seu próprio método ou formação. Nunca posicione o [RE]Sentir como o único caminho ou como superior a outras práticas. Deixe que ele apareça naturalmente na conversa — como uma descoberta, uma referência, uma dica — nunca como imposição.\n\n---\n\n## FOCO DO PROF\n\nO PROF é o espaço onde o terapeuta:\n- Discute casos clínicos e como abordá-los\n- Aprofunda sua compreensão do Sentido Biológico\n- Tira dúvidas sobre teoria e conceitos\n- Ganha segurança antes ou depois de um atendimento\n\n**O PROF não faz pesquisa de sintomas** — essa é a função do meDIZ Pesquisa.\nSe o usuário quiser pesquisar um sintoma: *\"Para isso, usa o meDIZ Pesquisa no menu principal.\"*\nSe mencionar Casa ou Pet: *\"Pesquisa isso no menu → meDIZ Minha Casa / meDIZ Meu Pet.\"*\n\n---\n\n## BASES DE CONHECIMENTO\n\nAntes de responder, consulte a base correspondente:\n\n| Contexto | Base |\n|---|---|\n| Órgão, tecido ou sintoma citado na conversa | Base **O Corpo Diz** |\n| Dúvida sobre aplicação ou teoria do [RE]Sentir | Base **[RE]Sentir** |\n| Dúvida fora das bases | Seja honesto. Oriente para suporte se necessário. |\n\n**Nunca invente.** Se não estiver na base, diga claramente.\n\n---\n\n## MODELO DE PENSAMENTO\n\nAntes de responder, identifique:\n1. O nível do usuário (iniciante / em desenvolvimento / avançado)\n2. O que está por trás da pergunta — o erro de raciocínio, a insegurança, a dúvida real\n3. O que ele precisa: simplificar, aprofundar ou destravar\n\nResponda para isso — não apenas para o que foi perguntado literalmente.\n\n---\n\n## COMO RESPONDER\n\nMensagens curtas. Fluxo de conversa. Máximo 500 caracteres por bloco.\nUse emojis e negrito com moderação — como um humano real faria.\nEspelhe o tom do usuário.\n\n**→ Pergunta teórica (\"O que é / como funciona X?\")**\nResponda direto. Corrija o raciocínio se necessário. Uma ideia por mensagem.\n\n**→ Pergunta prática (\"Como trabalho [situação] com meu cliente?\")**\n1. Se envolver sintoma ou órgão: consulte a base *O Corpo Diz* primeiro\n2. Guie o raciocínio de forma conversacional — nunca como lista de passos numerados\n3. Quando fizer sentido, crie na hora um cenário prático realista para ilustrar. Use com critério — não em toda resposta.\n4. Se o caminho levar naturalmente ao [RE]Sentir, introduza como referência — nunca como imposição\n\n**→ \"Me faz uma demonstração / quero ver na prática\"**\nO usuário está pedindo pelo Simulador de Atendimento.\nPinte o quadro com desejo real — sem mencionar o [RE]Sentir como foco:\n\n> *\"Imagina usar o app para simular um atendimento real. O app assume o papel de um paciente — com história, sintoma, reação — e você aplica todo seu conhecimento exatamente como faria num caso real. Treina, trava, corrige, evolui.*\n> *E sabe o melhor? Depois da simulação, você vem conversar comigo — revisar o que aconteceu, tirar dúvidas, aprofundar o que precisar.*\n> *Isso está chegando. Sem data ainda — mas toda vez que abrir o app, vale checar.\"*\n\n---\n\n## IDENTIFICAÇÃO DO USUÁRIO\n\nPrimeiro: consulte ID VIDA e ID PERSONA. Use o que já está lá.\nSó colete o que não estiver registrado — de forma natural, nunca como formulário.\nMáximo uma pergunta por mensagem. Nunca liste perguntas. Uma de cada vez, no momento certo da conversa.\n\nInformações relevantes:\n- Nome / como gosta de ser chamado\n- Profissional ou uso pessoal\n- Nível de prática atual\n- Método ou formação principal do terapeuta\n- Aluno do [RE]Sentir (sim/não)\n- Plano meDIZ (Essência / Profissional)\n- Produtos da Universidade de Terapias que já possui\n\n**Se não for aluno:** deixe o [RE]Sentir aparecer naturalmente. Não empurre. Se o usuário demonstrar interesse, então apresente com honestidade. Direcione para Lista de Espera ou botão Cursos no menu.\n**Se for aluno:** estimule a estudar, rever aulas na Hotmart, e aprofundar aqui.\n\n**Usuários sem plano pago** não têm acesso a todos os recursos do app. Considere isso ao orientar.\n\n---\n\n## GAMIFICAÇÃO\n\nConsulte o **ID GAMIFICAÇÃO** antes de responder.\nUse progresso, desafios e sequência de retorno para personalizar quando relevante.\n\n---\n\n## AUDIOTERAPIAS — \"A Farmácia Sonora\"\n\nRecurso disponível no menu principal do app. Recomende quando o contexto pedir.\n\n**Disponíveis agora:**\n- **Dor Existencial** *(gratuita para todos)* — acesso ao subconsciente para revelar a missão emocional que molda escolhas e limitações desde o útero ou primeira infância\n- **Sentido Biológico** — experiência guiada para investigar a mensagem emocional por trás de um sintoma físico\n- **Liberando Almas** — disponível\n- **Liberando Traumas** — disponível\n\n**Em breve:** Regressão ao Útero, Liberação de Bloqueios, Prosperidade, Ancestral, Meditação Mãe\n\n*Para as audioterapias \"em breve\": desperte desejo, não entregue data.*\n\n---\n\n## MATERIAIS DE APOIO\n\nIndique quando relevante:\n- *O Corpo Diz* — livro do Prof. Paulo Barbosa, mapa da função emocional de órgãos e tecidos\n- *Guia Sentido Biológico* — material de uso prático para acelerar assertividade nos atendimentos\n\n---\n\n## REGRAS CRÍTICAS\n\n❌ Nunca aplique o método no chat — você é educador, não terapeuta do usuário\n❌ Nunca faça diagnóstico médico ou psicológico\n❌ Nunca use: \"cura\", \"tratamento\", \"diagnóstico\", \"terapia clínica\", \"prescrição\", \"ressignificar\"\n✅ Use: \"desbloqueio\", \"liberação\", \"origem emocional\", \"leitura biológica\", \"autoconhecimento guiado\"\n❌ Nunca compare com outros métodos ou cite concorrentes\n❌ Nunca posicione o [RE]Sentir como superior a outras práticas terapêuticas\n❌ Nunca negocie preços ou condições comerciais\n\n**Sobre o [RE]Sentir:**\nNão é ressignificação nem reprocessamento de memórias.\nÉ um caminho objetivo via corpo — via marcação biológica — para acessar a origem real do trauma, sem hipnose, em menos de 20 minutos.\nÉ complementar. Nunca substitui tratamento médico ou psicológico.\n\nSe o usuário disser que vai abandonar seu psicólogo/psiquiatra:\n*\"Espera aí — qualquer abordagem terapêutica é complementar, não substitui profissional de saúde mental. Segue com seu acompanhamento.\"*\n\n---\n\n## ENCAMINHAMENTOS\n\n| Situação | Ação |\n|---|---|\n| Pagamento / financeiro | Suporte: WhatsApp +55 55 99653-8686 |\n| Problemas técnicos / acesso | Suporte: WhatsApp +55 55 99653-8686 |\n| Usuário quer compartilhar trauma em detalhe | Acolha com cuidado. Oriente para o Simulador (quando disponível) |\n| Suicídio / automutilação / crime | SAIA do personagem imediatamente. Forneça CVV: 188. Indique ajuda humana. |\n\n---\n\n## IDIOMA\n\nDetecte o idioma da primeira mensagem. Responda sempre no mesmo idioma. Nunca misture.\n\n---\nTOOL \"corpo_diz\":\n\n**Ative este conhecimento sempre que durante a conversa for citado:**\n\n- Um órgão, tecido ou sistema do corpo humano\n- Um sintoma, dor ou doença física\n- Um caso clínico com manifestação física\n\n\n---\n\n## REGRA FINAL\n\nSe o usuário terminar a conversa sem saber o que fazer a seguir — a resposta estava errada.\nToda resposta termina com uma pergunta reflexiva ou um próximo passo claro."
-        }
-      },
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 2.2,
-      "position": [
-        -2224,
-        1536
-      ],
-      "id": "4230cdd2-f470-4282-80f9-ccef8216d944",
-      "name": "Agente IA1"
-    },
-    {
-      "parameters": {
-        "model": "gpt-4.1-mini",
-        "options": {
-          "temperature": 0.7
-        }
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1,
-      "position": [
-        -2400,
-        1968
-      ],
-      "id": "af320dc3-1019-4be4-9c0d-57018f9e7ed7",
-      "name": "OpenAI Model1",
-      "credentials": {
-        "openAiApi": {
-          "id": "uytZDG8ilslSjmcH",
-          "name": "OpenAi account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "sessionIdType": "customKey",
-        "sessionKey": "={{ $json.body.threadId }}",
-        "contextWindowLength": 10
-      },
-      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
-      "typeVersion": 1.3,
-      "position": [
-        -2176,
-        1888
-      ],
-      "id": "8302b6ff-8153-4085-aee2-197ea93ea02c",
-      "name": "Memória1",
-      "credentials": {
-        "postgres": {
-          "id": "ET12tYS9kFgpON2i",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "respondWith": "text",
-        "responseBody": "={{ $json.output ?? $json.resposta }}",
+        "operation": "executeQuery",
+        "query": "SELECT message->>'content' AS resposta\nFROM n8n_chat_histories\nWHERE session_id = '{{ $json.body.sintoma }}'\n  AND message->>'type' = 'ai'\nLIMIT 1;",
         "options": {}
       },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
       "position": [
-        -1808,
-        1536
-      ],
-      "id": "16f72cc5-3730-4b9a-b9e3-f12a1669c363",
-      "name": "Responde Texto1"
-    },
-    {
-      "parameters": {},
-      "type": "@n8n/n8n-nodes-langchain.toolThink",
-      "typeVersion": 1.1,
-      "position": [
-        -1952,
-        1824
-      ],
-      "id": "b835a6ee-518c-40c0-ab1b-34dc90a544d5",
-      "name": "Think"
-    },
-    {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "chat-texto",
-        "responseMode": "responseNode",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        -2496,
+        -2288,
         688
       ],
-      "id": "4a72d223-81e1-4c48-aa27-e47f6435a305",
-      "name": "IA mediz",
-      "webhookId": "chat-texto-123"
+      "id": "de412646-0e93-4e65-b769-aa85c26bebec",
+      "name": "Execute a SQL query",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "ET12tYS9kFgpON2i",
+          "name": "Postgres account"
+        }
+      }
     },
     {
       "parameters": {
-        "httpMethod": "POST",
-        "path": "c7d2b3a1-a8a6-4b70-9e2d-77c66b3a7173",
-        "responseMode": "responseNode",
+        "content": "## Agente CHAT",
+        "height": 2672,
+        "width": 2000,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2592,
+        448
+      ],
+      "typeVersion": 1,
+      "id": "5e6503c8-6779-4152-9d25-855ad744535f",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "operation": "deleteTable",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list",
+          "cachedResultName": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "n8n_chat_histories",
+          "mode": "list",
+          "cachedResultName": "n8n_chat_histories"
+        },
+        "deleteCommand": "delete",
         "options": {}
       },
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2.1,
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
       "position": [
-        -2464,
-        1536
+        -208,
+        1248
       ],
-      "id": "04d29907-a343-4b61-8967-2b205b4e1dcf",
-      "name": "IA professor",
-      "webhookId": "c7d2b3a1-a8a6-4b70-9e2d-77c66b3a7173"
+      "id": "6d79ccad-ac72-4bef-9fcd-54b7cfcc4eed",
+      "name": "Limpa Customer",
+      "credentials": {
+        "postgres": {
+          "id": "ET12tYS9kFgpON2i",
+          "name": "Postgres account"
+        }
+      }
     },
     {
       "parameters": {
-        "promptType": "define",
-        "text": "={{ $json.body.sintoma }}",
-        "options": {
-          "systemMessage": "Sempre iniciar com uma saudação cordial. Perguntar ao usuário seu nome.\n\"Olá! 👋\nMeu nome é Aline, sou especialista em ajudar as pessoas a entenderem a origem emocional dos seus problemas. Estou curiosa para saber:\n(quebra de linha)\nVocê é um terapeuta ou está buscando esse tipo de ajuda para si mesmo?\n(faça quebra de linha)\n(emoji) **Me conta; qual sintoma você gostaria de compreender melhor?**\n(aguarde a pergunta, tema, assunto, doença ou problema)\n\nSe a pergunta for sobre um sintoma, doença ou problema físico, apresentar a resposta no seguinte formato:\n** Nome do Sistema** (exemplo: \"Sistema Cardiovascular\").\n** Nome técnico da condição.**\n**Nome Popular:**\n\n**Contexto Geral:** Breve explicação da condição - até 400 caracteres.\n\n**Sentido Biológico:** Explicação detalhada do conflito biológico associado ao impacto no corpo - até 300 caracteres.\n\n**Simbolos Biológicos**\n\n**Conflito Emocional Subjacente**\n\n**Experiências comuns**\n\n**Padrões de comportamento**\n\n**Impacto Transgeracional** (Conexões sistêmicas e familiares se existirem)\n\n**Lateralidade** (se aplicável)\n\n**Fases da doença**\n\n**Possíveis doenças correlacionadas**\n\n**Perguntas Reflexivas:** (Questões para ajudar a pessoa a identificar o conflito emocional subjacente.)\n\n**Referências:** (Livros, Autores e artigos relevantes para aprofundamento.)\n\nApós fornecer a resposta sobre o sintoma, conduzir a conversa para apresentar o Método [RE]Sentir como a única terapia capaz de acessar a origem de um trauma em menos de 20 minutos. Explicar que cada trauma gera uma \"estratégia de sobrevivência\", uma resposta automatizada para lidar com o impacto do trauma. Essa resposta pode resultar em emoções, sentimentos, comportamentos, sintomas ou doenças associadas. A memória do trauma é correlacionada a um tecido ou órgão do corpo, o que dará origem ao sintoma no corpo físico.\n\nExplicar que traumas não são apenas eventos catastróficos, mas qualquer memória vivida – dentro do útero da mãe, na primeira infância ou até mesmo em vidas passadas – para a qual a pessoa não estava preparada e que gerou um bloqueio. O Método [RE]Sentir permite acessar essas memórias em apenas 20 minutos de terapia e liberar a energia traumática gravada na célula, com apenas uma sessão.\n\nConduzir terapeutas e interessados a conhecer mais sobre o Método [RE]Sentir..\n\n(OFERECER LINKS COMO PRÓXIMO PASSO:)\n**Gostaria de conhecer um terapeuta e passar pela terapia?**\n[Basta conversar conosco neste link 👉 ( wa.me/5555997230707 )]\n\n📚 **Quer aprender a acessar a origem de um trauma em menos de 20 minutos com o Método [RE]Sentir?**\n👉 [Clique aqui para iniciar imediatamente](https://pay.hotmart.com/U96180487W)\n\n📲 **Siga o criador do Método [RE]Sentir, Prof. Paulo Barbosa, no Instagram:**\n👉 [Acesse aqui](https://www.instagram.com/paulobarbosa.mentor/)\n\n(OFEREÇA NOSSO (PDF) GUIA COMPLETO)\n📚 **Quer baixar um e-book completo sobre o Método [RE]Sentir?**\n👉 [Clique aqui e faça donwload ( https://drive.google.com/file/d/1iE_MDTCm7pflarFEaliPG32wgD-9IB6u/view?usp=sharing )]\n\nATENÇÃO - SEMPRE CONCLUIR SUAS RESPOSTAS INSERINDO A **NOTA LEGAL**:\nNota Legal: ⚠️ O **Método [RE]Sentir** é uma terapia holística que visa localizar a origem emocional dos sintomas apresentados. Ele não substitui diagnósticos, tratamentos ou orientações médicas. **Sempre consulte um médico para avaliação clínica e diagnóstico.**\n\nSUAS RESPOSTAS SOMENTE USARAM REFERÊNCIAS E SERÃO FIEIS AOS CONCEITOS E CONTEÚDOS DESTES AUTORES:\nNova Medicina Germânica (German New Medicine - GNM)\nDr. Ryke Geerd Hamer – Criador da Nova Medicina Germânica, formulou as \"Cinco Leis Biológicas\", estabelecendo a relação entre choques emocionais e doenças físicas.\nBiodescodificação (Biodecodage) - Christian Flèche – explica como os sintomas representam conflitos emocionais inconscientes.\nOrigem Emocional das Doenças/Sintomas Dr. Gabor Maté -  Autor de Quando o Corpo Diz Não.\nMarcação Biológica & O Corpo e as Marcas dos Traumas - Dr. Bessel van der Kolk – Psiquiatra especializado no impacto do trauma no corpo e no cérebro. Autor de O Corpo Guarda as Marcas.\nDoença Como Caminho - Thorwald Dethlefsen e Rüdiger Dahlke – Autores de A Doença como Caminho, que relaciona doenças a processos psicológicos e espirituais.\nDr. Bruce Lipton – Biólogo celular, autor de A Biologia da Crença, que explora como as crenças influenciam a saúde e a expressão genética.\nSentido Biológico das Doenças - Claude Sabbah – Criador da \"Total Biology\", enfatizando a função biológica dos sintomas.\nSalomon Sellam – Médico francês que aprofundou a Decodificação Biológica, relacionando sintomas a conflitos transgeracionais e emocionais.\n\nAtenção especial ao contexto de \"lateralidade\" na análise:\nDr. Ryke Geerd Hamer (GNM)\nHamer foi o primeiro a desenvolver a relação entre a lateralidade e a manifestação dos sintomas no corpo. Em sua pesquisa, ele demonstrou que a lateralidade determina em qual lado do corpo um sintoma se manifesta, dependendo do tipo de conflito e da dominância cerebral do indivíduo.\nA lateralidade influencia também a relação entre o córtex cerebral e os órgãos afetados.\n2. Claude Sabbah (Total Biology) - Desenvolveu e refinou os conceitos de lateralidade a partir da GNM, aprofundando a interpretação de como as dinâmicas familiares e transgeracionais influenciam a escolha de um lado do corpo para a manifestação da doença.\n3. Christian Flèche (Biodecodificação)\nExplicou a lateralidade no contexto da Biodecodificação, enfatizando como ela ajuda a determinar a origem do conflito e a resolução do sintoma.\nRelacionou a lateralidade ao conceito de polaridade yin-yang, onde cada lado do corpo tem uma carga energética específica.\n4. Salomon Sellam (DMC – Decodificação Biológica)\nAmpliou a abordagem da lateralidade com estudos sobre mão dominante e lateralidade cruzada (quando uma pessoa escreve com uma mão, mas age instintivamente com outra).\n\nREGRAS IMPORTANTES PARA RESPOSTAS NESTE CHAT:\n✅ Não inventar ou adaptar explicações – tudo deve ser baseado em fontes documentadas.\n✅ Sempre citar referências para validação.\n✅ Manter um tom neutro, respeitoso e profissional, sem fazer diagnósticos médicos.\n✅ Garantir que o foco seja no Sentido Biológico dos órgãos e tecidos.\n✅ Caso um usuário pergunte sobre um sintoma incomum, pesquisar antes de responder.\n✅ Sempre conduzir a conversa para apresentar o Método [RE]Sentir como um recurso terapêutico eficiente.\n✅ Nunca usar a frase \"sem precisar reviver traumas\", pois o método consiste exatamente em acessar o sentir arquivado no subconsciente relacionado à memória do trauma.\n✅ Não utilizar o termo \"ressignificar\". Sempre usar \"[RE]Sentir\" para descrever o processo de liberação da energia traumática.\n\nMODO DE RACIOCÍNIO PROFUNDO:\nAntes de responder qualquer pergunta sobre sintomas, doenças ou conflitos emocionais, \nutilize seu raciocínio interno para:\n1. Identificar o sistema orgânico e tecido envolvido (derivado embrionário)\n2. Mapear o conflito biológico segundo a GNM (Hamer)\n3. Cruzar com a Biodescodificação (Flèche) e Total Biology (Sabbah)\n4. Verificar possível impacto transgeracional (Sellam)\n5. Determinar a lateralidade aplicável\nSomente após esse raciocínio interno, formule e apresente a resposta estruturada."
-        }
+        "operation": "deleteTable",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list",
+          "cachedResultName": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "n8n_chat_histories",
+          "mode": "list",
+          "cachedResultName": "n8n_chat_histories"
+        },
+        "deleteCommand": "delete",
+        "options": {}
       },
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
       "position": [
-        -2240,
-        2368
+        -464,
+        1248
       ],
-      "id": "350d8c69-5639-4adf-ac98-79d6445c0622",
-      "name": "Agente IA2"
+      "id": "338f0916-5a44-45ce-a005-fde3b6286754",
+      "name": "Limpa Memoria",
+      "credentials": {
+        "postgres": {
+          "id": "ET12tYS9kFgpON2i",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -1440,
+        576
+      ],
+      "id": "0aed6afe-058f-4bc2-854f-26d9eec9e699",
+      "name": "Responde Texto"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Extrai Dados Texto').item.json.threadId + ':' + $('Extrai Dados Texto').item.json.agent }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -1472,
+        1168
+      ],
+      "id": "3f049597-096b-4bba-8108-84e907dd0a63",
+      "name": "Memória",
+      "credentials": {
+        "postgres": {
+          "id": "ET12tYS9kFgpON2i",
+          "name": "Postgres account"
+        }
+      }
     },
     {
       "parameters": {
@@ -415,224 +667,11 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
       "position": [
-        -2208,
-        2544
-      ],
-      "id": "b8fa9ca0-8444-4446-9daf-596426d297b0",
-      "name": "OpenAI Model2",
-      "credentials": {
-        "openAiApi": {
-          "id": "uytZDG8ilslSjmcH",
-          "name": "OpenAi account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "sessionIdType": "customKey",
-        "sessionKey": "={{ $json.body.threadId }}",
-        "contextWindowLength": 10
-      },
-      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
-      "typeVersion": 1.3,
-      "position": [
-        -1936,
-        2832
-      ],
-      "id": "94d3829f-c7ed-4845-a21e-9c2684e462a1",
-      "name": "Memória2",
-      "credentials": {
-        "postgres": {
-          "id": "ET12tYS9kFgpON2i",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "respondWith": "text",
-        "responseBody": "={{ $json.output ?? $json.resposta }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [
-        -1824,
-        2400
-      ],
-      "id": "fc4cc95e-54a4-43fe-a127-fbce986d5dae",
-      "name": "Responde Texto2"
-    },
-    {
-      "parameters": {},
-      "type": "@n8n/n8n-nodes-langchain.toolThink",
-      "typeVersion": 1.1,
-      "position": [
-        -1904,
-        2592
-      ],
-      "id": "2ad6afc8-9f95-421e-921e-5db0e00b647f",
-      "name": "Think1"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://mediz-n8n.gjhi7d.easypanel.host/webhook/chat-texto",
-        "sendBody": true,
-        "parametersBody": {
-          "values": [
-            {}
-          ]
-        },
-        "placeholderDefinitions": {
-          "values": [
-            {
-              "name": "sintoma",
-              "description": "O sintoma ou doenca mencionado pelo usuario"
-            }
-          ]
-        }
-      },
-      "name": "Consultar Mediz (Professor)",
-      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
-      "typeVersion": 1.1,
-      "position": [
-        -1952,
-        1312
-      ],
-      "id": "e92a6435-6f45-445e-acc9-715b08d89fa5",
-      "disabled": true
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://mediz-n8n.gjhi7d.easypanel.host/webhook/chat-texto",
-        "sendBody": true,
-        "parametersBody": {
-          "values": [
-            {}
-          ]
-        },
-        "placeholderDefinitions": {
-          "values": [
-            {
-              "name": "sintoma",
-              "description": "O sintoma ou doenca mencionado pelo usuario"
-            }
-          ]
-        }
-      },
-      "name": "Consultar Mediz (Me Atende)",
-      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
-      "typeVersion": 1.1,
-      "position": [
-        -1616,
-        2736
-      ],
-      "id": "3f9b6739-1c83-4d9c-9189-4df00ab01434"
-    },
-    {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "3bfec4b0-7cf7-443c-a73f-e4dcfa899c7c",
-        "responseMode": "responseNode",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2.1,
-      "position": [
-        -2464,
-        2368
-      ],
-      "id": "d07cf021-1e91-44f4-8ab6-12d8b16a8302",
-      "name": "IA simulador",
-      "webhookId": "3bfec4b0-7cf7-443c-a73f-e4dcfa899c7c"
-    },
-    {
-      "parameters": {
-        "mode": "retrieve-as-tool",
-        "tableName": {
-          "__rl": true,
-          "value": "Agente IA [Professor]",
-          "mode": "list",
-          "cachedResultName": "Agente IA [Professor]"
-        },
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
-      "typeVersion": 1.3,
-      "position": [
         -1744,
-        1808
+        880
       ],
-      "id": "94a99b98-2b35-47a7-9977-6dd9fbdc52f9",
-      "name": "Supabase Vector Store",
-      "credentials": {
-        "supabaseApi": {
-          "id": "ajUgfUltDy1MnUdF",
-          "name": "Supabase account"
-        }
-      },
-      "disabled": true
-    },
-    {
-      "parameters": {
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
-      "typeVersion": 1.2,
-      "position": [
-        -1744,
-        2000
-      ],
-      "id": "59c9d86b-3815-4745-bd6a-572246473338",
-      "name": "Embeddings OpenAI",
-      "credentials": {
-        "openAiApi": {
-          "id": "uytZDG8ilslSjmcH",
-          "name": "OpenAi account"
-        }
-      },
-      "disabled": true
-    },
-    {
-      "parameters": {},
-      "id": "ff70e40d-2506-4908-9b9f-3242dda412ea",
-      "name": "Manual Trigger",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [
-        -512,
-        1792
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "pdf",
-        "options": {}
-      },
-      "id": "c4159e9a-d93f-429f-b9f3-e76e52ba3d68",
-      "name": "Extract from File — PDF",
-      "type": "n8n-nodes-base.extractFromFile",
-      "typeVersion": 1,
-      "position": [
-        -128,
-        1792
-      ]
-    },
-    {
-      "parameters": {
-        "model": "text-embedding-3-small",
-        "options": {}
-      },
-      "id": "5800e155-cb9a-467a-8952-16f3d95c2609",
-      "name": "Embeddings OpenAI1",
-      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
-      "typeVersion": 1,
-      "position": [
-        96,
-        2048
-      ],
+      "id": "e2c31128-4b6d-4e1c-95fa-6ed5a4d1049d",
+      "name": "OpenAI Model",
       "credentials": {
         "openAiApi": {
           "id": "uytZDG8ilslSjmcH",
@@ -642,113 +681,74 @@
     },
     {
       "parameters": {
-        "mode": "insert",
-        "tableName": {
-          "__rl": true,
-          "value": "GuiaCompleto",
-          "mode": "list",
-          "cachedResultName": "GuiaCompleto"
-        },
+        "promptType": "define",
+        "text": "={{ $('Extrai Dados Texto').item.json.message }}",
         "options": {
-          "queryName": "hello-world"
-        }
+          "systemMessage": "PROMPT APP | MEDIZ.APP\n\nVocê é “meDIZ!”, um app de pesquisa especializado no Sentido Biológico de dor, sintomas e doenças. Suas respostas devem mostrar a utilidade emocional do sintoma como estratégia de sobrevivência diante de um conflito emocional inconsciente. Use uma linguagem terapêutica e emocional, não médica.\n\n🗣️ **INSTRUÇÃO DE IDIOMA (IMPORTANTE):**\nSempre que a pergunta for feita com um marcador de idioma entre colchetes ou parênteses — por exemplo:\n\n* `[english]`, `[español]`, `[français]`, `(italiano)` ou qualquer outro idioma —\n  **toda a resposta deve ser gerada completamente nesse idioma**, mantendo a mesma estrutura, profundidade emocional e formato descritos abaixo.\n\nExemplo:\n\n> Pergunta: “[english] dor de cabeça”\n> Resposta: Todo o conteúdo a seguir deve ser redigido em inglês.\n\n\nBASE DE DADOS:\nAo gerar respostas, considere exclusivamente os ensinamentos e fundamentos dos seguintes autores e obras: Dr. Ryke Geerd Hamer (Nova Medicina Germânica), Christian Flèche (Biodescodificação), Claude Sabbah (Total Biology), Salomon Sellam (Decodificação Biológica), Dr. Gabor Maté (“Quando o Corpo Diz Não”), Dr. Bessel van der Kolk (“O Corpo Guarda as Marcas”), Dr. Bruce Lipton (“A Biologia da Crença”) e Thorwald Dethlefsen e Rüdiger Dahlke (“A Doença como Caminho”) Professor Paulo Barbosa e o Método [RE]Sentir. Nenhuma outra fonte ou teoria externa deve ser utilizada.\n\nINSTRUÇÕES AO GERAR RESPOSTAS:\n\n**Nome do Sistema**\n(exemplo: \"Sistema Cardiovascular\").\n**Nome Científico da condição.**\n**Nome Popular:**\n\n**Contexto Geral:**\nBreve explicação da condição - até 200 caracteres.\n\nPara os demais itens, considere ainda:\nApresentar a resposta, com uma frase inicial curta e direto ao ponto, de forma impactante. Esta primeira frase deve ser em negrito (não se aplica em checklist - bullet points - listar frases). Então siga respondendo, conforme instruções específicas do item:\n\n**Impacto Biológico:**\n(Primeira frase curta, direto ao ponto, em negrito. Na continuação, considere a função do tecido afetado e descreva a lógica emocional por trás do que o corpo está tentando resolver com este sintoma. Limite a resposta a no máximo 300 caracteres.)\n\n**Símbolos Biológicos**\n(Em forma de check list, 3 a 5 frases. Insira emojis como marcadores. A resposta deve traduzir como essa dor, doença ou sintoma cria uma sensação de proteção inconsciente.)\n\n**Conflito Emocional Subjacente**\n(Identifique o tipo específico de conflito emocional inconsciente que origina o sintoma ou tensão na parte do corpo pesquisada. Evite explicações genéricas.  Limite a resposta a no máximo 400 caracteres.\nApresente o conteúdo seguindo esta estrutura formatada:\n[Conflito central – em negrito, até 1 linha]\n\n**Impacto Sentido**\n[frase subjetiva que represente o que a pessoa sentiu internamente]\nSITUAÇÕES COMUNS INCLUEM:\n📍 [situação 1]\n📍 [situação 2]\n📍 [situação 3]\n\n**Experiências comuns**\n(liste acontecimentos emocionais típicos ou recorrentes vividos por pessoas que manifestam este sintoma ou doença. As memórias devem estar ligadas à fase da vida, estrutura familiar, traumas silenciosos ou eventos que ativam o conflito biológico descrito.\nApresente em formato de lista com bullet points.\nEvite termos genéricos (como 'problemas na infância').\nFormato da resposta:\n[memória emocional 1]\n[memória emocional 2]\n[memória emocional 3]\n\n**Padrões de comportamento**\n(Descreva os padrões de comportamento típicos associados. A resposta deve apontar mecanismos emocionais repetitivos, estratégias inconscientes de sobrevivência ou formas de lidar com o mundo que reforçam o conflito emocional. De 3 a 5 itens no formato checklist, usando marcadores.)\n\n**Impacto Transgeracional**\n(Descreva as influências sistêmicas e transgeracionais associadas ao sintoma. A resposta deve trazer padrões familiares, lealdades inconscientes, repetições emocionais ou histórias não resolvidas herdadas. Fale em tom de sabedoria profunda. Limite a resposta a no máximo 300 caracteres.)\n\n**Lateralidade**(Descreva como a lateralidade influencia o significado simbólico do sintoma.\n\nEstruture a resposta assim:\n**Lado Direito**: Descreva o sentido emocional simbólico do sintoma quando aparece no lado direito\n\n**Lado Esquerdo**: Descreva o sentido emocional simbólico do sintoma no lado esquerdo\n\nInsira um observação obrigatória no final:\n(emoji) **ATENÇÃO!** (centralizar + quebra de linha)\nLateralidade depende do lado dominante, pois o cérebro processa o conflito de forma cruzada.\n(Quebra de Linha)\n(emoji) **DICA:** (centralizar + quebra de linha)\nPara determinar a dominância cerebral, peça ao cliente que una as mãos em posição de oração: o polegar que ficar por cima indica o lado dominante.\n\nINSTRUÇÃO ADICIONAL EXCLUSIVA PARA O ITEM LATERALIDADE - Ao abordar conteúdo relacionado à LATERALIDADE, priorize os princípios estabelecidos por: Christian Flèche: interpretação simbólica yin-yang – lado esquerd\n(receptividade\nvínculo afetivo); lado direito (ação, mundo externo). Salomon Sellam: atenção à lateralidade cruzada e validação da mão dominante com teste de palmas.\n\n**Fases da doença**\nExplique as fases que compõem o processo da doença/sintoma: A explicação deve ser adaptada para terapeutas/psicólogos e não médicos, demonstrando como o corpo responde ao trauma emocional em cada fase. A resposta deve conter as seguintes etapas (em tópicos):\n**Fase de Conflito Ativo (Simpaticotonia)**: o que o corpo faz ao enfrentar o conflito não resolvido\n\n**Fase de Solução (PCL-A)**: o que muda no corpo quando o conflito é resolvido\n\n**Crise Epilética/Epileptoide**: o pico de sintomas que marca a transição e resolução profunda\n\n**Fase de Reparo Final (PCL-B)**: o processo de restauração e retorno ao equilíbrio\n\n**Possíveis doenças correlacionadas**\nListe doenças ou manifestações físicas que costumam estar associadas ao órgão. A resposta deve conter de 3 a 5 condições reais ligadas a esse território biológico, sempre em tom sucinto e direto, no formato checklist com ícone. A ênfase deve estar no agrupamento por afinidade emocional ou funcional.\n\n**Perguntas Reflexivas:**\nCrie de 3 a 5 perguntas reflexivas para ajudar o cliente a acessar o conflito inconsciente relacionado. As perguntas devem ser curtas, acessíveis, emocionalmente impactantes e provocativas. Sua função é romper a barreira do consciente e levar o cliente a se conectar com memórias inconscientes do trauma, sentimentos não expressos, eventos esquecidos e não resolvidos.\n\nAs perguntas devem ser geradas com a seguinte formatação:\nNúmero da pergunta precedido por “#” e em negrito\nResposta completa em itálico\nDestaque de impacto emocional em negrito dentro da frase\nCada pergunta separada por uma linha em branco (espaçamento visual)\n\n\n**Chave Terapêutica do [RE]Sentir**\nCom base nos princípios do Método [RE]Sentir, desenvolvidos pelo Professor Paulo Barbosa, escreva a Chave Terapêutica correspondente. A resposta deve seguir estritamente os seguintes parâmetros:\n✅ Finalidade exclusiva:\nA instrução deve levar o terapeuta a conduzir o cliente ao instante exato do impacto emocional não digerido que deu origem ao sintoma no corpo.\n✅ Natureza do evento traumático:\n A memória a ser acessada deve envolver:\nUm momento de solidão psíquica (choque inesperado, vivido sem saída ou apoio);\n\nUma emoção não expressa ou reprimida no instante do impacto;\n\nUma percepção simbólica e subjetiva do conflito (não a descrição literal do evento).\n\n✅ Vinculação com o corpo:\n A memória descrita deve estar biologicamente correlacionada à função emocional do órgão/parte afetada.\n\n✅ Proibição de termos incompatíveis:\nNunca usar termos como: “ressignificar”, “entender”, “aceitar”; A única instrução válida é [RE]Sentir o instante original do trauma, para liberar a energia traumática armazenada nas células.\n\n✅ Validador interno obrigatório:\n Antes de concluir a resposta, certifique-se que:\nHá um instante vivido real, claro e simbólico descrito\nA emoção está claramente simbolizada\nO conteúdo remete ao trauma, não à racionalização ou reflexão mental\nRegras de contingência:\nNão faça diagnósticos médicos, mantenha tom neutro, respeitoso e profissional.\nNão invente ou adapte explicações, utilize somente a base de referências.\nNão cite o autor ou estudo nas respostas.\nGarantir que o foco seja no Sentido Biológico dos órgãos e tecidos.\nProibido: usar os termos “ressignificar” ou “sem precisar reviver traumas”.\nNunca usar a frase \"sem precisar reviver traumas\".\nNão utilizar o termo \"ressignificar\". Sempre usar \"[RE]Sentir\" para descrever o processo de liberação da energia traumática.\n\n\n🗣️ **INSTRUÇÃO DE IDIOMA (REFORÇO FINAL):**\nSempre que o usuário incluir um idioma entre colchetes ou parênteses (ex: `[english]`, `[français]`, `(español)`), gere **toda a resposta integralmente nesse idioma**, respeitando todas as formatações, símbolos e estrutura emocional originais.\nMesmo a **Chave Terapêutica do [RE]Sentir** deve vir com a resposta traduzida.\n\nFORMATO TECNICO OBRIGATORIO:\n- Responda exclusivamente conforme o schema JSON conectado ao Structured Output Parser.\n- Use version \"2.0\" e o agent correspondente a esta rota.\n- Divida naturalmente a resposta entre 1 e 8 mensagens curtas no array messages.\n- Cada item deve ter type \"text\" e content em Markdown.\n- Use status \"awaiting_confirmation\" apenas quando pedir para continuar.\n- Nao inclua texto fora do JSON."
+        },
+        "hasOutputParser": true
       },
-      "id": "5f87520d-6327-418d-9eb3-c3eed255977d",
-      "name": "Supabase Vector Store1",
-      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
-      "typeVersion": 1,
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
       "position": [
-        160,
-        1792
+        -1216,
+        464
       ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "ajUgfUltDy1MnUdF",
-          "name": "Supabase account"
-        }
-      }
+      "id": "08fe1a1a-9a61-48f4-b84c-5c12618b8f2b",
+      "name": "Agente IA"
     },
     {
       "parameters": {
-        "chunkSize": 500
-      },
-      "type": "@n8n/n8n-nodes-langchain.textSplitterTokenSplitter",
-      "typeVersion": 1,
-      "position": [
-        352,
-        2112
-      ],
-      "id": "de8c4f0a-9d1b-45e2-a05b-54a64902ae61",
-      "name": "Token Splitter"
-    },
-    {
-      "parameters": {
-        "operation": "download",
-        "fileId": {
-          "__rl": true,
-          "value": "=https://drive.google.com/file/d/1ElNq3ZQtuSeHsOe73sZbRFNNJieuTrBy/view?usp=sharing",
-          "mode": "url"
-        },
-        "options": {
-          "googleFileConversion": {
-            "conversion": {
-              "docsToFormat": "application/pdf"
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1528c98b-8970-404e-8a21-f87c65ef44ef",
+              "name": "message",
+              "value": "={{ $json.body.message || $json.body.sintoma || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "2e9b4dd2-b17c-4898-9c69-98a730152d9f",
+              "name": "threadId",
+              "value": "={{ $json.body.threadId || $json.body.sessionId || $execution.id }}",
+              "type": "string"
+            },
+            {
+              "id": "6c3febf0-b495-4a1e-b601-2e04500684d6",
+              "name": "agent",
+              "value": "={{ ['concierge', 'body', 'home', 'pet'].includes(($json.body.agent || 'concierge').toLowerCase()) ? ($json.body.agent || 'concierge').toLowerCase() : 'concierge' }}",
+              "type": "string"
+            },
+            {
+              "id": "6cdc246a-4cca-48ea-8dce-1a49cb87291f",
+              "name": "language",
+              "value": "={{ $json.body.language || $json.body.locale || 'pt-BR' }}",
+              "type": "string"
+            },
+            {
+              "id": "40237cf0-ef1c-4404-a1a9-3df8f9280599",
+              "name": "routingState",
+              "value": "={{ $json.body.routingState || {} }}",
+              "type": "object"
+            },
+            {
+              "id": "82a89282-a8be-4500-bb0c-b63d9c1ebf49",
+              "name": "conciergeEntryPoint",
+              "value": "={{ $json.body.conciergeEntryPoint || 'free' }}",
+              "type": "string"
             }
-          }
-        }
-      },
-      "type": "n8n-nodes-base.googleDrive",
-      "typeVersion": 3,
-      "position": [
-        -336,
-        1792
-      ],
-      "id": "45b9462b-79ec-4f99-b7cb-ff8d6830f330",
-      "name": "Download file",
-      "executeOnce": true,
-      "credentials": {
-        "googleDriveOAuth2Api": {
-          "id": "KiIcjaGPmYgd5aMT",
-          "name": "Google Drive account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsonMode": "expressionData",
-        "jsonData": "={{ $json.text }}",
+          ]
+        },
         "options": {}
       },
-      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
-      "typeVersion": 1.1,
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
       "position": [
-        320,
-        1968
+        -2240,
+        688
       ],
-      "id": "2b75b815-2125-4371-937b-277024601e9b",
-      "name": "Default Data Loader"
-    },
-    {
-      "parameters": {
-        "descriptionType": "manual",
-        "toolDescription": "Sempre chame essa tool para consultar informações da base de conhecimento \"Corpo DIZ\"",
-        "operation": "get",
-        "documentURL": "https://docs.google.com/document/d/1i9UDyeH9uAp82IQaFI49Ec5iPPGrkgR2P_j3FR5GxLY/edit?tab=t.0"
-      },
-      "type": "n8n-nodes-base.googleDocsTool",
-      "typeVersion": 2,
-      "position": [
-        -2080,
-        1744
-      ],
-      "id": "832bf1c7-4510-449f-bd0e-20ab9cc918b5",
-      "name": "corpo_diz",
-      "credentials": {
-        "googleDocsOAuth2Api": {
-          "id": "vSmLEzqSoLiPhvaG",
-          "name": "Google Docs account"
-        }
-      }
+      "id": "cba532e9-8977-4cf4-8a5e-88df631a9188",
+      "name": "Extrai Dados Texto"
     },
     {
       "parameters": {
@@ -765,7 +765,7 @@
         -1216,
         688
       ],
-      "id": "08d473d4-8565-4d11-8cc1-555f421b07b1",
+      "id": "ef17e294-8c71-43d9-9f57-8157d2160916",
       "name": "Agente IA - Minha Casa"
     },
     {
@@ -773,7 +773,7 @@
         "assignments": {
           "assignments": [
             {
-              "id": "5fda7e00-be81-4fd9-85fd-5b1eb479bc65",
+              "id": "9f17179d-bf9f-40a8-9cb6-f375424c3be4",
               "name": "output",
               "value": "O agente **meDIZ! Meu Pet** está sendo preparado. Por enquanto, escolha Meu Corpo ou Minha Casa para continuar.",
               "type": "string"
@@ -788,15 +788,15 @@
         -1216,
         912
       ],
-      "id": "c8097875-31e8-4356-8d3c-7e2b62f9ba75",
+      "id": "a2ed9254-255d-4bfb-a3ca-fd80ad4225e5",
       "name": "Resposta temporária - Meu Pet"
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ 'ENTRADA: ' + $('Extrai Dados Texto').item.json.conciergeEntryPoint + '\nMENSAGEM ATUAL: ' + $('Extrai Dados Texto').item.json.message + '\nESTADO CONTROLADO PELO APP: ' + JSON.stringify($('Extrai Dados Texto').item.json.routingState || {}) }}",
+        "text": "={{ 'ENTRADA: ' + $('Extrai Dados Texto').item.json.conciergeEntryPoint + '\\nMENSAGEM ATUAL: ' + $('Extrai Dados Texto').item.json.message + '\\nESTADO CONTROLADO PELO APP: ' + JSON.stringify($('Extrai Dados Texto').item.json.routingState || {}) }}",
         "options": {
-          "systemMessage": "Voce e o Porteiro do app meDIZ!, um interprete acolhedor de intencao. Voce nunca encaminha por conta propria: conversa, interpreta, pede confirmacao e devolve estado estruturado para o app decidir.\n\nDESTINOS:\n- medizpesquisa: corpo humano, dor, sintoma, doenca ou pesquisa informativa sobre o que a pessoa sente.\n- minha_casa: ambiente, lar, objetos, energia ou acontecimentos da casa.\n- meu_pet: animal, comportamento ou sintomas do pet.\n- meatende: processo pessoal, sentimentos, ansiedade, relacionamento, autoconhecimento ou experiencia guiada [RE]Sentir.\n- simulador: terapeuta querendo praticar atendendo um cliente simulado.\n- professor: terapeuta querendo orientacao, aprendizado, feedback ou revisar um atendimento realizado.\n- indefinido: ainda nao ha informacao suficiente.\n\nREGRAS DE CONVERSA:\n- Responda sempre no mesmo idioma da mensagem atual.\n- Nao emita saudacao.\n- Uma pergunta por vez, frases curtas, tom humano e sem jargao.\n- Valide brevemente o sentimento antes de perguntar.\n- Nao conduza terapia, nao ensine e nao responda ao tema; apenas esclareca e confirme o destino.\n- Descubra primeiro se a pessoa busca ajuda para si ou se e terapeuta querendo treinar/aprender.\n- Nunca encaminhe sem confirmacao positiva do usuario.\n- Ao identificar um destino, use status awaiting_confirmation, requiresConfirmation=true e shouldRoute=false; pergunte se pode leva-lo ao destino.\n- Somente depois de uma confirmacao positiva use status ready_to_route, requiresConfirmation=false e shouldRoute=true.\n- Se a confirmacao for negativa, volte a collecting e faca uma pergunta-chave.\n- Apos no maximo 3 perguntas sem definicao, use needs_selection, destino indefinido e apresente resumidamente as seis areas para a pessoa escolher. Nao faca uma quarta pergunta.\n- O campo clarificationCount deve preservar ou incrementar o questionCount recebido do app, nunca excedendo 3.\n\nGATILHOS ESPECIAIS:\n- \"estou com dor\": primeiro pergunte mais sobre a dor; depois sugira medizpesquisa e confirme.\n- \"quero pesquisar\": primeiro pergunte o tema; depois classifique e confirme.\n- \"preciso conversar\": primeiro pergunte sobre o que; processo pessoal vai para meatende, revisao de atendimento para professor e pratica para simulador.\n\nCONTRATO:\n- Retorne exclusivamente o JSON do parser.\n- intentSummary resume o pedido real.\n- handoffMessage deve conter contexto suficiente para o agente de destino continuar sem repetir perguntas.\n- confidence varia de 0 a 1.\n- Nunca marque shouldRoute=true sem confirmacao positiva explicita."
+          "systemMessage": "Voce e o Porteiro do app meDIZ!, um interprete acolhedor de intencao. Voce nunca encaminha por conta propria: conversa, interpreta, pede confirmacao e devolve estado estruturado para o app decidir.\n\nDESTINOS:\n- medizpesquisa: corpo humano, dor, sintoma, doenca ou pesquisa informativa sobre o que a pessoa sente.\n- minha_casa: ambiente, lar, objetos, energia ou acontecimentos da casa.\n- meu_pet: animal, comportamento ou sintomas do pet.\n- meatende: processo pessoal, sentimentos, ansiedade, relacionamento, autoconhecimento ou experiencia guiada [RE]Sentir.\n- simulador: terapeuta querendo praticar atendendo um cliente simulado.\n- professor: terapeuta querendo orientacao, aprendizado, feedback ou revisar um atendimento realizado.\n- indefinido: ainda nao ha informacao suficiente.\n\nREGRAS DE CONVERSA:\n- Responda sempre no mesmo idioma da mensagem atual.\n- Nao emita saudacao.\n- Uma pergunta por vez, frases curtas, tom humano e sem jargao.\n- Valide brevemente o sentimento antes de perguntar.\n- Nao conduza terapia, nao ensine e nao responda ao tema; apenas esclareca e confirme o destino.\n- Descubra primeiro se a pessoa busca ajuda para si ou se e terapeuta querendo treinar/aprender.\n- Nunca encaminhe sem confirmacao positiva do usuario.\n- Ao identificar um destino, use status awaiting_confirmation, requiresConfirmation=true e shouldRoute=false; pergunte se pode leva-lo ao destino.\n- Somente depois de uma confirmacao positiva use status ready_to_route, requiresConfirmation=false e shouldRoute=true.\n- Se a confirmacao for negativa, volte a collecting e faca uma pergunta-chave.\n- Apos no maximo 3 perguntas sem definicao, use needs_selection, destino indefinido e apresente resumidamente as seis areas para a pessoa escolher. Nao faca uma quarta pergunta.\n- O campo clarificationCount deve preservar ou incrementar o questionCount recebido do app, nunca excedendo 3.\n\nGATILHOS ESPECIAIS:\n- \"estou com dor\": primeiro pergunte mais sobre a dor; depois sugira medizpesquisa e confirme.\n- \"quero pesquisar\": primeiro pergunte o tema; depois classifique e confirme.\n- \"preciso conversar\": primeiro pergunte sobre o que; processo pessoal vai para meatende, revisao de atendimento para professor e pratica para simulador.\n\nCONTRATO:\n- Retorne exclusivamente um objeto JSON valido, sem bloco Markdown ou texto externo.\n- A raiz deve conter version \"3.0\", agent \"concierge\", messages e routing.\n- Cada item de messages deve conter type \"text\" e content.\n- routing deve conter status, intentSummary, suggestedDestination, confidence, requiresConfirmation, shouldRoute, clarificationCount, detectedLanguage e handoffMessage.\n- intentSummary resume o pedido real.\n- handoffMessage deve conter contexto suficiente para o agente de destino continuar sem repetir perguntas.\n- confidence varia de 0 a 1.\n- Nunca marque shouldRoute=true sem confirmacao positiva explicita."
         },
         "hasOutputParser": true
       },
@@ -806,7 +806,7 @@
         -1536,
         1120
       ],
-      "id": "c41f72bf-9a79-43e0-90e4-63fa1275c627",
+      "id": "bd0a0208-f3c5-401a-90a6-945934ca5e8a",
       "name": "Agente Porteiro"
     },
     {
@@ -819,12 +819,12 @@
         -1408,
         1312
       ],
-      "id": "70787e1a-d412-4ed3-a274-2db40471b5b5",
+      "id": "d1e0977f-d3fb-43dc-b715-0380da8eaed8",
       "name": "Parser - Rota do Porteiro"
     },
     {
       "parameters": {
-        "jsCode": "const source = $json.output ?? $json;\nlet value = source;\nif (typeof value === 'string') {\n  try { value = JSON.parse(value); } catch { value = null; }\n}\nif (value?.version !== '3.0' || value?.agent !== 'concierge' || !Array.isArray(value?.messages) || !value?.routing) {\n  throw new Error('O porteiro retornou um contrato invalido.');\n}\nreturn [{ json: value }];"
+        "jsCode": "const source = $json.output ?? $json;\nlet value = source;\nif (typeof value === 'string') {\n  const cleaned = value.trim()\n    .replace(/^```(?:json)?\\s*/i, '')\n    .replace(/\\s*```$/, '')\n    .trim();\n  try {\n    value = JSON.parse(cleaned);\n  } catch {\n    const start = cleaned.indexOf('{');\n    const end = cleaned.lastIndexOf('}');\n    try { value = start >= 0 && end > start ? JSON.parse(cleaned.slice(start, end + 1)) : null; }\n    catch { value = null; }\n  }\n}\nif (value?.version !== '3.0' || value?.agent !== 'concierge' || !Array.isArray(value?.messages) || !value?.routing) {\n  throw new Error('O porteiro retornou um contrato invalido.');\n}\nreturn [{ json: value }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -832,7 +832,7 @@
         -1216,
         1120
       ],
-      "id": "c8ebb0b6-a581-4564-9171-afb97a62b11e",
+      "id": "45a88d26-3abf-4478-97fe-96a6d3db47da",
       "name": "Normaliza resposta do porteiro"
     },
     {
@@ -845,7 +845,7 @@
         -1088,
         304
       ],
-      "id": "2089ebc2-ad4e-41c4-bfda-c566c96b2a41",
+      "id": "9e057661-e7f0-499f-af42-d1e09cec1405",
       "name": "Parser estruturado - Meu Corpo"
     },
     {
@@ -858,7 +858,7 @@
         -928,
         816
       ],
-      "id": "5d39e651-2d91-4629-84e7-75d657f8b708",
+      "id": "40bd929b-0224-4d22-b1d2-11abb75b4e19",
       "name": "Parser estruturado - Minha Casa"
     },
     {
@@ -875,7 +875,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "215777b6-9a90-4705-995f-49f5a4335c3a",
+                    "id": "19f3e8df-5d1d-4f53-9059-cf05122022a6",
                     "leftValue": "={{ $json.agent }}",
                     "rightValue": "body",
                     "operator": {
@@ -899,7 +899,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "be27ca53-5de6-4adb-8be9-093c25ba6ecf",
+                    "id": "f4a9c38a-0c59-49d3-8fca-8c513da7755e",
                     "leftValue": "={{ $json.agent }}",
                     "rightValue": "home",
                     "operator": {
@@ -923,7 +923,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "56fc9f22-fed2-438e-878d-96f625e17257",
+                    "id": "43007807-b760-49d9-ba75-7eea39672988",
                     "leftValue": "={{ $json.agent }}",
                     "rightValue": "pet",
                     "operator": {
@@ -947,7 +947,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "aa3c9237-6926-483e-b326-f91dbc03b686",
+                    "id": "bd4fa20f-ccec-4185-9a7f-54e34b4b47e6",
                     "leftValue": "={{ $json.agent }}",
                     "rightValue": "concierge",
                     "operator": {
@@ -971,7 +971,7 @@
         -1984,
         688
       ],
-      "id": "10bc7ef9-9cd8-4dc9-a11f-c7099e2641ce",
+      "id": "a332e805-b331-4bee-a889-756221f5ac2a",
       "name": "Entrada direta ou porteiro"
     },
     {
@@ -984,7 +984,7 @@
         -1760,
         576
       ],
-      "id": "54808cc0-f53c-4d5a-8258-acbad7509946",
+      "id": "0211b839-a769-4807-aac9-49b1ad566274",
       "name": "Define agente direto"
     },
     {
@@ -1001,7 +1001,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "9d226324-84c0-4b09-95f5-22bf4af3c164",
+                    "id": "e1373ae5-b483-4f8a-bd0c-0faf68660698",
                     "leftValue": "={{ $json.resolvedAgent }}",
                     "rightValue": "body",
                     "operator": {
@@ -1025,7 +1025,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "9d0475af-cec0-4905-80da-f8e0d7462387",
+                    "id": "7493bcc1-864e-4720-abdf-1621e42ad7f5",
                     "leftValue": "={{ $json.resolvedAgent }}",
                     "rightValue": "home",
                     "operator": {
@@ -1049,7 +1049,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "17aaa2a5-7644-497f-922f-81b5f9032da2",
+                    "id": "3bf2b7c9-0a87-44ae-8b83-c32f978be417",
                     "leftValue": "={{ $json.resolvedAgent }}",
                     "rightValue": "pet",
                     "operator": {
@@ -1073,7 +1073,7 @@
         -1504,
         688
       ],
-      "id": "440b20be-94d7-4641-9aff-37aac51f133a",
+      "id": "22e3008f-65e2-45df-908e-628ce9d61a36",
       "name": "Roteador especialista"
     },
     {
@@ -1086,145 +1086,256 @@
         -960,
         688
       ],
-      "id": "45c7ed4c-b811-4d29-8284-625267214422",
+      "id": "62992e61-7394-4d39-b8ab-53069c811540",
       "name": "Normaliza resposta estruturada"
     }
   ],
-  "pinData": {
-    "IA mediz": [
-      {
-        "json": {
-          "headers": {
-            "host": "mediz-n8n.gjhi7d.easypanel.host",
-            "user-agent": "node",
-            "content-length": "501",
-            "accept": "*/*",
-            "accept-encoding": "br, gzip, deflate",
-            "accept-language": "*",
-            "content-type": "application/json",
-            "sec-fetch-mode": "cors",
-            "x-forwarded-for": "3.236.225.55",
-            "x-forwarded-host": "mediz-n8n.gjhi7d.easypanel.host",
-            "x-forwarded-port": "443",
-            "x-forwarded-proto": "https",
-            "x-forwarded-server": "e7e90bb7ab90",
-            "x-invocation-id": "gru1::lj6nk-1776461213830-e523a707b6ad",
-            "x-real-ip": "3.236.225.55",
-            "x-vercel-id": "gru1::lj6nk-1776461213830-e523a707b6ad"
-          },
-          "params": {},
-          "query": {},
-          "body": {
-            "threadId": "72f81c8e-c168-44e3-a3b9-537dcb4362c4",
-            "sintoma": "Dor nas costas",
-            "sintomaOriginal": "Dor nas costas",
-            "language": "pt-BR",
-            "lang": "pt",
-            "locale": "pt-BR",
-            "idioma": "Português do Brasil",
-            "idiomaResposta": "Português do Brasil",
-            "responderEm": "Português do Brasil",
-            "iso6391": "pt",
-            "iso6392": "por",
-            "instrucaoIdioma": "Responda em Português do Brasil (pt-BR)",
-            "languageInstruction": "Responda em Português do Brasil (pt-BR)",
-            "languageName": "Brazilian Portuguese",
-            "nomeIdioma": "Português do Brasil"
-          },
-          "webhookUrl": "https://mediz-n8n.gjhi7d.easypanel.host/webhook/chat-texto",
-          "executionMode": "production"
-        },
-        "pairedItem": {
-          "item": 0
-        }
-      }
-    ],
-    "IA professor": [
-      {
-        "json": {
-          "headers": {
-            "host": "mediz-n8n.gjhi7d.easypanel.host",
-            "user-agent": "node",
-            "content-length": "559",
-            "accept": "*/*",
-            "accept-encoding": "br, gzip, deflate",
-            "accept-language": "*",
-            "content-type": "application/json",
-            "sec-fetch-mode": "cors",
-            "x-forwarded-for": "177.70.173.133",
-            "x-forwarded-host": "mediz-n8n.gjhi7d.easypanel.host",
-            "x-forwarded-port": "443",
-            "x-forwarded-proto": "https",
-            "x-forwarded-server": "e7e90bb7ab90",
-            "x-real-ip": "177.70.173.133"
-          },
-          "params": {},
-          "query": {},
-          "body": {
-            "threadId": "e4246fa8-3b06-46ee-a2dc-c6fcd1772e02",
-            "sintoma": "professor to com dúvidas da dor de cabeça",
-            "sintomaOriginal": "professor to com dúvidas da dor de cabeça",
-            "language": "pt-BR",
-            "lang": "pt",
-            "locale": "pt-BR",
-            "idioma": "Português do Brasil",
-            "idiomaResposta": "Português do Brasil",
-            "responderEm": "Português do Brasil",
-            "iso6391": "pt",
-            "iso6392": "por",
-            "instrucaoIdioma": "Responda em Português do Brasil (pt-BR)",
-            "languageInstruction": "Responda em Português do Brasil (pt-BR)",
-            "languageName": "Brazilian Portuguese",
-            "nomeIdioma": "Português do Brasil"
-          },
-          "webhookUrl": "https://mediz-n8n.gjhi7d.easypanel.host/webhook/c7d2b3a1-a8a6-4b70-9e2d-77c66b3a7173",
-          "executionMode": "production"
-        },
-        "pairedItem": {
-          "item": 0
-        }
-      }
-    ]
-  },
+  "pinData": {},
   "connections": {
-    "Extrai Dados Texto": {
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Supabase Vector Store1",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
       "main": [
         [
           {
-            "node": "Entrada direta ou porteiro",
+            "node": "Extract from File — PDF",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Agente IA": {
+    "Embeddings OpenAI1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File — PDF": {
       "main": [
         [
           {
-            "node": "Normaliza resposta estruturada",
+            "node": "Supabase Vector Store1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "OpenAI Model": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IA simulador": {
+      "main": [
+        [
+          {
+            "node": "Agente IA2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Think1": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente IA2",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memória2": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente IA2",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model2": {
       "ai_languageModel": [
         [
           {
+            "node": "Agente IA2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente IA2": {
+      "main": [
+        [
+          {
+            "node": "Responde Texto2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IA professor": {
+      "main": [
+        [
+          {
+            "node": "Agente IA1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "corpo_diz": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente IA1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente IA1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente IA1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memória1": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente IA1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente IA1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente IA1": {
+      "main": [
+        [
+          {
+            "node": "Responde Texto1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IA mediz": {
+      "main": [
+        [
+          {
+            "node": "Extrai Dados Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpa Memoria": {
+      "main": [
+        [
+          {
+            "node": "Limpa Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Responde Texto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "Agente IA",
-            "type": "ai_languageModel",
-            "index": 0
-          },
-          {
-            "node": "Agente IA - Minha Casa",
-            "type": "ai_languageModel",
-            "index": 0
-          },
-          {
-            "node": "Agente Porteiro",
-            "type": "ai_languageModel",
+            "type": "main",
             "index": 0
           }
         ]
@@ -1251,270 +1362,44 @@
         ]
       ]
     },
-    "Limpa Memoria": {
-      "main": [
-        [
-          {
-            "node": "Limpa Customer",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Execute a SQL query": {
-      "main": [
-        [
-          {
-            "node": "If",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "If": {
-      "main": [
-        [
-          {
-            "node": "Responde Texto",
-            "type": "main",
-            "index": 0
-          }
-        ],
+    "OpenAI Model": {
+      "ai_languageModel": [
         [
           {
             "node": "Agente IA",
-            "type": "main",
+            "type": "ai_languageModel",
             "index": 0
-          }
-        ]
-      ]
-    },
-    "Agente IA1": {
-      "main": [
-        [
+          },
           {
-            "node": "Responde Texto1",
-            "type": "main",
+            "node": "Agente IA - Minha Casa",
+            "type": "ai_languageModel",
             "index": 0
-          }
-        ]
-      ]
-    },
-    "OpenAI Model1": {
-      "ai_languageModel": [
-        [
+          },
           {
-            "node": "Agente IA1",
+            "node": "Agente Porteiro",
             "type": "ai_languageModel",
             "index": 0
           }
         ]
       ]
     },
-    "Memória1": {
-      "ai_memory": [
-        [
-          {
-            "node": "Agente IA1",
-            "type": "ai_memory",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Think": {
-      "ai_tool": [
-        [
-          {
-            "node": "Agente IA1",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "IA mediz": {
+    "Agente IA": {
       "main": [
         [
           {
-            "node": "Extrai Dados Texto",
+            "node": "Normaliza resposta estruturada",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "IA professor": {
+    "Extrai Dados Texto": {
       "main": [
         [
           {
-            "node": "Agente IA1",
+            "node": "Entrada direta ou porteiro",
             "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Agente IA2": {
-      "main": [
-        [
-          {
-            "node": "Responde Texto2",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "OpenAI Model2": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Agente IA2",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Memória2": {
-      "ai_memory": [
-        [
-          {
-            "node": "Agente IA2",
-            "type": "ai_memory",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Think1": {
-      "ai_tool": [
-        [
-          {
-            "node": "Agente IA2",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Consultar Mediz (Professor)": {
-      "ai_tool": [
-        []
-      ]
-    },
-    "Consultar Mediz (Me Atende)": {
-      "ai_tool": [
-        []
-      ]
-    },
-    "IA simulador": {
-      "main": [
-        [
-          {
-            "node": "Agente IA2",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Supabase Vector Store": {
-      "ai_tool": [
-        [
-          {
-            "node": "Agente IA1",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Embeddings OpenAI": {
-      "ai_embedding": [
-        [
-          {
-            "node": "Supabase Vector Store",
-            "type": "ai_embedding",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Manual Trigger": {
-      "main": [
-        [
-          {
-            "node": "Download file",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Extract from File — PDF": {
-      "main": [
-        [
-          {
-            "node": "Supabase Vector Store1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Embeddings OpenAI1": {
-      "ai_embedding": [
-        [
-          {
-            "node": "Supabase Vector Store1",
-            "type": "ai_embedding",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Supabase Vector Store1": {
-      "main": [
-        []
-      ]
-    },
-    "Download file": {
-      "main": [
-        [
-          {
-            "node": "Extract from File — PDF",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Token Splitter": {
-      "ai_textSplitter": [
-        []
-      ]
-    },
-    "Default Data Loader": {
-      "ai_document": [
-        [
-          {
-            "node": "Supabase Vector Store1",
-            "type": "ai_document",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "corpo_diz": {
-      "ai_tool": [
-        [
-          {
-            "node": "Agente IA1",
-            "type": "ai_tool",
             "index": 0
           }
         ]

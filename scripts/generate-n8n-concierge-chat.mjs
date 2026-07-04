@@ -71,7 +71,7 @@ currentRouter.parameters.rules.values.push({
 const concierge = {
   parameters: {
     promptType: 'define',
-    text: `={{ 'ENTRADA: ' + $('Extrai Dados Texto').item.json.conciergeEntryPoint + '\nMENSAGEM ATUAL: ' + $('Extrai Dados Texto').item.json.message + '\nESTADO CONTROLADO PELO APP: ' + JSON.stringify($('Extrai Dados Texto').item.json.routingState || {}) }}`,
+    text: `={{ 'ENTRADA: ' + $('Extrai Dados Texto').item.json.conciergeEntryPoint + '\\nMENSAGEM ATUAL: ' + $('Extrai Dados Texto').item.json.message + '\\nESTADO CONTROLADO PELO APP: ' + JSON.stringify($('Extrai Dados Texto').item.json.routingState || {}) }}`,
     options: {
       systemMessage: `Voce e o Porteiro do app meDIZ!, um interprete acolhedor de intencao. Voce nunca encaminha por conta propria: conversa, interpreta, pede confirmacao e devolve estado estruturado para o app decidir.
 
@@ -104,7 +104,10 @@ GATILHOS ESPECIAIS:
 - "preciso conversar": primeiro pergunte sobre o que; processo pessoal vai para meatende, revisao de atendimento para professor e pratica para simulador.
 
 CONTRATO:
-- Retorne exclusivamente o JSON do parser.
+- Retorne exclusivamente um objeto JSON valido, sem bloco Markdown ou texto externo.
+- A raiz deve conter version "3.0", agent "concierge", messages e routing.
+- Cada item de messages deve conter type "text" e content.
+- routing deve conter status, intentSummary, suggestedDestination, confidence, requiresConfirmation, shouldRoute, clarificationCount, detectedLanguage e handoffMessage.
 - intentSummary resume o pedido real.
 - handoffMessage deve conter contexto suficiente para o agente de destino continuar sem repetir perguntas.
 - confidence varia de 0 a 1.
@@ -156,7 +159,18 @@ const conciergeNormalizer = {
     jsCode: `const source = $json.output ?? $json;
 let value = source;
 if (typeof value === 'string') {
-  try { value = JSON.parse(value); } catch { value = null; }
+  const cleaned = value.trim()
+    .replace(/^\x60\x60\x60(?:json)?\\s*/i, '')
+    .replace(/\\s*\x60\x60\x60$/, '')
+    .trim();
+  try {
+    value = JSON.parse(cleaned);
+  } catch {
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    try { value = start >= 0 && end > start ? JSON.parse(cleaned.slice(start, end + 1)) : null; }
+    catch { value = null; }
+  }
 }
 if (value?.version !== '3.0' || value?.agent !== 'concierge' || !Array.isArray(value?.messages) || !value?.routing) {
   throw new Error('O porteiro retornou um contrato invalido.');

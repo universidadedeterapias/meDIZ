@@ -47,13 +47,13 @@
               "type": "string"
             },
             {
-              "id": "dcc62c97-3ef4-4448-a29a-f753d9a166aa",
+              "id": "6eb9b06f-284c-4ea9-b6d4-fc09b9275881",
               "name": "routingState",
               "value": "={{ $json.body.routingState || {} }}",
               "type": "object"
             },
             {
-              "id": "6eb77679-f8eb-4e23-a6fb-69c502f27267",
+              "id": "1b5b4bf3-307d-47a6-a60a-3bcba0d98fc4",
               "name": "conciergeEntryPoint",
               "value": "={{ $json.body.conciergeEntryPoint || 'free' }}",
               "type": "string"
@@ -233,7 +233,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "0c9650cf-6349-4aff-9dc8-638674877c78",
+                    "id": "2d810e4d-ec76-48ea-a444-d1e4581c01a9",
                     "leftValue": "={{ $json.agent }}",
                     "rightValue": "concierge",
                     "operator": {
@@ -343,9 +343,9 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ 'ENTRADA: ' + $('Extrai Dados Texto').item.json.conciergeEntryPoint + '\nMENSAGEM ATUAL: ' + $('Extrai Dados Texto').item.json.message + '\nESTADO CONTROLADO PELO APP: ' + JSON.stringify($('Extrai Dados Texto').item.json.routingState || {}) }}",
+        "text": "={{ 'ENTRADA: ' + $('Extrai Dados Texto').item.json.conciergeEntryPoint + '\\nMENSAGEM ATUAL: ' + $('Extrai Dados Texto').item.json.message + '\\nESTADO CONTROLADO PELO APP: ' + JSON.stringify($('Extrai Dados Texto').item.json.routingState || {}) }}",
         "options": {
-          "systemMessage": "Voce e o Porteiro do app meDIZ!, um interprete acolhedor de intencao. Voce nunca encaminha por conta propria: conversa, interpreta, pede confirmacao e devolve estado estruturado para o app decidir.\n\nDESTINOS:\n- medizpesquisa: corpo humano, dor, sintoma, doenca ou pesquisa informativa sobre o que a pessoa sente.\n- minha_casa: ambiente, lar, objetos, energia ou acontecimentos da casa.\n- meu_pet: animal, comportamento ou sintomas do pet.\n- meatende: processo pessoal, sentimentos, ansiedade, relacionamento, autoconhecimento ou experiencia guiada [RE]Sentir.\n- simulador: terapeuta querendo praticar atendendo um cliente simulado.\n- professor: terapeuta querendo orientacao, aprendizado, feedback ou revisar um atendimento realizado.\n- indefinido: ainda nao ha informacao suficiente.\n\nREGRAS DE CONVERSA:\n- Responda sempre no mesmo idioma da mensagem atual.\n- Nao emita saudacao.\n- Uma pergunta por vez, frases curtas, tom humano e sem jargao.\n- Valide brevemente o sentimento antes de perguntar.\n- Nao conduza terapia, nao ensine e nao responda ao tema; apenas esclareca e confirme o destino.\n- Descubra primeiro se a pessoa busca ajuda para si ou se e terapeuta querendo treinar/aprender.\n- Nunca encaminhe sem confirmacao positiva do usuario.\n- Ao identificar um destino, use status awaiting_confirmation, requiresConfirmation=true e shouldRoute=false; pergunte se pode leva-lo ao destino.\n- Somente depois de uma confirmacao positiva use status ready_to_route, requiresConfirmation=false e shouldRoute=true.\n- Se a confirmacao for negativa, volte a collecting e faca uma pergunta-chave.\n- Apos no maximo 3 perguntas sem definicao, use needs_selection, destino indefinido e apresente resumidamente as seis areas para a pessoa escolher. Nao faca uma quarta pergunta.\n- O campo clarificationCount deve preservar ou incrementar o questionCount recebido do app, nunca excedendo 3.\n\nGATILHOS ESPECIAIS:\n- \"estou com dor\": primeiro pergunte mais sobre a dor; depois sugira medizpesquisa e confirme.\n- \"quero pesquisar\": primeiro pergunte o tema; depois classifique e confirme.\n- \"preciso conversar\": primeiro pergunte sobre o que; processo pessoal vai para meatende, revisao de atendimento para professor e pratica para simulador.\n\nCONTRATO:\n- Retorne exclusivamente o JSON do parser.\n- intentSummary resume o pedido real.\n- handoffMessage deve conter contexto suficiente para o agente de destino continuar sem repetir perguntas.\n- confidence varia de 0 a 1.\n- Nunca marque shouldRoute=true sem confirmacao positiva explicita."
+          "systemMessage": "Voce e o Porteiro do app meDIZ!, um interprete acolhedor de intencao. Voce nunca encaminha por conta propria: conversa, interpreta, pede confirmacao e devolve estado estruturado para o app decidir.\n\nDESTINOS:\n- medizpesquisa: corpo humano, dor, sintoma, doenca ou pesquisa informativa sobre o que a pessoa sente.\n- minha_casa: ambiente, lar, objetos, energia ou acontecimentos da casa.\n- meu_pet: animal, comportamento ou sintomas do pet.\n- meatende: processo pessoal, sentimentos, ansiedade, relacionamento, autoconhecimento ou experiencia guiada [RE]Sentir.\n- simulador: terapeuta querendo praticar atendendo um cliente simulado.\n- professor: terapeuta querendo orientacao, aprendizado, feedback ou revisar um atendimento realizado.\n- indefinido: ainda nao ha informacao suficiente.\n\nREGRAS DE CONVERSA:\n- Responda sempre no mesmo idioma da mensagem atual.\n- Nao emita saudacao.\n- Uma pergunta por vez, frases curtas, tom humano e sem jargao.\n- Valide brevemente o sentimento antes de perguntar.\n- Nao conduza terapia, nao ensine e nao responda ao tema; apenas esclareca e confirme o destino.\n- Descubra primeiro se a pessoa busca ajuda para si ou se e terapeuta querendo treinar/aprender.\n- Nunca encaminhe sem confirmacao positiva do usuario.\n- Ao identificar um destino, use status awaiting_confirmation, requiresConfirmation=true e shouldRoute=false; pergunte se pode leva-lo ao destino.\n- Somente depois de uma confirmacao positiva use status ready_to_route, requiresConfirmation=false e shouldRoute=true.\n- Se a confirmacao for negativa, volte a collecting e faca uma pergunta-chave.\n- Apos no maximo 3 perguntas sem definicao, use needs_selection, destino indefinido e apresente resumidamente as seis areas para a pessoa escolher. Nao faca uma quarta pergunta.\n- O campo clarificationCount deve preservar ou incrementar o questionCount recebido do app, nunca excedendo 3.\n\nGATILHOS ESPECIAIS:\n- \"estou com dor\": primeiro pergunte mais sobre a dor; depois sugira medizpesquisa e confirme.\n- \"quero pesquisar\": primeiro pergunte o tema; depois classifique e confirme.\n- \"preciso conversar\": primeiro pergunte sobre o que; processo pessoal vai para meatende, revisao de atendimento para professor e pratica para simulador.\n\nCONTRATO:\n- Retorne exclusivamente um objeto JSON valido, sem bloco Markdown ou texto externo.\n- A raiz deve conter version \"3.0\", agent \"concierge\", messages e routing.\n- Cada item de messages deve conter type \"text\" e content.\n- routing deve conter status, intentSummary, suggestedDestination, confidence, requiresConfirmation, shouldRoute, clarificationCount, detectedLanguage e handoffMessage.\n- intentSummary resume o pedido real.\n- handoffMessage deve conter contexto suficiente para o agente de destino continuar sem repetir perguntas.\n- confidence varia de 0 a 1.\n- Nunca marque shouldRoute=true sem confirmacao positiva explicita."
         },
         "hasOutputParser": true
       },
@@ -355,7 +355,7 @@
         -272,
         352
       ],
-      "id": "2b2d7e0b-e9da-4e28-8cda-e57fe415ed78",
+      "id": "d2b0cc77-7e83-455b-8771-3b28f3bc97be",
       "name": "Agente Porteiro"
     },
     {
@@ -368,12 +368,12 @@
         -184,
         544
       ],
-      "id": "38203765-5570-43c1-98d7-759f1616602c",
+      "id": "59aaf449-19ed-4cf4-8766-4066f389e179",
       "name": "Parser - Rota do Porteiro"
     },
     {
       "parameters": {
-        "jsCode": "const source = $json.output ?? $json;\nlet value = source;\nif (typeof value === 'string') {\n  try { value = JSON.parse(value); } catch { value = null; }\n}\nif (value?.version !== '3.0' || value?.agent !== 'concierge' || !Array.isArray(value?.messages) || !value?.routing) {\n  throw new Error('O porteiro retornou um contrato invalido.');\n}\nreturn [{ json: value }];"
+        "jsCode": "const source = $json.output ?? $json;\nlet value = source;\nif (typeof value === 'string') {\n  const cleaned = value.trim()\n    .replace(/^```(?:json)?\\s*/i, '')\n    .replace(/\\s*```$/, '')\n    .trim();\n  try {\n    value = JSON.parse(cleaned);\n  } catch {\n    const start = cleaned.indexOf('{');\n    const end = cleaned.lastIndexOf('}');\n    try { value = start >= 0 && end > start ? JSON.parse(cleaned.slice(start, end + 1)) : null; }\n    catch { value = null; }\n  }\n}\nif (value?.version !== '3.0' || value?.agent !== 'concierge' || !Array.isArray(value?.messages) || !value?.routing) {\n  throw new Error('O porteiro retornou um contrato invalido.');\n}\nreturn [{ json: value }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -381,7 +381,7 @@
         -48,
         352
       ],
-      "id": "e08fe840-6431-47f2-84bb-0f0c581157b4",
+      "id": "656ac769-4505-43b2-a61a-9a119c3ce139",
       "name": "Normaliza resposta do porteiro"
     },
     {
@@ -394,7 +394,7 @@
         -272,
         -176
       ],
-      "id": "4a7a01de-6d89-4f0a-ad0d-f47b65074034",
+      "id": "4542e178-7544-4494-b88a-ee0e3aee8557",
       "name": "Define agente direto"
     },
     {
@@ -411,7 +411,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "1fcf46d0-5040-4542-aa9b-5e0c7f737bbf",
+                    "id": "06d79965-bf51-44f5-a03e-dc20739554fc",
                     "leftValue": "={{ $json.resolvedAgent }}",
                     "rightValue": "body",
                     "operator": {
@@ -435,7 +435,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "0ce7d878-f8fa-42e0-bb92-ec0823354fd7",
+                    "id": "9f65849c-b7cc-4801-9b86-73886e7842b8",
                     "leftValue": "={{ $json.resolvedAgent }}",
                     "rightValue": "home",
                     "operator": {
@@ -459,7 +459,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "63a44eee-3c1d-4fa7-ad07-a27cadb8df45",
+                    "id": "13b6d46c-704c-4f33-9ab5-be788591dcdd",
                     "leftValue": "={{ $json.resolvedAgent }}",
                     "rightValue": "pet",
                     "operator": {
@@ -483,7 +483,7 @@
         176,
         16
       ],
-      "id": "869ff94f-5727-4b9d-8c80-07ee29dfcb80",
+      "id": "aca08cec-0fb3-4847-a22b-5269452a628c",
       "name": "Roteador especialista"
     }
   ],
