@@ -56,7 +56,8 @@ export const CONVERSATIONAL_CHAT_WEBHOOKS: Record<
 > = {
   SEARCH: {
     envKey: 'N8N_CHAT_WEBHOOK_URL_V2',
-    fallbackUrl: 'https://uniterapias.app.n8n.cloud/webhook/chat-texto-v2'
+    fallbackUrl:
+      'https://mediz-n8n.gjhi7d.easypanel.host/webhook/chat-texto-v2'
   },
   SIMULADOR: {
     envKey: 'N8N_SIMULADOR_WEBHOOK_URL',
@@ -80,6 +81,14 @@ export function getConversationalWebhookUrl(
       ? process.env.N8N_MEATENDE_WEBHOOK_URL?.trim()
       : undefined)
   return fromEnv || config.fallbackUrl
+}
+
+const TRANSCRIBE_WEBHOOK_ENV_KEY = 'N8N_TRANSCRIBE_WEBHOOK_URL'
+const TRANSCRIBE_WEBHOOK_FALLBACK_URL =
+  'https://mediz-n8n.gjhi7d.easypanel.host/webhook/transcrever-audio'
+
+export function getTranscribeWebhookUrl(): string {
+  return process.env[TRANSCRIBE_WEBHOOK_ENV_KEY]?.trim() || TRANSCRIBE_WEBHOOK_FALLBACK_URL
 }
 
 export function isConversationalChatKind(

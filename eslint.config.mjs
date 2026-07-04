@@ -46,6 +46,9 @@ export default [
         AbortController: 'readonly',
         AbortSignal: 'readonly',
         XMLHttpRequest: 'readonly',
+        MediaRecorder: 'readonly',
+        MediaStream: 'readonly',
+        BlobPart: 'readonly',
         
         // Event globals
         Event: 'readonly',
