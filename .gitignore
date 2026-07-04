@@ -102,3 +102,4 @@ build/
 .aiox/install-log.txt
 .aiox-core
 .codex
+.claude
