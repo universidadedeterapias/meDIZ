@@ -156,11 +156,29 @@ export async function cleanupExpiredPdfJobs(): Promise<void> {
 let heartbeatTimer: ReturnType<typeof setInterval> | undefined
 let cleanupTimer: ReturnType<typeof setInterval> | undefined
 
+async function runMaintenance(
+  name: 'heartbeat' | 'cleanup',
+  operation: () => Promise<void>
+): Promise<void> {
+  try {
+    await operation()
+  } catch (error) {
+    // Falhas temporárias de Redis/R2 não devem encerrar o processo do worker.
+    console.error(`[PdfDownloadWorker] ${name} failed`, error)
+  }
+}
+
 export function startPdfDownloadWorkerMaintenance(): void {
   if (!pdfDownloadWorker || heartbeatTimer) return
-  void publishPdfWorkerHeartbeat()
-  heartbeatTimer = setInterval(() => void publishPdfWorkerHeartbeat(), 15_000)
-  cleanupTimer = setInterval(() => void cleanupExpiredPdfJobs(), 10 * 60_000)
+  void runMaintenance('heartbeat', publishPdfWorkerHeartbeat)
+  heartbeatTimer = setInterval(
+    () => void runMaintenance('heartbeat', publishPdfWorkerHeartbeat),
+    15_000
+  )
+  cleanupTimer = setInterval(
+    () => void runMaintenance('cleanup', cleanupExpiredPdfJobs),
+    10 * 60_000
+  )
 }
 
 export async function closePdfDownloadWorker(): Promise<void> {
