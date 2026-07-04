@@ -118,6 +118,21 @@ export default function Page() {
           return
         }
 
+        // Descoberta: gate de onboarding por voz, roda apos o cadastro/WhatsApp/form
+        // estarem completos, na primeira visita autenticada ao chat.
+        try {
+          const discoveryRes = await fetch('/api/discovery/status')
+          if (discoveryRes.ok) {
+            const discoveryData = await discoveryRes.json()
+            if (discoveryData.requiresDiscovery) {
+              router.replace('/descoberta')
+              return
+            }
+          }
+        } catch {
+          // Falha ao consultar descoberta nao deve bloquear o acesso ao chat.
+        }
+
         if (!cancelled) {
           // escolhe fullName se existir, senão name
           const display = raw.fullName ?? raw.name ?? ''

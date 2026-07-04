@@ -49,6 +49,8 @@ model User {
   pdfDownloads            PdfDownload[]
   pdfDownloadTokens       PdfDownloadToken[]
   pdfDownloadJobs         PdfDownloadJob[]
+  userProfile             UserProfile?
+  discoveryEvents         DiscoveryEvent[]
 
   @@index([mensagem_enviada])
   @@index([status_verificacao])
@@ -631,4 +633,50 @@ model PdfDownloadJob {
   @@index([status, createdAt])
   @@index([expiresAt])
   @@map("pdf_download_jobs")
+}
+
+/// Perfil consolidado do fluxo de descoberta (onboarding por voz) — 1:1 com User.
+/// usageContext: 'personal' | 'professional' — preferredStyle: 'direct' | 'supportive' | 'balanced'
+/// (validado via CHECK constraint no banco e via zod na aplicacao; tabela compartilhada com o
+/// projeto indevmediz, por isso usa TEXT em vez de enum nativo do Postgres).
+model UserProfile {
+  id                 String    @id @default(uuid())
+  userId             String    @unique @map("user_id")
+  discoveryCompleted Boolean   @default(false) @map("discovery_completed")
+  consentedAt        DateTime? @map("consented_at")
+  usageContext       String?   @map("usage_context")
+  preferredStyle     String?   @map("preferred_style")
+  core               Json?
+  dynamics           Json?
+  predictive         Json?
+  compactProfile     String?   @map("compact_profile")
+  profileVersion     Int       @default(1) @map("profile_version")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([discoveryCompleted])
+  @@map("user_profiles")
+}
+
+/// Outbox de eventos da descoberta — consumido de forma assincrona pelo worker n8n de extracao de perfil.
+/// status: 'pending' | 'processing' | 'processed' | 'failed' (CHECK constraint no banco, TEXT pelo mesmo motivo do UserProfile).
+model DiscoveryEvent {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  eventType     String    @default("discovery.completed.v1") @map("event_type")
+  schemaVersion Int       @default(1) @map("schema_version")
+  payload       Json
+  status        String    @default("pending")
+  attempts      Int       @default(0)
+  lastError     String?   @map("last_error")
+  availableAt   DateTime  @default(now()) @map("available_at")
+  processedAt   DateTime? @map("processed_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([availableAt, status])
+  @@map("discovery_events")
 }
