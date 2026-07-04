@@ -5,10 +5,14 @@ import {
   type LanguageCode
 } from '@/i18n/config'
 import { withRetryAndCircuitBreaker, isRetryableError } from '@/lib/retry'
-import type { ConversationalChatKind } from '@/lib/conversational-chat/config'
+import type {
+  ConversationalChatKind,
+  MedizAgent
+} from '@/lib/conversational-chat/config'
 import type { SimulatorMode } from '@/lib/conversational-chat/simulator-modes'
 import { getConversationalWebhookUrl } from '@/lib/conversational-chat/config'
 import { parseN8nAssistantReply } from '@/lib/conversational-chat/parse-webhook-response'
+import type { N8nAssistantResponse } from '@/lib/conversational-chat/parse-webhook-response'
 
 const WEBHOOK_TIMEOUT_MS = 90_000
 
@@ -35,8 +39,16 @@ export async function requestConversationalResponse(input: {
   message: string
   language: LanguageCode
   chatKind: ConversationalChatKind
+  agent?: MedizAgent
   simulatorMode?: SimulatorMode
-}): Promise<string> {
+  routingState?: {
+    status?: string | null
+    destination?: string | null
+    intentSummary?: string | null
+    questionCount?: number
+  }
+  conciergeEntryPoint?: string
+}): Promise<N8nAssistantResponse> {
   const langMapping = getLanguageMapping(input.language)
   let messageWithLanguage = input.message
 
@@ -57,7 +69,8 @@ export async function requestConversationalResponse(input: {
     sintoma: messageWithLanguage,
     sintomaOriginal: input.message,
     chatKind: input.chatKind.toLowerCase(),
-    mode: input.simulatorMode ?? input.chatKind.toLowerCase(),
+    agent: input.agent ?? null,
+    mode: input.agent ?? input.simulatorMode ?? input.chatKind.toLowerCase(),
     simulatorMode: input.simulatorMode ?? null,
     simulator_mode: input.simulatorMode ?? null,
     language: input.language,
@@ -71,7 +84,9 @@ export async function requestConversationalResponse(input: {
     instrucaoIdioma: langMapping.instruction,
     languageInstruction: langMapping.instruction,
     languageName: langMapping.nameEnglish,
-    nomeIdioma: langMapping.namePortuguese
+    nomeIdioma: langMapping.namePortuguese,
+    routingState: input.routingState ?? null,
+    conciergeEntryPoint: input.conciergeEntryPoint ?? null
   }
 
   const webhookUrl = getConversationalWebhookUrl(input.chatKind)

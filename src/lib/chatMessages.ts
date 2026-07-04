@@ -44,6 +44,7 @@ export async function saveChatMessage({
   // #region agent log
   fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chatMessages.ts:40',message:'saveChatMessage completed',data:{savedId:saved.id,role:saved.role,chatSessionId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
   // #endregion
+  return saved
 }
 
 export type OrderedChatMessage = {
@@ -74,7 +75,16 @@ export async function getOrderedThreadMessages(
 export async function getChatSessionForUser(threadId: string, userId: string) {
   return prisma.chatSession.findFirst({
     where: { threadId, userId },
-    select: { id: true, threadId: true, chatKind: true }
+    select: {
+      id: true,
+      threadId: true,
+      chatKind: true,
+      agent: true,
+      routingStatus: true,
+      routingDestination: true,
+      routingIntentSummary: true,
+      routingQuestionCount: true
+    }
   })
 }
 

@@ -1,3 +1,79 @@
+import { z } from 'zod'
+import type {
+  ConciergeDestination,
+  ConciergeRouteStatus,
+  SpecialistAgent
+} from '@/lib/conversational-chat/config'
+
+const assistantMessageSchema = z.object({
+  type: z.literal('text'),
+  content: z.string().trim().min(1).max(4000)
+})
+
+const assistantActionSchema = z.object({
+  type: z.enum(['share', 'none']),
+  label: z.string().trim().min(1).max(120).optional()
+})
+
+const structuredResponseSchema = z.object({
+  version: z.literal('2.0'),
+  agent: z.enum(['body', 'home', 'pet']).optional(),
+  status: z.enum(['completed', 'awaiting_confirmation']).default('completed'),
+  messages: z.array(assistantMessageSchema).min(1).max(8),
+  action: assistantActionSchema.optional()
+})
+
+const conciergeResponseSchema = z.object({
+  version: z.literal('3.0'),
+  agent: z.literal('concierge'),
+  messages: z.array(assistantMessageSchema).min(1).max(2),
+  routing: z.object({
+    status: z.enum([
+      'collecting',
+      'awaiting_confirmation',
+      'ready_to_route',
+      'needs_selection'
+    ]),
+    intentSummary: z.string().trim().max(1000),
+    suggestedDestination: z.enum([
+      'medizpesquisa',
+      'minha_casa',
+      'meu_pet',
+      'meatende',
+      'simulador',
+      'professor',
+      'indefinido'
+    ]),
+    confidence: z.number().min(0).max(1),
+    requiresConfirmation: z.boolean(),
+    shouldRoute: z.boolean(),
+    clarificationCount: z.number().int().min(0).max(3),
+    detectedLanguage: z.string().trim().min(2).max(20),
+    handoffMessage: z.string().trim().max(2000)
+  })
+})
+
+type ConciergeRouting = {
+  status: ConciergeRouteStatus
+  intentSummary: string
+  suggestedDestination: ConciergeDestination
+  confidence: number
+  requiresConfirmation: boolean
+  shouldRoute: boolean
+  clarificationCount: number
+  detectedLanguage: string
+  handoffMessage: string
+}
+
+export type N8nAssistantResponse = {
+  version: '3.0' | '2.0' | 'legacy'
+  agent?: SpecialistAgent
+  status: 'completed' | 'awaiting_confirmation'
+  messages: Array<{ type: 'text'; content: string }>
+  action?: { type: 'share' | 'none'; label?: string }
+  routing?: ConciergeRouting
+}
+
 function normalizeReplyText(text: string): string {
   let normalized = text.trim()
 
@@ -23,23 +99,57 @@ function normalizeReplyText(text: string): string {
     }
   }
 
-  normalized = normalized.trim()
   return normalized
+    .trim()
     .replace(/^\n{3,}/g, '\n\n')
     .replace(/\n{3,}$/g, '\n\n')
 }
 
-function extractTextFromObject(value: unknown): string | null {
-  if (typeof value === 'string' && value.trim()) {
+function tryParseJson(value: unknown): unknown {
+  if (typeof value !== 'string') return value
+  const trimmed = value.trim()
+  if (!trimmed) return value
+
+  try {
+    return JSON.parse(trimmed)
+  } catch {
     return value
   }
+}
 
-  if (!value || typeof value !== 'object') {
+function findStructuredResponse(value: unknown, depth = 0): unknown {
+  if (depth > 4) return null
+  const parsed = tryParseJson(value)
+  const direct = structuredResponseSchema.safeParse(parsed)
+  if (direct.success) return direct.data
+  const concierge = conciergeResponseSchema.safeParse(parsed)
+  if (concierge.success) return concierge.data
+
+  if (Array.isArray(parsed)) {
+    for (const item of parsed) {
+      const found = findStructuredResponse(item, depth + 1)
+      if (found) return found
+    }
     return null
   }
 
+  if (!parsed || typeof parsed !== 'object') return null
+  const record = parsed as Record<string, unknown>
+  for (const key of ['output', 'json', 'data', 'response', 'body']) {
+    if (key in record) {
+      const found = findStructuredResponse(record[key], depth + 1)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+function extractTextFromObject(value: unknown): string | null {
+  if (typeof value === 'string' && value.trim()) return value
+  if (!value || typeof value !== 'object') return null
+
   const record = value as Record<string, unknown>
-  const keys = [
+  for (const key of [
     'resposta',
     'response',
     'message',
@@ -48,53 +158,80 @@ function extractTextFromObject(value: unknown): string | null {
     'output',
     'reply',
     'answer'
-  ]
-
-  for (const key of keys) {
+  ]) {
     const candidate = record[key]
-    if (typeof candidate === 'string' && candidate.trim()) {
-      return candidate
+    if (typeof candidate === 'string' && candidate.trim()) return candidate
+  }
+
+  for (const key of ['json', 'data', 'body']) {
+    if (record[key] && typeof record[key] === 'object') {
+      const nested = extractTextFromObject(record[key])
+      if (nested) return nested
     }
   }
-
-  if (record.json && typeof record.json === 'object') {
-    return extractTextFromObject(record.json)
-  }
-
-  if (record.data && typeof record.data === 'object') {
-    return extractTextFromObject(record.data)
-  }
-
   return null
 }
 
-export function parseN8nAssistantReply(responseText: string): string {
+export function parseN8nAssistantReply(
+  responseText: string
+): N8nAssistantResponse {
   const trimmed = responseText.trim()
   if (!trimmed) {
     throw new Error('Webhook do n8n retornou resposta vazia após processamento')
   }
 
-  try {
-    const parsed: unknown = JSON.parse(trimmed)
-
-    if (typeof parsed === 'string' && parsed.trim()) {
-      return normalizeReplyText(parsed)
-    }
-
-    if (Array.isArray(parsed)) {
-      for (const item of parsed) {
-        const text = extractTextFromObject(item)
-        if (text) return normalizeReplyText(text)
+  const parsed = tryParseJson(trimmed)
+  const structured = findStructuredResponse(parsed)
+  if (structured) {
+    const concierge = conciergeResponseSchema.safeParse(structured)
+    if (concierge.success) {
+      return {
+        version: '3.0',
+        agent: undefined,
+        status:
+          concierge.data.routing.status === 'awaiting_confirmation'
+            ? 'awaiting_confirmation'
+            : 'completed',
+        messages: concierge.data.messages.map((message) => ({
+          type: 'text' as const,
+          content: normalizeReplyText(message.content)
+        })),
+        routing: concierge.data.routing as ConciergeRouting
       }
     }
-
-    const fromObject = extractTextFromObject(parsed)
-    if (fromObject) {
-      return normalizeReplyText(fromObject)
+    const result = structuredResponseSchema.parse(structured)
+    return {
+      version: '2.0',
+      agent: result.agent,
+      status: result.status ?? 'completed',
+      messages: result.messages.map((message) => ({
+        type: 'text' as const,
+        content: normalizeReplyText(message.content)
+      })),
+      action: result.action?.type
+        ? { type: result.action.type, label: result.action.label }
+        : undefined
     }
-  } catch {
-    // resposta em texto puro
   }
 
-  return normalizeReplyText(trimmed)
+  let legacyText: string | null = null
+  if (Array.isArray(parsed)) {
+    for (const item of parsed) {
+      legacyText = extractTextFromObject(item)
+      if (legacyText) break
+    }
+  } else {
+    legacyText = extractTextFromObject(parsed)
+  }
+
+  const content = normalizeReplyText(legacyText ?? trimmed)
+  if (!content) {
+    throw new Error('Webhook do n8n retornou resposta vazia após processamento')
+  }
+
+  return {
+    version: 'legacy',
+    status: 'completed',
+    messages: [{ type: 'text', content }]
+  }
 }

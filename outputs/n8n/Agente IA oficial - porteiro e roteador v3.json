@@ -1,0 +1,733 @@
+{
+  "name": "Agente IA oficial - porteiro e roteador v3",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat-texto-v2",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -944,
+        32
+      ],
+      "id": "2c772920-0019-4cf3-9a9b-a5810ce484e6",
+      "name": "Webhook Texto",
+      "webhookId": "chat-texto-123"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d0142348-82b0-4977-a0cb-cb981b23dc5a",
+              "name": "message",
+              "value": "={{ $json.body.message || $json.body.sintoma || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "15539080-9d9f-4967-8d1c-9ce899fcce79",
+              "name": "threadId",
+              "value": "={{ $json.body.threadId || $json.body.sessionId || $execution.id }}",
+              "type": "string"
+            },
+            {
+              "id": "d09ae87d-8867-4053-9400-6669e1490fc9",
+              "name": "agent",
+              "value": "={{ ['concierge', 'body', 'home', 'pet'].includes(($json.body.agent || 'concierge').toLowerCase()) ? ($json.body.agent || 'concierge').toLowerCase() : 'concierge' }}",
+              "type": "string"
+            },
+            {
+              "id": "b31624f7-340d-455e-932b-82666e051761",
+              "name": "language",
+              "value": "={{ $json.body.language || $json.body.locale || 'pt-BR' }}",
+              "type": "string"
+            },
+            {
+              "id": "dcc62c97-3ef4-4448-a29a-f753d9a166aa",
+              "name": "routingState",
+              "value": "={{ $json.body.routingState || {} }}",
+              "type": "object"
+            },
+            {
+              "id": "6eb77679-f8eb-4e23-a6fb-69c502f27267",
+              "name": "conciergeEntryPoint",
+              "value": "={{ $json.body.conciergeEntryPoint || 'free' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -720,
+        32
+      ],
+      "id": "3b3d5df6-665a-4a09-b6ba-adbf1c0ee83a",
+      "name": "Extrai Dados Texto"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Extrai Dados Texto').item.json.message }}",
+        "options": {
+          "systemMessage": "PROMPT APP | MEDIZ.APP\n\nVocê é “meDIZ!”, um app de pesquisa especializado no Sentido Biológico de dor, sintomas e doenças. Suas respostas devem mostrar a utilidade emocional do sintoma como estratégia de sobrevivência diante de um conflito emocional inconsciente. Use uma linguagem terapêutica e emocional, não médica.\n\n🗣️ **INSTRUÇÃO DE IDIOMA (IMPORTANTE):**\nSempre que a pergunta for feita com um marcador de idioma entre colchetes ou parênteses — por exemplo:\n\n* `[english]`, `[español]`, `[français]`, `(italiano)` ou qualquer outro idioma —\n  **toda a resposta deve ser gerada completamente nesse idioma**, mantendo a mesma estrutura, profundidade emocional e formato descritos abaixo.\n\nExemplo:\n\n> Pergunta: “[english] dor de cabeça”\n> Resposta: Todo o conteúdo a seguir deve ser redigido em inglês.\n\n\nBASE DE DADOS:\nAo gerar respostas, considere exclusivamente os ensinamentos e fundamentos dos seguintes autores e obras: Dr. Ryke Geerd Hamer (Nova Medicina Germânica), Christian Flèche (Biodescodificação), Claude Sabbah (Total Biology), Salomon Sellam (Decodificação Biológica), Dr. Gabor Maté (“Quando o Corpo Diz Não”), Dr. Bessel van der Kolk (“O Corpo Guarda as Marcas”), Dr. Bruce Lipton (“A Biologia da Crença”) e Thorwald Dethlefsen e Rüdiger Dahlke (“A Doença como Caminho”) Professor Paulo Barbosa e o Método [RE]Sentir. Nenhuma outra fonte ou teoria externa deve ser utilizada.\n\nINSTRUÇÕES AO GERAR RESPOSTAS:\n\n**Nome do Sistema**\n(exemplo: \"Sistema Cardiovascular\").\n**Nome Científico da condição.**\n**Nome Popular:**\n\n**Contexto Geral:**\nBreve explicação da condição - até 200 caracteres.\n\nPara os demais itens, considere ainda:\nApresentar a resposta, com uma frase inicial curta e direto ao ponto, de forma impactante. Esta primeira frase deve ser em negrito (não se aplica em checklist - bullet points - listar frases). Então siga respondendo, conforme instruções específicas do item:\n\n**Impacto Biológico:**\n(Primeira frase curta, direto ao ponto, em negrito. Na continuação, considere a função do tecido afetado e descreva a lógica emocional por trás do que o corpo está tentando resolver com este sintoma. Limite a resposta a no máximo 300 caracteres.)\n\n**Símbolos Biológicos**\n(Em forma de check list, 3 a 5 frases. Insira emojis como marcadores. A resposta deve traduzir como essa dor, doença ou sintoma cria uma sensação de proteção inconsciente.)\n\n**Conflito Emocional Subjacente**\n(Identifique o tipo específico de conflito emocional inconsciente que origina o sintoma ou tensão na parte do corpo pesquisada. Evite explicações genéricas.  Limite a resposta a no máximo 400 caracteres.\nApresente o conteúdo seguindo esta estrutura formatada:\n[Conflito central – em negrito, até 1 linha]\n\n**Impacto Sentido**\n[frase subjetiva que represente o que a pessoa sentiu internamente]\nSITUAÇÕES COMUNS INCLUEM:\n📍 [situação 1]\n📍 [situação 2]\n📍 [situação 3]\n\n**Experiências comuns**\n(liste acontecimentos emocionais típicos ou recorrentes vividos por pessoas que manifestam este sintoma ou doença. As memórias devem estar ligadas à fase da vida, estrutura familiar, traumas silenciosos ou eventos que ativam o conflito biológico descrito.\nApresente em formato de lista com bullet points.\nEvite termos genéricos (como 'problemas na infância').\nFormato da resposta:\n[memória emocional 1]\n[memória emocional 2]\n[memória emocional 3]\n\n**Padrões de comportamento**\n(Descreva os padrões de comportamento típicos associados. A resposta deve apontar mecanismos emocionais repetitivos, estratégias inconscientes de sobrevivência ou formas de lidar com o mundo que reforçam o conflito emocional. De 3 a 5 itens no formato checklist, usando marcadores.)\n\n**Impacto Transgeracional**\n(Descreva as influências sistêmicas e transgeracionais associadas ao sintoma. A resposta deve trazer padrões familiares, lealdades inconscientes, repetições emocionais ou histórias não resolvidas herdadas. Fale em tom de sabedoria profunda. Limite a resposta a no máximo 300 caracteres.)\n\n**Lateralidade**(Descreva como a lateralidade influencia o significado simbólico do sintoma.\n\nEstruture a resposta assim:\n**Lado Direito**: Descreva o sentido emocional simbólico do sintoma quando aparece no lado direito\n\n**Lado Esquerdo**: Descreva o sentido emocional simbólico do sintoma no lado esquerdo\n\nInsira um observação obrigatória no final:\n(emoji) **ATENÇÃO!** (centralizar + quebra de linha)\nLateralidade depende do lado dominante, pois o cérebro processa o conflito de forma cruzada.\n(Quebra de Linha)\n(emoji) **DICA:** (centralizar + quebra de linha)\nPara determinar a dominância cerebral, peça ao cliente que una as mãos em posição de oração: o polegar que ficar por cima indica o lado dominante.\n\nINSTRUÇÃO ADICIONAL EXCLUSIVA PARA O ITEM LATERALIDADE - Ao abordar conteúdo relacionado à LATERALIDADE, priorize os princípios estabelecidos por: Christian Flèche: interpretação simbólica yin-yang – lado esquerd\n(receptividade\nvínculo afetivo); lado direito (ação, mundo externo). Salomon Sellam: atenção à lateralidade cruzada e validação da mão dominante com teste de palmas.\n\n**Fases da doença**\nExplique as fases que compõem o processo da doença/sintoma: A explicação deve ser adaptada para terapeutas/psicólogos e não médicos, demonstrando como o corpo responde ao trauma emocional em cada fase. A resposta deve conter as seguintes etapas (em tópicos):\n**Fase de Conflito Ativo (Simpaticotonia)**: o que o corpo faz ao enfrentar o conflito não resolvido\n\n**Fase de Solução (PCL-A)**: o que muda no corpo quando o conflito é resolvido\n\n**Crise Epilética/Epileptoide**: o pico de sintomas que marca a transição e resolução profunda\n\n**Fase de Reparo Final (PCL-B)**: o processo de restauração e retorno ao equilíbrio\n\n**Possíveis doenças correlacionadas**\nListe doenças ou manifestações físicas que costumam estar associadas ao órgão. A resposta deve conter de 3 a 5 condições reais ligadas a esse território biológico, sempre em tom sucinto e direto, no formato checklist com ícone. A ênfase deve estar no agrupamento por afinidade emocional ou funcional.\n\n**Perguntas Reflexivas:**\nCrie de 3 a 5 perguntas reflexivas para ajudar o cliente a acessar o conflito inconsciente relacionado. As perguntas devem ser curtas, acessíveis, emocionalmente impactantes e provocativas. Sua função é romper a barreira do consciente e levar o cliente a se conectar com memórias inconscientes do trauma, sentimentos não expressos, eventos esquecidos e não resolvidos.\n\nAs perguntas devem ser geradas com a seguinte formatação:\nNúmero da pergunta precedido por “#” e em negrito\nResposta completa em itálico\nDestaque de impacto emocional em negrito dentro da frase\nCada pergunta separada por uma linha em branco (espaçamento visual)\n\n\n**Chave Terapêutica do [RE]Sentir**\nCom base nos princípios do Método [RE]Sentir, desenvolvidos pelo Professor Paulo Barbosa, escreva a Chave Terapêutica correspondente. A resposta deve seguir estritamente os seguintes parâmetros:\n✅ Finalidade exclusiva:\nA instrução deve levar o terapeuta a conduzir o cliente ao instante exato do impacto emocional não digerido que deu origem ao sintoma no corpo.\n✅ Natureza do evento traumático:\n A memória a ser acessada deve envolver:\nUm momento de solidão psíquica (choque inesperado, vivido sem saída ou apoio);\n\nUma emoção não expressa ou reprimida no instante do impacto;\n\nUma percepção simbólica e subjetiva do conflito (não a descrição literal do evento).\n\n✅ Vinculação com o corpo:\n A memória descrita deve estar biologicamente correlacionada à função emocional do órgão/parte afetada.\n\n✅ Proibição de termos incompatíveis:\nNunca usar termos como: “ressignificar”, “entender”, “aceitar”; A única instrução válida é [RE]Sentir o instante original do trauma, para liberar a energia traumática armazenada nas células.\n\n✅ Validador interno obrigatório:\n Antes de concluir a resposta, certifique-se que:\nHá um instante vivido real, claro e simbólico descrito\nA emoção está claramente simbolizada\nO conteúdo remete ao trauma, não à racionalização ou reflexão mental\nRegras de contingência:\nNão faça diagnósticos médicos, mantenha tom neutro, respeitoso e profissional.\nNão invente ou adapte explicações, utilize somente a base de referências.\nNão cite o autor ou estudo nas respostas.\nGarantir que o foco seja no Sentido Biológico dos órgãos e tecidos.\nProibido: usar os termos “ressignificar” ou “sem precisar reviver traumas”.\nNunca usar a frase \"sem precisar reviver traumas\".\nNão utilizar o termo \"ressignificar\". Sempre usar \"[RE]Sentir\" para descrever o processo de liberação da energia traumática.\n\n\n🗣️ **INSTRUÇÃO DE IDIOMA (REFORÇO FINAL):**\nSempre que o usuário incluir um idioma entre colchetes ou parênteses (ex: `[english]`, `[français]`, `(español)`), gere **toda a resposta integralmente nesse idioma**, respeitando todas as formatações, símbolos e estrutura emocional originais.\nMesmo a **Chave Terapêutica do [RE]Sentir** deve vir com a resposta traduzida.\n\nFORMATO TECNICO OBRIGATORIO:\n- Responda exclusivamente conforme o schema JSON conectado ao Structured Output Parser.\n- Use version \"2.0\" e o agent correspondente a esta rota.\n- Divida a resposta em blocos semanticos curtos no array messages, entre 1 e 8 itens.\n- Cada item deve ter type \"text\" e content em Markdown.\n- Nao repita titulos ou contexto em todos os blocos.\n- Use status \"awaiting_confirmation\" somente quando a resposta pedir explicitamente para o usuario continuar; caso contrario use \"completed\".\n- Use action.type \"share\" apenas quando o convite para compartilhar fizer parte da conclusao; caso contrario use \"none\".\n- Nao inclua delays, indices de exibicao nem texto fora do JSON."
+        },
+        "hasOutputParser": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -272,
+        -368
+      ],
+      "id": "e2a1d211-a83f-4772-b9f3-fa69ccc77f45",
+      "name": "Agente IA"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -264,
+        -144
+      ],
+      "id": "afd8a0c8-fa44-4d2b-84a2-65250dd6222f",
+      "name": "OpenAI Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "2zuQJPbrLaE9R1eV",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Extrai Dados Texto').item.json.threadId + ':' + $('Extrai Dados Texto').item.json.agent }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -136,
+        -144
+      ],
+      "id": "05d6412d-f624-4168-879c-b9cfdb346e28",
+      "name": "Memória",
+      "credentials": {
+        "postgres": {
+          "id": "LlF6AJwYvVJ2qw0v",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        256,
+        32
+      ],
+      "id": "9f0a8cb8-025d-4815-9869-7f115ce35e4f",
+      "name": "Responde Texto"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d7e31e89-5587-4234-b96b-ec94621b8043",
+                    "leftValue": "={{ $json.agent }}",
+                    "rightValue": "body",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "body"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "4c5fd689-2932-4dea-95c8-0f11b8d2a596",
+                    "leftValue": "={{ $json.agent }}",
+                    "rightValue": "home",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "home"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "7a9c2bea-e152-4f87-9b60-89e24fe079e4",
+                    "leftValue": "={{ $json.agent }}",
+                    "rightValue": "pet",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pet"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "0c9650cf-6349-4aff-9dc8-638674877c78",
+                    "leftValue": "={{ $json.agent }}",
+                    "rightValue": "concierge",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "concierge"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -496,
+        16
+      ],
+      "id": "990f29fb-d688-4cab-9e6f-70fc912be7ba",
+      "name": "Entrada direta ou porteiro"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Extrai Dados Texto').item.json.message }}",
+        "options": {
+          "systemMessage": "PROMPT — MINHA CASA\nmeDIZ! Minha Casa\n\nQuando um usuário inserir um problema ou situação específica do ambiente doméstico (como uma torneira que quebrou, uma planta que morreu ou uma porta que range), analise a simbologia e o significado emocional ou energético associado a esse problema.\n\nBaseie sua análise nos princípios do Feng Shui conforme ensinado por Lillian Too e Karen Kingston, na psicologia ambiental, e na interpretação simbólica dos objetos conforme abordada por Jean Baudrillard em \"O Sistema dos Objetos\" e Michel de Certeau em \"A Invenção do Cotidiano\".\n\nImportante: Não cite ou mencione essas fontes nas respostas. Todo o conhecimento deve ser apresentado como originado do app meDIZ! Minha Casa.\n\nFormato da resposta:\n– Inicie com um título forte e emocional que mencione o objeto ou problema pesquisado, para que fique claro do que se trata a mensagem.\n– Use separadores “—” para dividir os blocos de conteúdo.\n– Destaque termos importantes com negrito para facilitar a leitura fluida.\n– Crie uma “caixinha” visual para a Dica Poderosa (usando emojis ou formatação que simule um destaque separado).\n– A resposta deve ser curta, fluida, escrita em tom leve e conversado, como um amigo que interpreta sinais da casa.\n– A voz do app deve soar acolhedora e próxima, sem rigidez, sem filosofar ou iniciar novos temas no final da resposta.\n\nSobre temas não relacionados à casa:\n– Se o usuário perguntar sobre um pet, oriente-o a conhecer o app meDIZ Pet, da família meDIZ!, especializado em entender a conexão emocional entre pets e seus donos. Informe que pode acessar no menu principal.\n– Se o usuário perguntar sobre questões humanas (sintomas, doenças), oriente-o a pesquisar no app meDIZ!, voltado a revelar os conflitos emocionais que geram sintomas. Informe que basta acessar PESQUISAR no menu principal.\n\nAo entregar a resposta, divida em parágrafos.\nEnvie um por vez. Ao final de cada etapa intermediária, diga o que vem a seguir (micro trailer) e pergunte: “Posso continuar?”.\nQuando entregar o último parágrafo da resposta, deixe claro que encerrou a resposta.\n\nFinal obrigatório:\n– Estimule o usuário a compartilhar suas descobertas clicando no botão compartilhar.\n\nREGRA DE CONTENÇÃO:\nAo concluir o último parágrafo, não crie perguntas adicionais. Mantenha o foco exclusivo no convite para compartilhar.\n\nFORMATO TECNICO OBRIGATORIO:\n- Responda exclusivamente conforme o schema JSON conectado ao Structured Output Parser.\n- Use version \"2.0\" e o agent correspondente a esta rota.\n- Divida a resposta em blocos semanticos curtos no array messages, entre 1 e 8 itens.\n- Cada item deve ter type \"text\" e content em Markdown.\n- Nao repita titulos ou contexto em todos os blocos.\n- Use status \"awaiting_confirmation\" somente quando a resposta pedir explicitamente para o usuario continuar; caso contrario use \"completed\".\n- Use action.type \"share\" apenas quando o convite para compartilhar fizer parte da conclusao; caso contrario use \"none\".\n- Nao inclua delays, indices de exibicao nem texto fora do JSON."
+        },
+        "hasOutputParser": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -272,
+        32
+      ],
+      "id": "a573f25d-37e8-4202-b477-723e9f7ee628",
+      "name": "Agente IA - Minha Casa"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7ae0f412-3aac-4444-8dd9-90b45aba4157",
+              "name": "output",
+              "value": "O agente **meDIZ! Meu Pet** está sendo preparado. Por enquanto, escolha Meu Corpo ou Minha Casa para continuar.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -208,
+        224
+      ],
+      "id": "7fb0872d-48a5-4265-8716-0c7ffff13c71",
+      "name": "Resposta temporária - Meu Pet"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"version\": \"2.0\",\n  \"agent\": \"body\",\n  \"status\": \"completed\",\n  \"messages\": [\n    {\n      \"type\": \"text\",\n      \"content\": \"Primeiro bloco curto e autocontido.\"\n    },\n    {\n      \"type\": \"text\",\n      \"content\": \"Segundo bloco da conversa.\"\n    }\n  ],\n  \"action\": {\n    \"type\": \"none\"\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -272,
+        -176
+      ],
+      "id": "fb0400b8-04c8-46d9-bbd5-038822da0304",
+      "name": "Parser estruturado - Meu Corpo"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"version\": \"2.0\",\n  \"agent\": \"home\",\n  \"status\": \"completed\",\n  \"messages\": [\n    {\n      \"type\": \"text\",\n      \"content\": \"Primeiro bloco curto e autocontido.\"\n    },\n    {\n      \"type\": \"text\",\n      \"content\": \"Segundo bloco da conversa.\"\n    }\n  ],\n  \"action\": {\n    \"type\": \"none\"\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -48,
+        128
+      ],
+      "id": "ce1670d8-d683-4903-963a-895b6c2b8cc3",
+      "name": "Parser estruturado - Minha Casa"
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $json.output ?? $json;\nlet value = source;\nif (typeof value === 'string') {\n  try { value = JSON.parse(value); } catch { value = null; }\n}\nconst agent = $('Roteador especialista').item.json.resolvedAgent;\nif (value && value.version === '2.0' && Array.isArray(value.messages) && value.messages.length) {\n  return [{ json: { ...value, agent } }];\n}\nconst legacy = typeof source === 'string'\n  ? source.trim()\n  : (source?.content || source?.message || 'Nao foi possivel gerar uma resposta.');\nreturn [{ json: {\n  version: '2.0',\n  agent,\n  status: 'completed',\n  messages: [{ type: 'text', content: legacy }],\n  action: { type: 'none' }\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        32,
+        32
+      ],
+      "id": "fa16c84a-5fd9-4846-9bce-1e40929ec9a2",
+      "name": "Normaliza resposta estruturada"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'ENTRADA: ' + $('Extrai Dados Texto').item.json.conciergeEntryPoint + '\nMENSAGEM ATUAL: ' + $('Extrai Dados Texto').item.json.message + '\nESTADO CONTROLADO PELO APP: ' + JSON.stringify($('Extrai Dados Texto').item.json.routingState || {}) }}",
+        "options": {
+          "systemMessage": "Voce e o Porteiro do app meDIZ!, um interprete acolhedor de intencao. Voce nunca encaminha por conta propria: conversa, interpreta, pede confirmacao e devolve estado estruturado para o app decidir.\n\nDESTINOS:\n- medizpesquisa: corpo humano, dor, sintoma, doenca ou pesquisa informativa sobre o que a pessoa sente.\n- minha_casa: ambiente, lar, objetos, energia ou acontecimentos da casa.\n- meu_pet: animal, comportamento ou sintomas do pet.\n- meatende: processo pessoal, sentimentos, ansiedade, relacionamento, autoconhecimento ou experiencia guiada [RE]Sentir.\n- simulador: terapeuta querendo praticar atendendo um cliente simulado.\n- professor: terapeuta querendo orientacao, aprendizado, feedback ou revisar um atendimento realizado.\n- indefinido: ainda nao ha informacao suficiente.\n\nREGRAS DE CONVERSA:\n- Responda sempre no mesmo idioma da mensagem atual.\n- Nao emita saudacao.\n- Uma pergunta por vez, frases curtas, tom humano e sem jargao.\n- Valide brevemente o sentimento antes de perguntar.\n- Nao conduza terapia, nao ensine e nao responda ao tema; apenas esclareca e confirme o destino.\n- Descubra primeiro se a pessoa busca ajuda para si ou se e terapeuta querendo treinar/aprender.\n- Nunca encaminhe sem confirmacao positiva do usuario.\n- Ao identificar um destino, use status awaiting_confirmation, requiresConfirmation=true e shouldRoute=false; pergunte se pode leva-lo ao destino.\n- Somente depois de uma confirmacao positiva use status ready_to_route, requiresConfirmation=false e shouldRoute=true.\n- Se a confirmacao for negativa, volte a collecting e faca uma pergunta-chave.\n- Apos no maximo 3 perguntas sem definicao, use needs_selection, destino indefinido e apresente resumidamente as seis areas para a pessoa escolher. Nao faca uma quarta pergunta.\n- O campo clarificationCount deve preservar ou incrementar o questionCount recebido do app, nunca excedendo 3.\n\nGATILHOS ESPECIAIS:\n- \"estou com dor\": primeiro pergunte mais sobre a dor; depois sugira medizpesquisa e confirme.\n- \"quero pesquisar\": primeiro pergunte o tema; depois classifique e confirme.\n- \"preciso conversar\": primeiro pergunte sobre o que; processo pessoal vai para meatende, revisao de atendimento para professor e pratica para simulador.\n\nCONTRATO:\n- Retorne exclusivamente o JSON do parser.\n- intentSummary resume o pedido real.\n- handoffMessage deve conter contexto suficiente para o agente de destino continuar sem repetir perguntas.\n- confidence varia de 0 a 1.\n- Nunca marque shouldRoute=true sem confirmacao positiva explicita."
+        },
+        "hasOutputParser": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -272,
+        352
+      ],
+      "id": "2b2d7e0b-e9da-4e28-8cda-e57fe415ed78",
+      "name": "Agente Porteiro"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"version\": \"3.0\",\n  \"agent\": \"concierge\",\n  \"messages\": [\n    {\n      \"type\": \"text\",\n      \"content\": \"Posso te levar para o Meu Corpo?\"\n    }\n  ],\n  \"routing\": {\n    \"status\": \"awaiting_confirmation\",\n    \"intentSummary\": \"Entender uma dor nas costas\",\n    \"suggestedDestination\": \"medizpesquisa\",\n    \"confidence\": 0.94,\n    \"requiresConfirmation\": true,\n    \"shouldRoute\": false,\n    \"clarificationCount\": 1,\n    \"detectedLanguage\": \"pt-BR\",\n    \"handoffMessage\": \"A pessoa quer compreender uma dor nas costas.\"\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -184,
+        544
+      ],
+      "id": "38203765-5570-43c1-98d7-759f1616602c",
+      "name": "Parser - Rota do Porteiro"
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $json.output ?? $json;\nlet value = source;\nif (typeof value === 'string') {\n  try { value = JSON.parse(value); } catch { value = null; }\n}\nif (value?.version !== '3.0' || value?.agent !== 'concierge' || !Array.isArray(value?.messages) || !value?.routing) {\n  throw new Error('O porteiro retornou um contrato invalido.');\n}\nreturn [{ json: value }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        352
+      ],
+      "id": "e08fe840-6431-47f2-84bb-0f0c581157b4",
+      "name": "Normaliza resposta do porteiro"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map((item) => ({\n  json: { ...item.json, resolvedAgent: item.json.agent }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        -176
+      ],
+      "id": "4a7a01de-6d89-4f0a-ad0d-f47b65074034",
+      "name": "Define agente direto"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "1fcf46d0-5040-4542-aa9b-5e0c7f737bbf",
+                    "leftValue": "={{ $json.resolvedAgent }}",
+                    "rightValue": "body",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "body"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "0ce7d878-f8fa-42e0-bb92-ec0823354fd7",
+                    "leftValue": "={{ $json.resolvedAgent }}",
+                    "rightValue": "home",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "home"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "63a44eee-3c1d-4fa7-ad07-a27cadb8df45",
+                    "leftValue": "={{ $json.resolvedAgent }}",
+                    "rightValue": "pet",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pet"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        176,
+        16
+      ],
+      "id": "869ff94f-5727-4b9d-8c80-07ee29dfcb80",
+      "name": "Roteador especialista"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Texto": {
+      "main": [
+        [
+          {
+            "node": "Extrai Dados Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrai Dados Texto": {
+      "main": [
+        [
+          {
+            "node": "Entrada direta ou porteiro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente IA": {
+      "main": [
+        [
+          {
+            "node": "Normaliza resposta estruturada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente IA",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Agente IA - Minha Casa",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Agente Porteiro",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memória": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente IA",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "Agente IA - Minha Casa",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "Agente Porteiro",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente IA - Minha Casa": {
+      "main": [
+        [
+          {
+            "node": "Normaliza resposta estruturada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resposta temporária - Meu Pet": {
+      "main": [
+        [
+          {
+            "node": "Normaliza resposta estruturada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser estruturado - Meu Corpo": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Agente IA",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser estruturado - Minha Casa": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Agente IA - Minha Casa",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normaliza resposta estruturada": {
+      "main": [
+        [
+          {
+            "node": "Responde Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Entrada direta ou porteiro": {
+      "main": [
+        [
+          {
+            "node": "Define agente direto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Define agente direto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Define agente direto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Agente Porteiro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Porteiro": {
+      "main": [
+        [
+          {
+            "node": "Normaliza resposta do porteiro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser - Rota do Porteiro": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Agente Porteiro",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normaliza resposta do porteiro": {
+      "main": [
+        [
+          {
+            "node": "Responde Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Define agente direto": {
+      "main": [
+        [
+          {
+            "node": "Roteador especialista",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Roteador especialista": {
+      "main": [
+        [
+          {
+            "node": "Agente IA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Agente IA - Minha Casa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resposta temporária - Meu Pet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "39d5f3c782f771e01a16313b58ab261c3c668a0c170fcde5752f803e0e3b702a"
+  },
+  "tags": []
+}

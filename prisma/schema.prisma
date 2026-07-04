@@ -36,6 +36,7 @@ model User {
   notificationsEnabled    Boolean            @default(false)
   accounts                Account[]
   chatSessions            ChatSession[]
+  chatHandoffs            ChatHandoff[]
   sessions                Session[]
   subscriptions           Subscription[]
   symptomFolders          SymptomFolder[]
@@ -65,14 +66,39 @@ model ChatSession {
   updatedAt  DateTime      @updatedAt
   threadId   String?       @unique
   chatKind   ChatKind      @default(SEARCH) @map("chat_kind")
+  agent      String?       @db.VarChar(16)
+  routingStatus        String?       @map("routing_status") @db.VarChar(32)
+  routingDestination   String?       @map("routing_destination") @db.VarChar(32)
+  routingIntentSummary String?       @map("routing_intent_summary") @db.Text
+  routingQuestionCount Int           @default(0) @map("routing_question_count")
   isFavorite Boolean       @default(false)
   messages   ChatMessage[]
   user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceHandoffs ChatHandoff[] @relation("ChatHandoffSource")
 
   // Índices compostos para otimizar queries de sessões
   @@index([userId, startedAt]) // Busca de sessões por usuário ordenadas por data
   @@index([userId, isFavorite]) // Busca de sessões favoritas
   @@index([userId, chatKind, createdAt])
+}
+
+model ChatHandoff {
+  id                String      @id @default(uuid())
+  userId            String      @map("user_id")
+  sourceSessionId   String      @map("source_session_id")
+  destination       String      @db.VarChar(32)
+  contextSummary    String      @map("context_summary") @db.Text
+  expiresAt         DateTime    @map("expires_at")
+  consumedAt        DateTime?   @map("consumed_at")
+  targetThreadId    String?     @map("target_thread_id") @db.VarChar(64)
+  createdAt         DateTime    @default(now()) @map("created_at")
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceSession     ChatSession @relation("ChatHandoffSource", fields: [sourceSessionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([sourceSessionId])
+  @@index([expiresAt, consumedAt])
+  @@map("chat_handoffs")
 }
 
 model Account {

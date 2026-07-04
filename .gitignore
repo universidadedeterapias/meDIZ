@@ -85,5 +85,20 @@ next-env.d.ts
 
 .vercel
 
+# Environment & Secrets (AIOX)
+.env
+.env.*.local
+*.key
+
+# Dependencies (AIOX)
+node_modules/
+
+# Build & Logs (AIOX)
+build/
+
+# AIOX Local (AIOX)
+.aiox-core/local/
+.claude/settings.local.json
+.aiox/install-log.txt
 .aiox-core
 .codex

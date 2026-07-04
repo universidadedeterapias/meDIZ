@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils'
 const SIDEBAR_COOKIE_NAME = 'sidebar_state'
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = '16rem'
-const SIDEBAR_WIDTH_MOBILE = '18rem'
+const SIDEBAR_WIDTH_MOBILE = 'min(86vw, 19rem)'
 const SIDEBAR_WIDTH_ICON = '3rem'
 const SIDEBAR_KEYBOARD_SHORTCUT = 'b'
 
@@ -172,6 +172,8 @@ const Sidebar = React.forwardRef<
     side?: 'left' | 'right'
     variant?: 'sidebar' | 'floating' | 'inset'
     collapsible?: 'offcanvas' | 'icon' | 'none'
+    surfaceClassName?: string
+    mobileOverlayClassName?: string
   }
 >(
   (
@@ -180,6 +182,8 @@ const Sidebar = React.forwardRef<
       variant = 'sidebar',
       collapsible = 'offcanvas',
       className,
+      surfaceClassName,
+      mobileOverlayClassName,
       children,
       ...props
     },
@@ -192,6 +196,7 @@ const Sidebar = React.forwardRef<
         <div
           className={cn(
             'flex h-full w-[--sidebar-width] flex-col bg-sidebar text-sidebar-foreground',
+            surfaceClassName,
             className
           )}
           ref={ref}
@@ -208,7 +213,12 @@ const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
-            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+            className={cn(
+              'w-[--sidebar-width] bg-sidebar p-0 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-sidebar-foreground',
+              '[&>button]:right-3 [&>button]:top-[calc(0.75rem+env(safe-area-inset-top))] [&>button]:z-30 [&>button]:flex [&>button]:size-9 [&>button]:items-center [&>button]:justify-center [&>button]:rounded-xl [&>button]:bg-white/25 [&>button]:opacity-80 [&>button]:backdrop-blur-md [&>button]:hover:bg-white/45 dark:[&>button]:bg-white/10 dark:[&>button]:hover:bg-white/15',
+              surfaceClassName
+            )}
+            overlayClassName={mobileOverlayClassName}
             style={
               {
                 '--sidebar-width': SIDEBAR_WIDTH_MOBILE
@@ -258,7 +268,10 @@ const Sidebar = React.forwardRef<
         >
           <div
             data-sidebar="sidebar"
-            className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
+            className={cn(
+              'flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow',
+              surfaceClassName
+            )}
           >
             {children}
           </div>
