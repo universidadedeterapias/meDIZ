@@ -7,6 +7,7 @@ export default {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/lib/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
   	extend: {
@@ -83,11 +84,26 @@ export default {
   				to: {
   					height: '0'
   				}
+  			},
+  			'float-a': {
+  				'0%, 100%': { transform: 'translate(0, 0) scale(1)' },
+  				'50%': { transform: 'translate(2.5rem, 3rem) scale(1.08)' }
+  			},
+  			'float-b': {
+  				'0%, 100%': { transform: 'translate(0, 0) scale(1)' },
+  				'50%': { transform: 'translate(-2rem, -2.5rem) scale(1.05)' }
+  			},
+  			'float-c': {
+  				'0%, 100%': { transform: 'translate(0, 0) scale(1)' },
+  				'50%': { transform: 'translate(-1.5rem, 2rem) scale(1.1)' }
   			}
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+  			'float-a': 'float-a 16s ease-in-out infinite',
+  			'float-b': 'float-b 20s ease-in-out infinite',
+  			'float-c': 'float-c 13s ease-in-out infinite'
   		}
   	}
   },

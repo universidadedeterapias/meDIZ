@@ -3,6 +3,7 @@
 
 import { useEffect } from 'react'
 import { useTranslation } from '@/i18n/useTranslation'
+import { BrandAuroraBackground } from '@/components/BrandAuroraBackground'
 
 type Props = { target: string }
 
@@ -18,18 +19,16 @@ export default function SplashScreen({ target }: Props) {
   }, [target])
 
   return (
-    <div
-      className="flex min-h-screen w-full flex-col items-center justify-center gap-16 bg-gradient-to-br from-indigo-600 to-purple-600 p-8 pb-20 font-[family-name:var(--font-geist-sans)] sm:p-20"
-    >
-      <div className="flex flex-1 flex-col items-center justify-center">
-        <p className="text-zinc-100 font-bold text-6xl drop-shadow-lg">
+    <BrandAuroraBackground className="flex flex-col items-center justify-center gap-16 p-8 font-[family-name:var(--font-geist-sans)] sm:p-20">
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center">
+        <p className="text-6xl font-bold text-zinc-100 drop-shadow-lg">
           me<span className="uppercase">diz</span>
-          <span className="text-yellow-400">!</span>
+          <span className="text-[#f5c518]">!</span>
         </p>
       </div>
-      <p className="text-lg font-bold text-zinc-100">
+      <p className="relative z-10 text-lg font-bold text-zinc-100">
         {t('chat.loading.welcome', 'Bem-vindo!')}
       </p>
-    </div>
+    </BrandAuroraBackground>
   )
 }

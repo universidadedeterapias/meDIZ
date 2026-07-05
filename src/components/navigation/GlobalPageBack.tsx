@@ -18,6 +18,7 @@ const PAGES_WITH_HEADER_BACK = [
 const HIDE_EXACT = new Set([
   '/',
   '/chat',
+  '/login',
   '/prof',
   '/simulador',
   '/admin-login',

@@ -98,36 +98,24 @@ body {
     @apply bg-background text-foreground overflow-x-hidden max-w-[100vw];
   }
 
-  /* Login/cadastro: card claro com tema escuro global — evita senha “invisível” */
-  .dark input.login-field {
-    color: hsl(240 5.9% 10%) !important;
-    caret-color: hsl(240 5.9% 10%);
-    -webkit-text-fill-color: hsl(240 5.9% 10%);
-    background-color: hsl(0 0% 100%) !important;
-    color-scheme: light;
-  }
-
-  .dark input.login-field[type='password'] {
-    color: hsl(240 5.9% 10%) !important;
-    caret-color: hsl(240 5.9% 10%);
-    -webkit-text-fill-color: hsl(240 5.9% 10%);
-  }
-
-  /* Autofill do navegador: texto escuro em fundo claro */
+  /* Login/cadastro: autofill do navegador deve respeitar a cor do input em cada tema
+     (sem isso, o Chrome aplica seu próprio fundo padrão de autofill, ignorando as classes Tailwind) */
   input.login-field:-webkit-autofill,
   input.login-field:-webkit-autofill:hover,
-  input.login-field:-webkit-autofill:focus,
+  input.login-field:-webkit-autofill:focus {
+    -webkit-text-fill-color: hsl(240 5.9% 10%);
+    caret-color: hsl(240 5.9% 10%);
+    -webkit-box-shadow: 0 0 0 1000px rgb(255 255 255 / 0.9) inset;
+    box-shadow: 0 0 0 1000px rgb(255 255 255 / 0.9) inset;
+  }
+
   .dark input.login-field:-webkit-autofill,
   .dark input.login-field:-webkit-autofill:hover,
-  .dark input.login-field:-webkit-autofill:focus,
-  .dark input.login-field[type='password']:-webkit-autofill,
-  .dark input.login-field[type='password']:-webkit-autofill:hover,
-  .dark input.login-field[type='password']:-webkit-autofill:focus {
-    -webkit-text-fill-color: hsl(240 5.9% 10%) !important;
-    caret-color: hsl(240 5.9% 10%);
-    -webkit-box-shadow: 0 0 0 1000px hsl(0 0% 100%) inset !important;
-    box-shadow: 0 0 0 1000px hsl(0 0% 100%) inset !important;
-    color-scheme: light;
+  .dark input.login-field:-webkit-autofill:focus {
+    -webkit-text-fill-color: hsl(240 5% 96%);
+    caret-color: hsl(240 5% 96%);
+    -webkit-box-shadow: 0 0 0 1000px rgb(39 39 42 / 0.7) inset;
+    box-shadow: 0 0 0 1000px rgb(39 39 42 / 0.7) inset;
   }
 }
 
