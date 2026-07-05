@@ -484,7 +484,10 @@ export default function DiscoveryPage() {
           onDisconnected={() => setRealtimeConnected(false)}
           onAudioBlocked={() => setAudioBlocked(true)}
           onFinishDiscovery={handleFinishDiscovery}
-          onError={() => setError('A voz oscilou por aqui. Se preferir, escreve pra mim.')}
+          onError={(sessionError) => {
+            console.error('[Discovery Realtime] Sessão:', sessionError)
+            setError('A voz oscilou por aqui. Se preferir, escreve pra mim.')
+          }}
         />
       )}
 
@@ -671,8 +674,9 @@ export default function DiscoveryPage() {
                       endVoicePress()
                     }}
                     onPointerCancel={endVoicePress}
+                    onContextMenu={(event) => event.preventDefault()}
                     className={cn(
-                      'relative flex size-20 items-center justify-center rounded-full text-white shadow-xl shadow-violet-500/25 transition-all duration-200 disabled:opacity-40 sm:size-24',
+                      'relative flex size-20 select-none items-center justify-center rounded-full text-white shadow-xl shadow-violet-500/25 transition-all duration-200 [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] touch-none disabled:opacity-40 sm:size-24',
                       isPressingVoice
                         ? isCancellingVoice
                           ? 'scale-95 bg-red-600'

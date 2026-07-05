@@ -50,6 +50,7 @@
     "check-subscriptions": "tsx src/scripts/check-subscriptions.ts",
     "test-periods": "tsx src/scripts/test-user-periods.ts",
     "create-test-users": "tsx src/scripts/create-test-users.ts",
+    "create-discovery-test-user": "tsx src/scripts/create-discovery-test-user.ts",
     "test-api": "tsx src/scripts/test-api-response.ts",
     "test-hydration": "tsx src/scripts/test-hydration-fix.ts",
     "test-hydration-fixes": "tsx src/scripts/test-hydration-fixes.ts",
