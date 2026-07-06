@@ -18,8 +18,6 @@
     "dev": "prisma generate && next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "worker:pdf-download": "tsx scripts/pdf-download-worker.ts",
-    "test:pdf-download": "tsx --test tests/pdf-download-jobs.test.ts tests/library-media-origin.test.ts",
     "lint": "next lint",
     "migrate:docker": "tsx scripts/migrate-docker-safe.ts",
     "check": "tsc --noEmit && eslint . --ext .ts",

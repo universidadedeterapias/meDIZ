@@ -12,7 +12,6 @@ import {
   type LibraryAuthIdentity
 } from '@/lib/library/permissions'
 import { resolveLibraryLocale } from '@/lib/library/locale'
-import type { LanguageCode } from '@/i18n/config'
 
 export class PdfDownloadAccessError extends Error {
   readonly status: number
@@ -40,8 +39,7 @@ async function assertProductAccess(
 
 export async function getPdfProductForDownload(
   productId: string,
-  user: LibraryAuthIdentity,
-  languageOverride?: LanguageCode
+  user: LibraryAuthIdentity
 ) {
   const product = await prisma.catalogProduct.findUnique({
     where: { id: productId },
@@ -62,7 +60,7 @@ export async function getPdfProductForDownload(
     throw new PdfDownloadAccessError('PRODUCT_NOT_FOUND', 404)
   }
 
-  const language = languageOverride ?? await getCurrentLanguage()
+  const language = await getCurrentLanguage()
   if (!productMatchesUserLanguage(product.locale, language)) {
     throw new PdfDownloadAccessError('PRODUCT_NOT_FOUND', 404)
   }

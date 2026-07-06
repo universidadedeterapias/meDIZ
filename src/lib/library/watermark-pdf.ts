@@ -166,8 +166,7 @@ export async function applyPdfWatermark(
     stampPage(page, font, user)
   }
 
-  // Object streams evitam inflar ainda mais PDFs grandes durante a serializacao.
-  return pdfDoc.save({ useObjectStreams: true, objectsPerTick: 50 })
+  return pdfDoc.save({ useObjectStreams: false })
 }
 
 export function formatCpfForDisplay(cpf: string | null | undefined): string {
