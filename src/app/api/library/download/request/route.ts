@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireUser } from '@/lib/requireAuth'
-import {
-  assertPdfDownloadQuota,
-  PdfDownloadQuotaError
-} from '@/lib/library/pdf-download-limits'
 import { createPdfDownloadToken } from '@/lib/library/pdf-download-token'
 import {
   getPdfProductForDownload,
@@ -34,7 +30,6 @@ export async function POST(request: NextRequest) {
 
     await getPdfProductForDownload(parsed.data.productId, auth.user)
 
-    const quota = await assertPdfDownloadQuota(auth.user.id)
     const { token, expiresAt } = await createPdfDownloadToken(
       auth.user.id,
       parsed.data.productId
@@ -48,26 +43,11 @@ export async function POST(request: NextRequest) {
       {
         downloadUrl: `${origin}/api/library/download/file?token=${encodeURIComponent(token)}`,
         expiresAt: expiresAt.toISOString(),
-        expiresInSeconds: Math.round((expiresAt.getTime() - Date.now()) / 1000),
-        quota: {
-          used: quota.used,
-          limit: quota.limit,
-          remaining: quota.remaining
-        }
+        expiresInSeconds: Math.round((expiresAt.getTime() - Date.now()) / 1000)
       },
       { headers: { 'Cache-Control': 'no-store' } }
     )
   } catch (e) {
-    if (e instanceof PdfDownloadQuotaError) {
-      return NextResponse.json(
-        {
-          error: 'PDF_DOWNLOAD_QUOTA_EXCEEDED',
-          limit: e.limit,
-          message: `Limite de ${e.limit} downloads por mês atingido.`
-        },
-        { status: 429 }
-      )
-    }
     if (e instanceof PdfDownloadAccessError) {
       return NextResponse.json({ error: e.message }, { status: e.status })
     }
