@@ -125,7 +125,9 @@ export function LibraryDocumentViewer({
             ) : (
               <Download className="h-4 w-4" />
             )}
-            <span className="hidden sm:inline">Baixar PDF</span>
+            <span className="hidden sm:inline">
+              {downloading ? 'Preparando PDF...' : 'Baixar PDF'}
+            </span>
           </Button>
         ) : null}
       </header>
