@@ -1,8 +1,8 @@
 # Runbook: download síncrono de PDF (biblioteca)
 
-Substitui a arquitetura assíncrona (`docs/stories/1.1.large-pdf-download.md`,
-revertida em 2026-07-08). Sem fila, sem worker dedicado, sem serviço extra no
-EasyPanel.
+Substitui a arquitetura assíncrona (fila BullMQ + worker dedicado + R2 privado),
+já revertida em `main` (commit `5e32494`, 2026-07-06) e formalizada aqui com cache
++ suporte a Range. Sem fila, sem worker dedicado, sem serviço extra no EasyPanel.
 
 ## Como funciona
 

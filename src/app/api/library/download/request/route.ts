@@ -1,52 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireUser } from '@/lib/requireAuth'
-import { getPdfProductForDownload, PdfDownloadAccessError } from '@/lib/library/validate-pdf-download'
-import { assertPdfDownloadQuota, PdfDownloadQuotaError } from '@/lib/library/pdf-download-limits'
 import { createPdfDownloadToken } from '@/lib/library/pdf-download-token'
+import {
+  getPdfProductForDownload,
+  PdfDownloadAccessError
+} from '@/lib/library/validate-pdf-download'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-const bodySchema = z.object({ productId: z.string().uuid('productId invalido') })
+const bodySchema = z.object({
+  productId: z.string().uuid('productId inválido')
+})
 
 export async function POST(request: NextRequest) {
   const auth = await requireUser({ pathname: '/api/library/download/request' })
   if (auth.ok === false) return auth.response
 
   try {
-    const parsed = bodySchema.safeParse(await request.json())
+    const json = await request.json()
+    const parsed = bodySchema.safeParse(json)
     if (!parsed.success) {
-      return NextResponse.json({ error: 'INVALID_BODY', details: parsed.error.flatten() }, { status: 400 })
-    }
-
-    const { product } = await getPdfProductForDownload(parsed.data.productId, auth.user)
-    if (!product.mediaFileName) throw new PdfDownloadAccessError('PDF_SOURCE_NOT_CONFIGURED', 404)
-
-    const quota = await assertPdfDownloadQuota(auth.user.id)
-    const { token, expiresAt } = await createPdfDownloadToken(auth.user.id, product.id)
-    const origin = process.env.NEXTAUTH_URL?.replace(/\/$/, '') || request.nextUrl.origin
-
-    return NextResponse.json({
-      downloadUrl: `${origin}/api/library/download/file?token=${encodeURIComponent(token)}`,
-      expiresAt: expiresAt.toISOString(),
-      expiresInSeconds: Math.round((expiresAt.getTime() - Date.now()) / 1000),
-      quota
-    }, { headers: { 'Cache-Control': 'no-store' } })
-  } catch (error) {
-    if (error instanceof PdfDownloadQuotaError) {
       return NextResponse.json(
-        { error: 'PDF_DOWNLOAD_QUOTA_EXCEEDED', limit: error.limit, message: `Limite de ${error.limit} downloads por mes atingido.` },
-        { status: 429 }
+        { error: 'INVALID_BODY', details: parsed.error.flatten() },
+        { status: 400 }
       )
     }
-    if (error instanceof PdfDownloadAccessError) {
-      return NextResponse.json({ error: error.message }, { status: error.status })
-    }
-    console.error('[library/download/request]', error)
-    return NextResponse.json(
-      { error: 'PDF_PREPARATION_TEMPORARILY_UNAVAILABLE', retryable: true },
-      { status: 503, headers: { 'Retry-After': '30' } }
+
+    await getPdfProductForDownload(parsed.data.productId, auth.user)
+
+    const { token, expiresAt } = await createPdfDownloadToken(
+      auth.user.id,
+      parsed.data.productId
     )
+
+    const origin =
+      process.env.NEXTAUTH_URL?.replace(/\/$/, '') ||
+      request.nextUrl.origin
+
+    return NextResponse.json(
+      {
+        downloadUrl: `${origin}/api/library/download/file?token=${encodeURIComponent(token)}`,
+        expiresAt: expiresAt.toISOString(),
+        expiresInSeconds: Math.round((expiresAt.getTime() - Date.now()) / 1000)
+      },
+      { headers: { 'Cache-Control': 'no-store' } }
+    )
+  } catch (e) {
+    if (e instanceof PdfDownloadAccessError) {
+      return NextResponse.json({ error: e.message }, { status: e.status })
+    }
+    console.error('[library/download/request]', e)
+    return NextResponse.json({ error: 'DOWNLOAD_REQUEST_FAILED' }, { status: 500 })
   }
 }

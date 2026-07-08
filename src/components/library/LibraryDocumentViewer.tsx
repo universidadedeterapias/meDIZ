@@ -70,12 +70,9 @@ export function LibraryDocumentViewer({
         const message =
           res.status === 404
             ? 'Download ainda não disponível neste ambiente. Aguarde a atualização do app.'
-            : data.error === 'PDF_DOWNLOAD_QUOTA_EXCEEDED'
-              ? data.message ||
-                'Limite mensal de downloads atingido.'
-              : data.message ||
-                data.error ||
-                'Não foi possível preparar o download.'
+            : data.message ||
+              data.error ||
+              'Não foi possível preparar o download.'
         setDownloadError(message)
         return
       }
