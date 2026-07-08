@@ -84,27 +84,3 @@ export function verifyPdfDownloadToken(
   }
 }
 
-export async function consumePdfDownloadToken(
-  payload: PdfDownloadTokenPayload
-): Promise<boolean> {
-  const row = await prisma.pdfDownloadToken.findUnique({
-    where: { jti: payload.jti },
-    select: { userId: true, productId: true, expiresAt: true, usedAt: true }
-  })
-
-  if (
-    !row ||
-    row.userId !== payload.uid ||
-    row.productId !== payload.pid ||
-    row.usedAt ||
-    row.expiresAt.getTime() < Date.now()
-  ) {
-    return false
-  }
-
-  await prisma.pdfDownloadToken.update({
-    where: { jti: payload.jti },
-    data: { usedAt: new Date() }
-  })
-  return true
-}

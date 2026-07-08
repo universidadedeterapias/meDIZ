@@ -36,8 +36,6 @@ export function LibraryDocumentViewer({
   const [ready, setReady] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
-  const [downloadJobId, setDownloadJobId] = useState<string | null>(null)
-  const [downloadStatus, setDownloadStatus] = useState<string | null>(null)
 
   useEffect(() => {
     const blockSave = (event: KeyboardEvent) => {
@@ -57,58 +55,11 @@ export function LibraryDocumentViewer({
     }
   }, [])
 
-  useEffect(() => {
-    if (!downloadJobId || !['pending', 'processing'].includes(downloadStatus ?? '')) return
-    let cancelled = false
-    let timer: ReturnType<typeof setTimeout> | undefined
-    let failures = 0
-    const poll = async () => {
-      try {
-        const res = await apiFetch(`/api/library/download/status/${downloadJobId}`)
-        const data = await res.json().catch(() => ({}))
-        if (cancelled) return
-        if (!res.ok) throw new Error(data.error || 'PDF_STATUS_FAILED')
-        failures = 0
-        setDownloadStatus(data.status)
-        if (data.status === 'failed' || data.status === 'expired') {
-          setDownloadError('Nao foi possivel preparar o PDF. Tente novamente.')
-        } else if (data.status !== 'ready') {
-          timer = setTimeout(poll, data.pollAfterMs ?? 2500)
-        }
-      } catch {
-        failures += 1
-        if (!cancelled && failures < 3) {
-          timer = setTimeout(poll, failures * 2500)
-        } else if (!cancelled) {
-          setDownloadError('A conexao foi interrompida. Tente novamente.')
-          setDownloadStatus('failed')
-        }
-      }
-    }
-    timer = setTimeout(poll, 1200)
-    return () => {
-      cancelled = true
-      if (timer) clearTimeout(timer)
-    }
-  }, [downloadJobId, downloadStatus])
-
   const handleDownload = async () => {
     if (!productId || downloading) return
     setDownloading(true)
     setDownloadError(null)
     try {
-      if (downloadJobId && downloadStatus === 'ready') {
-        const urlResponse = await apiFetch(`/api/library/download/url/${downloadJobId}`, {
-          method: 'POST'
-        })
-        const urlData = await urlResponse.json().catch(() => ({}))
-        if (!urlResponse.ok || !urlData.downloadUrl) {
-          throw new Error(urlData.error || 'PDF_DOWNLOAD_URL_FAILED')
-        }
-        window.location.assign(urlData.downloadUrl)
-        return
-      }
-
       const res = await apiFetch('/api/library/download/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -128,16 +79,11 @@ export function LibraryDocumentViewer({
         setDownloadError(message)
         return
       }
-      if (data.downloadUrl) {
-        window.location.assign(data.downloadUrl)
-        return
-      }
-      if (!data.jobId) {
+      if (!data.downloadUrl) {
         setDownloadError('Link de download indisponível.')
         return
       }
-      setDownloadJobId(data.jobId)
-      setDownloadStatus(data.status)
+      window.location.assign(data.downloadUrl)
     } catch {
       setDownloadError('Erro de rede ao solicitar download.')
     } finally {
@@ -174,22 +120,16 @@ export function LibraryDocumentViewer({
             variant="outline"
             size="sm"
             className="h-9 shrink-0 gap-1.5 border-violet-200 text-violet-800 dark:border-violet-800 dark:text-violet-200"
-            disabled={downloading || downloadStatus === 'pending' || downloadStatus === 'processing'}
+            disabled={downloading}
             onClick={() => void handleDownload()}
           >
-            {downloading || downloadStatus === 'pending' || downloadStatus === 'processing' ? (
+            {downloading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Download className="h-4 w-4" />
             )}
             <span className="hidden sm:inline">
-              {downloadStatus === 'pending' || downloadStatus === 'processing'
-                ? 'Preparando PDF...'
-                : downloadStatus === 'ready'
-                  ? 'Baixar PDF'
-                  : downloadStatus === 'failed' || downloadStatus === 'expired'
-                    ? 'Tentar novamente'
-                    : 'Baixar PDF'}
+              {downloading ? 'Preparando PDF...' : 'Baixar PDF'}
             </span>
           </Button>
         ) : null}

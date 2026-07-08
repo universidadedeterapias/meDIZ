@@ -1,4 +1,3 @@
-import { createReadStream, promises as fs } from 'fs'
 import path from 'path'
 import { NextRequest, NextResponse } from 'next/server'
 import { getAbsolutePath } from '@/lib/library/contentPaths'
@@ -16,6 +15,7 @@ import {
   isAllowedStreamFetchDest,
   type LibraryMediaKind
 } from '@/lib/library/media-origin'
+import { streamFileResponse } from '@/lib/library/range-stream'
 import { requireUser } from '@/lib/requireAuth'
 
 export const runtime = 'nodejs'
@@ -42,20 +42,6 @@ function contentTypeFromPath(filePath: string): string {
   }
 }
 
-function parseRangeHeader(
-  rangeHeader: string | null,
-  size: number
-): { start: number; end: number } | null {
-  if (!rangeHeader || !rangeHeader.startsWith('bytes=')) return null
-  const [startStr, endStr] = rangeHeader.replace('bytes=', '').split('-')
-  const start = Number.parseInt(startStr, 10)
-  const end = endStr ? Number.parseInt(endStr, 10) : size - 1
-  if (Number.isNaN(start) || start < 0 || end < start || end >= size) {
-    return null
-  }
-  return { start, end }
-}
-
 function resolveMediaKind(
   src: string,
   payloadKind?: LibraryMediaKind,
@@ -74,26 +60,8 @@ async function streamLocalFile(
   kind: LibraryMediaKind
 ): Promise<NextResponse> {
   const absolute = getAbsolutePath(relativePath.replace(/\\/g, '/'))
-  const stat = await fs.stat(absolute)
   const contentType = contentTypeFromPath(absolute)
-  const range = parseRangeHeader(rangeHeader, stat.size)
-  const headers = new Headers(buildAntiDownloadHeaders(contentType, kind))
-  headers.set('Accept-Ranges', 'bytes')
-
-  if (range) {
-    const chunkSize = range.end - range.start + 1
-    const stream = createReadStream(absolute, { start: range.start, end: range.end })
-    headers.set('Content-Range', `bytes ${range.start}-${range.end}/${stat.size}`)
-    headers.set('Content-Length', String(chunkSize))
-    return new NextResponse(stream as unknown as ReadableStream, {
-      status: 206,
-      headers
-    })
-  }
-
-  headers.set('Content-Length', String(stat.size))
-  const stream = createReadStream(absolute)
-  return new NextResponse(stream as unknown as ReadableStream, { status: 200, headers })
+  return streamFileResponse(absolute, rangeHeader, buildAntiDownloadHeaders(contentType, kind))
 }
 
 async function streamRemoteFile(

@@ -33,14 +33,6 @@ export function getR2Bucket(): string {
   return requireEnv('R2_BUCKET')
 }
 
-export function isR2PrivateStorageConfigured(): boolean {
-  return isR2Configured() && Boolean(process.env.R2_PRIVATE_BUCKET?.trim())
-}
-
-function getR2PrivateBucket(): string {
-  return requireEnv('R2_PRIVATE_BUCKET')
-}
-
 export function getR2PublicUrlBase(): string {
   return requireEnv('R2_PUBLIC_URL').replace(/\/+$/, '')
 }
@@ -80,44 +72,6 @@ export async function createR2PresignedPutUrl(
     }),
     { expiresIn }
   )
-}
-
-export async function createR2PrivatePresignedGetUrl(
-  key: string,
-  fileName: string,
-  expiresIn = 600
-): Promise<string> {
-  const asciiName = fileName.replace(/[^a-zA-Z0-9._-]/g, '-') || 'documento.pdf'
-  return getSignedUrl(
-    r2,
-    new GetObjectCommand({
-      Bucket: getR2PrivateBucket(),
-      Key: key,
-      ResponseContentType: 'application/pdf',
-      ResponseContentDisposition: `attachment; filename="${asciiName}"`
-    }),
-    { expiresIn }
-  )
-}
-
-export async function uploadPrivateBufferToR2(
-  key: string,
-  buffer: Buffer,
-  contentType: string
-): Promise<void> {
-  await r2.send(
-    new PutObjectCommand({
-      Bucket: getR2PrivateBucket(),
-      Key: key,
-      Body: buffer,
-      ContentType: contentType,
-      CacheControl: 'private, max-age=0, no-store'
-    })
-  )
-}
-
-export async function deletePrivateFromR2(key: string): Promise<void> {
-  await r2.send(new DeleteObjectCommand({ Bucket: getR2PrivateBucket(), Key: key }))
 }
 
 export async function uploadBufferToR2(
