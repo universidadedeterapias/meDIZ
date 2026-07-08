@@ -80,7 +80,27 @@ export function LibraryDocumentViewer({
         setDownloadError('Link de download indisponível.')
         return
       }
-      window.location.assign(data.downloadUrl)
+
+      // Baixa via fetch (em vez de navegar direto pro link) pra manter o
+      // spinner ativo durante a geração/watermark no servidor — uma
+      // navegação de anexo não recarrega a página, então o app perderia o
+      // feedback visual assim que o clique acontecesse.
+      const fileResponse = await apiFetch(data.downloadUrl, { credentials: 'include' })
+      if (!fileResponse.ok) {
+        throw new Error('DOWNLOAD_FILE_FAILED')
+      }
+      const blob = await fileResponse.blob()
+      const disposition = fileResponse.headers.get('content-disposition') ?? ''
+      const filename = /filename="?([^"]+)"?/.exec(disposition)?.[1] ?? 'documento.pdf'
+
+      const objectUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = objectUrl
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000)
     } catch {
       setDownloadError('Erro de rede ao solicitar download.')
     } finally {
