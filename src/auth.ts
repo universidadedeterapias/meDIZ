@@ -1,60 +1,72 @@
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import { compare } from 'bcryptjs'
 import NextAuth from 'next-auth'
+import { PHASE_PRODUCTION_BUILD } from 'next/constants'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import { prisma } from '@/lib/prisma'
 
-// Verificar se as variáveis de ambiente estão configuradas
-if (!process.env.NEXTAUTH_SECRET) {
-  throw new Error('NEXTAUTH_SECRET não está configurado')
-}
+/**
+ * `next build` importa todas as rotas para coletar metadata ("Collecting page data"),
+ * mesmo as dinâmicas — sem as env vars reais de runtime disponiveis nesse momento (o
+ * Railway, por exemplo, so injeta as variaveis do servico no container em execucao, nao
+ * no passo de build da imagem Docker). Pulamos as validacoes abaixo nessa fase pra nao
+ * derrubar o build; elas continuam valendo normalmente em dev e no servidor rodando.
+ */
+const isBuildPhase = process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL não está configurado')
-}
-
-// Validar e corrigir NEXTAUTH_URL
-let nextAuthUrl = process.env.NEXTAUTH_URL
-
-if (!nextAuthUrl) {
-  // Em desenvolvimento, usar localhost automaticamente
-  // Em produção, NEXTAUTH_URL é obrigatório e será lançado um erro
-  if (process.env.NODE_ENV === 'development') {
-    nextAuthUrl = process.env.PORT 
-      ? `http://localhost:${process.env.PORT}`
-      : 'http://localhost:3000'
-    console.warn('[NextAuth] NEXTAUTH_URL não configurado, usando URL de desenvolvimento:', nextAuthUrl)
-  } else {
-    // ⚠️ PRODUÇÃO: NEXTAUTH_URL é obrigatório
-    console.warn('[NextAuth] NEXTAUTH_URL não configurado')
-    throw new Error('NEXTAUTH_URL deve ser configurado em produção')
+if (!isBuildPhase) {
+  // Verificar se as variáveis de ambiente estão configuradas
+  if (!process.env.NEXTAUTH_SECRET) {
+    throw new Error('NEXTAUTH_SECRET não está configurado')
   }
-}
 
-// 🔧 DESENVOLVIMENTO: Se NEXTAUTH_URL aponta para produção, forçar localhost
-// ✅ PRODUÇÃO: Esta condição NUNCA será verdadeira, então usa NEXTAUTH_URL normalmente
-if (process.env.NODE_ENV === 'development' && nextAuthUrl.includes('mediz.app')) {
-  const port = process.env.PORT || '3000'
-  nextAuthUrl = `http://localhost:${port}`
-  console.warn('[NextAuth] ⚠️ Desenvolvimento detectado - Forçando uso de localhost:', nextAuthUrl)
-}
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL não está configurado')
+  }
 
-// Garantir que a URL seja válida
-try {
-  new URL(nextAuthUrl)
-} catch {
-  console.error('[NextAuth] NEXTAUTH_URL inválida:', nextAuthUrl)
-  throw new Error(`NEXTAUTH_URL inválida: ${nextAuthUrl}`)
-}
+  // Validar e corrigir NEXTAUTH_URL
+  let nextAuthUrl = process.env.NEXTAUTH_URL
 
-// Log de configuração apenas em desenvolvimento
-if (process.env.NODE_ENV === 'development') {
-  console.log('[NextAuth] Configuração:', {
-    url: nextAuthUrl,
-    secret: process.env.NEXTAUTH_SECRET ? 'Configurado' : 'Não configurado',
-    database: process.env.DATABASE_URL ? 'Configurado' : 'Não configurado'
-  })
+  if (!nextAuthUrl) {
+    // Em desenvolvimento, usar localhost automaticamente
+    // Em produção, NEXTAUTH_URL é obrigatório e será lançado um erro
+    if (process.env.NODE_ENV === 'development') {
+      nextAuthUrl = process.env.PORT
+        ? `http://localhost:${process.env.PORT}`
+        : 'http://localhost:3000'
+      console.warn('[NextAuth] NEXTAUTH_URL não configurado, usando URL de desenvolvimento:', nextAuthUrl)
+    } else {
+      // ⚠️ PRODUÇÃO: NEXTAUTH_URL é obrigatório
+      console.warn('[NextAuth] NEXTAUTH_URL não configurado')
+      throw new Error('NEXTAUTH_URL deve ser configurado em produção')
+    }
+  }
+
+  // 🔧 DESENVOLVIMENTO: Se NEXTAUTH_URL aponta para produção, forçar localhost
+  // ✅ PRODUÇÃO: Esta condição NUNCA será verdadeira, então usa NEXTAUTH_URL normalmente
+  if (process.env.NODE_ENV === 'development' && nextAuthUrl.includes('mediz.app')) {
+    const port = process.env.PORT || '3000'
+    nextAuthUrl = `http://localhost:${port}`
+    console.warn('[NextAuth] ⚠️ Desenvolvimento detectado - Forçando uso de localhost:', nextAuthUrl)
+  }
+
+  // Garantir que a URL seja válida
+  try {
+    new URL(nextAuthUrl)
+  } catch {
+    console.error('[NextAuth] NEXTAUTH_URL inválida:', nextAuthUrl)
+    throw new Error(`NEXTAUTH_URL inválida: ${nextAuthUrl}`)
+  }
+
+  // Log de configuração apenas em desenvolvimento
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[NextAuth] Configuração:', {
+      url: nextAuthUrl,
+      secret: process.env.NEXTAUTH_SECRET ? 'Configurado' : 'Não configurado',
+      database: process.env.DATABASE_URL ? 'Configurado' : 'Não configurado'
+    })
+  }
 }
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
