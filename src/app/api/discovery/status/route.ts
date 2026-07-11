@@ -1,5 +1,9 @@
 import { auth } from '@/auth'
-import { getDiscoveryRolloutConfig, shouldRunDiscovery } from '@/lib/discovery-access'
+import {
+  getDiscoveryRolloutConfig,
+  isDiscoveryTestModeEnabled,
+  shouldRunDiscovery
+} from '@/lib/discovery-access'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
@@ -42,7 +46,8 @@ export async function GET() {
       featureEnabled: rollout.enabled,
       requiresDiscovery,
       discoveryCompleted: user.userProfile?.discoveryCompleted ?? false,
-      consentedAt: user.userProfile?.consentedAt?.toISOString() ?? null
+      consentedAt: user.userProfile?.consentedAt?.toISOString() ?? null,
+      testMode: isDiscoveryTestModeEnabled()
     })
   } catch (error) {
     console.error('[Discovery Status] Falha ao consultar elegibilidade:', error)
@@ -51,6 +56,7 @@ export async function GET() {
       requiresDiscovery: false,
       discoveryCompleted: true,
       consentedAt: null,
+      testMode: false,
       degraded: true
     })
   }

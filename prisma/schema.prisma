@@ -659,6 +659,17 @@ model UserProfile {
   @@map("user_profiles")
 }
 
+/// Prompt ativo do agente de descoberta, editavel via painel de teste (`DISCOVERY_TEST_MODE=true`) em HML.
+/// Linha unica (id fixo "singleton"); ausencia de registro == usa o DISCOVERY_SYSTEM_PROMPT hardcoded como padrao.
+model DiscoveryConfig {
+  id           String   @id @default("singleton")
+  systemPrompt String   @map("system_prompt")
+  updatedBy    String?  @map("updated_by")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("discovery_config")
+}
+
 /// Outbox de eventos da descoberta — consumido de forma assincrona pelo worker n8n de extracao de perfil.
 /// status: 'pending' | 'processing' | 'processed' | 'failed' (CHECK constraint no banco, TEXT pelo mesmo motivo do UserProfile).
 model DiscoveryEvent {

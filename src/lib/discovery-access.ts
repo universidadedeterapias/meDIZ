@@ -25,6 +25,14 @@ export function getDiscoveryRolloutConfig(): DiscoveryRolloutConfig {
   }
 }
 
+/**
+ * Painel de teste do discovery (reiniciar fluxo + editar prompt direto na tela /descoberta).
+ * So deve ser ligado em HML — nunca em producao.
+ */
+export function isDiscoveryTestModeEnabled(): boolean {
+  return process.env.DISCOVERY_TEST_MODE === 'true'
+}
+
 export function shouldRunDiscovery({
   userCreatedAt,
   discoveryCompleted,

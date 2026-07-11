@@ -1,6 +1,6 @@
 import { auth } from '@/auth'
-import { DISCOVERY_SYSTEM_PROMPT } from '@/lib/discovery'
 import { shouldRunDiscovery } from '@/lib/discovery-access'
+import { getActiveDiscoverySystemPrompt } from '@/lib/discovery-prompt-config'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
@@ -56,6 +56,8 @@ export async function POST() {
       return NextResponse.json({ error: 'Configuração do servidor incompleta' }, { status: 500 })
     }
 
+    const systemPrompt = await getActiveDiscoverySystemPrompt()
+
     const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
       method: 'POST',
       headers: {
@@ -67,7 +69,7 @@ export async function POST() {
         session: {
           type: 'realtime',
           model: REALTIME_MODEL,
-          instructions: DISCOVERY_SYSTEM_PROMPT,
+          instructions: systemPrompt,
           output_modalities: ['audio'],
           audio: {
             input: {

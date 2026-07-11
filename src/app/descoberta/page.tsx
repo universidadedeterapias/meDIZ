@@ -11,6 +11,7 @@ import {
   type DiscoveryRealtimeSessionHandle,
   type DiscoveryRealtimeUsage
 } from '@/components/discovery/DiscoveryRealtimeSession'
+import { DiscoveryTestPanel } from '@/components/discovery/DiscoveryTestPanel'
 import {
   DISCOVERY_AUDIO_MAX_SECONDS,
   DISCOVERY_AUDIO_NUDGE_SECONDS,
@@ -21,7 +22,7 @@ import {
 import { glassPanelClass } from '@/lib/glassStyles'
 import { cn } from '@/lib/utils'
 
-type DiscoveryStatus = 'checking' | 'consent' | 'chat' | 'finishing'
+type DiscoveryStatus = 'checking' | 'consent' | 'chat' | 'finishing' | 'completed-test-mode'
 type DiscoveryUsageTotals = Omit<DiscoveryRealtimeUsage, 'responseId'>
 
 function emptyUsageTotals(): DiscoveryUsageTotals {
@@ -83,6 +84,7 @@ function normalizeDiscoveryMessageSequence(
 export default function DiscoveryPage() {
   const router = useRouter()
   const [status, setStatus] = useState<DiscoveryStatus>('checking')
+  const [testMode, setTestMode] = useState(false)
   const [messages, setMessages] = useState<DiscoveryTranscriptMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -175,8 +177,14 @@ export default function DiscoveryPage() {
       const data = await response.json()
       if (cancelled) return
 
+      setTestMode(Boolean(data.testMode))
+
       if (!data.requiresDiscovery) {
-        router.replace('/chat')
+        if (data.testMode) {
+          setStatus('completed-test-mode')
+        } else {
+          router.replace('/chat')
+        }
       } else if (data.consentedAt) {
         setStatus('chat')
         await connectRealtime()
@@ -500,6 +508,30 @@ export default function DiscoveryPage() {
           </div>
         ) : null}
 
+        {status === 'completed-test-mode' ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+            <span className="flex size-16 items-center justify-center rounded-full bg-white/75 text-violet-700 shadow-lg shadow-violet-950/10 backdrop-blur-xl dark:bg-zinc-900/80 dark:text-violet-200">
+              <Sparkles className="size-7" />
+            </span>
+            <p className="max-w-md text-lg leading-relaxed text-zinc-900 dark:text-zinc-100">
+              Descoberta já concluída para este usuário.
+            </p>
+            <p className="max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
+              Use o painel de teste no canto da tela para reiniciar e tentar de novo.
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push('/chat')}
+              className={cn(
+                glassPanelClass,
+                'h-11 rounded-full px-5 text-sm font-medium text-zinc-700 transition hover:bg-white/70 dark:text-zinc-200'
+              )}
+            >
+              Ir para o chat
+            </button>
+          </div>
+        ) : null}
+
         {status === 'consent' ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
             <span className="flex size-16 items-center justify-center rounded-full bg-white/75 text-violet-700 shadow-lg shadow-violet-950/10 backdrop-blur-xl dark:bg-zinc-900/80 dark:text-violet-200">
@@ -709,6 +741,10 @@ export default function DiscoveryPage() {
           </div>
         ) : null}
       </main>
+
+      {testMode ? (
+        <DiscoveryTestPanel onRestart={() => window.location.reload()} />
+      ) : null}
     </div>
   )
 }
