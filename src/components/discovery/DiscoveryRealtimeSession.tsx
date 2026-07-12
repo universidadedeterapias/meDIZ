@@ -1,6 +1,5 @@
 'use client'
 
-import { DISCOVERY_SYSTEM_PROMPT } from '@/lib/discovery'
 import {
   OpenAIRealtimeWebRTC,
   RealtimeAgent,
@@ -43,6 +42,7 @@ type DiscoveryRealtimeSessionProps = {
   sessionId: string
   model: string
   transcriptionModel: string
+  instructions: string
   muted: boolean
   onTranscript: (text: string, role: 'user' | 'assistant', itemId?: string) => void
   onHistoryUpdated?: (messages: DiscoveryRealtimeHistoryMessage[]) => void
@@ -182,6 +182,7 @@ export const DiscoveryRealtimeSession = forwardRef<
     sessionId: _sessionId,
     model,
     transcriptionModel,
+    instructions,
     muted,
     onTranscript,
     onHistoryUpdated,
@@ -330,7 +331,7 @@ export const DiscoveryRealtimeSession = forwardRef<
 
       const agent = new RealtimeAgent({
         name: 'meDIZ Descoberta',
-        instructions: DISCOVERY_SYSTEM_PROMPT,
+        instructions,
         voice: 'alloy',
         tools: [finishDiscoveryTool]
       })
@@ -454,7 +455,7 @@ export const DiscoveryRealtimeSession = forwardRef<
         onErrorRef.current(toError(error))
       }
     }
-  }, [clientSecret, model, transcriptionModel])
+  }, [clientSecret, model, transcriptionModel, instructions])
 
   useImperativeHandle(
     ref,

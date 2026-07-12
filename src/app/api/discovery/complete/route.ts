@@ -5,6 +5,7 @@ import {
   discoveryUsageSchema,
   getPredominantDiscoveryChannel
 } from '@/lib/discovery'
+import { isDiscoveryTestModeEnabled } from '@/lib/discovery-access'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -50,15 +51,20 @@ export async function POST(request: Request) {
     usage: parsedBody.data.usage
   })
 
+  // Em HML com o painel de teste ligado, nao marcamos a descoberta como concluida — assim o
+  // usuario de teste cai de novo no gate a cada visita, sem precisar clicar em "reiniciar"
+  // toda vez que quiser testar outra variacao do prompt.
+  const discoveryCompleted = !isDiscoveryTestModeEnabled()
+
   await prisma.$transaction([
     prisma.userProfile.upsert({
       where: { userId: session.user.id },
       create: {
         userId: session.user.id,
-        discoveryCompleted: true
+        discoveryCompleted
       },
       update: {
-        discoveryCompleted: true
+        discoveryCompleted
       }
     }),
     prisma.discoveryEvent.upsert({

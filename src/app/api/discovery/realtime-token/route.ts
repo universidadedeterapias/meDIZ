@@ -132,7 +132,8 @@ export async function POST() {
       sessionId: `disc_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
       model: REALTIME_MODEL,
       voice: REALTIME_VOICE,
-      transcriptionModel: TRANSCRIPTION_MODEL
+      transcriptionModel: TRANSCRIPTION_MODEL,
+      instructions: systemPrompt
     })
   } catch (error) {
     console.error('[Discovery Realtime Token] Erro completo:', error)

@@ -94,6 +94,7 @@ export default function DiscoveryPage() {
   const [realtimeSessionId, setRealtimeSessionId] = useState<string | null>(null)
   const [realtimeModel, setRealtimeModel] = useState<string | null>(null)
   const [realtimeTranscriptionModel, setRealtimeTranscriptionModel] = useState<string | null>(null)
+  const [realtimeInstructions, setRealtimeInstructions] = useState<string | null>(null)
   const [realtimeConnected, setRealtimeConnected] = useState(false)
   const [audioBlocked, setAudioBlocked] = useState(false)
   const [voiceMuted, setVoiceMuted] = useState(true)
@@ -216,6 +217,7 @@ export default function DiscoveryPage() {
       setRealtimeSessionId(data.sessionId)
       setRealtimeModel(data.model)
       setRealtimeTranscriptionModel(data.transcriptionModel)
+      setRealtimeInstructions(data.instructions)
     } catch {
       setError('Não consegui abrir a conversa por voz agora. Você ainda pode escrever.')
     }
@@ -473,13 +475,18 @@ export default function DiscoveryPage() {
 
   return (
     <div className="relative isolate flex h-svh flex-col overflow-hidden bg-gradient-to-br from-violet-50 via-slate-50 to-violet-100/70 before:pointer-events-none before:fixed before:-left-28 before:-top-24 before:z-0 before:size-96 before:rounded-full before:bg-violet-300/20 before:blur-3xl after:pointer-events-none after:fixed after:-bottom-32 after:right-0 after:z-0 after:size-80 after:rounded-full after:bg-slate-200/25 after:blur-3xl dark:from-[#0f0e14] dark:via-[#111017] dark:to-[#17131f] dark:before:bg-violet-700/10 dark:after:bg-violet-950/10">
-      {realtimeClientSecret && realtimeSessionId && realtimeModel && realtimeTranscriptionModel && (
+      {realtimeClientSecret &&
+        realtimeSessionId &&
+        realtimeModel &&
+        realtimeTranscriptionModel &&
+        realtimeInstructions && (
         <DiscoveryRealtimeSession
           ref={realtimeSessionRef}
           clientSecret={realtimeClientSecret}
           sessionId={realtimeSessionId}
           model={realtimeModel}
           transcriptionModel={realtimeTranscriptionModel}
+          instructions={realtimeInstructions}
           muted={voiceMuted}
           onTranscript={handleRealtimeTranscript}
           onHistoryUpdated={handleRealtimeHistory}
@@ -546,7 +553,7 @@ export default function DiscoveryPage() {
                 type="button"
                 onClick={() => acceptConsent(true)}
                 disabled={loading}
-                className="h-12 flex-1 rounded-full bg-gradient-to-br from-violet-600 to-purple-600 px-5 text-sm font-medium text-white shadow-lg shadow-violet-500/25 transition hover:shadow-xl disabled:opacity-60"
+                className="h-14 w-full shrink-0 rounded-full bg-gradient-to-br from-violet-600 to-purple-600 px-5 text-base font-medium text-white shadow-lg shadow-violet-500/25 transition hover:shadow-xl disabled:opacity-60 sm:h-12 sm:w-auto sm:flex-1 sm:text-sm"
               >
                 Pode sim
               </button>
@@ -556,7 +563,7 @@ export default function DiscoveryPage() {
                 disabled={loading}
                 className={cn(
                   glassPanelClass,
-                  'h-12 flex-1 rounded-full px-5 text-sm font-medium text-zinc-700 transition hover:bg-white/70 disabled:opacity-60 dark:text-zinc-200'
+                  'h-14 w-full shrink-0 rounded-full px-5 text-base font-medium text-zinc-700 transition hover:bg-white/70 disabled:opacity-60 dark:text-zinc-200 sm:h-12 sm:w-auto sm:flex-1 sm:text-sm'
                 )}
               >
                 Agora não
