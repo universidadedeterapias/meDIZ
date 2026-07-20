@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { normalizeLibraryEmail } from '@/lib/library/email'
 import {
-  generateTemporaryPassword,
+  DEFAULT_TEMPORARY_PASSWORD,
   hashPassword
 } from '@/lib/library/temporaryPassword'
 import { collectProductIdsToGrant } from '@/lib/purchases/resolve-product'
@@ -58,7 +58,7 @@ export async function grantPurchaseAccess(
   let temporaryPassword: string | null = null
 
   if (!existingUser) {
-    temporaryPassword = generateTemporaryPassword(10)
+    temporaryPassword = DEFAULT_TEMPORARY_PASSWORD
     const passwordHash = await hashPassword(temporaryPassword)
     await prisma.user.create({
       data: {

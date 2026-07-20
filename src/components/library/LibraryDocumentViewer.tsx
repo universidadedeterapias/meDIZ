@@ -70,12 +70,9 @@ export function LibraryDocumentViewer({
         const message =
           res.status === 404
             ? 'Download ainda não disponível neste ambiente. Aguarde a atualização do app.'
-            : data.error === 'PDF_DOWNLOAD_QUOTA_EXCEEDED'
-              ? data.message ||
-                'Limite mensal de downloads atingido.'
-              : data.message ||
-                data.error ||
-                'Não foi possível preparar o download.'
+            : data.message ||
+              data.error ||
+              'Não foi possível preparar o download.'
         setDownloadError(message)
         return
       }
@@ -83,7 +80,27 @@ export function LibraryDocumentViewer({
         setDownloadError('Link de download indisponível.')
         return
       }
-      window.location.assign(data.downloadUrl)
+
+      // Baixa via fetch (em vez de navegar direto pro link) pra manter o
+      // spinner ativo durante a geração/watermark no servidor — uma
+      // navegação de anexo não recarrega a página, então o app perderia o
+      // feedback visual assim que o clique acontecesse.
+      const fileResponse = await apiFetch(data.downloadUrl, { credentials: 'include' })
+      if (!fileResponse.ok) {
+        throw new Error('DOWNLOAD_FILE_FAILED')
+      }
+      const blob = await fileResponse.blob()
+      const disposition = fileResponse.headers.get('content-disposition') ?? ''
+      const filename = /filename="?([^"]+)"?/.exec(disposition)?.[1] ?? 'documento.pdf'
+
+      const objectUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = objectUrl
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000)
     } catch {
       setDownloadError('Erro de rede ao solicitar download.')
     } finally {
@@ -128,7 +145,9 @@ export function LibraryDocumentViewer({
             ) : (
               <Download className="h-4 w-4" />
             )}
-            <span className="hidden sm:inline">Baixar PDF</span>
+            <span className="hidden sm:inline">
+              {downloading ? 'Preparando PDF...' : 'Baixar PDF'}
+            </span>
           </Button>
         ) : null}
       </header>
