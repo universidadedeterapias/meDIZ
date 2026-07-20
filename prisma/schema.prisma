@@ -52,6 +52,7 @@ model User {
   userProfile             UserProfile?
   discoveryEvents         DiscoveryEvent[]
   conversationEvents      ConversationEvent[]
+  userFacts               UserFact[]
 
   @@index([mensagem_enviada])
   @@index([status_verificacao])
@@ -655,6 +656,10 @@ model UserProfile {
   predictive         Json?
   compactProfile     String?   @map("compact_profile")
   profileVersion     Int       @default(1) @map("profile_version")
+  /// ID Vida (Story 4.2): resumo compacto de marcos/fios abertos, injetado junto com compactProfile.
+  lifeCompact        String?   @map("life_compact")
+  lastConversationAt DateTime? @map("last_conversation_at")
+  lastTopic          String?   @map("last_topic")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
   user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -722,4 +727,29 @@ model ConversationEvent {
   @@index([sessionId])
   @@index([availableAt, status])
   @@map("conversation_events")
+}
+
+/// ID Vida (Story 4.2): fatos de vida extraidos das conversas — duas naturezas (marker/ongoing).
+/// type: 'marker' (permanente, ex.: "nao conheceu o pai") | 'ongoing' (com ciclo de vida, ex.: "perdeu o emprego").
+/// status: marker so usa 'active'; ongoing usa 'open'|'tracking'|'resolved'|'archived'.
+/// approach/sensitivity controlam se o app pode puxar o fato por iniciativa propria (ver Prompt F do doc).
+model UserFact {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  type            String
+  fact            String
+  category        String?
+  status          String    @default("open")
+  approach        String    @default("ask")
+  sensitivity     String    @default("normal")
+  confidence      Float?
+  relevance       Int       @default(5)
+  evidence        String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  lastMentionedAt DateTime  @default(now()) @map("last_mentioned_at")
+  resolvedAt      DateTime? @map("resolved_at")
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, status, lastMentionedAt])
+  @@map("user_facts")
 }
