@@ -100,7 +100,10 @@ export const AuditActions = {
   
   // Password management
   PASSWORD_RESET: 'PASSWORD_RESET',
-  PASSWORD_CHANGED: 'PASSWORD_CHANGED'
+  PASSWORD_CHANGED: 'PASSWORD_CHANGED',
+
+  // LGPD
+  PROFILE_FORGOTTEN: 'PROFILE_FORGOTTEN'
 } as const
 
 export const AuditResources = {
