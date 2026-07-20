@@ -36,6 +36,7 @@ async function fetchWithTimeout(
 
 export async function requestConversationalResponse(input: {
   threadId: string
+  userId: string
   message: string
   language: LanguageCode
   chatKind: ConversationalChatKind
@@ -64,6 +65,7 @@ export async function requestConversationalResponse(input: {
 
   const payload = {
     threadId: input.threadId,
+    userId: input.userId,
     message: messageWithLanguage,
     messageOriginal: input.message,
     sintoma: messageWithLanguage,

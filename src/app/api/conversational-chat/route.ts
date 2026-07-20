@@ -328,6 +328,7 @@ export async function POST(req: Request) {
 
     const assistantResponse = await requestConversationalResponse({
       threadId,
+      userId,
       message,
       language,
       chatKind,
@@ -403,6 +404,7 @@ export async function POST(req: Request) {
 
           const specialistResponse = await requestConversationalResponse({
             threadId,
+            userId,
             message: handoffMessage,
             language,
             chatKind,
