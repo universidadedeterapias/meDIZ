@@ -6,9 +6,11 @@ import { NextRequest, NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 /**
- * "Esquecer de mim" (LGPD) — apaga o perfil de descoberta do usuário logado (UserProfile,
- * incluindo consentimento e id_compacto) e qualquer DiscoveryEvent ainda não processado, pra
- * não ressuscitar o perfil por um evento em voo. Exclusão real, não soft-delete.
+ * "Esquecer de mim" (LGPD) — apaga tudo que o meDIZ aprendeu sobre a pessoa: o perfil de
+ * descoberta (UserProfile, incluindo consentimento, compactProfile e lifeCompact do ID Vida)
+ * e todos os UserFact (marcos/fios abertos). Também apaga DiscoveryEvent/ConversationEvent
+ * ainda não processados, pra não ressuscitar dado por um evento em voo. Exclusão real, não
+ * soft-delete.
  */
 export async function POST(request: NextRequest) {
   const session = await auth()
@@ -22,6 +24,8 @@ export async function POST(request: NextRequest) {
 
   await prisma.$transaction([
     prisma.discoveryEvent.deleteMany({ where: { userId } }),
+    prisma.conversationEvent.deleteMany({ where: { userId, status: { in: ['pending', 'processing', 'failed'] } } }),
+    prisma.userFact.deleteMany({ where: { userId } }),
     prisma.userProfile.deleteMany({ where: { userId } })
   ])
 
