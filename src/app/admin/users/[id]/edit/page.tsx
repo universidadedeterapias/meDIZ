@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Save, Loader2 } from 'lucide-react'
 import { UserBonusAccessCard } from '@/components/admin/UserBonusAccessCard'
 import { UserDiscoveryProfileCard } from '@/components/admin/UserDiscoveryProfileCard'
+import { UserLifeFactsCard } from '@/components/admin/UserLifeFactsCard'
 
 interface User {
   id: string
@@ -227,6 +228,10 @@ export default function EditUserPage() {
 
           <div className="mt-6">
             <UserDiscoveryProfileCard userId={userId} />
+          </div>
+
+          <div className="mt-6">
+            <UserLifeFactsCard userId={userId} />
           </div>
         </div>
 
