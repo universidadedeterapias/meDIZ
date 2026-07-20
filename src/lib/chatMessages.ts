@@ -8,6 +8,11 @@ interface SaveChatMessageParams {
   content: string
 }
 
+/** Quantidade de mensagens novas (desde o último checkpoint) que dispara um ConversationEvent. */
+const CHECKPOINT_MESSAGE_THRESHOLD = Number(
+  process.env.CONVERSATION_CHECKPOINT_MESSAGE_THRESHOLD ?? 14
+)
+
 interface ThreadMessages {
   assistant: string[]
   user: string[]
@@ -31,20 +36,49 @@ export async function saveChatMessage({
   role,
   content
 }: SaveChatMessageParams) {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chatMessages.ts:29',message:'saveChatMessage entry',data:{chatSessionId,role,contentLength:content.length,contentPreview:content.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-  // #endregion
-  const saved = await prisma.chatMessage.create({
-    data: {
-      chatSessionId,
-      role,
-      content
+  return prisma.$transaction(async (tx) => {
+    const saved = await tx.chatMessage.create({
+      data: {
+        chatSessionId,
+        role,
+        content
+      }
+    })
+
+    const session = await tx.chatSession.update({
+      where: { id: chatSessionId },
+      data: { messageCount: { increment: 1 } },
+      select: {
+        id: true,
+        userId: true,
+        threadId: true,
+        messageCount: true,
+        lastCheckpointMessageCount: true
+      }
+    })
+
+    const unprocessedCount = session.messageCount - session.lastCheckpointMessageCount
+    if (unprocessedCount >= CHECKPOINT_MESSAGE_THRESHOLD) {
+      await tx.conversationEvent.create({
+        data: {
+          userId: session.userId,
+          sessionId: session.id,
+          trigger: 'message_count',
+          payload: {
+            threadId: session.threadId,
+            fromMessageCount: session.lastCheckpointMessageCount,
+            toMessageCount: session.messageCount
+          }
+        }
+      })
+      await tx.chatSession.update({
+        where: { id: session.id },
+        data: { lastCheckpointMessageCount: session.messageCount }
+      })
     }
+
+    return saved
   })
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chatMessages.ts:40',message:'saveChatMessage completed',data:{savedId:saved.id,role:saved.role,chatSessionId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-  // #endregion
-  return saved
 }
 
 export type OrderedChatMessage = {
