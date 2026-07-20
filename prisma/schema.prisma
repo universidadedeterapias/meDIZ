@@ -51,6 +51,7 @@ model User {
   pdfDownloadJobs         PdfDownloadJob[]
   userProfile             UserProfile?
   discoveryEvents         DiscoveryEvent[]
+  conversationEvents      ConversationEvent[]
 
   @@index([mensagem_enviada])
   @@index([status_verificacao])
@@ -74,9 +75,12 @@ model ChatSession {
   routingIntentSummary String?       @map("routing_intent_summary") @db.Text
   routingQuestionCount Int           @default(0) @map("routing_question_count")
   isFavorite Boolean       @default(false)
+  messageCount               Int     @default(0) @map("message_count")
+  lastCheckpointMessageCount Int     @default(0) @map("last_checkpoint_message_count")
   messages   ChatMessage[]
   user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   sourceHandoffs ChatHandoff[] @relation("ChatHandoffSource")
+  conversationEvents ConversationEvent[]
 
   // Índices compostos para otimizar queries de sessões
   @@index([userId, startedAt]) // Busca de sessões por usuário ordenadas por data
@@ -690,4 +694,32 @@ model DiscoveryEvent {
   @@index([userId])
   @@index([availableAt, status])
   @@map("discovery_events")
+}
+
+/// Outbox de checkpoints de conversa — compartilhado entre o ID Vida (fatos) e,
+/// futuramente, a atualizacao continua do ID Pessoa. Gatilhos: contagem de mensagens
+/// ou nova sessao com conteudo ainda nao extraido (ver ChatSession.messageCount).
+/// status/trigger: TEXT com CHECK constraint, mesmo motivo do DiscoveryEvent.
+model ConversationEvent {
+  id            String      @id @default(uuid())
+  userId        String      @map("user_id")
+  sessionId     String      @map("session_id")
+  eventType     String      @default("conversation.checkpoint.v1") @map("event_type")
+  schemaVersion Int         @default(1) @map("schema_version")
+  trigger       String
+  payload       Json
+  status        String      @default("pending")
+  attempts      Int         @default(0)
+  lastError     String?     @map("last_error")
+  availableAt   DateTime    @default(now()) @map("available_at")
+  processedAt   DateTime?   @map("processed_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session       ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([availableAt, status])
+  @@map("conversation_events")
 }
