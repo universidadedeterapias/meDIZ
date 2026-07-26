@@ -23,7 +23,3 @@ export async function setAgentPromptOverride(
     update: { systemPrompt, updatedBy }
   })
 }
-
-export async function resetAgentPromptOverride(agent: ConversationalAgentId) {
-  await prisma.agentPromptConfig.deleteMany({ where: { agent } })
-}

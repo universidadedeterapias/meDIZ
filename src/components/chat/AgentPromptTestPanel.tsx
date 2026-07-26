@@ -15,7 +15,6 @@ import {
 type PromptResponse = {
   agent: ConversationalAgentId
   prompt: string
-  isOverridden: boolean
 }
 
 const AGENT_LABELS: Record<ConversationalAgentId, string> = {
@@ -40,9 +39,7 @@ export function AgentPromptTestPanel({
   const [agent, setAgent] = useState<ConversationalAgentId>(defaultAgent)
   const [loadingPrompt, setLoadingPrompt] = useState(false)
   const [prompt, setPrompt] = useState('')
-  const [isOverridden, setIsOverridden] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [restoring, setRestoring] = useState(false)
   const [message, setMessage] = useState('')
 
   const loadPrompt = useCallback(async (targetAgent: ConversationalAgentId) => {
@@ -56,7 +53,6 @@ export function AgentPromptTestPanel({
       if (!response.ok) throw new Error()
       const data = (await response.json()) as PromptResponse
       setPrompt(data.prompt)
-      setIsOverridden(data.isOverridden)
     } catch {
       setMessage('Não consegui carregar o prompt atual.')
     } finally {
@@ -78,30 +74,11 @@ export function AgentPromptTestPanel({
         body: JSON.stringify({ agent, prompt })
       })
       if (!response.ok) throw new Error()
-      setIsOverridden(true)
-      setMessage('Prompt salvo. Ajuste a consulta no n8n para refletir na conversa.')
+      setMessage('Prompt salvo. O n8n já consulta esse prompt na próxima mensagem.')
     } catch {
       setMessage('Falha ao salvar o prompt.')
     } finally {
       setSaving(false)
-    }
-  }
-
-  async function restoreDefaultPrompt() {
-    setRestoring(true)
-    setMessage('')
-    try {
-      const response = await fetch(
-        `/api/conversational-chat/dev/prompt?agent=${agent}`,
-        { method: 'DELETE' }
-      )
-      if (!response.ok) throw new Error()
-      await loadPrompt(agent)
-      setMessage('Override removido — n8n volta a usar o prompt hardcoded.')
-    } catch {
-      setMessage('Falha ao remover o override.')
-    } finally {
-      setRestoring(false)
     }
   }
 
@@ -176,15 +153,11 @@ export function AgentPromptTestPanel({
             Nova conversa
           </Button>
 
-          {isOverridden ? (
-            <span className="rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-medium text-violet-700 dark:bg-violet-500/15 dark:text-violet-200 sm:px-3 sm:py-1.5 sm:text-xs">
-              prompt customizado ativo
+          {!loadingPrompt && !prompt ? (
+            <span className="rounded-full bg-red-100 px-2.5 py-1 text-[11px] font-medium text-red-700 dark:bg-red-500/15 dark:text-red-200 sm:px-3 sm:py-1.5 sm:text-xs">
+              sem prompt salvo — agente vai responder sem instruções
             </span>
-          ) : (
-            <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 sm:px-3 sm:py-1.5 sm:text-xs">
-              sem override (usa o prompt do n8n)
-            </span>
-          )}
+          ) : null}
         </div>
 
         <div className="flex flex-1 flex-col gap-2 sm:gap-2.5">
@@ -208,7 +181,7 @@ export function AgentPromptTestPanel({
             onChange={(event) => setPrompt(event.target.value)}
             disabled={loadingPrompt}
             rows={10}
-            placeholder="Sem override salvo — escreva aqui o prompt customizado para este agente."
+            placeholder="Escreva aqui o prompt deste agente — é o que o n8n vai usar na próxima mensagem."
             className="min-h-[220px] flex-1 bg-white/70 text-xs dark:bg-zinc-900/60 sm:min-h-[440px] sm:text-sm sm:leading-relaxed"
           />
 
@@ -222,16 +195,6 @@ export function AgentPromptTestPanel({
             >
               {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
               Salvar prompt
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={restoreDefaultPrompt}
-              disabled={restoring || loadingPrompt || !isOverridden}
-              className="sm:h-10 sm:px-4 sm:text-sm"
-            >
-              Remover override
             </Button>
           </div>
 
