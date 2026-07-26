@@ -679,6 +679,18 @@ model DiscoveryConfig {
   @@map("discovery_config")
 }
 
+/// Prompt customizado por agente conversacional (concierge/body/home/pet/simulador/professor), editavel
+/// via painel de teste no /chat (`AGENT_PROMPT_TEST_MODE=true`). Uma linha por agente; ausencia de
+/// registro == o workflow n8n usa o prompt hardcoded nele mesmo (este app so persiste, quem consome e o n8n).
+model AgentPromptConfig {
+  agent        String   @id
+  systemPrompt String   @map("system_prompt")
+  updatedBy    String?  @map("updated_by")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("agent_prompt_config")
+}
+
 /// Outbox de eventos da descoberta — consumido de forma assincrona pelo worker n8n de extracao de perfil.
 /// status: 'pending' | 'processing' | 'processed' | 'failed' (CHECK constraint no banco, TEXT pelo mesmo motivo do UserProfile).
 model DiscoveryEvent {

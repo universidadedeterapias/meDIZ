@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { AppSidebar } from '@/components/app-sidebar'
+import { AgentPromptTestPanel } from '@/components/chat/AgentPromptTestPanel'
 import { ChatAppHeader } from '@/components/chat/ChatAppHeader'
 import {
   ChatConversation,
@@ -64,6 +65,7 @@ export default function Page() {
     useState<ConciergeEntryPoint>('free')
   const [chatError, setChatError] = useState<string | null>(null)
   const [limitReached, setLimitReached] = useState(false)
+  const [promptTestMode, setPromptTestMode] = useState(false)
   const revealTimersRef = useRef<number[]>([])
   const skipNextThreadLoadRef = useRef(false)
   const handledSidebarStartRef = useRef<string | null>(null)
@@ -131,6 +133,16 @@ export default function Page() {
           }
         } catch {
           // Falha ao consultar descoberta nao deve bloquear o acesso ao chat.
+        }
+
+        try {
+          const promptTestModeRes = await fetch('/api/conversational-chat/dev/prompt')
+          if (promptTestModeRes.ok) {
+            const data = await promptTestModeRes.json()
+            if (!cancelled) setPromptTestMode(Boolean(data.testMode))
+          }
+        } catch {
+          // Painel de teste e so um recurso de HML; falha aqui nao deve bloquear o chat.
         }
 
         if (!cancelled) {
@@ -487,6 +499,13 @@ export default function Page() {
               onSubscribe={handleSubscribe}
             />
           </main>
+
+          {promptTestMode ? (
+            <AgentPromptTestPanel
+              defaultAgent={selectedAgent}
+              onNewConversation={startNewConversation}
+            />
+          ) : null}
 
           <Footer />
         </div>

@@ -104,3 +104,34 @@ export function isMedizAgent(value: string): value is MedizAgent {
 export function isSpecialistAgent(value: string): value is SpecialistAgent {
   return value === 'body' || value === 'home' || value === 'pet'
 }
+
+/**
+ * Todo agente conversacional com prompt hoje mantido no n8n (concierge/specialists via
+ * chat kind SEARCH, mais simulador e professor). Chave usada em `AgentPromptConfig`.
+ */
+export type ConversationalAgentId = MedizAgent | 'simulador' | 'professor'
+
+export const CONVERSATIONAL_AGENT_IDS: readonly ConversationalAgentId[] = [
+  'concierge',
+  'body',
+  'home',
+  'pet',
+  'simulador',
+  'professor'
+]
+
+export function isConversationalAgentId(
+  value: string
+): value is ConversationalAgentId {
+  return (
+    isMedizAgent(value) || value === 'simulador' || value === 'professor'
+  )
+}
+
+/**
+ * Painel de teste de prompt dos agentes (editar/salvar no banco direto pela tela /chat).
+ * So deve ser ligado em HML — nunca em producao.
+ */
+export function isAgentPromptTestModeEnabled(): boolean {
+  return process.env.AGENT_PROMPT_TEST_MODE === 'true'
+}
