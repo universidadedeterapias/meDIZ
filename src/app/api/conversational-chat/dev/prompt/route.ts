@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic'
 
 const updatePromptSchema = z.object({
   agent: z.string(),
-  prompt: z.string().trim().min(20).max(8000)
+  prompt: z.string().trim().min(20).max(20000)
 })
 
 /**
