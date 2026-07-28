@@ -432,7 +432,11 @@ export async function POST(req: Request) {
       }
     }
 
-    const newMessages = []
+    const newMessages: Array<
+      Awaited<ReturnType<typeof saveChatMessage>> & {
+        action?: { type: 'share' | 'none'; label?: string }
+      }
+    > = []
     for (const assistantMessage of responseMessages) {
       const saved = await saveChatMessage({
         chatSessionId,
@@ -440,6 +444,9 @@ export async function POST(req: Request) {
         content: assistantMessage.content
       })
       newMessages.push(saved)
+    }
+    if (assistantResponse.action?.type === 'share' && newMessages.length > 0) {
+      newMessages[newMessages.length - 1].action = assistantResponse.action
     }
 
     if (handoff) {

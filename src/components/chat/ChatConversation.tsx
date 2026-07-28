@@ -12,8 +12,10 @@ import {
 import ReactMarkdown from 'react-markdown'
 
 import { ChatComposer } from '@/components/chat/ChatComposer'
+import { ShareConversationDialog } from '@/components/chat/ShareConversationDialog'
 import { Button } from '@/components/ui/button'
 import type { AgentId } from '@/components/chat/ChatHomeExperience'
+import type { SpecialistAgent } from '@/lib/conversational-chat/config'
 import { cn } from '@/lib/utils'
 
 export type ChatMessage = {
@@ -21,6 +23,7 @@ export type ChatMessage = {
   role: 'USER' | 'ASSISTANT'
   content: string
   createdAt: string
+  action?: { type: 'share' | 'none'; label?: string }
 }
 
 type ChatConversationProps = {
@@ -94,37 +97,50 @@ export function ChatConversation({
       <div className="min-h-0 flex-1 overflow-y-auto py-3 [scrollbar-width:thin]">
         <div className="mx-auto flex max-w-2xl flex-col gap-4">
           {messages.map((message) => (
-            <div
-              key={message.id}
-              className={cn(
-                'flex gap-2.5',
-                message.role === 'USER'
-                  ? 'items-end justify-end'
-                  : 'items-start justify-start'
-              )}
-            >
-              {message.role === 'ASSISTANT' ? (
-                <span className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-white/75 text-violet-700 shadow-md shadow-violet-950/10 backdrop-blur-xl dark:bg-zinc-900/80 dark:text-violet-200">
-                  <Sparkles className="size-4" />
-                </span>
-              ) : null}
-
+            <div key={message.id} className="flex flex-col gap-1.5">
               <div
                 className={cn(
-                  'max-w-[min(86%,36rem)] px-4 py-3 text-sm leading-relaxed shadow-lg',
+                  'flex gap-2.5',
                   message.role === 'USER'
-                    ? 'rounded-[1.35rem] rounded-br-md bg-gradient-to-br from-violet-600 to-purple-600 text-white shadow-violet-600/15'
-                    : 'rounded-[1.35rem] rounded-tl-md bg-white/80 text-zinc-800 shadow-violet-950/5 backdrop-blur-xl dark:bg-zinc-900/80 dark:text-zinc-100 dark:shadow-black/20'
+                    ? 'items-end justify-end'
+                    : 'items-start justify-start'
                 )}
               >
                 {message.role === 'ASSISTANT' ? (
-                  <div className="prose prose-sm max-w-none prose-headings:my-2 prose-p:my-2 prose-strong:text-inherit dark:prose-invert">
-                    <ReactMarkdown>{message.content}</ReactMarkdown>
-                  </div>
-                ) : (
-                  <p className="whitespace-pre-wrap">{message.content}</p>
-                )}
+                  <span className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-white/75 text-violet-700 shadow-md shadow-violet-950/10 backdrop-blur-xl dark:bg-zinc-900/80 dark:text-violet-200">
+                    <Sparkles className="size-4" />
+                  </span>
+                ) : null}
+
+                <div
+                  className={cn(
+                    'max-w-[min(86%,36rem)] px-4 py-3 text-sm leading-relaxed shadow-lg',
+                    message.role === 'USER'
+                      ? 'rounded-[1.35rem] rounded-br-md bg-gradient-to-br from-violet-600 to-purple-600 text-white shadow-violet-600/15'
+                      : 'rounded-[1.35rem] rounded-tl-md bg-white/80 text-zinc-800 shadow-violet-950/5 backdrop-blur-xl dark:bg-zinc-900/80 dark:text-zinc-100 dark:shadow-black/20'
+                  )}
+                >
+                  {message.role === 'ASSISTANT' ? (
+                    <div className="prose prose-sm max-w-none prose-headings:my-2 prose-p:my-2 prose-strong:text-inherit dark:prose-invert">
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                  )}
+                </div>
               </div>
+
+              {message.role === 'ASSISTANT' &&
+              message.action?.type === 'share' &&
+              agent !== 'concierge' ? (
+                <div className="ml-10">
+                  <ShareConversationDialog
+                    agent={agent as SpecialistAgent}
+                    content={message.content}
+                    label={message.action.label}
+                  />
+                </div>
+              ) : null}
             </div>
           ))}
 

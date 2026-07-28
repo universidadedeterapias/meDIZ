@@ -300,7 +300,20 @@ export default function Page() {
       ).matches
 
       if (newMessages.length <= 1 || shouldReduceMotion) {
-        setMessages(data.messages)
+        const actionById = new Map(
+          newMessages
+            .filter((message) => message.action)
+            .map((message) => [message.id, message.action])
+        )
+        setMessages(
+          actionById.size > 0
+            ? data.messages.map((message: ChatMessage) =>
+                actionById.has(message.id)
+                  ? { ...message, action: actionById.get(message.id) }
+                  : message
+              )
+            : data.messages
+        )
       } else {
         const newIds = new Set(newMessages.map((message) => message.id))
         setMessages(
