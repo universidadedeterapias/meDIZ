@@ -149,6 +149,7 @@ export async function libraryPermissoesFromEntitlements(
         perms.livro_digital = true
         break
       case 'PDF':
+      case 'VIDEO':
         perms.pdf = true
         break
       case 'AUDIOTERAPIA':
