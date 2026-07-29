@@ -351,6 +351,12 @@ export async function POST(req: Request) {
     let redirectTo: string | null = null
     let createdHandoffId: string | null = null
     const responseMessages = [...assistantResponse.messages]
+    // Se o porteiro confirmar um encaminhamento nesta mesma resposta, marca o
+    // indice onde as mensagens do especialista comecam em responseMessages —
+    // usado depois pra anexar um marcador efemero de transicao (mesmo padrao
+    // do campo `action`) na primeira mensagem dele, sem migracao de banco.
+    let specialistHandoffIndex: number | null = null
+    let transitionToAgent: MedizAgent | null = null
 
     if (agent === 'concierge') {
       const routing = assistantResponse.routing
@@ -402,6 +408,8 @@ export async function POST(req: Request) {
             data: { agent: specialist }
           })
 
+          specialistHandoffIndex = responseMessages.length
+          transitionToAgent = specialist
           const specialistResponse = await requestConversationalResponse({
             threadId,
             userId,
@@ -435,6 +443,7 @@ export async function POST(req: Request) {
     const newMessages: Array<
       Awaited<ReturnType<typeof saveChatMessage>> & {
         action?: { type: 'share' | 'none'; label?: string }
+        transition?: { toAgent: MedizAgent }
       }
     > = []
     for (const assistantMessage of responseMessages) {
@@ -447,6 +456,13 @@ export async function POST(req: Request) {
     }
     if (assistantResponse.action?.type === 'share' && newMessages.length > 0) {
       newMessages[newMessages.length - 1].action = assistantResponse.action
+    }
+    if (
+      specialistHandoffIndex !== null &&
+      transitionToAgent &&
+      newMessages[specialistHandoffIndex]
+    ) {
+      newMessages[specialistHandoffIndex].transition = { toAgent: transitionToAgent }
     }
 
     if (handoff) {

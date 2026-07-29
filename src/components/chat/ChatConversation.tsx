@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   HeartPulse,
   Home,
@@ -24,6 +25,7 @@ export type ChatMessage = {
   content: string
   createdAt: string
   action?: { type: 'share' | 'none'; label?: string }
+  transition?: { toAgent: AgentId }
 }
 
 type ChatConversationProps = {
@@ -69,13 +71,31 @@ export function ChatConversation({
     <section className="mx-auto flex h-full min-h-0 w-full max-w-4xl flex-1 flex-col overflow-hidden px-3 pb-4 sm:px-5 sm:pb-6">
       <div className="relative z-10 flex shrink-0 items-center justify-between gap-3 bg-transparent py-3">
         <div className="flex min-w-0 items-center gap-2.5 rounded-full bg-white/70 px-3 py-2 shadow-lg shadow-violet-950/5 backdrop-blur-xl dark:bg-zinc-900/70 dark:shadow-black/20">
-          <span className="flex size-8 items-center justify-center rounded-full bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-200">
-            <Icon className="size-4" />
-          </span>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.span
+              key={agent}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.25 }}
+              className="flex size-8 items-center justify-center rounded-full bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-200"
+            >
+              <Icon className="size-4" />
+            </motion.span>
+          </AnimatePresence>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-              {label}
-            </p>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.p
+                key={agent}
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 4 }}
+                transition={{ duration: 0.2 }}
+                className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100"
+              >
+                {label}
+              </motion.p>
+            </AnimatePresence>
             <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
               Conversa em andamento
             </p>
@@ -98,6 +118,15 @@ export function ChatConversation({
         <div className="mx-auto flex max-w-2xl flex-col gap-4">
           {messages.map((message) => (
             <div key={message.id} className="flex flex-col gap-1.5">
+              {message.transition ? (
+                <div className="my-1 flex items-center justify-center gap-2 self-center rounded-full bg-white/60 px-3 py-1.5 text-[11px] font-medium text-zinc-500 shadow-sm backdrop-blur-md dark:bg-zinc-900/60 dark:text-zinc-400">
+                  {(() => {
+                    const TransitionIcon = agentMeta[message.transition.toAgent].Icon
+                    return <TransitionIcon className="size-3.5 text-violet-600 dark:text-violet-300" />
+                  })()}
+                  Você foi transferido para {agentMeta[message.transition.toAgent].label}
+                </div>
+              ) : null}
               <div
                 className={cn(
                   'flex gap-2.5',

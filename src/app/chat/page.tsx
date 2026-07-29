@@ -300,16 +300,19 @@ export default function Page() {
       ).matches
 
       if (newMessages.length <= 1 || shouldReduceMotion) {
-        const actionById = new Map(
+        const extrasById = new Map(
           newMessages
-            .filter((message) => message.action)
-            .map((message) => [message.id, message.action])
+            .filter((message) => message.action || message.transition)
+            .map((message) => [
+              message.id,
+              { action: message.action, transition: message.transition }
+            ])
         )
         setMessages(
-          actionById.size > 0
+          extrasById.size > 0
             ? data.messages.map((message: ChatMessage) =>
-                actionById.has(message.id)
-                  ? { ...message, action: actionById.get(message.id) }
+                extrasById.has(message.id)
+                  ? { ...message, ...extrasById.get(message.id) }
                   : message
               )
             : data.messages
@@ -321,14 +324,20 @@ export default function Page() {
         )
         setRevealingMessages(true)
 
+        // Delay acumulado em vez de fixo: uma pausa maior bem antes da
+        // mensagem que carrega `transition` reforça, junto com o divisor
+        // visual em ChatConversation, que houve uma troca de agente — não
+        // é só mais uma bolha aparecendo em sequência.
+        let cumulativeDelay = 0
         newMessages.forEach((message, index) => {
+          cumulativeDelay += message.transition ? 900 : 280
           const timer = window.setTimeout(() => {
             setMessages((current) => [...current, message])
             if (index === newMessages.length - 1) {
               revealTimersRef.current = []
               setRevealingMessages(false)
             }
-          }, 280 * (index + 1))
+          }, cumulativeDelay)
           revealTimersRef.current.push(timer)
         })
       }
