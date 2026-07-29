@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Download, Share2 } from 'lucide-react'
+import { Download, Loader2, Share2 } from 'lucide-react'
 import { SocialIcon } from 'react-social-icons'
 
 import { Button } from '@/components/ui/button'
@@ -70,6 +70,14 @@ export function ShareConversationDialog({
   const encodedText = encodeURIComponent(shareText)
   const encodedUrl = encodeURIComponent(shareUrl)
 
+  // Pre-carrega o modulo do html2canvas assim que o botao "Compartilhar" existe
+  // na tela (nao so quando o dialog abre) — o import dinamico fica em cache,
+  // entao quando o usuario realmente abrir o dialog o download/parse do
+  // pacote ja aconteceu e sobra so o tempo real de captura do canvas.
+  useEffect(() => {
+    void import('html2canvas')
+  }, [])
+
   useEffect(() => {
     if (!open || imageUrl || generating) return
 
@@ -111,6 +119,8 @@ export function ShareConversationDialog({
       if (imageUrl) URL.revokeObjectURL(imageUrl)
     }
   }, [imageUrl])
+
+  const isReady = imageUrl !== null
 
   const canShareFile =
     typeof navigator !== 'undefined' &&
@@ -166,25 +176,28 @@ export function ShareConversationDialog({
           )}
         </div>
 
-        {canShareFile ? (
+        {!isReady ? (
+          <div className="flex h-[76px] w-full items-center justify-center gap-2 text-sm text-zinc-500">
+            <Loader2 className="size-4 animate-spin" />
+            Preparando opções de compartilhamento…
+          </div>
+        ) : canShareFile ? (
           <Button onClick={handleNativeShare} className="w-full gap-2">
             <Share2 className="size-4" />
             Compartilhar
           </Button>
         ) : (
           <div className="grid grid-cols-5 gap-4 justify-items-center">
-            {imageUrl ? (
-              <a
-                href={imageUrl}
-                download="meDIZ.png"
-                className="flex flex-col items-center space-y-1"
-              >
-                <span className="flex size-8 items-center justify-center rounded-full bg-zinc-200 text-zinc-700">
-                  <Download className="size-4" />
-                </span>
-                <span className="text-xs">Baixar</span>
-              </a>
-            ) : null}
+            <a
+              href={imageUrl}
+              download="meDIZ.png"
+              className="flex flex-col items-center space-y-1"
+            >
+              <span className="flex size-8 items-center justify-center rounded-full bg-zinc-200 text-zinc-700">
+                <Download className="size-4" />
+              </span>
+              <span className="text-xs">Baixar</span>
+            </a>
 
             <button
               onClick={() =>
