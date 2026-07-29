@@ -6,6 +6,7 @@ import { Loader2, Mic, Send, Square } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { VoiceOrb } from '@/components/chat/VoiceOrb'
 import { useTranslation } from '@/i18n/useTranslation'
 import { cn } from '@/lib/utils'
 import {
@@ -53,6 +54,14 @@ export const ChatComposer = forwardRef<HTMLInputElement, ChatComposerProps>(
     const pendingActionRef = useRef<PendingAction>('review')
     const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+    // Esfera reage ao volume da voz enquanto grava: AnalyserNode le o mesmo
+    // stream do microfone (sem tocar no MediaRecorder) e aplica a escala
+    // direto no DOM a cada frame, sem passar por re-render do React.
+    const audioContextRef = useRef<AudioContext | null>(null)
+    const analyserRef = useRef<AnalyserNode | null>(null)
+    const levelRafRef = useRef<number | null>(null)
+    const orbScaleRef = useRef<HTMLDivElement | null>(null)
+
     const isMicSupported =
       typeof window !== 'undefined' &&
       Boolean(navigator.mediaDevices?.getUserMedia) &&
@@ -68,10 +77,60 @@ export const ChatComposer = forwardRef<HTMLInputElement, ChatComposerProps>(
       streamRef.current = null
     }
 
+    const stopLevelMonitoring = () => {
+      if (levelRafRef.current !== null) cancelAnimationFrame(levelRafRef.current)
+      levelRafRef.current = null
+      analyserRef.current = null
+      if (orbScaleRef.current) orbScaleRef.current.style.transform = 'scale(1)'
+      const audioContext = audioContextRef.current
+      audioContextRef.current = null
+      if (audioContext && audioContext.state !== 'closed') {
+        void audioContext.close().catch(() => {})
+      }
+    }
+
+    const startLevelMonitoring = (stream: MediaStream) => {
+      try {
+        const AudioContextCtor =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext?: typeof AudioContext })
+            .webkitAudioContext
+        if (!AudioContextCtor) return
+
+        const audioContext = new AudioContextCtor()
+        const source = audioContext.createMediaStreamSource(stream)
+        const analyser = audioContext.createAnalyser()
+        analyser.fftSize = 256
+        analyser.smoothingTimeConstant = 0.65
+        source.connect(analyser)
+
+        audioContextRef.current = audioContext
+        analyserRef.current = analyser
+
+        const data = new Uint8Array(analyser.frequencyBinCount)
+        const tick = () => {
+          if (!analyserRef.current) return
+          analyserRef.current.getByteFrequencyData(data)
+          let sum = 0
+          for (let i = 0; i < data.length; i++) sum += data[i]
+          const level = Math.min(1, sum / data.length / 130)
+          if (orbScaleRef.current) {
+            orbScaleRef.current.style.transform = `scale(${1 + level * 0.4})`
+          }
+          levelRafRef.current = requestAnimationFrame(tick)
+        }
+        tick()
+      } catch {
+        // Reagir ao volume e so um efeito visual — se o navegador nao suportar
+        // Web Audio API, a gravacao/transcricao segue normalmente sem ele.
+      }
+    }
+
     useEffect(() => {
       return () => {
         clearTimers()
         releaseStream()
+        stopLevelMonitoring()
       }
     }, [])
 
@@ -148,6 +207,7 @@ export const ChatComposer = forwardRef<HTMLInputElement, ChatComposerProps>(
         }
         recorder.onstop = () => {
           releaseStream()
+          stopLevelMonitoring()
           const chunks = chunksRef.current
           chunksRef.current = []
           if (!chunks.length) {
@@ -160,6 +220,7 @@ export const ChatComposer = forwardRef<HTMLInputElement, ChatComposerProps>(
 
         mediaRecorderRef.current = recorder
         recorder.start()
+        startLevelMonitoring(stream)
         setRecordingState('recording')
         setElapsedSeconds(0)
 
@@ -198,8 +259,41 @@ export const ChatComposer = forwardRef<HTMLInputElement, ChatComposerProps>(
     const isTranscribing = recordingState === 'transcribing'
 
     return (
-      <div className={cn('flex w-full flex-col gap-1.5', className)}>
-        <div className="flex w-full items-center gap-1.5 rounded-[1.35rem] bg-gradient-to-r from-white via-white to-violet-50/70 p-1.5 shadow-2xl shadow-violet-950/15 transition-all duration-300 focus-within:-translate-y-0.5 focus-within:ring-2 focus-within:ring-violet-500 focus-within:ring-offset-2 dark:from-zinc-900 dark:via-zinc-900 dark:to-violet-950/20 dark:shadow-black/35">
+      <>
+        <AnimatePresence>
+          {isRecording ? (
+            <motion.div
+              key="voice-listening-overlay"
+              className="fixed inset-0 z-40 flex items-center justify-center bg-white/45 backdrop-blur-2xl dark:bg-black/55"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.35 }}
+              aria-hidden
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.65 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.65 }}
+                transition={{ type: 'spring', damping: 18, stiffness: 180 }}
+              >
+                <div ref={orbScaleRef} style={{ transition: 'transform 120ms ease-out' }}>
+                  <VoiceOrb size={190} />
+                </div>
+              </motion.div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        <div className={cn('relative z-50 flex w-full flex-col gap-1.5', className)}>
+        <div
+          className={cn(
+            'flex w-full items-center gap-1.5 rounded-[1.35rem] p-1.5 shadow-2xl shadow-violet-950/15 transition-all duration-300 focus-within:-translate-y-0.5 focus-within:ring-2 focus-within:ring-violet-500 focus-within:ring-offset-2 dark:shadow-black/35',
+            isRecording
+              ? 'bg-white/60 backdrop-blur-md dark:bg-zinc-900/60'
+              : 'bg-gradient-to-r from-white via-white to-violet-50/70 dark:from-zinc-900 dark:via-zinc-900 dark:to-violet-950/20'
+          )}
+        >
           <div className="relative flex size-11 shrink-0 items-center justify-center">
             <AnimatePresence initial={false}>
               {isRecording || isTranscribing ? (
@@ -297,7 +391,8 @@ export const ChatComposer = forwardRef<HTMLInputElement, ChatComposerProps>(
         {errorMessage ? (
           <p className="px-2 text-xs text-red-600 dark:text-red-400">{errorMessage}</p>
         ) : null}
-      </div>
+        </div>
+      </>
     )
   }
 )

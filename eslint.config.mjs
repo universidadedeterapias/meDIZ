@@ -30,7 +30,10 @@ export default [
         alert: 'readonly',
         confirm: 'readonly',
         requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
         performance: 'readonly',
+        AudioContext: 'readonly',
+        AnalyserNode: 'readonly',
         
         // File API globals
         File: 'readonly',
