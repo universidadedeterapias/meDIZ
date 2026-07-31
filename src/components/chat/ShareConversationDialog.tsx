@@ -63,6 +63,7 @@ export function ShareConversationDialog({
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
+  const generatingRef = useRef(false)
 
   const shareText = label || 'Vem ver o que descobri no meDIZ!'
   const shareUrl = `${SHARE_LINK}/?utm_source=chat_share&utm_medium=share&utm_campaign=${agent}`
@@ -70,40 +71,43 @@ export function ShareConversationDialog({
   const encodedText = encodeURIComponent(shareText)
   const encodedUrl = encodeURIComponent(shareUrl)
 
-  // Pre-carrega o modulo do html2canvas assim que o botao "Compartilhar" existe
-  // na tela (nao so quando o dialog abre) — o import dinamico fica em cache,
-  // entao quando o usuario realmente abrir o dialog o download/parse do
-  // pacote ja aconteceu e sobra so o tempo real de captura do canvas.
+  // Pre-carrega o modulo do html-to-image assim que o botao "Compartilhar"
+  // existe na tela (nao so quando o dialog abre) — o import dinamico fica em
+  // cache, entao quando o usuario realmente abrir o dialog o download/parse
+  // do pacote ja aconteceu e sobra so o tempo real de captura do card.
   useEffect(() => {
-    void import('html2canvas')
+    void import('html-to-image')
   }, [])
 
   useEffect(() => {
-    if (!open || imageUrl || generating) return
+    // Guarda de concorrencia via ref (nao state): se "generating" (state) entrasse
+    // no array de dependencias abaixo, o proprio setGenerating(true) dispararia
+    // este efeito de novo, rodando o cleanup (cancelled = true) do closure em
+    // andamento antes mesmo do import/captura terminar — travando "Gerando
+    // imagem..." para sempre, ja que o finally so zera o loading quando !cancelled.
+    if (!open || imageUrl || generatingRef.current) return
 
     let cancelled = false
+    generatingRef.current = true
     setGenerating(true)
 
     async function generate() {
       try {
-        const { default: html2canvas } = await import('html2canvas')
+        const { toBlob } = await import('html-to-image')
         if (!cardRef.current || cancelled) return
-        const canvas = await html2canvas(cardRef.current, {
-          scale: 2,
+        const blob = await toBlob(cardRef.current, {
+          pixelRatio: 2,
           backgroundColor: '#ffffff',
-          useCORS: true,
           width: CARD_WIDTH,
           height: CARD_HEIGHT
         })
-        const blob: Blob | null = await new Promise((resolve) =>
-          canvas.toBlob(resolve, 'image/png')
-        )
         if (!blob || cancelled) return
         setImageUrl(URL.createObjectURL(blob))
         setImageFile(new File([blob], 'meDIZ.png', { type: 'image/png' }))
       } catch (err) {
         console.error('Erro ao gerar imagem de compartilhamento:', err)
       } finally {
+        generatingRef.current = false
         if (!cancelled) setGenerating(false)
       }
     }
@@ -112,7 +116,7 @@ export function ShareConversationDialog({
     return () => {
       cancelled = true
     }
-  }, [open, imageUrl, generating])
+  }, [open, imageUrl])
 
   useEffect(() => {
     return () => {
@@ -146,15 +150,22 @@ export function ShareConversationDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
+        <button
           type="button"
-          variant="ghost"
-          size="sm"
-          className="gap-1.5 rounded-full bg-white/55 text-violet-700 shadow-sm hover:bg-white/80 dark:bg-zinc-900/60 dark:text-violet-200 dark:hover:bg-zinc-800/80"
+          className="group flex w-full items-center gap-3 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-3 text-left shadow-lg shadow-violet-500/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-violet-500/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2"
         >
-          <Share2 className="size-3.5" />
-          <span>{label || 'Compartilhar'}</span>
-        </Button>
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20 text-white transition-transform duration-300 group-hover:scale-110">
+            <Share2 className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-semibold text-white">
+              {label || 'Compartilhar essa conversa'}
+            </span>
+            <span className="block truncate text-xs text-white/75">
+              Ajude outras pessoas a se cuidarem também
+            </span>
+          </span>
+        </button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-md rounded">

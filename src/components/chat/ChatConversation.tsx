@@ -162,7 +162,7 @@ export function ChatConversation({
               {message.role === 'ASSISTANT' &&
               message.action?.type === 'share' &&
               agent !== 'concierge' ? (
-                <div className="ml-10">
+                <div className="ml-10 max-w-[min(86%,26rem)]">
                   <ShareConversationDialog
                     agent={agent as SpecialistAgent}
                     content={message.content}

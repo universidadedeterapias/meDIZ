@@ -48,6 +48,16 @@ export const ChatComposer = forwardRef<HTMLInputElement, ChatComposerProps>(
       'permissionDenied' | 'error' | 'unavailable' | null
     >(null)
 
+    const inputElementRef = useRef<HTMLInputElement | null>(null)
+    const setInputRef = (node: HTMLInputElement | null) => {
+      inputElementRef.current = node
+      if (typeof ref === 'function') {
+        ref(node)
+      } else if (ref) {
+        ref.current = node
+      }
+    }
+
     const mediaRecorderRef = useRef<MediaRecorder | null>(null)
     const chunksRef = useRef<BlobPart[]>([])
     const streamRef = useRef<MediaStream | null>(null)
@@ -133,6 +143,19 @@ export const ChatComposer = forwardRef<HTMLInputElement, ChatComposerProps>(
         stopLevelMonitoring()
       }
     }, [])
+
+    // O input fica disabled durante o envio (loading), o que tira o foco do
+    // usuario. Ao voltar para false (resposta recebida), devolve o foco para
+    // que a pessoa possa digitar a proxima mensagem sem precisar clicar de novo.
+    const wasLoadingRef = useRef(loading)
+    useEffect(() => {
+      const isBusyWithAudio =
+        recordingState === 'recording' || recordingState === 'transcribing'
+      if (wasLoadingRef.current && !loading && !isBusyWithAudio) {
+        inputElementRef.current?.focus()
+      }
+      wasLoadingRef.current = loading
+    }, [loading, recordingState])
 
     const transcribeAudio = async (blob: Blob, action: PendingAction) => {
       setRecordingState('transcribing')
@@ -340,7 +363,7 @@ export const ChatComposer = forwardRef<HTMLInputElement, ChatComposerProps>(
           ) : null}
 
           <Input
-            ref={ref}
+            ref={setInputRef}
             value={value}
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={(event) => {
