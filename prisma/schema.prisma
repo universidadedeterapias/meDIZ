@@ -9,50 +9,51 @@ datasource db {
 }
 
 model User {
-  id                      String             @id @default(uuid())
-  name                    String?
-  email                   String             @unique
-  createdAt               DateTime           @default(now())
-  updatedAt               DateTime           @updatedAt
-  emailVerified           DateTime?
-  image                   String?
-  age                     Int?
-  appUsage                AppUsage?
-  description             String?
-  fullName                String?
-  gender                  Gender?
-  profession              String?
-  whatsapp                String?
-  averageSessionPrice     String?
-  clientsPerWeek          String?
-  educationOrSpecialty    String?
-  yearsOfExperience       String?
-  passwordHash            String?
-  stripeCustomerId        String?            @unique
-  mensagem_enviada        String?
-  status_verificacao      StatusVerificacao?
-  mensagem_grupo_essencia String?
-  preferredLanguage       String?
-  notificationsEnabled    Boolean            @default(false)
-  accounts                Account[]
-  chatSessions            ChatSession[]
-  chatHandoffs            ChatHandoff[]
-  sessions                Session[]
-  subscriptions           Subscription[]
-  symptomFolders          SymptomFolder[]
-  pushSubscriptions       PushSubscription[]
-  reminders               Reminder[]
-  mustResetPassword       Boolean            @default(false) @map("must_reset_password")
-  temporaryPasswordPlain  String?            @map("temporary_password_plain") @db.VarChar(32)
-  whatsappSentAt          DateTime?          @map("whatsapp_sent_at")
-  cpf                     String?            @db.VarChar(14)
-  pdfDownloads            PdfDownload[]
-  pdfDownloadTokens       PdfDownloadToken[]
-  pdfDownloadJobs         PdfDownloadJob[]
-  userProfile             UserProfile?
-  discoveryEvents         DiscoveryEvent[]
-  conversationEvents      ConversationEvent[]
-  userFacts               UserFact[]
+  id                       String                    @id @default(uuid())
+  name                     String?
+  email                    String                    @unique
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  emailVerified            DateTime?
+  image                    String?
+  age                      Int?
+  appUsage                 AppUsage?
+  description              String?
+  fullName                 String?
+  gender                   Gender?
+  profession               String?
+  whatsapp                 String?
+  averageSessionPrice      String?
+  clientsPerWeek           String?
+  educationOrSpecialty     String?
+  yearsOfExperience        String?
+  passwordHash             String?
+  stripeCustomerId         String?                   @unique
+  mensagem_enviada         String?
+  status_verificacao       StatusVerificacao?
+  mensagem_grupo_essencia  String?
+  preferredLanguage        String?
+  notificationsEnabled     Boolean                   @default(false)
+  accounts                 Account[]
+  chatSessions             ChatSession[]
+  chatHandoffs             ChatHandoff[]
+  sessions                 Session[]
+  subscriptions            Subscription[]
+  symptomFolders           SymptomFolder[]
+  pushSubscriptions        PushSubscription[]
+  reminders                Reminder[]
+  mustResetPassword        Boolean                   @default(false) @map("must_reset_password")
+  temporaryPasswordPlain   String?                   @map("temporary_password_plain") @db.VarChar(32)
+  whatsappSentAt           DateTime?                 @map("whatsapp_sent_at")
+  cpf                      String?                   @db.VarChar(14)
+  pdfDownloads             PdfDownload[]
+  pdfDownloadTokens        PdfDownloadToken[]
+  pdfDownloadJobs          PdfDownloadJob[]
+  userProfile              UserProfile?
+  discoveryEvents          DiscoveryEvent[]
+  conversationEvents       ConversationEvent[]
+  userFacts                UserFact[]
+  emailSequenceEnrollments EmailSequenceEnrollment[]
 
   @@index([mensagem_enviada])
   @@index([status_verificacao])
@@ -62,26 +63,26 @@ model User {
 }
 
 model ChatSession {
-  id         String        @id @default(uuid())
-  userId     String
-  startedAt  DateTime      @default(now())
-  endedAt    DateTime?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-  threadId   String?       @unique
-  chatKind   ChatKind      @default(SEARCH) @map("chat_kind")
-  agent      String?       @db.VarChar(16)
-  routingStatus        String?       @map("routing_status") @db.VarChar(32)
-  routingDestination   String?       @map("routing_destination") @db.VarChar(32)
-  routingIntentSummary String?       @map("routing_intent_summary") @db.Text
-  routingQuestionCount Int           @default(0) @map("routing_question_count")
-  isFavorite Boolean       @default(false)
-  messageCount               Int     @default(0) @map("message_count")
-  lastCheckpointMessageCount Int     @default(0) @map("last_checkpoint_message_count")
-  messages   ChatMessage[]
-  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sourceHandoffs ChatHandoff[] @relation("ChatHandoffSource")
-  conversationEvents ConversationEvent[]
+  id                         String              @id @default(uuid())
+  userId                     String
+  startedAt                  DateTime            @default(now())
+  endedAt                    DateTime?
+  createdAt                  DateTime            @default(now())
+  updatedAt                  DateTime            @updatedAt
+  threadId                   String?             @unique
+  chatKind                   ChatKind            @default(SEARCH) @map("chat_kind")
+  agent                      String?             @db.VarChar(16)
+  routingStatus              String?             @map("routing_status") @db.VarChar(32)
+  routingDestination         String?             @map("routing_destination") @db.VarChar(32)
+  routingIntentSummary       String?             @map("routing_intent_summary") @db.Text
+  routingQuestionCount       Int                 @default(0) @map("routing_question_count")
+  isFavorite                 Boolean             @default(false)
+  messageCount               Int                 @default(0) @map("message_count")
+  lastCheckpointMessageCount Int                 @default(0) @map("last_checkpoint_message_count")
+  messages                   ChatMessage[]
+  user                       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceHandoffs             ChatHandoff[]       @relation("ChatHandoffSource")
+  conversationEvents         ConversationEvent[]
 
   // Índices compostos para otimizar queries de sessões
   @@index([userId, startedAt]) // Busca de sessões por usuário ordenadas por data
@@ -90,17 +91,17 @@ model ChatSession {
 }
 
 model ChatHandoff {
-  id                String      @id @default(uuid())
-  userId            String      @map("user_id")
-  sourceSessionId   String      @map("source_session_id")
-  destination       String      @db.VarChar(32)
-  contextSummary    String      @map("context_summary") @db.Text
-  expiresAt         DateTime    @map("expires_at")
-  consumedAt        DateTime?   @map("consumed_at")
-  targetThreadId    String?     @map("target_thread_id") @db.VarChar(64)
-  createdAt         DateTime    @default(now()) @map("created_at")
-  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sourceSession     ChatSession @relation("ChatHandoffSource", fields: [sourceSessionId], references: [id], onDelete: Cascade)
+  id              String      @id @default(uuid())
+  userId          String      @map("user_id")
+  sourceSessionId String      @map("source_session_id")
+  destination     String      @db.VarChar(32)
+  contextSummary  String      @map("context_summary") @db.Text
+  expiresAt       DateTime    @map("expires_at")
+  consumedAt      DateTime?   @map("consumed_at")
+  targetThreadId  String?     @map("target_thread_id") @db.VarChar(64)
+  createdAt       DateTime    @default(now()) @map("created_at")
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceSession   ChatSession @relation("ChatHandoffSource", fields: [sourceSessionId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([sourceSessionId])
@@ -158,7 +159,7 @@ model Plan {
   trialPeriodDays         Int?
   hotmartOfferKey         String?                  @unique
   hotmartId               Int?                     @unique
-  subscriptions          Subscription[]
+  subscriptions           Subscription[]
   pendingHotmartPurchases PendingHotmartPurchase[]
 }
 
@@ -167,7 +168,7 @@ model Plan {
 model PendingHotmartPurchase {
   id                   String   @id @default(uuid())
   email                String
-  transaction          String   // ID da transação Hotmart
+  transaction          String // ID da transação Hotmart
   stripeSubscriptionId String   @unique // hotmart_${transaction} (idempotência)
   planId               String
   currentPeriodStart   DateTime
@@ -302,16 +303,16 @@ model SymptomFolder {
 }
 
 model SavedSymptom {
-  id                String         @id @default(uuid())
-  folderId          String
-  symptom           String
-  threadId          String?
-  symptomStartPeriod String?       // Período aproximado (ex: "há 2 semanas", "desde janeiro")
-  emotionalHistory  String?        // Histórico emocional (texto livre)
-  copingStrategy    CopingStrategy? // Como encarou a situação (opções pré-definidas)
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  folder            SymptomFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  id                 String          @id @default(uuid())
+  folderId           String
+  symptom            String
+  threadId           String?
+  symptomStartPeriod String? // Período aproximado (ex: "há 2 semanas", "desde janeiro")
+  emotionalHistory   String? // Histórico emocional (texto livre)
+  copingStrategy     CopingStrategy? // Como encarou a situação (opções pré-definidas)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  folder             SymptomFolder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
 
   @@index([folderId])
   @@index([createdAt])
@@ -324,15 +325,15 @@ model n8n_chat_histories {
 }
 
 model PushSubscription {
-  id          String   @id @default(uuid())
-  userId      String
-  endpoint    String   @unique
-  p256dh      String   // Chave pública
-  auth        String   // Chave de autenticação
-  userAgent   String?  // Navegador/dispositivo
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String // Chave pública
+  auth      String // Chave de autenticação
+  userAgent String? // Navegador/dispositivo
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([endpoint])
@@ -340,17 +341,17 @@ model PushSubscription {
 }
 
 model Reminder {
-  id          String   @id @default(uuid())
-  userId      String?  // null = lembrete global (todos os usuários)
-  title       String
-  message     String
-  time        String   // Formato HH:mm (ex: "09:00")
-  daysOfWeek  String   // JSON array com dias da semana [0-6] onde 0 = domingo
-  active      Boolean  @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  lastSentAt  DateTime? // Última vez que foi enviado
-  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String    @id @default(uuid())
+  userId     String? // null = lembrete global (todos os usuários)
+  title      String
+  message    String
+  time       String // Formato HH:mm (ex: "09:00")
+  daysOfWeek String // JSON array com dias da semana [0-6] onde 0 = domingo
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  lastSentAt DateTime? // Última vez que foi enviado
+  user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([active])
@@ -410,12 +411,12 @@ enum AdminRequestStatus {
 }
 
 enum CopingStrategy {
-  ACCEPTED_AND_SOUGHT_HELP      // Aceitei e busquei ajuda
-  DENIED_INITIALLY              // Neguei inicialmente
-  IGNORED_SYMPTOM               // Ignorei o sintoma
-  SOUGHT_INFO_ALONE             // Busquei informações sozinho
-  SHARED_WITH_FAMILY_FRIENDS    // Compartilhei com familiares/amigos
-  OTHER                         // Outro
+  ACCEPTED_AND_SOUGHT_HELP // Aceitei e busquei ajuda
+  DENIED_INITIALLY // Neguei inicialmente
+  IGNORED_SYMPTOM // Ignorei o sintoma
+  SOUGHT_INFO_ALONE // Busquei informações sozinho
+  SHARED_WITH_FAMILY_FRIENDS // Compartilhei com familiares/amigos
+  OTHER // Outro
 }
 
 enum CatalogSection {
@@ -444,37 +445,37 @@ enum CatalogModuleMediaKind {
 
 /// Produtos exibidos nas páginas Biblioteca e Audioterapia (gerenciados no admin).
 model CatalogProduct {
-  id               String               @id @default(uuid())
-  section          CatalogSection
-  title            String               @db.VarChar(255)
-  description      String?              @db.Text
-  tagLabel         String?              @map("tag_label") @db.VarChar(80)
-  coverImageUrl    String?              @map("cover_image_url")
-  purchaseUrl      String               @map("purchase_url")
-  permissionKey    CatalogPermissionKey @map("permission_key")
+  id                  String                     @id @default(uuid())
+  section             CatalogSection
+  title               String                     @db.VarChar(255)
+  description         String?                    @db.Text
+  tagLabel            String?                    @map("tag_label") @db.VarChar(80)
+  coverImageUrl       String?                    @map("cover_image_url")
+  purchaseUrl         String                     @map("purchase_url")
+  permissionKey       CatalogPermissionKey       @map("permission_key")
   /// pt | en | es — null = visível em todos os idiomas (pt-BR e pt-PT usam pt)
-  locale           String?              @db.VarChar(10)
-  pdfIndex         Int                  @default(0) @map("pdf_index")
+  locale              String?                    @db.VarChar(10)
+  pdfIndex            Int                        @default(0) @map("pdf_index")
   /// URL pública do áudio/PDF/capa no Cloudflare R2
-  mediaFileName    String?              @map("media_file_name") @db.VarChar(2048)
+  mediaFileName       String?                    @map("media_file_name") @db.VarChar(2048)
   /// Faixas: [{ id, title, mediaFileName, locale, sortOrder, kind? }]
-  mediaItems       Json?                @map("media_items")
-  unlockedLabel    String?              @map("unlocked_label") @db.VarChar(80)
+  mediaItems          Json?                      @map("media_items")
+  unlockedLabel       String?                    @map("unlocked_label") @db.VarChar(80)
   /// ID numérico do produto na Hotmart (webhook product.id)
-  hotmartProductId String?              @unique @map("hotmart_product_id") @db.VarChar(120)
+  hotmartProductId    String?                    @unique @map("hotmart_product_id") @db.VarChar(120)
   /// Código/SKU do produto na Stone (Pagar.me)
-  stoneProductId   String?              @unique @map("stone_product_id") @db.VarChar(120)
-  paymentProvider  PaymentProvider      @default(HOTMART) @map("payment_provider")
-  freeAccess       Boolean              @default(false) @map("free_access")
-  sortOrder        Int                  @default(0) @map("sort_order")
-  active           Boolean              @default(true)
-  createdAt        DateTime             @default(now()) @map("created_at")
-  updatedAt        DateTime             @updatedAt @map("updated_at")
-  grantsAsSource   CatalogProductGrant[] @relation("GrantSource")
-  grantsAsTarget   CatalogProductGrant[] @relation("GrantTarget")
+  stoneProductId      String?                    @unique @map("stone_product_id") @db.VarChar(120)
+  paymentProvider     PaymentProvider            @default(HOTMART) @map("payment_provider")
+  freeAccess          Boolean                    @default(false) @map("free_access")
+  sortOrder           Int                        @default(0) @map("sort_order")
+  active              Boolean                    @default(true)
+  createdAt           DateTime                   @default(now()) @map("created_at")
+  updatedAt           DateTime                   @updatedAt @map("updated_at")
+  grantsAsSource      CatalogProductGrant[]      @relation("GrantSource")
+  grantsAsTarget      CatalogProductGrant[]      @relation("GrantTarget")
   productEntitlements ProductEntitlement[]
-  externalIds      CatalogProductExternalId[]
-  courseModules    CatalogCourseModule[]
+  externalIds         CatalogProductExternalId[]
+  courseModules       CatalogCourseModule[]
 
   @@index([section, active, sortOrder])
   @@map("catalog_products")
@@ -517,11 +518,11 @@ model CatalogModuleMedia {
 
 /// IDs Hotmart/Stone adicionais que resolvem para o mesmo produto (ex.: físico + digital).
 model CatalogProductExternalId {
-  id               String         @id @default(uuid())
-  catalogProductId String         @map("catalog_product_id")
+  id               String          @id @default(uuid())
+  catalogProductId String          @map("catalog_product_id")
   provider         PaymentProvider
-  externalId       String         @map("external_id") @db.VarChar(120)
-  catalogProduct   CatalogProduct @relation(fields: [catalogProductId], references: [id], onDelete: Cascade)
+  externalId       String          @map("external_id") @db.VarChar(120)
+  catalogProduct   CatalogProduct  @relation(fields: [catalogProductId], references: [id], onDelete: Cascade)
 
   @@unique([provider, externalId])
   @@index([catalogProductId])
@@ -558,14 +559,14 @@ model ProductEntitlement {
 
 /// Permissões da biblioteca (Hotmart via n8n) — independente de assinatura premium.
 model LibraryPermission {
-  id            String   @id @default(uuid())
-  email         String   @unique @db.VarChar(255)
-  nome          String?  @db.VarChar(255)
-  audioterapia  Boolean  @default(false)
-  pdf           Boolean  @default(false)
-  livroDigital  Boolean  @default(false) @map("livro_digital")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  email        String   @unique @db.VarChar(255)
+  nome         String?  @db.VarChar(255)
+  audioterapia Boolean  @default(false)
+  pdf          Boolean  @default(false)
+  livroDigital Boolean  @default(false) @map("livro_digital")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("library_permissions")
 }
@@ -628,7 +629,7 @@ model PdfDownloadJob {
   countedAt        DateTime?            @map("counted_at")
   startedAt        DateTime?            @map("started_at")
   completedAt      DateTime?            @map("completed_at")
-  expiresAt        DateTime              @map("expires_at")
+  expiresAt        DateTime             @map("expires_at")
   createdAt        DateTime             @default(now()) @map("created_at")
   updatedAt        DateTime             @updatedAt @map("updated_at")
   user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -764,4 +765,74 @@ model UserFact {
 
   @@index([userId, type, status, lastMentionedAt])
   @@map("user_facts")
+}
+
+/// Esteira de e-mails pos-compra: uma linha por comprador inscrito na sequencia.
+/// Criada em grantPurchaseAccess, logo apos o usuario/entitlements — ponto unico
+/// onde Hotmart e Stone/Guru convergem.
+/// anchorAt e o relogio de toda a sequencia (compra = criacao do usuario = inicio
+/// do trial de 7 dias), entao os passos sao sempre anchorAt + delayMinutes do template.
+/// status: 'active' | 'converted' (assinou, para nos passos de oferta) |
+/// 'unsubscribed' | 'completed'.
+model EmailSequenceEnrollment {
+  id                    String              @id @default(uuid())
+  userId                String              @map("user_id")
+  email                 String
+  name                  String?
+  lang                  String              @default("pt-BR")
+  source                String
+  externalTransactionId String              @map("external_transaction_id")
+  anchorAt              DateTime            @default(now()) @map("anchor_at")
+  currentStep           Int                 @default(0) @map("current_step")
+  status                String              @default("active")
+  unsubscribeToken      String              @unique @map("unsubscribe_token")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+  user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sends                 EmailSequenceSend[]
+
+  @@unique([userId, externalTransactionId])
+  @@index([status, currentStep])
+  @@index([email])
+  @@map("email_sequence_enrollment")
+}
+
+/// Log de disparos da esteira. O unique (enrollment_id, step) e a garantia de
+/// idempotencia: mesmo com o cron rodando concorrente ou reprocessando, ninguem
+/// recebe o mesmo passo duas vezes.
+/// status: 'sent' | 'failed' | 'skipped' (suprimido por conversao/descadastro).
+model EmailSequenceSend {
+  id           String                  @id @default(uuid())
+  enrollmentId String                  @map("enrollment_id")
+  step         Int
+  lang         String
+  status       String                  @default("sent")
+  error        String?
+  sentAt       DateTime                @default(now()) @map("sent_at")
+  enrollment   EmailSequenceEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, step])
+  @@index([enrollmentId])
+  @@map("email_sequence_send")
+}
+
+/// Conteudo dos e-mails da esteira, um por (step, lang). Fica no banco para que a
+/// copy seja editada sem tocar no workflow do n8n, que usa um unico no de envio generico.
+/// delayMinutes e o offset a partir do anchorAt do enrollment — adicionar ou
+/// reordenar um e-mail e mexer em linha, nao em automacao.
+model EmailTemplate {
+  id           String   @id @default(uuid())
+  step         Int
+  lang         String
+  delayMinutes Int      @map("delay_minutes")
+  subject      String
+  preheader    String?
+  html         String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([step, lang])
+  @@index([active, step])
+  @@map("email_template")
 }
