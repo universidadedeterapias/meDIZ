@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { normalizeLibraryEmail } from '@/lib/library/email'
 import type { LibraryPermissoes } from '@/lib/library/permissions'
 import {
-  generateTemporaryPassword,
+  DEFAULT_TEMPORARY_PASSWORD,
   hashPassword
 } from '@/lib/library/temporaryPassword'
 import type { CatalogPermissionKey } from '@prisma/client'
@@ -35,7 +35,7 @@ export async function ensureLibraryUser(input: {
   })
 
   if (!existingUser) {
-    const temporaryPassword = generateTemporaryPassword(10)
+    const temporaryPassword = DEFAULT_TEMPORARY_PASSWORD
     const passwordHash = await hashPassword(temporaryPassword)
     await prisma.user.create({
       data: {
