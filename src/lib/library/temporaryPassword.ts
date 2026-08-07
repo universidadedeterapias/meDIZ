@@ -3,8 +3,13 @@ import { hash } from 'bcryptjs'
 const AMBIGUOUS = new Set(['0', 'O', 'o', 'l', '1', 'I', 'i'])
 const CHARSET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
 
-/** Senha padrão para usuários criados via webhook de compra (Hotmart/Stone). */
-export const DEFAULT_TEMPORARY_PASSWORD = 'Mudar123'
+/**
+ * Senha padrão para usuários criados via webhook de compra (Hotmart/Stone).
+ *
+ * É o valor impresso nos e-mails de acesso disparados pelo n8n, então precisa
+ * bater exatamente com o que está configurado lá.
+ */
+export const DEFAULT_TEMPORARY_PASSWORD = 'mediz123'
 
 export function generateTemporaryPassword(length = 10): string {
   let result = ''
