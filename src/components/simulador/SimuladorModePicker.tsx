@@ -1,15 +1,14 @@
 'use client'
 
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Clock3, Leaf, Sparkles, UserRound } from 'lucide-react'
 import { AppSidebar } from '@/components/app-sidebar'
-import { MedizChatV2Logo } from '@/components/conversational-chat/MedizChatV2Shell'
+import { ChatAppHeader } from '@/components/chat/ChatAppHeader'
 import { Button } from '@/components/ui/button'
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger
-} from '@/components/ui/sidebar'
-import {
+  SIMULATOR_ENABLED,
   SIMULATOR_MODES,
   type SimulatorMode,
   type SimulatorModeConfig
@@ -75,10 +74,12 @@ function ModeCard({ config }: { config: SimulatorModeConfig }) {
               <BadgeIcon className="h-3 w-3" />
               {config.badge}
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/80 bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-800 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
-              <Clock3 className="h-3 w-3" />
-              Em breve
-            </span>
+            {SIMULATOR_ENABLED ? null : (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/80 bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-800 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+                <Clock3 className="h-3 w-3" />
+                Em breve
+              </span>
+            )}
           </div>
 
           <div className="mt-4 flex-1">
@@ -96,19 +97,33 @@ function ModeCard({ config }: { config: SimulatorModeConfig }) {
             ) : null}
           </div>
 
-          <Button
-            type="button"
-            disabled
-            className={cn(
-              'mt-5 h-11 w-full cursor-not-allowed rounded-xl text-sm font-bold tracking-wide disabled:opacity-100',
-              config.id === 'terapeuta'
-                ? 'bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300'
-                : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300'
-            )}
-          >
-            <Clock3 className="mr-2 h-4 w-4" />
-            DISPONÍVEL EM BREVE
-          </Button>
+          {SIMULATOR_ENABLED ? (
+            <Button
+              asChild
+              className={cn(
+                'mt-5 h-11 w-full rounded-xl text-sm font-bold tracking-wide',
+                config.buttonClassName
+              )}
+            >
+              <Link href={`/simulador/chat?mode=${config.id}`}>
+                {config.buttonLabel}
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              disabled
+              className={cn(
+                'mt-5 h-11 w-full cursor-not-allowed rounded-xl text-sm font-bold tracking-wide disabled:opacity-100',
+                config.id === 'terapeuta'
+                  ? 'bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300'
+                  : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300'
+              )}
+            >
+              <Clock3 className="mr-2 h-4 w-4" />
+              DISPONÍVEL EM BREVE
+            </Button>
+          )}
         </div>
       </div>
     </article>
@@ -116,20 +131,19 @@ function ModeCard({ config }: { config: SimulatorModeConfig }) {
 }
 
 export function SimuladorModePicker() {
-  return (
-    <SidebarProvider>
-      <AppSidebar history={[]} selectedThread={null} onSelectSession={() => {}} />
-      <SidebarInset className="min-h-svh bg-gradient-to-b from-[#f3ecfa] to-white dark:from-[#0f0a18] dark:to-background">
-        <header className="flex items-center gap-2 border-b border-violet-100/80 px-3 py-3 dark:border-violet-900/40">
-          <SidebarTrigger className="text-violet-700 dark:text-violet-300" />
-        </header>
+  const router = useRouter()
 
-        <main className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col overflow-hidden px-4 py-8 sm:px-6 sm:py-12">
+  return (
+    <SidebarProvider className="relative isolate min-h-svh bg-gradient-to-b from-[#f3ecfa] to-white dark:from-[#0f0a18] dark:to-background">
+      <AppSidebar history={[]} selectedThread={null} onSelectSession={() => {}} />
+      <SidebarInset className="min-h-svh !bg-transparent">
+        <ChatAppHeader onSuggestion={() => router.push('/suggestion')} />
+
+        <main className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-12">
           <div className="pointer-events-none absolute left-1/2 top-10 -z-10 h-64 w-64 -translate-x-1/2 rounded-full bg-violet-300/20 blur-3xl dark:bg-violet-700/10" />
 
           <div className="mb-9 flex flex-col items-center text-center">
-            <MedizChatV2Logo />
-            <span className="mt-6 inline-flex items-center gap-2 rounded-full border border-amber-300/80 bg-amber-50/90 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-amber-800 shadow-sm dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+            <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/80 bg-amber-50/90 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-amber-800 shadow-sm dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
               <Sparkles className="h-4 w-4" />
               Novidade em desenvolvimento
             </span>

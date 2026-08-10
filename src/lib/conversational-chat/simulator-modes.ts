@@ -1,3 +1,10 @@
+/**
+ * O simulador segue em fase de testes: enquanto estiver `false`, os dois modos
+ * (simular terapia e simular atendimento) mostram a tela de "em breve" no lugar
+ * do chat. Basta virar para `true` para liberar a experiência completa.
+ */
+export const SIMULATOR_ENABLED: boolean = false
+
 export type SimulatorMode = 'terapeuta' | 'experiencia'
 
 export type SimulatorModeConfig = {

@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
+  GraduationCap,
   HeartPulse,
   Home,
   MessageCircleMore,
@@ -28,8 +29,22 @@ export type ChatMessage = {
   transition?: { toAgent: AgentId }
 }
 
+/**
+ * Além dos agentes do chat principal, PROF e Simulador reaproveitam esta
+ * conversa para manter um único padrão de balão, rolagem e composer.
+ */
+export type ConversationAgent = AgentId | 'prof' | 'simulador'
+
 type ChatConversationProps = {
-  agent: AgentId
+  agent: ConversationAgent
+  /** Sobrescreve o nome exibido no cabeçalho da conversa */
+  label?: string
+  /** Linha de apoio abaixo do nome (padrão: "Conversa em andamento") */
+  subtitle?: string
+  /** Conteúdo exibido no lugar da lista quando ainda não há mensagens */
+  emptyState?: ReactNode
+  composerPlaceholder?: string
+  newConversationLabel?: string
   messages: ChatMessage[]
   /**
    * Ids que devem animar ao entrar. Fora deste conjunto a bolha monta já no
@@ -53,11 +68,20 @@ const agentMeta = {
   concierge: { label: 'meDIZ!', Icon: MessageCircleMore },
   body: { label: 'Meu corpo', Icon: HeartPulse },
   home: { label: 'Minha casa', Icon: Home },
-  pet: { label: 'Meu pet', Icon: PawPrint }
-} satisfies Record<AgentId, { label: string; Icon: typeof HeartPulse }>
+  pet: { label: 'Meu pet', Icon: PawPrint },
+  prof: { label: 'Professor Paulo', Icon: GraduationCap },
+  simulador: { label: 'meDIZ! Simulador', Icon: Sparkles }
+} satisfies Record<ConversationAgent, { label: string; Icon: typeof HeartPulse }>
+
+const SPECIALIST_AGENTS: readonly ConversationAgent[] = ['body', 'home', 'pet']
 
 export function ChatConversation({
   agent,
+  label: labelOverride,
+  subtitle = 'Conversa em andamento',
+  emptyState,
+  composerPlaceholder = 'Continue a conversa…',
+  newConversationLabel = 'Nova conversa',
   messages,
   animateIds,
   input,
@@ -71,7 +95,8 @@ export function ChatConversation({
   onNewConversation
 }: ChatConversationProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const { label, Icon } = agentMeta[agent]
+  const { label: defaultLabel, Icon } = agentMeta[agent]
+  const label = labelOverride ?? defaultLabel
   const reduceMotion = useReducedMotion()
 
   useEffect(() => {
@@ -120,8 +145,8 @@ export function ChatConversation({
                 {label}
               </motion.p>
             </AnimatePresence>
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-              Conversa em andamento
+            <p className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+              {subtitle}
             </p>
           </div>
         </div>
@@ -134,7 +159,7 @@ export function ChatConversation({
           className="shrink-0 gap-1.5 rounded-full bg-white/55 text-violet-700 shadow-sm hover:bg-white/80 dark:bg-zinc-900/60 dark:text-violet-200 dark:hover:bg-zinc-800/80"
         >
           <Plus className="size-4" />
-          <span className="hidden sm:inline">Nova conversa</span>
+          <span className="hidden sm:inline">{newConversationLabel}</span>
         </Button>
       </div>
 
@@ -143,6 +168,8 @@ export function ChatConversation({
         className="min-h-0 flex-1 overflow-y-auto py-3 [scrollbar-width:thin]"
       >
         <div className="mx-auto flex max-w-2xl flex-col gap-4">
+          {messages.length === 0 && emptyState ? emptyState : null}
+
           {messages.map((message) => (
             <motion.div
               key={message.id}
@@ -204,7 +231,7 @@ export function ChatConversation({
 
               {message.role === 'ASSISTANT' &&
               message.action?.type === 'share' &&
-              agent !== 'concierge' ? (
+              SPECIALIST_AGENTS.includes(agent) ? (
                 <div className="ml-10 max-w-[min(86%,26rem)]">
                   <ShareConversationDialog
                     agent={agent as SpecialistAgent}
@@ -268,7 +295,7 @@ export function ChatConversation({
         onChange={onInputChange}
         onSubmit={onSubmit}
         onSubmitText={onSubmitText}
-        placeholder="Continue a conversa…"
+        placeholder={composerPlaceholder}
         className="mx-auto shrink-0 max-w-2xl"
       />
     </section>
