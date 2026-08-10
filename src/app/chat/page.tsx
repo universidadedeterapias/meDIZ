@@ -59,6 +59,12 @@ export default function Page() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(false)
   const [revealingMessages, setRevealingMessages] = useState(false)
+  // Só o lote que o agente acabou de enviar anima na entrada. A bolha do usuário
+  // remonta quando o id otimista (`temp-…`) é trocado pelo id real do servidor —
+  // sem esse recorte ela reanimaria a cada resposta.
+  const [animateIds, setAnimateIds] = useState<ReadonlySet<string>>(
+    () => new Set()
+  )
   const [selectedThread, setSelectedThread] = useState<string | null>(null)
   const [selectedAgent, setSelectedAgent] = useState<AgentId>('concierge')
   const [conciergeEntryPoint, setConciergeEntryPoint] =
@@ -200,6 +206,8 @@ export default function Page() {
       })
       .then(data => {
         if (!cancelled) {
+          // Histórico entra montado, sem animação de chegada.
+          setAnimateIds(new Set())
           setMessages(data.messages || [])
           setSelectedAgent(isMedizAgent(data.agent) ? data.agent : 'body')
         }
@@ -299,6 +307,8 @@ export default function Page() {
         '(prefers-reduced-motion: reduce)'
       ).matches
 
+      setAnimateIds(new Set(newMessages.map((message) => message.id)))
+
       if (newMessages.length <= 1 || shouldReduceMotion) {
         const extrasById = new Map(
           newMessages
@@ -330,7 +340,12 @@ export default function Page() {
         // é só mais uma bolha aparecendo em sequência.
         let cumulativeDelay = 0
         newMessages.forEach((message, index) => {
-          cumulativeDelay += message.transition ? 900 : 280
+          // Pausa proporcional ao tamanho do que vai aparecer, pro "Digitando…"
+          // durar o suficiente pra ser lido como digitação e não como um piscar.
+          // Teto baixo pra não atrasar a leitura.
+          cumulativeDelay += message.transition
+            ? 900
+            : Math.min(900, 320 + Math.round((message.content?.length ?? 0) * 7))
           const timer = window.setTimeout(() => {
             setMessages((current) => [...current, message])
             if (index === newMessages.length - 1) {
@@ -503,9 +518,15 @@ export default function Page() {
               <ChatConversation
                 agent={selectedAgent}
                 messages={messages}
+                animateIds={animateIds}
                 input={input}
                 loading={loading || revealingMessages}
-                showThinking={loading}
+                showThinking={loading || revealingMessages}
+                thinkingLabel={
+                  revealingMessages && !loading
+                    ? t('chat.typing', 'Digitando…')
+                    : t('chat.thinking', 'Pensando…')
+                }
                 error={chatError}
                 onInputChange={setInput}
                 onSubmit={handleSendMessage}

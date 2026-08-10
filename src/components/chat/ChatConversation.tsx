@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   HeartPulse,
   Home,
@@ -31,9 +31,17 @@ export type ChatMessage = {
 type ChatConversationProps = {
   agent: AgentId
   messages: ChatMessage[]
+  /**
+   * Ids que devem animar ao entrar. Fora deste conjunto a bolha monta já no
+   * lugar — a mensagem do usuário remonta quando o id otimista (`temp-…`) vira
+   * o id real vindo do servidor, e a animação não pode disparar de novo nisso.
+   */
+  animateIds?: ReadonlySet<string>
   input: string
   loading: boolean
   showThinking?: boolean
+  /** Texto do indicador: "Pensando…" esperando o agente, "Digitando…" entre bolhas. */
+  thinkingLabel?: string
   error?: string | null
   onInputChange: (value: string) => void
   onSubmit: () => void
@@ -51,20 +59,36 @@ const agentMeta = {
 export function ChatConversation({
   agent,
   messages,
+  animateIds,
   input,
   loading,
   showThinking = loading,
+  thinkingLabel = 'Pensando…',
   error,
   onInputChange,
   onSubmit,
   onSubmitText,
   onNewConversation
 }: ChatConversationProps) {
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const { label, Icon } = agentMeta[agent]
+  const reduceMotion = useReducedMotion()
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const container = scrollRef.current
+    if (!container) return
+
+    // Só acompanha o fim se o usuário já estava perto dele. Se ele subiu para
+    // reler algo, puxar a rolagem a cada bolha do reveal atrapalha a leitura.
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight
+    if (distanceFromBottom > 160) return
+
+    // Direto, sem 'smooth': no reveal escalonado cada mensagem dispara este
+    // efeito, e um smooth scroll novo cancelaria o anterior no meio do caminho
+    // — é isso que engasga. O deslocamento por bolha é pequeno, então o salto
+    // não é percebido.
+    container.scrollTop = container.scrollHeight
   }, [loading, messages])
 
   return (
@@ -114,10 +138,29 @@ export function ChatConversation({
         </Button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto py-3 [scrollbar-width:thin]">
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-y-auto py-3 [scrollbar-width:thin]"
+      >
         <div className="mx-auto flex max-w-2xl flex-col gap-4">
           {messages.map((message) => (
-            <div key={message.id} className="flex flex-col gap-1.5">
+            <motion.div
+              key={message.id}
+              // A animação roda na montagem da bolha. No reveal escalonado cada
+              // uma monta no seu tempo, então a entrada acompanha o stagger.
+              //
+              // Sem deslocamento vertical de propósito: a lista rola sozinha ao
+              // receber mensagem, e um translateY simultâneo faz a bolha e a
+              // rolagem se moverem em direções diferentes — lê como tremida.
+              initial={
+                !reduceMotion && animateIds?.has(message.id)
+                  ? { opacity: 0, scale: 0.985 }
+                  : false
+              }
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.26, ease: [0.22, 0.61, 0.36, 1] }}
+              className="flex flex-col gap-1.5"
+            >
               {message.transition ? (
                 <div className="my-1 flex items-center justify-center gap-2 self-center rounded-full bg-white/60 px-3 py-1.5 text-[11px] font-medium text-zinc-500 shadow-sm backdrop-blur-md dark:bg-zinc-900/60 dark:text-zinc-400">
                   {(() => {
@@ -170,19 +213,46 @@ export function ChatConversation({
                   />
                 </div>
               ) : null}
-            </div>
+            </motion.div>
           ))}
 
-          {showThinking ? (
-            <div className="flex items-center gap-2.5 text-sm text-zinc-500 dark:text-zinc-400">
-              <span className="flex size-8 items-center justify-center rounded-full bg-white/70 shadow-sm dark:bg-zinc-900/80">
-                <Sparkles className="size-4 animate-pulse text-violet-600 dark:text-violet-300" />
-              </span>
-              <span className="animate-pulse">Pensando…</span>
-            </div>
-          ) : null}
+          <AnimatePresence>
+            {showThinking ? (
+              <motion.div
+                key="thinking"
+                initial={reduceMotion ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={reduceMotion ? undefined : { opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                className="flex items-center gap-2.5 text-sm text-zinc-500 dark:text-zinc-400"
+              >
+                <span className="flex size-8 items-center justify-center rounded-full bg-white/70 shadow-sm dark:bg-zinc-900/80">
+                  <Sparkles className="size-4 animate-pulse text-violet-600 dark:text-violet-300" />
+                </span>
+                <span>{thinkingLabel}</span>
+                <span aria-hidden className="flex items-end gap-0.5 pb-0.5">
+                  {[0, 1, 2].map((dot) => (
+                    <motion.span
+                      key={dot}
+                      className="size-1 rounded-full bg-current"
+                      animate={
+                        reduceMotion ? undefined : { opacity: [0.25, 1, 0.25] }
+                      }
+                      transition={{
+                        duration: 1.05,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                        delay: dot * 0.16
+                      }}
+                    />
+                  ))}
+                </span>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
 
-          <div ref={bottomRef} />
+          {/* respiro no fim da lista, acima do composer */}
+          <div aria-hidden />
         </div>
       </div>
 

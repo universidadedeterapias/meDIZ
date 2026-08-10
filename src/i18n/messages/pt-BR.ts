@@ -17,6 +17,8 @@ const messages = {
   'chat.newConversation': 'Nova conversa',
   'chat.loading': 'Carregando resposta...',
   'chat.loading.welcome': 'Bem-vindo!',
+  'chat.thinking': 'Pensando…',
+  'chat.typing': 'Digitando…',
   'loading.step1': 'Analisando símbolos biológicos',
   'loading.step2': 'Detectando conflito emocional',
   'loading.step3': 'Coletando experiências comuns',
