@@ -357,7 +357,7 @@ export function NavOptions({
       <SidebarNavSection title={t('sidebar.section.support', 'Suporte e Conta')}>
         <SidebarMenu className="gap-0.5">
           <NavItem
-            href="https://wa.me/5555997230707?text=Ol%C3%A1!%0AEstou%20no%20app%20_me_*DIZ!*%20e%20preciso%20de%20ajuda"
+            href="https://wa.me/5555999863443?text=Ol%C3%A1!%0AEstou%20no%20app%20_me_*DIZ!*%20e%20preciso%20de%20ajuda"
             label={t('sidebar.supportWhatsapp', 'Suporte (WhatsApp)')}
             icon={FaWhatsapp}
             iconClassName="text-emerald-600 dark:text-emerald-400"
