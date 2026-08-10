@@ -9,7 +9,7 @@ export function Footer() {
   const year = new Date().getFullYear()
 
   return (
-    <footer className="w-full py-4 bg-transparent">
+    <footer className="w-full shrink-0 bg-transparent py-4">
       <div className="max-w-4xl mx-auto text-center space-y-1">
         <p className="text-xs text-muted-foreground">
           meDIZ! © {year} - {t('footer.rights', 'Todos os direitos reservados.')}

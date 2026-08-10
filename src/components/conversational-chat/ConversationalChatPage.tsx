@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 
 import { AppSidebar } from '@/components/app-sidebar'
@@ -82,9 +82,14 @@ export function ConversationalChatPage({
   modePickerHref
 }: ConversationalChatPageProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const handoffId = searchParams.get('handoff')?.trim() ?? ''
   const { language } = useLanguage()
   const { user: userContext } = useUser()
   const { isPremium, isLoading: isLoadingPremium } = useSubscriptionStatus()
+  const requiresPremium =
+    chatKind === 'PROF' ||
+    (chatKind === 'SIMULADOR' && simulatorMode === 'terapeuta')
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [sessions, setSessions] = useState<SessionItem[]>([])
@@ -131,16 +136,16 @@ export function ConversationalChatPage({
   }, [])
 
   const openUpgradeForFreeUser = useCallback(() => {
-    if (!isPremium && !isLoadingPremium) {
+    if (requiresPremium && !isPremium && !isLoadingPremium) {
       setShowUpgrade(true)
       return true
     }
     return false
-  }, [isPremium, isLoadingPremium])
+  }, [isPremium, isLoadingPremium, requiresPremium])
 
   useEffect(() => {
     if (isLoadingPremium) return
-    if (!isPremium) {
+    if (requiresPremium && !isPremium) {
       setLoadingHistory(false)
       setShowUpgrade(true)
       return
@@ -173,29 +178,38 @@ export function ConversationalChatPage({
     return () => {
       cancelled = true
     }
-  }, [isLoadingPremium, isPremium, loadSessions, loadThread, startFresh])
+  }, [
+    isLoadingPremium,
+    isPremium,
+    loadSessions,
+    loadThread,
+    requiresPremium,
+    startFresh
+  ])
 
   const sendMessageWithText = useCallback(
-    async (rawText: string) => {
+    async (rawText: string, requestedHandoffId?: string) => {
       if (openUpgradeForFreeUser()) return
 
       const text = rawText.trim()
-      if (!text || loading) return
+      if ((!text && !requestedHandoffId) || loading) return
 
       setLoading(true)
       setError(null)
       setInput('')
 
-      const optimisticId = `temp-${Date.now()}`
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: optimisticId,
-          role: 'USER',
-          content: text,
-          createdAt: new Date().toISOString()
-        }
-      ])
+      const optimisticId = text ? `temp-${Date.now()}` : null
+      if (optimisticId) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: optimisticId,
+            role: 'USER',
+            content: text,
+            createdAt: new Date().toISOString()
+          }
+        ])
+      }
 
       try {
         const res = await fetch('/api/conversational-chat', {
@@ -206,6 +220,9 @@ export function ConversationalChatPage({
             threadId: threadId ?? undefined,
             chatKind,
             language,
+            ...(requestedHandoffId
+              ? { handoffId: requestedHandoffId }
+              : {}),
             ...(simulatorMode ? { simulatorMode } : {})
           })
         })
@@ -231,7 +248,9 @@ export function ConversationalChatPage({
         if (!res.ok) {
           if (res.status === 403) {
             setShowUpgrade(true)
-            setMessages((prev) => prev.filter((m) => m.id !== optimisticId))
+            if (optimisticId) {
+              setMessages((prev) => prev.filter((m) => m.id !== optimisticId))
+            }
             setInput(text)
             return
           }
@@ -247,7 +266,9 @@ export function ConversationalChatPage({
         const list = await loadSessions()
         setSessions(list)
       } catch (err) {
-        setMessages((prev) => prev.filter((m) => m.id !== optimisticId))
+        if (optimisticId) {
+          setMessages((prev) => prev.filter((m) => m.id !== optimisticId))
+        }
         setInput(text)
         setError(err instanceof Error ? err.message : 'Erro ao enviar')
       } finally {
@@ -267,20 +288,26 @@ export function ConversationalChatPage({
 
   useEffect(() => {
     if (
-      !initialMessage ||
+      (!initialMessage && !handoffId) ||
       autoStartedRef.current ||
       isLoadingPremium ||
-      !isPremium ||
+      (requiresPremium && !isPremium) ||
       loadingHistory
     ) {
       return
     }
     autoStartedRef.current = true
-    void sendMessageWithText(initialMessage)
+    if (handoffId) {
+      void sendMessageWithText('', handoffId)
+      return
+    }
+    void sendMessageWithText(initialMessage ?? '')
   }, [
     initialMessage,
+    handoffId,
     isLoadingPremium,
     isPremium,
+    requiresPremium,
     loadingHistory,
     sendMessageWithText
   ])

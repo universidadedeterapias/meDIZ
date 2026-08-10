@@ -15,12 +15,14 @@ import {
   isYesterday
 } from 'date-fns'
 import React from 'react'
+import { HeartPulse, Home, MessageCircle, PawPrint } from 'lucide-react'
 
 type Item = {
   id: string
   threadId: string
   createdAt: string
   firstUserMessage: string
+  agent: 'body' | 'home' | 'pet' | null
 }
 
 type Props = {
@@ -70,6 +72,14 @@ export function NavHistory({ items, selectedThread, onSelect }: Props) {
             : format(date, 'dd/MM/yyyy HH:mm')
 
           const isActive = item.threadId === selectedThread
+          const AgentIcon =
+            item.agent === 'home'
+              ? Home
+              : item.agent === 'pet'
+                ? PawPrint
+                : item.agent === 'body'
+                  ? HeartPulse
+                  : MessageCircle
 
           return (
             <React.Fragment key={item.id}>
@@ -89,6 +99,7 @@ export function NavHistory({ items, selectedThread, onSelect }: Props) {
                   onClick={() => onSelect(item.threadId)}
                   title={raw || format(date, 'dd/MM/yyyy HH:mm')}
                 >
+                  <AgentIcon className="size-4 shrink-0" />
                   {label}
                 </SidebarMenuButton>
               </SidebarMenuItem>

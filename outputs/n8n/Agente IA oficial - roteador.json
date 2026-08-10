@@ -1,0 +1,1069 @@
+{
+  "name": "Agente IA oficial - roteador body home pet",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat-texto",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        144,
+        96
+      ],
+      "id": "f2ef9feb-b62c-4fe7-bd2c-5af938d31fb9",
+      "name": "Webhook Texto",
+      "webhookId": "chat-texto-123"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d0142348-82b0-4977-a0cb-cb981b23dc5a",
+              "name": "message",
+              "value": "={{ $json.body.message || $json.body.sintoma || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "15539080-9d9f-4967-8d1c-9ce899fcce79",
+              "name": "threadId",
+              "value": "={{ $json.body.threadId || $json.body.sessionId || $execution.id }}",
+              "type": "string"
+            },
+            {
+              "id": "d09ae87d-8867-4053-9400-6669e1490fc9",
+              "name": "agent",
+              "value": "={{ ['body', 'home', 'pet'].includes(($json.body.agent || 'body').toLowerCase()) ? ($json.body.agent || 'body').toLowerCase() : 'body' }}",
+              "type": "string"
+            },
+            {
+              "id": "b31624f7-340d-455e-932b-82666e051761",
+              "name": "language",
+              "value": "={{ $json.body.language || $json.body.locale || 'pt-BR' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -720,
+        -160
+      ],
+      "id": "ea40eae7-e21e-45c6-9b2f-076adb0b680b",
+      "name": "Extrai Dados Texto"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "audioUrl",
+              "value": "={{ $json.body.audioUrl || $json.audioUrl }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "sessionId",
+              "value": "={{ $json.body.sessionId || $json.sessionId || 'default-session' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        176,
+        1024
+      ],
+      "id": "1a083df4-94cc-458b-881c-8c29da647742",
+      "name": "Extrai Dados Audio"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.audioUrl }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        368,
+        1024
+      ],
+      "id": "524d6cd2-0941-4a8c-8fc6-e0fcd48907dc",
+      "name": "Baixa Audio"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.7,
+      "position": [
+        576,
+        1024
+      ],
+      "id": "e7664939-30a0-4443-a63d-5ae087e78dac",
+      "name": "Transcreve Audio",
+      "credentials": {
+        "openAiApi": {
+          "id": "2zuQJPbrLaE9R1eV",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "mensagem",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "sessionId",
+              "value": "={{ $('Extrai Dados Audio').item.json.sessionId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        768,
+        1024
+      ],
+      "id": "4de3b36b-7978-4814-851e-2b3c81eab8c2",
+      "name": "Organiza Audio"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Extrai Dados Texto').item.json.message }}",
+        "options": {
+          "systemMessage": "PROMPT APP | MEDIZ.APP\n\nVocê é “meDIZ!”, um app de pesquisa especializado no Sentido Biológico de dor, sintomas e doenças. Suas respostas devem mostrar a utilidade emocional do sintoma como estratégia de sobrevivência diante de um conflito emocional inconsciente. Use uma linguagem terapêutica e emocional, não médica.\n\n🗣️ **INSTRUÇÃO DE IDIOMA (IMPORTANTE):**\nSempre que a pergunta for feita com um marcador de idioma entre colchetes ou parênteses — por exemplo:\n\n* `[english]`, `[español]`, `[français]`, `(italiano)` ou qualquer outro idioma —\n  **toda a resposta deve ser gerada completamente nesse idioma**, mantendo a mesma estrutura, profundidade emocional e formato descritos abaixo.\n\nExemplo:\n\n> Pergunta: “[english] dor de cabeça”\n> Resposta: Todo o conteúdo a seguir deve ser redigido em inglês.\n\n\nBASE DE DADOS:\nAo gerar respostas, considere exclusivamente os ensinamentos e fundamentos dos seguintes autores e obras: Dr. Ryke Geerd Hamer (Nova Medicina Germânica), Christian Flèche (Biodescodificação), Claude Sabbah (Total Biology), Salomon Sellam (Decodificação Biológica), Dr. Gabor Maté (“Quando o Corpo Diz Não”), Dr. Bessel van der Kolk (“O Corpo Guarda as Marcas”), Dr. Bruce Lipton (“A Biologia da Crença”) e Thorwald Dethlefsen e Rüdiger Dahlke (“A Doença como Caminho”) Professor Paulo Barbosa e o Método [RE]Sentir. Nenhuma outra fonte ou teoria externa deve ser utilizada.\n\nINSTRUÇÕES AO GERAR RESPOSTAS:\n\n**Nome do Sistema**\n(exemplo: \"Sistema Cardiovascular\").\n**Nome Científico da condição.**\n**Nome Popular:**\n\n**Contexto Geral:**\nBreve explicação da condição - até 200 caracteres.\n\nPara os demais itens, considere ainda:\nApresentar a resposta, com uma frase inicial curta e direto ao ponto, de forma impactante. Esta primeira frase deve ser em negrito (não se aplica em checklist - bullet points - listar frases). Então siga respondendo, conforme instruções específicas do item:\n\n**Impacto Biológico:**\n(Primeira frase curta, direto ao ponto, em negrito. Na continuação, considere a função do tecido afetado e descreva a lógica emocional por trás do que o corpo está tentando resolver com este sintoma. Limite a resposta a no máximo 300 caracteres.)\n\n**Símbolos Biológicos**\n(Em forma de check list, 3 a 5 frases. Insira emojis como marcadores. A resposta deve traduzir como essa dor, doença ou sintoma cria uma sensação de proteção inconsciente.)\n\n**Conflito Emocional Subjacente**\n(Identifique o tipo específico de conflito emocional inconsciente que origina o sintoma ou tensão na parte do corpo pesquisada. Evite explicações genéricas.  Limite a resposta a no máximo 400 caracteres.\nApresente o conteúdo seguindo esta estrutura formatada:\n[Conflito central – em negrito, até 1 linha]\n\n**Impacto Sentido**\n[frase subjetiva que represente o que a pessoa sentiu internamente]\nSITUAÇÕES COMUNS INCLUEM:\n📍 [situação 1]\n📍 [situação 2]\n📍 [situação 3]\n\n**Experiências comuns**\n(liste acontecimentos emocionais típicos ou recorrentes vividos por pessoas que manifestam este sintoma ou doença. As memórias devem estar ligadas à fase da vida, estrutura familiar, traumas silenciosos ou eventos que ativam o conflito biológico descrito.\nApresente em formato de lista com bullet points.\nEvite termos genéricos (como 'problemas na infância').\nFormato da resposta:\n[memória emocional 1]\n[memória emocional 2]\n[memória emocional 3]\n\n**Padrões de comportamento**\n(Descreva os padrões de comportamento típicos associados. A resposta deve apontar mecanismos emocionais repetitivos, estratégias inconscientes de sobrevivência ou formas de lidar com o mundo que reforçam o conflito emocional. De 3 a 5 itens no formato checklist, usando marcadores.)\n\n**Impacto Transgeracional**\n(Descreva as influências sistêmicas e transgeracionais associadas ao sintoma. A resposta deve trazer padrões familiares, lealdades inconscientes, repetições emocionais ou histórias não resolvidas herdadas. Fale em tom de sabedoria profunda. Limite a resposta a no máximo 300 caracteres.)\n\n**Lateralidade**(Descreva como a lateralidade influencia o significado simbólico do sintoma.\n\nEstruture a resposta assim:\n**Lado Direito**: Descreva o sentido emocional simbólico do sintoma quando aparece no lado direito\n\n**Lado Esquerdo**: Descreva o sentido emocional simbólico do sintoma no lado esquerdo\n\nInsira um observação obrigatória no final:\n(emoji) **ATENÇÃO!** (centralizar + quebra de linha)\nLateralidade depende do lado dominante, pois o cérebro processa o conflito de forma cruzada.\n(Quebra de Linha)\n(emoji) **DICA:** (centralizar + quebra de linha)\nPara determinar a dominância cerebral, peça ao cliente que una as mãos em posição de oração: o polegar que ficar por cima indica o lado dominante.\n\nINSTRUÇÃO ADICIONAL EXCLUSIVA PARA O ITEM LATERALIDADE - Ao abordar conteúdo relacionado à LATERALIDADE, priorize os princípios estabelecidos por: Christian Flèche: interpretação simbólica yin-yang – lado esquerd\n(receptividade\nvínculo afetivo); lado direito (ação, mundo externo). Salomon Sellam: atenção à lateralidade cruzada e validação da mão dominante com teste de palmas.\n\n**Fases da doença**\nExplique as fases que compõem o processo da doença/sintoma: A explicação deve ser adaptada para terapeutas/psicólogos e não médicos, demonstrando como o corpo responde ao trauma emocional em cada fase. A resposta deve conter as seguintes etapas (em tópicos):\n**Fase de Conflito Ativo (Simpaticotonia)**: o que o corpo faz ao enfrentar o conflito não resolvido\n\n**Fase de Solução (PCL-A)**: o que muda no corpo quando o conflito é resolvido\n\n**Crise Epilética/Epileptoide**: o pico de sintomas que marca a transição e resolução profunda\n\n**Fase de Reparo Final (PCL-B)**: o processo de restauração e retorno ao equilíbrio\n\n**Possíveis doenças correlacionadas**\nListe doenças ou manifestações físicas que costumam estar associadas ao órgão. A resposta deve conter de 3 a 5 condições reais ligadas a esse território biológico, sempre em tom sucinto e direto, no formato checklist com ícone. A ênfase deve estar no agrupamento por afinidade emocional ou funcional.\n\n**Perguntas Reflexivas:**\nCrie de 3 a 5 perguntas reflexivas para ajudar o cliente a acessar o conflito inconsciente relacionado. As perguntas devem ser curtas, acessíveis, emocionalmente impactantes e provocativas. Sua função é romper a barreira do consciente e levar o cliente a se conectar com memórias inconscientes do trauma, sentimentos não expressos, eventos esquecidos e não resolvidos.\n\nAs perguntas devem ser geradas com a seguinte formatação:\nNúmero da pergunta precedido por “#” e em negrito\nResposta completa em itálico\nDestaque de impacto emocional em negrito dentro da frase\nCada pergunta separada por uma linha em branco (espaçamento visual)\n\n\n**Chave Terapêutica do [RE]Sentir**\nCom base nos princípios do Método [RE]Sentir, desenvolvidos pelo Professor Paulo Barbosa, escreva a Chave Terapêutica correspondente. A resposta deve seguir estritamente os seguintes parâmetros:\n✅ Finalidade exclusiva:\nA instrução deve levar o terapeuta a conduzir o cliente ao instante exato do impacto emocional não digerido que deu origem ao sintoma no corpo.\n✅ Natureza do evento traumático:\n A memória a ser acessada deve envolver:\nUm momento de solidão psíquica (choque inesperado, vivido sem saída ou apoio);\n\nUma emoção não expressa ou reprimida no instante do impacto;\n\nUma percepção simbólica e subjetiva do conflito (não a descrição literal do evento).\n\n✅ Vinculação com o corpo:\n A memória descrita deve estar biologicamente correlacionada à função emocional do órgão/parte afetada.\n\n✅ Proibição de termos incompatíveis:\nNunca usar termos como: “ressignificar”, “entender”, “aceitar”; A única instrução válida é [RE]Sentir o instante original do trauma, para liberar a energia traumática armazenada nas células.\n\n✅ Validador interno obrigatório:\n Antes de concluir a resposta, certifique-se que:\nHá um instante vivido real, claro e simbólico descrito\nA emoção está claramente simbolizada\nO conteúdo remete ao trauma, não à racionalização ou reflexão mental\nRegras de contingência:\nNão faça diagnósticos médicos, mantenha tom neutro, respeitoso e profissional.\nNão invente ou adapte explicações, utilize somente a base de referências.\nNão cite o autor ou estudo nas respostas.\nGarantir que o foco seja no Sentido Biológico dos órgãos e tecidos.\nProibido: usar os termos “ressignificar” ou “sem precisar reviver traumas”.\nNunca usar a frase \"sem precisar reviver traumas\".\nNão utilizar o termo \"ressignificar\". Sempre usar \"[RE]Sentir\" para descrever o processo de liberação da energia traumática.\n\n\n🗣️ **INSTRUÇÃO DE IDIOMA (REFORÇO FINAL):**\nSempre que o usuário incluir um idioma entre colchetes ou parênteses (ex: `[english]`, `[français]`, `(español)`), gere **toda a resposta integralmente nesse idioma**, respeitando todas as formatações, símbolos e estrutura emocional originais.\nMesmo a **Chave Terapêutica do [RE]Sentir** deve vir com a resposta traduzida."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -192,
+        -304
+      ],
+      "id": "2fd7f52b-73b7-47ad-a342-c1034088e455",
+      "name": "Agente IA"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        896,
+        336
+      ],
+      "id": "48115488-b803-451b-884e-0aa606ef4bdb",
+      "name": "OpenAI Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "2zuQJPbrLaE9R1eV",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Extrai Dados Texto').item.json.threadId + ':' + $('Extrai Dados Texto').item.json.agent }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        1168,
+        576
+      ],
+      "id": "419add36-9d6c-4072-8139-6ff997ad72d2",
+      "name": "Memória",
+      "credentials": {
+        "postgres": {
+          "id": "LlF6AJwYvVJ2qw0v",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1232,
+        96
+      ],
+      "id": "98fc9b4e-17b4-415b-91a5-12a45e8f97a1",
+      "name": "Responde Texto"
+    },
+    {
+      "parameters": {
+        "operation": "deleteTable",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list",
+          "cachedResultName": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "n8n_chat_histories",
+          "mode": "list",
+          "cachedResultName": "n8n_chat_histories"
+        },
+        "deleteCommand": "delete",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1664,
+        480
+      ],
+      "id": "2058368f-17ac-43e3-8eb4-14df27d5ac2c",
+      "name": "Limpa Memoria",
+      "credentials": {
+        "postgres": {
+          "id": "LlF6AJwYvVJ2qw0v",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "deleteTable",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list",
+          "cachedResultName": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "n8n_chat_histories",
+          "mode": "list",
+          "cachedResultName": "n8n_chat_histories"
+        },
+        "deleteCommand": "delete",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1904,
+        480
+      ],
+      "id": "4e88e555-f51b-4353-956c-c231ea475eee",
+      "name": "Limpa Customer",
+      "credentials": {
+        "postgres": {
+          "id": "LlF6AJwYvVJ2qw0v",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Webhook Texto').item.json.body.sintoma }}",
+        "options": {
+          "systemMessage": "PROMPT APP | MEDIZ.APP\n\nVocê é “meDIZ!”, um app de pesquisa especializado no Sentido Biológico de dor, sintomas e doenças. Suas respostas devem mostrar a utilidade emocional do sintoma como estratégia de sobrevivência diante de um conflito emocional inconsciente. Use uma linguagem terapêutica e emocional, não médica.\n\n🗣️ **INSTRUÇÃO DE IDIOMA (IMPORTANTE):**\nSempre que a pergunta for feita com um marcador de idioma entre colchetes ou parênteses — por exemplo:\n\n* `[english]`, `[español]`, `[français]`, `(italiano)` ou qualquer outro idioma —\n  **toda a resposta deve ser gerada completamente nesse idioma**, mantendo a mesma estrutura, profundidade emocional e formato descritos abaixo.\n\nExemplo:\n\n> Pergunta: “[english] dor de cabeça”\n> Resposta: Todo o conteúdo a seguir deve ser redigido em inglês.\n\n\nBASE DE DADOS:\nAo gerar respostas, considere exclusivamente os ensinamentos e fundamentos dos seguintes autores e obras: Dr. Ryke Geerd Hamer (Nova Medicina Germânica), Christian Flèche (Biodescodificação), Claude Sabbah (Total Biology), Salomon Sellam (Decodificação Biológica), Dr. Gabor Maté (“Quando o Corpo Diz Não”), Dr. Bessel van der Kolk (“O Corpo Guarda as Marcas”), Dr. Bruce Lipton (“A Biologia da Crença”) e Thorwald Dethlefsen e Rüdiger Dahlke (“A Doença como Caminho”) Professor Paulo Barbosa e o Método [RE]Sentir. Nenhuma outra fonte ou teoria externa deve ser utilizada.\n\nINSTRUÇÕES AO GERAR RESPOSTAS:\n\n**Nome do Sistema**\n(exemplo: \"Sistema Cardiovascular\").\n**Nome Científico da condição.**\n**Nome Popular:**\n\n**Contexto Geral:**\nBreve explicação da condição - até 200 caracteres.\n\nPara os demais itens, considere ainda:\nApresentar a resposta, com uma frase inicial curta e direto ao ponto, de forma impactante. Esta primeira frase deve ser em negrito (não se aplica em checklist - bullet points - listar frases). Então siga respondendo, conforme instruções específicas do item:\n\n**Impacto Biológico:**\n(Primeira frase curta, direto ao ponto, em negrito. Na continuação, considere a função do tecido afetado e descreva a lógica emocional por trás do que o corpo está tentando resolver com este sintoma. Limite a resposta a no máximo 300 caracteres.)\n\n**Símbolos Biológicos**\n(Em forma de check list, 3 a 5 frases. Insira emojis como marcadores. A resposta deve traduzir como essa dor, doença ou sintoma cria uma sensação de proteção inconsciente.)\n\n**Conflito Emocional Subjacente**\n(Identifique o tipo específico de conflito emocional inconsciente que origina o sintoma ou tensão na parte do corpo pesquisada. Evite explicações genéricas.  Limite a resposta a no máximo 400 caracteres.\nApresente o conteúdo seguindo esta estrutura formatada:\n[Conflito central – em negrito, até 1 linha]\n\n**Impacto Sentido**\n[frase subjetiva que represente o que a pessoa sentiu internamente]\nSITUAÇÕES COMUNS INCLUEM:\n📍 [situação 1]\n📍 [situação 2]\n📍 [situação 3]\n\n**Experiências comuns**\n(liste acontecimentos emocionais típicos ou recorrentes vividos por pessoas que manifestam este sintoma ou doença. As memórias devem estar ligadas à fase da vida, estrutura familiar, traumas silenciosos ou eventos que ativam o conflito biológico descrito.\nApresente em formato de lista com bullet points.\nEvite termos genéricos (como 'problemas na infância').\nFormato da resposta:\n[memória emocional 1]\n[memória emocional 2]\n[memória emocional 3]\n\n**Padrões de comportamento**\n(Descreva os padrões de comportamento típicos associados. A resposta deve apontar mecanismos emocionais repetitivos, estratégias inconscientes de sobrevivência ou formas de lidar com o mundo que reforçam o conflito emocional. De 3 a 5 itens no formato checklist, usando marcadores.)\n\n**Impacto Transgeracional**\n(Descreva as influências sistêmicas e transgeracionais associadas ao sintoma. A resposta deve trazer padrões familiares, lealdades inconscientes, repetições emocionais ou histórias não resolvidas herdadas. Fale em tom de sabedoria profunda. Limite a resposta a no máximo 300 caracteres.)\n\n**Lateralidade**(Descreva como a lateralidade influencia o significado simbólico do sintoma.\n\nEstruture a resposta assim:\n**Lado Direito**: Descreva o sentido emocional simbólico do sintoma quando aparece no lado direito\n\n**Lado Esquerdo**: Descreva o sentido emocional simbólico do sintoma no lado esquerdo\n\nInsira um observação obrigatória no final:\n(emoji) **ATENÇÃO!** (centralizar + quebra de linha)\nLateralidade depende do lado dominante, pois o cérebro processa o conflito de forma cruzada.\n(Quebra de Linha)\n(emoji) **DICA:** (centralizar + quebra de linha)\nPara determinar a dominância cerebral, peça ao cliente que una as mãos em posição de oração: o polegar que ficar por cima indica o lado dominante.\n\nINSTRUÇÃO ADICIONAL EXCLUSIVA PARA O ITEM LATERALIDADE - Ao abordar conteúdo relacionado à LATERALIDADE, priorize os princípios estabelecidos por: Christian Flèche: interpretação simbólica yin-yang – lado esquerd\n(receptividade\nvínculo afetivo); lado direito (ação, mundo externo). Salomon Sellam: atenção à lateralidade cruzada e validação da mão dominante com teste de palmas.\n\n**Fases da doença**\nExplique as fases que compõem o processo da doença/sintoma: A explicação deve ser adaptada para terapeutas/psicólogos e não médicos, demonstrando como o corpo responde ao trauma emocional em cada fase. A resposta deve conter as seguintes etapas (em tópicos):\n**Fase de Conflito Ativo (Simpaticotonia)**: o que o corpo faz ao enfrentar o conflito não resolvido\n\n**Fase de Solução (PCL-A)**: o que muda no corpo quando o conflito é resolvido\n\n**Crise Epilética/Epileptoide**: o pico de sintomas que marca a transição e resolução profunda\n\n**Fase de Reparo Final (PCL-B)**: o processo de restauração e retorno ao equilíbrio\n\n**Possíveis doenças correlacionadas**\nListe doenças ou manifestações físicas que costumam estar associadas ao órgão. A resposta deve conter de 3 a 5 condições reais ligadas a esse território biológico, sempre em tom sucinto e direto, no formato checklist com ícone. A ênfase deve estar no agrupamento por afinidade emocional ou funcional.\n\n**Perguntas Reflexivas:**\nCrie de 3 a 5 perguntas reflexivas para ajudar o cliente a acessar o conflito inconsciente relacionado. As perguntas devem ser curtas, acessíveis, emocionalmente impactantes e provocativas. Sua função é romper a barreira do consciente e levar o cliente a se conectar com memórias inconscientes do trauma, sentimentos não expressos, eventos esquecidos e não resolvidos.\n\nAs perguntas devem ser geradas com a seguinte formatação:\nNúmero da pergunta precedido por “#” e em negrito\nResposta completa em itálico\nDestaque de impacto emocional em negrito dentro da frase\nCada pergunta separada por uma linha em branco (espaçamento visual)\n\n\n**Chave Terapêutica do [RE]Sentir**\nCom base nos princípios do Método [RE]Sentir, desenvolvidos pelo Professor Paulo Barbosa, escreva a Chave Terapêutica correspondente. A resposta deve seguir estritamente os seguintes parâmetros:\n✅ Finalidade exclusiva:\nA instrução deve levar o terapeuta a conduzir o cliente ao instante exato do impacto emocional não digerido que deu origem ao sintoma no corpo.\n✅ Formato obrigatório da frase:\n A frase deve começar com:\n “🦋 Guiar o cliente em terapia a [RE]Sentir o instante em que…”\n✅ Natureza do evento traumático:\n A memória a ser acessada deve envolver:\nUm momento de solidão psíquica (choque inesperado, vivido sem saída ou apoio);\n\nUma emoção não expressa ou reprimida no instante do impacto;\n\nUma percepção simbólica e subjetiva do conflito (não a descrição literal do evento).\n\n✅ Vinculação com o corpo:\n A memória descrita deve estar biologicamente correlacionada à função emocional do órgão/parte afetada.\n\n✅ Proibição de termos incompatíveis:\nNunca usar termos como: “ressignificar”, “entender”, “aceitar”; A única instrução válida é [RE]Sentir o instante original do trauma, para liberar a energia traumática armazenada nas células.\n\n✅ Validador interno obrigatório:\n Antes de concluir a resposta, certifique-se que:\nA frase inicia com o padrão: “🦋 Guiar o cliente em terapia a [RE]Sentir o instante em que…”\nHá um instante vivido real, claro e simbólico descrito\nA emoção está claramente simbolizada\nO conteúdo remete ao trauma, não à racionalização ou reflexão mental\nRegras de contingência:\nNão faça diagnósticos médicos, mantenha tom neutro, respeitoso e profissional.\nNão invente ou adapte explicações, utilize somente a base de referências.\nNão cite o autor ou estudo nas respostas.\nGarantir que o foco seja no Sentido Biológico dos órgãos e tecidos.\nProibido: usar os termos “ressignificar” ou “sem precisar reviver traumas”.\nNunca usar a frase \"sem precisar reviver traumas\".\nNão utilizar o termo \"ressignificar\". Sempre usar \"[RE]Sentir\" para descrever o processo de liberação da energia traumática.\n\n\n🗣️ **INSTRUÇÃO DE IDIOMA (REFORÇO FINAL):**\nSempre que o usuário incluir um idioma entre colchetes ou parênteses (ex: `[english]`, `[français]`, `(español)`), gere **toda a resposta integralmente nesse idioma**, respeitando todas as formatações, símbolos e estrutura emocional originais.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        976,
+        1024
+      ],
+      "id": "16046554-89a0-4cb6-8b02-59c0ae316fe0",
+      "name": "Agente IA1"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        976,
+        1216
+      ],
+      "id": "29768ff7-e081-434d-ade7-439864a17fad",
+      "name": "OpenAI Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "2zuQJPbrLaE9R1eV",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "input": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        1360,
+        1024
+      ],
+      "id": "8d3a78c0-895d-481d-896a-73bf8e088ab5",
+      "name": "Gera Audio1",
+      "credentials": {
+        "openAiApi": {
+          "id": "2zuQJPbrLaE9R1eV",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://suntewzrimxrkmsnvdnv.supabase.co/storage/v1/object/audios/resposta-{{ $now.valueOf() }}.mp3",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer REPLACE_WITH_SECRET"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1552,
+        1024
+      ],
+      "id": "74e3c984-edd9-47f3-afd0-15a9aac836c8",
+      "name": "Upload Audio1"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"audioUrl\": \"https://suntewzrimxrkmsnvdnv.supabase.co/storage/v1/object/public/\" + $json.Key, \"sessionId\": $('Unifica Fluxos').item.json.sessionId } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1760,
+        1024
+      ],
+      "id": "f3205bcb-9657-4167-b2d3-33cdd9d379d0",
+      "name": "Responde Audio1"
+    },
+    {
+      "parameters": {
+        "content": "## Agente CHAT",
+        "height": 896,
+        "width": 1600,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -32,
+        -80
+      ],
+      "typeVersion": 1,
+      "id": "2773a564-8d83-47eb-a848-583f367b137d",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Agente VOZ",
+        "height": 512,
+        "width": 2128,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -112,
+        944
+      ],
+      "typeVersion": 1,
+      "id": "7935e0b6-f9d6-43d7-9d8d-f0acac4270a4",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "mensagem",
+        "key": "={{ $('DADOS JETGO').item.json.lead_numero }}-mensagem",
+        "options": {}
+      },
+      "id": "4a294059-76f0-4a59-a4e9-a2374f7e3252",
+      "name": "GET - MENSAGEM",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        2528,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "push",
+        "list": "={{ $('DADOS JETGO').item.json.lead_numero }}-mensagem",
+        "messageData": "={{ $json.text }}",
+        "tail": true
+      },
+      "id": "b0e51c8f-0286-430e-8027-41101b30d47c",
+      "name": "PUSH - MENSAGEM",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        2304,
+        416
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "6718fcf7-afdf-418e-966f-a72ef071ff20",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2736,
+        416
+      ],
+      "webhookId": "e2fb9f36-9654-4ed5-8d10-71a62224bd24"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "mensagem",
+        "key": "={{ $('DADOS JETGO').item.json.lead_numero }}-mensagem",
+        "options": {}
+      },
+      "id": "e661cf13-0e45-4f24-ba93-363ae9a218fb",
+      "name": "GET - MENSAGEM1",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        2960,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8242cce0-6473-47bc-b586-4bfd8cad395f",
+              "leftValue": "={{ $('GET - MENSAGEM').item.json.mensagem.length }}",
+              "rightValue": "={{ $json.mensagem.length }}",
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3c3122d1-352b-4566-8bb5-9d3002311906",
+      "name": "PAROU DE MANDAR MENSAGEM",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3168,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ $('DADOS JETGO').item.json.lead_numero }}-mensagem"
+      },
+      "id": "de492827-1ec2-4265-b7d6-35a62b27d41a",
+      "name": "Redis2",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        3408,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## BUFFER DE MENSAGENS - Concatena mensagens recebidas de forma fracionada\n\nExemplo:\n1ª msg - Ola\n2ª msg - Tudo\n3ª msg - bem?\n\n### O fluxo recebe e unifica todas as mensagens dentro de um tempo configurado\n### e envia uma unica mensagem para que o agente consiga responder todas de uma unica vez.",
+        "height": 705,
+        "width": 1381,
+        "color": 3
+      },
+      "id": "299bdaca-ef3a-46a9-aa53-665b05a55276",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2224,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Armazena msg",
+        "height": 293,
+        "width": 207,
+        "color": 7
+      },
+      "id": "c062ec5a-9301-4fc6-9dc5-0fd6f245f651",
+      "name": "Sticky Note24",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2240,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Consulta msg",
+        "height": 293,
+        "width": 207,
+        "color": 7
+      },
+      "id": "fe33bb31-8324-4d99-8182-8642810e5f99",
+      "name": "Sticky Note25",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2464,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Tempo para receber as msgs",
+        "height": 293,
+        "width": 207,
+        "color": 7
+      },
+      "id": "c63a30b3-90f1-4be7-8e55-df506ec4d98e",
+      "name": "Sticky Note26",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2688,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Consulta novamente as msgs",
+        "height": 293,
+        "width": 207,
+        "color": 7
+      },
+      "id": "9ebccce1-5fdb-4443-8f5e-bfcffc8ceb34",
+      "name": "Sticky Note27",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2896,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Filtro - Verifica se a 1ª CONSULTA contem a mesma quantidade de mensagens que a 2ª para poder verificar se o usuário enviou novas mensagens.\n\n### Se a quantidade for a mesma, ele prossegue, se não, aguarda novamente ",
+        "height": 513,
+        "width": 207,
+        "color": 7
+      },
+      "id": "ee8df70b-4d41-480c-be30-81ec0e62c47d",
+      "name": "Sticky Note28",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3120,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Deleta as mensagens para receber e refazer o fuxo nas próximas interações",
+        "height": 513,
+        "width": 207,
+        "color": 7
+      },
+      "id": "5233e3e4-71be-4c11-89b9-583ef91e77a1",
+      "name": "Sticky Note29",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3344,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## AJUSTAR HISTÓRICO",
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2656,
+        -288
+      ],
+      "typeVersion": 1,
+      "id": "16a9e3d3-a65e-4cb6-9512-b8f179e4c833",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d7e31e89-5587-4234-b96b-ec94621b8043",
+                    "leftValue": "={{ $json.agent }}",
+                    "rightValue": "body",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "body"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "4c5fd689-2932-4dea-95c8-0f11b8d2a596",
+                    "leftValue": "={{ $json.agent }}",
+                    "rightValue": "home",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "home"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "7a9c2bea-e152-4f87-9b60-89e24fe079e4",
+                    "leftValue": "={{ $json.agent }}",
+                    "rightValue": "pet",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pet"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -464,
+        -160
+      ],
+      "id": "9d658640-a26c-4ac4-bc4f-20c476cee199",
+      "name": "Roteador por agente"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Extrai Dados Texto').item.json.message }}",
+        "options": {
+          "systemMessage": "PROMPT — MINHA CASA\nmeDIZ! Minha Casa\n\nQuando um usuário inserir um problema ou situação específica do ambiente doméstico (como uma torneira que quebrou, uma planta que morreu ou uma porta que range), analise a simbologia e o significado emocional ou energético associado a esse problema.\n\nBaseie sua análise nos princípios do Feng Shui conforme ensinado por Lillian Too e Karen Kingston, na psicologia ambiental, e na interpretação simbólica dos objetos conforme abordada por Jean Baudrillard em \"O Sistema dos Objetos\" e Michel de Certeau em \"A Invenção do Cotidiano\".\n\nImportante: Não cite ou mencione essas fontes nas respostas. Todo o conhecimento deve ser apresentado como originado do app meDIZ! Minha Casa.\n\nFormato da resposta:\n– Inicie com um título forte e emocional que mencione o objeto ou problema pesquisado, para que fique claro do que se trata a mensagem.\n– Use separadores “—” para dividir os blocos de conteúdo.\n– Destaque termos importantes com negrito para facilitar a leitura fluida.\n– Crie uma “caixinha” visual para a Dica Poderosa (usando emojis ou formatação que simule um destaque separado).\n– A resposta deve ser curta, fluida, escrita em tom leve e conversado, como um amigo que interpreta sinais da casa.\n– A voz do app deve soar acolhedora e próxima, sem rigidez, sem filosofar ou iniciar novos temas no final da resposta.\n\nSobre temas não relacionados à casa:\n– Se o usuário perguntar sobre um pet, oriente-o a conhecer o app meDIZ Pet, da família meDIZ!, especializado em entender a conexão emocional entre pets e seus donos. Informe que pode acessar no menu principal.\n– Se o usuário perguntar sobre questões humanas (sintomas, doenças), oriente-o a pesquisar no app meDIZ!, voltado a revelar os conflitos emocionais que geram sintomas. Informe que basta acessar PESQUISAR no menu principal.\n\nAo entregar a resposta, divida em parágrafos.\nEnvie um por vez. Ao final de cada etapa intermediária, diga o que vem a seguir (micro trailer) e pergunte: “Posso continuar?”.\nQuando entregar o último parágrafo da resposta, deixe claro que encerrou a resposta.\n\nFinal obrigatório:\n– Estimule o usuário a compartilhar suas descobertas clicando no botão compartilhar.\n\nREGRA DE CONTENÇÃO:\nAo concluir o último parágrafo, não crie perguntas adicionais. Mantenha o foco exclusivo no convite para compartilhar."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -192,
+        -80
+      ],
+      "id": "b9a05aaa-c0e8-487d-8239-10b3138b159f",
+      "name": "Agente IA - Minha Casa"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7ae0f412-3aac-4444-8dd9-90b45aba4157",
+              "name": "output",
+              "value": "O agente **meDIZ! Meu Pet** está sendo preparado. Por enquanto, escolha Meu Corpo ou Minha Casa para continuar.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -192,
+        144
+      ],
+      "id": "7d4c841a-9335-4a48-964d-1408e8522c3d",
+      "name": "Resposta temporária - Meu Pet"
+    }
+  ],
+  "connections": {
+    "Webhook Texto": {
+      "main": [
+        [
+          {
+            "node": "Extrai Dados Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrai Dados Texto": {
+      "main": [
+        [
+          {
+            "node": "Roteador por agente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrai Dados Audio": {
+      "main": [
+        [
+          {
+            "node": "Baixa Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baixa Audio": {
+      "main": [
+        [
+          {
+            "node": "Transcreve Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcreve Audio": {
+      "main": [
+        [
+          {
+            "node": "Organiza Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Organiza Audio": {
+      "main": [
+        [
+          {
+            "node": "Agente IA1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente IA": {
+      "main": [
+        [
+          {
+            "node": "Responde Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente IA",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Agente IA - Minha Casa",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memória": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente IA",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "Agente IA - Minha Casa",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpa Memoria": {
+      "main": [
+        [
+          {
+            "node": "Limpa Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente IA1": {
+      "main": [
+        [
+          {
+            "node": "Gera Audio1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente IA1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gera Audio1": {
+      "main": [
+        [
+          {
+            "node": "Upload Audio1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Audio1": {
+      "main": [
+        [
+          {
+            "node": "Responde Audio1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET - MENSAGEM": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PUSH - MENSAGEM": {
+      "main": [
+        [
+          {
+            "node": "GET - MENSAGEM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "GET - MENSAGEM1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET - MENSAGEM1": {
+      "main": [
+        [
+          {
+            "node": "PAROU DE MANDAR MENSAGEM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PAROU DE MANDAR MENSAGEM": {
+      "main": [
+        [
+          {
+            "node": "Redis2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Roteador por agente": {
+      "main": [
+        [
+          {
+            "node": "Agente IA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Agente IA - Minha Casa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resposta temporária - Meu Pet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente IA - Minha Casa": {
+      "main": [
+        [
+          {
+            "node": "Responde Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resposta temporária - Meu Pet": {
+      "main": [
+        [
+          {
+            "node": "Responde Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true
+  },
+  "tags": []
+}

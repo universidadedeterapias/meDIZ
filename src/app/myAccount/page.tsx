@@ -61,6 +61,8 @@ export default function MyAccountPage() {
   const [editing, setEditing] = useState(false)
   const [subscription, setSubscription] = useState<SubscriptionAPI | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [hasDiscoveryProfile, setHasDiscoveryProfile] = useState(false)
+  const [isForgetting, setIsForgetting] = useState(false)
 
   const {
     register,
@@ -102,6 +104,16 @@ export default function MyAccountPage() {
           hasPremiumAccess: false
         })
       )
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!user?.id) return
+    fetch('/api/discovery/status')
+      .then(res => (res.ok ? res.json() : null))
+      .then((data: { discoveryCompleted?: boolean; consentedAt?: string | null } | null) => {
+        setHasDiscoveryProfile(Boolean(data?.discoveryCompleted || data?.consentedAt))
+      })
+      .catch(() => setHasDiscoveryProfile(false))
   }, [user?.id])
 
   const onSubmit = async (data: FormValues) => {
@@ -201,6 +213,25 @@ export default function MyAccountPage() {
     setSubscription(s =>
       s ? { ...s, status: 'cancel_at_period_end', hasPremiumAccess: true } : s
     )
+  }
+
+  const handleForgetMe = async () => {
+    if (isForgetting) return
+    if (!confirm(t('account.privacy.forgetMeConfirm', "This erases everything meDIZ has learned about you to personalize responses. This can't be undone. Continue?"))) {
+      return
+    }
+
+    setIsForgetting(true)
+    try {
+      const res = await fetch('/api/discovery/forget-me', { method: 'POST' })
+      if (!res.ok) throw new Error('Falha ao esquecer perfil')
+      setHasDiscoveryProfile(false)
+      alert(t('account.privacy.forgetMeSuccess', 'Done — forgotten.'))
+    } catch {
+      alert(t('account.privacy.forgetMeError', "Couldn't complete this right now. Please try again shortly."))
+    } finally {
+      setIsForgetting(false)
+    }
   }
 
   const handleLogout = async () => {
@@ -532,6 +563,38 @@ export default function MyAccountPage() {
         >
           <span>💬 Falar com especialista</span>
         </Button> */}
+
+        {hasDiscoveryProfile && (
+          <>
+            <Separator />
+
+            {/* Privacidade / LGPD */}
+            <Card className="shadow-sm">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {t('account.privacy.title', 'Privacy')}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {t(
+                    'account.privacy.forgetMeDescription',
+                    'Erases what meDIZ has learned about you from your conversations. Does not affect your account, subscription or message history.'
+                  )}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full text-red-700"
+                  onClick={handleForgetMe}
+                  disabled={isForgetting}
+                >
+                  {t('account.privacy.forgetMe', 'Forget me')}
+                </Button>
+              </CardContent>
+            </Card>
+          </>
+        )}
 
         <Separator />
 

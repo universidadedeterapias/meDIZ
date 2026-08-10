@@ -24,6 +24,7 @@ const SHORT_LANGUAGE_LABEL: Record<LanguageCode, string> = {
 type LanguageSwitcherProps = {
   showLabel?: boolean
   className?: string
+  triggerClassName?: string
   /** Versão menor (ex.: login) */
   compact?: boolean
   /** Cabeçalho do chat: bandeira no mobile, texto curto a partir de sm */
@@ -33,6 +34,7 @@ type LanguageSwitcherProps = {
 export function LanguageSwitcher({
   showLabel = true,
   className,
+  triggerClassName,
   compact = false,
   variant
 }: LanguageSwitcherProps) {
@@ -83,7 +85,8 @@ export function LanguageSwitcher({
             resolvedVariant === 'compact' &&
               'h-8 w-[8.5rem] px-2.5 text-xs shadow-md',
             resolvedVariant === 'default' &&
-              'h-11 w-full min-w-[140px] text-sm shadow-lg sm:h-12 sm:min-w-[160px] sm:text-base'
+              'h-11 w-full min-w-[140px] text-sm shadow-lg sm:h-12 sm:min-w-[160px] sm:text-base',
+            triggerClassName
           )}
         >
           <div

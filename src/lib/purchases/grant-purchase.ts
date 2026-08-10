@@ -23,6 +23,7 @@ export type GrantPurchaseAccessInput = {
 }
 
 export type GrantPurchaseAccessResult = {
+  userId: string
   userCreated: boolean
   temporaryPassword: string | null
   productsGranted: GrantedProductSummary[]
@@ -56,11 +57,12 @@ export async function grantPurchaseAccess(
 
   let userCreated = false
   let temporaryPassword: string | null = null
+  let userId: string
 
   if (!existingUser) {
     temporaryPassword = DEFAULT_TEMPORARY_PASSWORD
     const passwordHash = await hashPassword(temporaryPassword)
-    await prisma.user.create({
+    const created = await prisma.user.create({
       data: {
         email,
         name: nome,
@@ -70,10 +72,13 @@ export async function grantPurchaseAccess(
         temporaryPasswordPlain: temporaryPassword,
         mustResetPassword: true,
         emailVerified: new Date()
-      }
+      },
+      select: { id: true }
     })
+    userId = created.id
     userCreated = true
   } else {
+    userId = existingUser.id
     if (cpfDigits || nome) {
       await prisma.user.update({
         where: { id: existingUser.id },
@@ -113,6 +118,7 @@ export async function grantPurchaseAccess(
   }
 
   return {
+    userId,
     userCreated,
     temporaryPassword: userCreated ? temporaryPassword : null,
     productsGranted,

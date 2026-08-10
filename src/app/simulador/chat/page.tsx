@@ -1,5 +1,17 @@
-import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
+import { Loader2 } from 'lucide-react'
+import SimuladorChatPageClient from './SimuladorChatPageClient'
 
 export default function SimuladorChatPage() {
-  redirect('/simulador')
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-svh items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+        </div>
+      }
+    >
+      <SimuladorChatPageClient />
+    </Suspense>
+  )
 }

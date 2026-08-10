@@ -4,10 +4,12 @@ const AMBIGUOUS = new Set(['0', 'O', 'o', 'l', '1', 'I', 'i'])
 const CHARSET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
 
 /**
- * Senha padrão para usuários criados via webhook de compra (Hotmart/Stone).
+ * Senha de primeiro acesso das contas criadas por compra.
  *
- * É o valor impresso nos e-mails de acesso disparados pelo n8n, então precisa
- * bater exatamente com o que está configurado lá.
+ * Fixa por decisão de produto: é o valor impresso nos e-mails de acesso disparados
+ * pelo n8n, então precisa ser previsível. A conta fica bloqueada por
+ * `mustResetPassword` até o usuário definir a própria senha (ver `requireAuth`),
+ * o que limita a exposição à janela antes do primeiro login.
  */
 export const DEFAULT_TEMPORARY_PASSWORD = 'mediz123'
 

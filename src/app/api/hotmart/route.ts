@@ -14,7 +14,11 @@ import {
 import { validateHotmartHottok } from '@/lib/hotmart/validate-hottok'
 import { normalizeLibraryEmail } from '@/lib/library/email'
 import { grantPurchaseAccess } from '@/lib/purchases/grant-purchase'
-import { resolveHotmartGrantProductIds } from '@/lib/purchases/hotmart-grant-rules'
+import {
+  isHotmartBookProduct,
+  resolveHotmartGrantProductIds
+} from '@/lib/purchases/hotmart-grant-rules'
+import { startBookOnboarding } from '@/lib/purchases/start-book-onboarding'
 import { ensureLibraryUser } from '@/lib/purchases/migrate-legacy-permissions'
 import { notifyN8nNewUser } from '@/lib/purchases/notify-n8n-new-user'
 import { resolveCatalogProductByHotmartId } from '@/lib/purchases/resolve-product'
@@ -469,6 +473,23 @@ export async function POST(req: NextRequest) {
           source: 'hotmart',
           grantProductIds
         })
+
+        // Compra de livro tambem inicia os 7 dias de Profissional e a esteira de
+        // e-mails pos-compra. Nao lanca — falha aqui nao pode bloquear o acesso.
+        if (isHotmartBookProduct(incomingProductId)) {
+          await startBookOnboarding({
+            userId: grant.userId,
+            email,
+            name: getBuyerName(parsed),
+            source: 'hotmart',
+            externalTransactionId: transactionId,
+            currency: parsed.data.purchase.price?.currency_value ?? null,
+            country:
+              parsed.data.buyer?.address?.country_iso ??
+              parsed.data.purchase.checkout_country?.iso ??
+              null
+          })
+        }
 
         await notifyN8nNewUser({
           userCreated: grant.userCreated,
