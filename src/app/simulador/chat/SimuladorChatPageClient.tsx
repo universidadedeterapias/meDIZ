@@ -4,8 +4,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 import { Loader2 } from 'lucide-react'
 import { ConversationalChatPage } from '@/components/conversational-chat/ConversationalChatPage'
+import { SimuladorComingSoon } from '@/components/simulador/SimuladorComingSoon'
 import {
   parseSimulatorMode,
+  SIMULATOR_ENABLED,
   SIMULATOR_MODES
 } from '@/lib/conversational-chat/simulator-modes'
 
@@ -26,6 +28,11 @@ export default function SimuladorChatPageClient() {
         <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
       </div>
     )
+  }
+
+  // Fase de testes: os dois modos param na tela de espera antes do chat.
+  if (!SIMULATOR_ENABLED) {
+    return <SimuladorComingSoon mode={mode} />
   }
 
   const config = SIMULATOR_MODES[mode]

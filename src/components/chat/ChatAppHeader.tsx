@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, Bell, MessageSquarePlus } from 'lucide-react'
+import { ArrowLeft, Bell, History, MessageSquarePlus } from 'lucide-react'
 
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -14,9 +14,15 @@ import { cn } from '@/lib/utils'
 type ChatAppHeaderProps = {
   onSuggestion: () => void
   onBack?: () => void
+  /** Abre o histórico de conversas — só aparece quando informado */
+  onHistory?: () => void
 }
 
-export function ChatAppHeader({ onSuggestion, onBack }: ChatAppHeaderProps) {
+export function ChatAppHeader({
+  onSuggestion,
+  onBack,
+  onHistory
+}: ChatAppHeaderProps) {
   const { t } = useTranslation()
 
   return (
@@ -55,6 +61,19 @@ export function ChatAppHeader({ onSuggestion, onBack }: ChatAppHeaderProps) {
         </div>
 
         <div className="relative ml-auto flex shrink-0 items-center gap-1.5">
+          {onHistory ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onHistory}
+              className={cn(glassControlClass, 'size-9 rounded-xl')}
+              aria-label={t('chat.history.title', 'Histórico')}
+            >
+              <History className="size-[18px]" />
+            </Button>
+          ) : null}
+
           <Button
             type="button"
             variant="ghost"
