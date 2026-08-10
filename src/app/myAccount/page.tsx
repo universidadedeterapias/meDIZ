@@ -556,7 +556,7 @@ export default function MyAccountPage() {
           variant="secondary"
           onClick={() =>
             window.open(
-              'https://wa.me/5555997230707?text=%F0%9F%98%80%20Ol%C3%A1%2C%20gostaria%20de%20consultar%20um%20especialista!',
+              'https://wa.me/5555999863443?text=%F0%9F%98%80%20Ol%C3%A1%2C%20gostaria%20de%20consultar%20um%20especialista!',
               '_blank'
             )
           }
@@ -602,7 +602,7 @@ export default function MyAccountPage() {
         <Button
           size="sm"
           className="w-full bg-green-500 text-white hover:bg-green-600"
-          onClick={() => window.open('https://wa.me/+5555997230707', '_blank')}
+          onClick={() => window.open('https://wa.me/+5555999863443', '_blank')}
         >
           <FaWhatsapp />
           {t('account.support.whatsapp', 'Suporte via WhatsApp')}
