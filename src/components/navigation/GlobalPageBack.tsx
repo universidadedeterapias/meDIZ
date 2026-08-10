@@ -5,6 +5,7 @@ import { PageBackButton } from './PageBackButton'
 
 /** Rotas que já têm botão voltar no cabeçalho da página */
 const PAGES_WITH_HEADER_BACK = [
+  '/chat/history',
   '/audioterapia',
   '/biblioteca',
   '/cursos',
@@ -17,6 +18,7 @@ const PAGES_WITH_HEADER_BACK = [
 const HIDE_EXACT = new Set([
   '/',
   '/chat',
+  '/login',
   '/prof',
   '/simulador',
   '/admin-login',

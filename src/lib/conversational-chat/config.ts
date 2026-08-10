@@ -1,11 +1,64 @@
 import type { ChatKind } from '@prisma/client'
 
-export type ConversationalChatKind = Extract<ChatKind, 'SIMULADOR' | 'PROF'>
+export type ConversationalChatKind = Extract<
+  ChatKind,
+  'SEARCH' | 'SIMULADOR' | 'PROF'
+>
+
+export type SpecialistAgent = 'body' | 'home' | 'pet'
+export type MedizAgent = 'concierge' | SpecialistAgent
+export type ConciergeEntryPoint = 'free' | 'pain' | 'talk' | 'research'
+export type ConciergeDestination =
+  | 'medizpesquisa'
+  | 'minha_casa'
+  | 'meu_pet'
+  | 'meatende'
+  | 'simulador'
+  | 'professor'
+  | 'indefinido'
+
+export type ConciergeRouteStatus =
+  | 'collecting'
+  | 'awaiting_confirmation'
+  | 'ready_to_route'
+  | 'needs_selection'
+
+export function destinationToSpecialist(
+  destination: ConciergeDestination
+): SpecialistAgent | null {
+  if (destination === 'medizpesquisa') return 'body'
+  if (destination === 'minha_casa') return 'home'
+  if (destination === 'meu_pet') return 'pet'
+  return null
+}
+
+const AGENT_WELCOME_MESSAGES: Record<MedizAgent, string> = {
+  concierge: 'Conte o que está acontecendo. Eu vou encontrar o melhor caminho para você.',
+  body: 'O que você está sentindo e gostaria de compreender melhor?',
+  home: 'O que aconteceu na sua casa e chamou a sua atenção?',
+  pet: 'O que você percebeu no seu pet e gostaria de compreender melhor?'
+}
+
+export function getAgentWelcomeMessage(agent: MedizAgent): string {
+  return AGENT_WELCOME_MESSAGES[agent]
+}
+
+export function getConciergeEntryMessage(entryPoint: ConciergeEntryPoint) {
+  if (entryPoint === 'pain') return 'Sinto muito. Pode me falar mais sobre essa dor?'
+  if (entryPoint === 'talk') return 'Estou aqui. Sobre o que você quer conversar?'
+  if (entryPoint === 'research') return 'Claro! Sobre o que você quer pesquisar?'
+  return getAgentWelcomeMessage('concierge')
+}
 
 export const CONVERSATIONAL_CHAT_WEBHOOKS: Record<
   ConversationalChatKind,
   { envKey: string; fallbackUrl: string }
 > = {
+  SEARCH: {
+    envKey: 'N8N_CHAT_WEBHOOK_URL_V2',
+    fallbackUrl:
+      'https://mediz-n8n.gjhi7d.easypanel.host/webhook/chat-texto-v2'
+  },
   SIMULADOR: {
     envKey: 'N8N_SIMULADOR_WEBHOOK_URL',
     fallbackUrl:
@@ -30,8 +83,55 @@ export function getConversationalWebhookUrl(
   return fromEnv || config.fallbackUrl
 }
 
+const TRANSCRIBE_WEBHOOK_ENV_KEY = 'N8N_TRANSCRIBE_WEBHOOK_URL'
+const TRANSCRIBE_WEBHOOK_FALLBACK_URL =
+  'https://mediz-n8n.gjhi7d.easypanel.host/webhook/transcrever-audio'
+
+export function getTranscribeWebhookUrl(): string {
+  return process.env[TRANSCRIBE_WEBHOOK_ENV_KEY]?.trim() || TRANSCRIBE_WEBHOOK_FALLBACK_URL
+}
+
 export function isConversationalChatKind(
   value: string
 ): value is ConversationalChatKind {
-  return value === 'SIMULADOR' || value === 'PROF'
+  return value === 'SEARCH' || value === 'SIMULADOR' || value === 'PROF'
+}
+
+export function isMedizAgent(value: string): value is MedizAgent {
+  return value === 'concierge' || isSpecialistAgent(value)
+}
+
+export function isSpecialistAgent(value: string): value is SpecialistAgent {
+  return value === 'body' || value === 'home' || value === 'pet'
+}
+
+/**
+ * Todo agente conversacional com prompt hoje mantido no n8n (concierge/specialists via
+ * chat kind SEARCH, mais simulador e professor). Chave usada em `AgentPromptConfig`.
+ */
+export type ConversationalAgentId = MedizAgent | 'simulador' | 'professor'
+
+export const CONVERSATIONAL_AGENT_IDS: readonly ConversationalAgentId[] = [
+  'concierge',
+  'body',
+  'home',
+  'pet',
+  'simulador',
+  'professor'
+]
+
+export function isConversationalAgentId(
+  value: string
+): value is ConversationalAgentId {
+  return (
+    isMedizAgent(value) || value === 'simulador' || value === 'professor'
+  )
+}
+
+/**
+ * Painel de teste de prompt dos agentes (editar/salvar no banco direto pela tela /chat).
+ * So deve ser ligado em HML — nunca em producao.
+ */
+export function isAgentPromptTestModeEnabled(): boolean {
+  return process.env.AGENT_PROMPT_TEST_MODE === 'true'
 }

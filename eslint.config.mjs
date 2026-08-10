@@ -30,7 +30,10 @@ export default [
         alert: 'readonly',
         confirm: 'readonly',
         requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
         performance: 'readonly',
+        AudioContext: 'readonly',
+        AnalyserNode: 'readonly',
         
         // File API globals
         File: 'readonly',
@@ -46,6 +49,9 @@ export default [
         AbortController: 'readonly',
         AbortSignal: 'readonly',
         XMLHttpRequest: 'readonly',
+        MediaRecorder: 'readonly',
+        MediaStream: 'readonly',
+        BlobPart: 'readonly',
         
         // Event globals
         Event: 'readonly',

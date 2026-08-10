@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-export function validateWebhookBearer(request: NextRequest): NextResponse | null {
-  const secret = process.env.WEBHOOK_SECRET_TOKEN
+export function validateWebhookBearer(
+  request: NextRequest,
+  envVarName: string = 'WEBHOOK_SECRET_TOKEN'
+): NextResponse | null {
+  const secret = process.env[envVarName]
   if (!secret) {
     return NextResponse.json(
       { error: 'Webhook not configured' },
