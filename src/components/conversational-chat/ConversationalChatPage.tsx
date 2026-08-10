@@ -374,7 +374,7 @@ export function ConversationalChatPage({
   return (
     <SidebarProvider
       className={cn(
-        'relative isolate h-svh overflow-hidden',
+        'relative isolate h-dvh overflow-hidden',
         'before:pointer-events-none before:fixed before:-left-28 before:-top-24 before:z-0 before:size-96 before:rounded-full before:bg-violet-300/20 before:blur-3xl',
         'after:pointer-events-none after:fixed after:-bottom-32 after:right-0 after:z-0 after:size-80 after:rounded-full after:bg-slate-200/25 after:blur-3xl',
         'dark:before:bg-violet-700/10 dark:after:bg-violet-950/10',
@@ -391,7 +391,7 @@ export function ConversationalChatPage({
         onSelectSession={() => {}}
       />
 
-      <SidebarInset className="h-svh min-w-0 overflow-hidden !bg-transparent">
+      <SidebarInset className="h-dvh min-w-0 overflow-hidden !bg-transparent">
         <div className="flex h-full min-h-0 flex-col overflow-hidden bg-transparent text-foreground">
           <ChatAppHeader
             onSuggestion={() => router.push('/suggestion')}

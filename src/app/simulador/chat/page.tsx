@@ -6,7 +6,7 @@ export default function SimuladorChatPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-svh items-center justify-center bg-background">
+        <div className="flex min-h-dvh items-center justify-center bg-background">
           <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
         </div>
       }

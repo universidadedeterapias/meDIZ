@@ -18,7 +18,7 @@ export default function SymptomsDashboardPage() {
         onSelectSession={() => {}}
       />
       <SidebarInset>
-        <div className="flex min-h-svh flex-col bg-background">
+        <div className="flex min-h-dvh flex-col bg-background">
           <AppPageHeader
             title={t('dashboard.symptoms.title', 'Dashboard de Sintomas')}
           />

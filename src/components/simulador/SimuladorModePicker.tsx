@@ -134,9 +134,9 @@ export function SimuladorModePicker() {
   const router = useRouter()
 
   return (
-    <SidebarProvider className="relative isolate min-h-svh bg-gradient-to-b from-[#f3ecfa] to-white dark:from-[#0f0a18] dark:to-background">
+    <SidebarProvider className="relative isolate min-h-dvh bg-gradient-to-b from-[#f3ecfa] to-white dark:from-[#0f0a18] dark:to-background">
       <AppSidebar history={[]} selectedThread={null} onSelectSession={() => {}} />
-      <SidebarInset className="min-h-svh !bg-transparent">
+      <SidebarInset className="min-h-dvh !bg-transparent">
         <ChatAppHeader onSuggestion={() => router.push('/suggestion')} />
 
         <main className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-12">

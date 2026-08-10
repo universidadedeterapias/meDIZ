@@ -24,7 +24,7 @@ export default function SimuladorChatPageClient() {
 
   if (!mode) {
     return (
-      <div className="flex min-h-svh items-center justify-center">
+      <div className="flex min-h-dvh items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
       </div>
     )
