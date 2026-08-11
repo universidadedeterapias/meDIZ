@@ -5,6 +5,12 @@ export const DISCOVERY_TEXT_MAX_LENGTH = 450
 export const DISCOVERY_AUDIO_NUDGE_SECONDS = 12
 export const DISCOVERY_AUDIO_MAX_SECONDS = 30
 export const DISCOVERY_SESSION_MAX_SECONDS = 90
+/**
+ * Teto de mensagens aceitas em `/api/discovery/complete`. O cliente corta o
+ * transcript por este mesmo número antes de enviar — passar do limite fazia a
+ * conclusão responder 400 e o usuário nunca saía do gate.
+ */
+export const DISCOVERY_TRANSCRIPT_MAX_MESSAGES = 20
 
 export const discoveryChannelSchema = z.enum(['voice', 'text'])
 export const discoveryRoleSchema = z.enum(['assistant', 'user'])
@@ -17,7 +23,10 @@ export const discoveryTranscriptMessageSchema = z.object({
   durationSeconds: z.number().finite().min(0).max(300)
 })
 
-export const discoveryTranscriptSchema = z.array(discoveryTranscriptMessageSchema).min(1).max(20)
+export const discoveryTranscriptSchema = z
+  .array(discoveryTranscriptMessageSchema)
+  .min(1)
+  .max(DISCOVERY_TRANSCRIPT_MAX_MESSAGES)
 
 export const discoveryUsageSchema = z
   .object({

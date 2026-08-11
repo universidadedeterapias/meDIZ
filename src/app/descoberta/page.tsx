@@ -17,6 +17,7 @@ import {
   DISCOVERY_AUDIO_NUDGE_SECONDS,
   DISCOVERY_SESSION_MAX_SECONDS,
   DISCOVERY_TEXT_MAX_LENGTH,
+  DISCOVERY_TRANSCRIPT_MAX_MESSAGES,
   type DiscoveryTranscriptMessage
 } from '@/lib/discovery'
 import { glassPanelClass } from '@/lib/glassStyles'
@@ -24,6 +25,9 @@ import { cn } from '@/lib/utils'
 
 type DiscoveryStatus = 'checking' | 'consent' | 'chat' | 'finishing' | 'completed-test-mode'
 type DiscoveryUsageTotals = Omit<DiscoveryRealtimeUsage, 'responseId'>
+
+/** Tentativas de gravar a conclusão antes de oferecer a saída manual. */
+const DISCOVERY_COMPLETE_MAX_ATTEMPTS = 3
 
 function emptyUsageTotals(): DiscoveryUsageTotals {
   return {
@@ -104,6 +108,9 @@ export default function DiscoveryPage() {
   const [inputVolume, setInputVolume] = useState(0)
   const [voiceElapsedSeconds, setVoiceElapsedSeconds] = useState(0)
   const [hasUsedVoice, setHasUsedVoice] = useState(false)
+  const [leaving, setLeaving] = useState(false)
+  const [realtimeUnavailable, setRealtimeUnavailable] = useState(false)
+  const [completionFailed, setCompletionFailed] = useState(false)
 
   const voiceButtonRef = useRef<HTMLButtonElement | null>(null)
   const conversationEndRef = useRef<HTMLDivElement | null>(null)
@@ -121,8 +128,34 @@ export default function DiscoveryPage() {
   const pendingUserVoiceDurationsRef = useRef<number[]>([])
   const pendingUserTextDurationsRef = useRef<number[]>([])
   const durationByMessageIdRef = useRef<Map<string, number>>(new Map())
+  const leavingRef = useRef(false)
 
   const voiceSecondsLeft = Math.max(0, DISCOVERY_AUDIO_MAX_SECONDS - voiceElapsedSeconds)
+
+  /**
+   * Libera o gate e volta para o chat. Sem isto, quem já consentiu só sai da
+   * descoberta concluindo-a — qualquer falha no meio do caminho vira o laço
+   * /chat → /descoberta, porque o /chat redireciona de volta enquanto a
+   * descoberta estiver pendente.
+   */
+  const leaveDiscovery = useCallback(async () => {
+    if (leavingRef.current) return
+
+    leavingRef.current = true
+    setLeaving(true)
+    setError('')
+
+    try {
+      const response = await fetch('/api/discovery/skip', { method: 'POST' })
+      if (!response.ok) throw new Error('Falha ao sair da descoberta')
+
+      router.replace('/chat')
+    } catch {
+      leavingRef.current = false
+      setLeaving(false)
+      setError('Não consegui liberar o chat agora. Tenta de novo?')
+    }
+  }, [router])
 
   useEffect(() => {
     messagesRef.current = messages
@@ -218,8 +251,13 @@ export default function DiscoveryPage() {
       setRealtimeModel(data.model)
       setRealtimeTranscriptionModel(data.transcriptionModel)
       setRealtimeInstructions(data.instructions)
+      setRealtimeUnavailable(false)
     } catch {
-      setError('Não consegui abrir a conversa por voz agora. Você ainda pode escrever.')
+      // O modo texto também depende desta sessão (`sendText` vai pelo mesmo
+      // canal), então aqui não sobra nenhuma forma de concluir a descoberta:
+      // a saída manual passa a ser a única opção honesta.
+      setRealtimeUnavailable(true)
+      setError('Não consegui abrir a conversa agora.')
     }
   }
 
@@ -430,14 +468,25 @@ export default function DiscoveryPage() {
   }, [])
 
   useEffect(() => {
-    if (!finished || completedRef.current || messagesRef.current.length === 0) return
+    if (!finished || completedRef.current) return
+
+    // Encerrou sem nada para gravar (ex.: tool-call disparada antes da primeira
+    // resposta): não há conclusão possível, e ficar aqui só congelaria a tela,
+    // já que `finished` desabilita voz e teclado.
+    if (messagesRef.current.length === 0) {
+      completedRef.current = true
+      void leaveDiscovery()
+      return
+    }
 
     completedRef.current = true
     setStatus('finishing')
     let cancelled = false
 
     const timeout = window.setTimeout(async () => {
-      while (!cancelled) {
+      for (let attempt = 1; attempt <= DISCOVERY_COMPLETE_MAX_ATTEMPTS; attempt++) {
+        if (cancelled) return
+
         try {
           completionEventIdRef.current ??= window.crypto.randomUUID()
           const response = await fetch('/api/discovery/complete', {
@@ -445,7 +494,9 @@ export default function DiscoveryPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               eventId: completionEventIdRef.current,
-              transcript: messagesRef.current,
+              // O endpoint recusa transcripts acima do teto; mandar a conversa
+              // inteira transformava uma sessão longa em 400 a cada tentativa.
+              transcript: messagesRef.current.slice(-DISCOVERY_TRANSCRIPT_MAX_MESSAGES),
               totalDurationSeconds: Math.min(
                 DISCOVERY_SESSION_MAX_SECONDS,
                 Math.max(1, Math.round((Date.now() - (sessionStartedAtRef.current ?? Date.now())) / 1000))
@@ -458,20 +509,48 @@ export default function DiscoveryPage() {
 
           router.replace('/chat')
           return
-        } catch {
+        } catch (completionError) {
+          console.error('[Discovery] Falha ao concluir:', completionError)
+          if (attempt === DISCOVERY_COMPLETE_MAX_ATTEMPTS) break
+
           setError('Só um instante, estou guardando nossa conversa...')
           await new Promise((resolve) => window.setTimeout(resolve, 3000))
         }
       }
+
+      if (cancelled) return
+
+      // Depois das tentativas, insistir em silêncio prenderia a pessoa numa
+      // tela de espera infinita — melhor assumir e devolver o controle.
+      setCompletionFailed(true)
+      setError('Não consegui guardar nossa conversa agora.')
     }, 1200)
 
     return () => {
       cancelled = true
       window.clearTimeout(timeout)
     }
-  }, [finished, router])
+  }, [finished, leaveDiscovery, router])
 
   const showChat = status === 'chat' || status === 'finishing'
+  /** Não há mais como concluir a descoberta: só resta oferecer a saída. */
+  const stuck = realtimeUnavailable || completionFailed
+
+  const leaveButton = (label: string, variant: 'primary' | 'ghost') => (
+    <button
+      type="button"
+      onClick={() => void leaveDiscovery()}
+      disabled={leaving}
+      className={cn(
+        'h-11 rounded-full px-5 text-sm font-medium transition disabled:opacity-60',
+        variant === 'primary'
+          ? 'bg-gradient-to-br from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/25 hover:shadow-xl'
+          : cn(glassPanelClass, 'text-zinc-700 hover:bg-white/70 dark:text-zinc-200')
+      )}
+    >
+      {leaving ? 'Saindo…' : label}
+    </button>
+  )
 
   return (
     <div className="relative isolate flex h-svh flex-col overflow-hidden bg-gradient-to-br from-violet-50 via-slate-50 to-violet-100/70 before:pointer-events-none before:fixed before:-left-28 before:-top-24 before:z-0 before:size-96 before:rounded-full before:bg-violet-300/20 before:blur-3xl after:pointer-events-none after:fixed after:-bottom-32 after:right-0 after:z-0 after:size-80 after:rounded-full after:bg-slate-200/25 after:blur-3xl dark:from-[#0f0e14] dark:via-[#111017] dark:to-[#17131f] dark:before:bg-violet-700/10 dark:after:bg-violet-950/10">
@@ -506,7 +585,11 @@ export default function DiscoveryPage() {
         />
       )}
 
-      <ChatAppHeader onSuggestion={() => {}} onBack={() => router.push('/chat')} />
+      {/*
+        Voltar precisa liberar o gate: mandar para /chat sem isso só devolve a
+        pessoa para cá no próximo redirecionamento.
+      */}
+      <ChatAppHeader onSuggestion={() => {}} onBack={() => void leaveDiscovery()} />
 
       <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden px-4 pb-4">
         {status === 'checking' ? (
@@ -605,7 +688,7 @@ export default function DiscoveryPage() {
                   )
                 })}
 
-                {status === 'finishing' ? (
+                {status === 'finishing' && !completionFailed ? (
                   <div className="flex items-center gap-2.5 text-sm text-zinc-500 dark:text-zinc-400">
                     <span className="flex size-8 items-center justify-center rounded-full bg-white/70 shadow-sm dark:bg-zinc-900/80">
                       <Sparkles className="size-4 animate-pulse text-violet-600 dark:text-violet-300" />
@@ -646,6 +729,16 @@ export default function DiscoveryPage() {
               </div>
             ) : null}
 
+            {stuck ? (
+              <div className="flex shrink-0 flex-col items-center gap-3 pb-[env(safe-area-inset-bottom)] pt-2 text-center">
+                <p className="max-w-sm text-sm text-zinc-600 dark:text-zinc-300">
+                  {completionFailed
+                    ? 'Pode seguir para o chat — a gente retoma esse papo em outro momento.'
+                    : 'Seguimos sem essa conversa por enquanto. Você pode ir para o chat e fazer isso depois.'}
+                </p>
+                {leaveButton('Ir para o chat', 'primary')}
+              </div>
+            ) : (
             <div className="flex shrink-0 items-center justify-center gap-5 pb-[env(safe-area-inset-bottom)] pt-2">
               {textMode ? (
                 <form
@@ -739,11 +832,25 @@ export default function DiscoveryPage() {
                 </>
               )}
             </div>
+            )}
 
-            {!textMode && !hasUsedVoice ? (
+            {!stuck && !textMode && !hasUsedVoice ? (
               <p className="pb-2 text-center text-sm text-zinc-500 dark:text-zinc-400">
                 {realtimeConnected ? 'Segure para falar' : 'Conectando voz…'}
               </p>
+            ) : null}
+
+            {!stuck ? (
+              <div className="flex shrink-0 justify-center pb-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => void leaveDiscovery()}
+                  disabled={leaving}
+                  className="text-xs text-zinc-500 underline-offset-4 transition hover:underline disabled:opacity-60 dark:text-zinc-400"
+                >
+                  {leaving ? 'Saindo…' : 'Continuar depois'}
+                </button>
+              </div>
             ) : null}
           </div>
         ) : null}
