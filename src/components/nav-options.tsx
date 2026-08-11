@@ -2,6 +2,7 @@
 
 import {
   Activity,
+  Compass,
   FileText,
   GraduationCap,
   HeartHandshake,
@@ -362,6 +363,13 @@ export function NavOptions({
             icon={FaWhatsapp}
             iconClassName="text-emerald-600 dark:text-emerald-400"
             external
+          />
+          <NavItem
+            href="/tutorial"
+            label={t('sidebar.tutorial', 'Ver tutorial')}
+            icon={Compass}
+            isActive={pathname === '/tutorial'}
+            iconClassName="text-violet-600 dark:text-violet-400"
           />
           <NavItem
             href="https://universidadedeterapias.com.br/termos-de-uso"

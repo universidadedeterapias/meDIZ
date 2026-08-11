@@ -141,6 +141,22 @@ export default function Page() {
           // Falha ao consultar descoberta nao deve bloquear o acesso ao chat.
         }
 
+        // Tutorial do 2.0: vem depois da descoberta de proposito — quem cai nos
+        // dois faz a conversa primeiro e, ao voltar dela para o /chat, encontra
+        // este gate. Toda a base passa por ele uma vez.
+        try {
+          const tutorialRes = await fetch('/api/tutorial/status')
+          if (tutorialRes.ok) {
+            const tutorialData = await tutorialRes.json()
+            if (tutorialData.requiresTutorial) {
+              router.replace('/tutorial')
+              return
+            }
+          }
+        } catch {
+          // Mesma regra da descoberta: falha de consulta nao prende ninguem.
+        }
+
         try {
           const promptTestModeRes = await fetch('/api/conversational-chat/dev/prompt')
           if (promptTestModeRes.ok) {

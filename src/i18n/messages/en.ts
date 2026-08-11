@@ -70,6 +70,7 @@ const messages = {
   'chat.home.microphone.error': 'Error transcribing audio. Please try again.',
   'sidebar.subscriptionPlus': 'meDIZ+ plan',
   'sidebar.supportWhatsapp': 'Support (WhatsApp)',
+  'sidebar.tutorial': 'View tutorial',
   'sidebar.termsPolicies': 'Terms & Policies',
   'sidebar.simulateTherapy': 'Simulate therapy',
   'sidebar.simulateService': 'Simulate a session',

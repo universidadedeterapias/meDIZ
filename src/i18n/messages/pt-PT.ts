@@ -70,6 +70,7 @@ const messages = {
   'chat.home.microphone.error': 'Erro ao transcrever áudio. Tente novamente.',
   'sidebar.subscriptionPlus': 'Subscrição Plus',
   'sidebar.supportWhatsapp': 'Apoio (WhatsApp)',
+  'sidebar.tutorial': 'Ver tutorial',
   'sidebar.termsPolicies': 'Termos e Políticas',
   'sidebar.simulateTherapy': 'Simular terapia',
   'sidebar.simulateService': 'Simular atendimento',
