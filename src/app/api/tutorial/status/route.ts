@@ -1,6 +1,6 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
-import { getTutorialEmbedUrl, getTutorialShareUrl } from '@/lib/tutorial'
+import { getTutorialUrl } from '@/lib/tutorial'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -12,8 +12,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
 
-  const embedUrl = getTutorialEmbedUrl()
-  const shareUrl = getTutorialShareUrl()
+  const tutorialUrl = getTutorialUrl()
 
   try {
     const profile = await prisma.userProfile.findUnique({
@@ -26,8 +25,7 @@ export async function GET() {
       // proximo acesso, que e o objetivo do lancamento do 2.0.
       requiresTutorial: !profile?.tutorialSeenAt,
       tutorialSeenAt: profile?.tutorialSeenAt?.toISOString() ?? null,
-      embedUrl,
-      shareUrl
+      tutorialUrl
     })
   } catch (error) {
     console.error('[Tutorial Status] Falha ao consultar:', error)
@@ -36,8 +34,7 @@ export async function GET() {
     return NextResponse.json({
       requiresTutorial: false,
       tutorialSeenAt: null,
-      embedUrl,
-      shareUrl,
+      tutorialUrl,
       degraded: true
     })
   }
