@@ -661,6 +661,8 @@ model UserProfile {
   lifeCompact        String?   @map("life_compact")
   lastConversationAt DateTime? @map("last_conversation_at")
   lastTopic          String?   @map("last_topic")
+  /// Tutorial do meDIZ 2.0: nulo == ainda cai no gate; preenchido ao concluir ou pular.
+  tutorialSeenAt     DateTime? @map("tutorial_seen_at")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
   user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)

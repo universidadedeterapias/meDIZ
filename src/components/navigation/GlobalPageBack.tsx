@@ -21,6 +21,9 @@ const HIDE_EXACT = new Set([
   '/login',
   '/prof',
   '/simulador',
+  // O tutorial tem saída própria no cabeçalho, que marca como visto antes de
+  // navegar. O voltar flutuante sairia sem marcar e o /chat mandaria de volta.
+  '/tutorial',
   '/admin-login',
   '/form',
   '/success',
