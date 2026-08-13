@@ -76,6 +76,18 @@ function normalizeModuleMedia(raw: unknown): ModuleMedia {
   }
 }
 
+/**
+ * O fallback legado monta itens com id sintético (`legacy-pdf`) ou cai no
+ * próprio url quando a API não manda id. Nenhum dos dois existe em
+ * `CatalogModuleMedia`, então mandá-los como `mediaId` faria o download
+ * responder 404 — melhor omitir e deixar o servidor escolher o PDF.
+ */
+function moduleMediaId(item: MediaItem): string | undefined {
+  if (!item.id || item.id === item.url) return undefined
+  if (item.id.startsWith('legacy-')) return undefined
+  return item.id
+}
+
 function buildVideoPlaylist(modules: CourseModule[]): VideoPlaylistItem[] {
   const list: VideoPlaylistItem[] = []
   modules.forEach((mod, moduleIndex) => {
@@ -103,9 +115,12 @@ export default function CursosLeitorPage() {
   const [product, setProduct] = useState<CatalogProductOffer | null>(null)
   const [materials, setMaterials] = useState<CourseMaterials | null>(null)
   const [playlistIndex, setPlaylistIndex] = useState(0)
-  const [showPdf, setShowPdf] = useState<{ url: string; title: string } | null>(
-    null
-  )
+  const [showPdf, setShowPdf] = useState<{
+    url: string
+    title: string
+    /** `CatalogModuleMedia.id` — o download precisa saber qual PDF está aberto. */
+    mediaId?: string
+  } | null>(null)
   const [showAudio, setShowAudio] = useState<{
     url: string
     title: string
@@ -287,6 +302,7 @@ export default function CursosLeitorPage() {
         backHref="/cursos"
         variant="pdf"
         productId={productId}
+        mediaId={showPdf.mediaId}
         onBack={() => setShowPdf(null)}
       />
     )
@@ -328,7 +344,8 @@ export default function CursosLeitorPage() {
       onOpenPdf={(pdf, moduleTitle) =>
         setShowPdf({
           url: pdf.url,
-          title: pdf.title ?? moduleTitle
+          title: pdf.title ?? moduleTitle,
+          mediaId: moduleMediaId(pdf)
         })
       }
       onOpenAudio={(audio, moduleIndex) =>

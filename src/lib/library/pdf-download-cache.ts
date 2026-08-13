@@ -10,14 +10,20 @@ function cacheRoot(): string {
   return process.env.PDF_DOWNLOAD_CACHE_DIR || path.join(os.tmpdir(), 'mediz-pdf-cache')
 }
 
-/** Chave inclui o mês corrente para não misturar cache com a janela de cota mensal. */
+/**
+ * Chave inclui o mês corrente para não misturar cache com a janela de cota mensal.
+ * `mediaId` separa os PDFs de um mesmo curso — sem ele, os 4 materiais de um
+ * produto VIDEO colidiriam na mesma entrada e o segundo download serviria o
+ * arquivo do primeiro.
+ */
 export function cacheKeyFor(
   userId: string,
   productId: string,
+  mediaId?: string | null,
   watermarkVersion = 'v1'
 ): string {
   const month = new Date().toISOString().slice(0, 7)
-  const raw = `${userId}:${productId}:${watermarkVersion}:${month}`
+  const raw = `${userId}:${productId}:${mediaId ?? ''}:${watermarkVersion}:${month}`
   return createHash('sha256').update(raw).digest('hex')
 }
 

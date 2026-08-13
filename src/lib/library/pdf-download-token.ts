@@ -4,6 +4,12 @@ import { prisma } from '@/lib/prisma'
 export type PdfDownloadTokenPayload = {
   uid: string
   pid: string
+  /**
+   * Mídia específica do curso (`CatalogModuleMedia.id`). Um produto VIDEO tem
+   * vários PDFs de módulo, então o productId sozinho não identifica o arquivo.
+   * Vai assinado no token para o /file não aceitar troca de mídia via query.
+   */
+  mid?: string
   jti: string
   exp: number
 }
@@ -31,7 +37,8 @@ function encode(payload: PdfDownloadTokenPayload): string {
 
 export async function createPdfDownloadToken(
   userId: string,
-  productId: string
+  productId: string,
+  mediaId?: string | null
 ): Promise<{ token: string; expiresAt: Date }> {
   const jti = randomBytes(24).toString('hex')
   const exp = Math.floor(Date.now() / 1000) + DEFAULT_TTL_SECONDS
@@ -46,7 +53,13 @@ export async function createPdfDownloadToken(
     }
   })
 
-  const payload: PdfDownloadTokenPayload = { uid: userId, pid: productId, jti, exp }
+  const payload: PdfDownloadTokenPayload = {
+    uid: userId,
+    pid: productId,
+    ...(mediaId?.trim() ? { mid: mediaId.trim() } : {}),
+    jti,
+    exp
+  }
   const encoded = encode(payload)
   return { token: `${encoded}.${sign(encoded)}`, expiresAt }
 }
