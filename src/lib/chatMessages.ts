@@ -123,13 +123,7 @@ export async function getChatSessionForUser(threadId: string, userId: string) {
 }
 
 export async function getThreadMessages(threadId: string): Promise<ThreadMessages> {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chatMessages.ts:43',message:'getThreadMessages entry',data:{threadId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
-  // #endregion
   const chatSessionId = await getChatSessionIdByThread(threadId)
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chatMessages.ts:45',message:'ChatSessionId found',data:{chatSessionId:chatSessionId||'null',threadId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
-  // #endregion
 
   if (!chatSessionId) {
     return { assistant: [], user: [] }
@@ -143,9 +137,6 @@ export async function getThreadMessages(threadId: string): Promise<ThreadMessage
       content: true
     }
   })
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chatMessages.ts:57',message:'Messages found in database',data:{totalMessages:messages.length,assistantMessages:messages.filter(m=>m.role==='ASSISTANT').length,userMessages:messages.filter(m=>m.role==='USER').length,roles:messages.map(m=>m.role)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
-  // #endregion
 
   const result = messages.reduce<ThreadMessages>(
     (acc, message) => {
@@ -158,9 +149,6 @@ export async function getThreadMessages(threadId: string): Promise<ThreadMessage
     },
     { assistant: [], user: [] }
   )
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/87541063-b58b-4851-84d0-115904928ef7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chatMessages.ts:69',message:'getThreadMessages result',data:{assistantCount:result.assistant.length,userCount:result.user.length,firstAssistantPreview:result.assistant[0]?.substring(0,100)||'N/A'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
-  // #endregion
   return result
 }
 

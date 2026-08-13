@@ -390,6 +390,7 @@ enum ChatKind {
   SEARCH
   SIMULADOR
   PROF
+  SYMPTOM_SEARCH
 }
 
 enum StatusVerificacao {

@@ -97,6 +97,37 @@ export function isConversationalChatKind(
   return value === 'SEARCH' || value === 'SIMULADOR' || value === 'PROF'
 }
 
+/**
+ * Modo pesquisa por sintoma (`/pesquisa`): o chat legado de relatorio estruturado,
+ * atendido por `/api/openai` e pelo webhook `chat-texto`. Nao e um chat conversacional —
+ * fica de fora de `ConversationalChatKind` de proposito, pra que o POST de
+ * `/api/conversational-chat` continue rejeitando esse kind (nao existe webhook v2 pra ele
+ * em `CONVERSATIONAL_CHAT_WEBHOOKS`).
+ */
+export const SYMPTOM_SEARCH_CHAT_KIND = 'SYMPTOM_SEARCH' as const
+
+/**
+ * Kinds que a tela de historico pode listar — inclui o modo pesquisa, que so e legivel,
+ * nunca gravavel pela rota conversacional.
+ */
+export type HistoryChatKind =
+  | ConversationalChatKind
+  | typeof SYMPTOM_SEARCH_CHAT_KIND
+
+export function isHistoryChatKind(value: string): value is HistoryChatKind {
+  return isConversationalChatKind(value) || value === SYMPTOM_SEARCH_CHAT_KIND
+}
+
+/**
+ * Kinds que consomem a cota diaria do plano gratuito (`getUserLimits().searchLimit`).
+ * Chat conversacional e modo pesquisa dividem o mesmo teto: gastar num lado reduz o outro.
+ * Simulador e professor tem gate proprio (premium) e ficam de fora.
+ */
+export const FREE_DAILY_QUOTA_CHAT_KINDS = [
+  'SEARCH',
+  SYMPTOM_SEARCH_CHAT_KIND
+] as const satisfies readonly ChatKind[]
+
 export function isMedizAgent(value: string): value is MedizAgent {
   return value === 'concierge' || isSpecialistAgent(value)
 }

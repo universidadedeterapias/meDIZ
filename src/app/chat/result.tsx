@@ -250,12 +250,9 @@ export function Result({
           
           {/* Botão de exportação PDF */}
           <div className="ml-2 sm:ml-4 flex-shrink-0">
-            {/* Logs removidos em produção para evitar vazamento de conteúdo/PII */}
-            <ExportPDFButton
-              question={userQuestion}
-              answer={markdown}
-              sessionId={sessionId}
-            />
+            {/* symptomText já cai para o nome popular/científico quando a pergunta
+                original não veio junto (ex.: pesquisa reaberta pelo histórico). */}
+            <ExportPDFButton question={symptomText} answer={markdown} />
           </div>
         </div>
       </CardHeader>

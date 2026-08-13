@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import {
-  isConversationalChatKind,
+  isHistoryChatKind,
   isMedizAgent
 } from '@/lib/conversational-chat/config'
 import { isUserPremium } from '@/lib/premiumUtils'
@@ -25,8 +25,10 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url)
+  // Leitura de histórico aceita também SYMPTOM_SEARCH (modo pesquisa). O POST de
+  // /api/conversational-chat continua restrito a isConversationalChatKind.
   const chatKindRaw = searchParams.get('chatKind')?.trim() ?? ''
-  if (!isConversationalChatKind(chatKindRaw)) {
+  if (!isHistoryChatKind(chatKindRaw)) {
     return NextResponse.json({ error: 'chatKind inválido' }, { status: 400 })
   }
 
@@ -74,6 +76,7 @@ export async function GET(req: Request) {
         id: true,
         threadId: true,
         agent: true,
+        chatKind: true,
         createdAt: true,
         messages: {
           where: { role: 'USER' },
@@ -91,6 +94,8 @@ export async function GET(req: Request) {
       id: row.id,
       threadId: row.threadId!,
       agent: isMedizAgent(row.agent ?? '') ? row.agent : null,
+      // A tela usa isto pra decidir se reabre em /chat ou em /pesquisa.
+      chatKind: row.chatKind,
       createdAt: row.createdAt.toISOString(),
       firstUserMessage: row.messages[0]?.content ?? ''
     })),

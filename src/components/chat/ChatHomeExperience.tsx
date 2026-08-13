@@ -35,6 +35,11 @@ type ChatHomeExperienceProps = {
     starter: string,
     entryPoint?: ConciergeEntryPoint
   ) => void
+  /**
+   * Abre o modo pesquisa por sintoma (`/pesquisa`). Quando informado, o atalho
+   * "Quero pesquisar" navega para lá em vez de iniciar uma conversa com o porteiro.
+   */
+  onOpenResearch?: () => void
 }
 
 const agentStyles: Record<SpecialistAgent, { icon: string }> = {
@@ -56,7 +61,8 @@ export function ChatHomeExperience({
   onInputChange,
   onSubmit,
   onSubmitText,
-  onStartConversation
+  onStartConversation,
+  onOpenResearch
 }: ChatHomeExperienceProps) {
   const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -157,16 +163,21 @@ export function ChatHomeExperience({
         <div className="mt-3 flex gap-2 overflow-x-auto px-0.5 pb-4 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {intents.map((intent, index) => {
             const Icon = index === 0 ? HeartPulse : index === 1 ? MessageCircleMore : Search
+            // "Quero pesquisar" leva ao modo pesquisa por sintoma, que é uma rota
+            // própria e não uma conversa com o porteiro.
+            const opensResearch = intent.id === 'research' && Boolean(onOpenResearch)
             return (
               <button
                 key={intent.id}
                 type="button"
                 onClick={() =>
-                  onStartConversation(
-                    'concierge',
-                    intent.starter,
-                    intent.entryPoint
-                  )
+                  opensResearch
+                    ? onOpenResearch?.()
+                    : onStartConversation(
+                        'concierge',
+                        intent.starter,
+                        intent.entryPoint
+                      )
                 }
                 disabled={loading}
                 className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full bg-white/90 px-3 text-xs font-medium text-zinc-700 shadow-lg shadow-violet-950/10 transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-xl hover:shadow-violet-950/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 dark:bg-white/10 dark:text-zinc-100 dark:shadow-black/20 dark:hover:bg-white/15"

@@ -16,15 +16,14 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { FileText, User, Calendar, MessageSquare } from 'lucide-react'
+import { useLanguage } from '@/i18n/useLanguage'
 import { useTranslation } from '@/i18n/useTranslation'
-import { generateChatPDF } from '@/lib/pdfGenerator'
 
 interface PDFConfigModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   question: string
   answer: string
-  sessionId?: string
 }
 
 /**
@@ -32,13 +31,13 @@ interface PDFConfigModalProps {
  * Inclui campo para nome do paciente e melhor organização
  */
 export function PDFConfigModal({ 
-  open, 
-  onOpenChange, 
-  question, 
-  answer, 
-  sessionId 
+  open,
+  onOpenChange,
+  question,
+  answer
 }: PDFConfigModalProps) {
   const { t } = useTranslation()
+  const { language } = useLanguage()
   const [patientName, setPatientName] = useState('')
   const [therapistName, setTherapistName] = useState<string>('')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -88,16 +87,35 @@ export function PDFConfigModal({
         throw new Error('Pergunta e resposta são obrigatórias para gerar o PDF')
       }
 
-      // Chama a função original de geração de PDF (client-side com html2pdf.js)
-      await generateChatPDF({
-        question,
-        answer,
-        timestamp: new Date(),
-        sessionId,
-        patientName: patientName.trim() || undefined
+      // A geração roda no servidor (pdfkit): é lá que o gate premium é real e que
+      // os rótulos saem traduzidos pelo idioma da sessão.
+      const response = await fetch('/api/chat/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question,
+          answer,
+          patientName: patientName.trim() || undefined,
+          therapistName: therapistName.trim() || undefined,
+          language
+        })
       })
-      
-      console.log('[PDFConfigModal] ✅ PDF gerado com sucesso')
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Erro ao gerar PDF')
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `relatorio-de-origem-emocional-${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(anchor)
+      anchor.click()
+      document.body.removeChild(anchor)
+      window.URL.revokeObjectURL(url)
+
       onOpenChange(false)
     } catch (error) {
       // Garante que sempre temos uma mensagem de erro válida

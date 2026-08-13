@@ -52,6 +52,11 @@ const messages = {
   'chat.home.intent.talk': 'Preciso de conversar',
   'chat.home.intent.talkStarter': 'Preciso de conversar sobre o que estou a sentir',
   'chat.home.intent.research': 'Quero pesquisar',
+  'search.home.greeting': 'Olá',
+  'search.home.subtitle':
+    'Descreva um sintoma e eu preparo um relatório com a possível origem emocional.',
+  'search.input.placeholder': 'Que sintoma quer pesquisar?',
+  'search.input.again': 'Pesquisar outro sintoma…',
   'chat.home.intent.researchStarter': 'Quero pesquisar sobre um sintoma',
   'chat.home.agents.title': 'Onde quer olhar?',
   'chat.home.agent.body.title': 'O meu corpo',

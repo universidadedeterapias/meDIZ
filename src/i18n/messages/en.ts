@@ -52,6 +52,11 @@ const messages = {
   'chat.home.intent.talk': 'I need to talk',
   'chat.home.intent.talkStarter': 'I need to talk about what I am feeling',
   'chat.home.intent.research': 'I want to research',
+  'search.home.greeting': 'Hi',
+  'search.home.subtitle':
+    'Describe a symptom and I will put together a report on its possible emotional origin.',
+  'search.input.placeholder': 'Which symptom would you like to research?',
+  'search.input.again': 'Research another symptom…',
   'chat.home.intent.researchStarter': 'I want to research a symptom',
   'chat.home.agents.title': 'Where do you want to look?',
   'chat.home.agent.body.title': 'My body',

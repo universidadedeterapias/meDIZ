@@ -17,7 +17,6 @@ import { useTranslation } from '@/i18n/useTranslation'
 interface ExportPDFButtonProps {
   question: string
   answer: string
-  sessionId?: string
   className?: string
 }
 
@@ -25,28 +24,15 @@ interface ExportPDFButtonProps {
  * Botão para exportar consulta do chat como PDF
  * Verifica assinatura e exibe modal de configuração ou upgrade
  */
-export function ExportPDFButton({ 
-  question, 
-  answer, 
-  sessionId,
+export function ExportPDFButton({
+  question,
+  answer,
   className = ''
 }: ExportPDFButtonProps) {
   const { isPremium, isLoading } = useSubscriptionStatus()
   const { t } = useTranslation()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [showConfigModal, setShowConfigModal] = useState(false)
-
-  // Log de debug para verificar dados recebidos
-  console.log('[ExportPDFButton] Dados recebidos:', {
-    question: question?.substring(0, 50) || 'SEM PERGUNTA',
-    answerLength: answer?.length || 0,
-    hasAnswer: !!answer,
-    answerPreview: answer?.substring(0, 100) || 'VAZIO',
-    answerType: typeof answer,
-    sessionId,
-    isPremium,
-    isLoading
-  })
 
   const handleExport = async () => {
     if (isLoading) return
@@ -121,7 +107,6 @@ export function ExportPDFButton({
         onOpenChange={setShowConfigModal}
         question={question}
         answer={answer}
-        sessionId={sessionId}
       />
     </>
   )

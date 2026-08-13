@@ -7,6 +7,10 @@ import { saveChatMessage } from '@/lib/chatMessages'
 import { prisma } from '@/lib/prisma'
 import { isUserPremium } from '@/lib/premiumUtils'
 import { getUserLimits, getUserPeriod } from '@/lib/userPeriod'
+import {
+  FREE_DAILY_QUOTA_CHAT_KINDS,
+  SYMPTOM_SEARCH_CHAT_KIND
+} from '@/lib/conversational-chat/config'
 import { NextResponse } from 'next/server'
 // Cache desabilitado para evitar problemas com tradução multi-idioma
 import { DEFAULT_LANGUAGE, isSupportedLanguage, getLanguageMapping, type LanguageCode } from '@/i18n/config'
@@ -184,10 +188,12 @@ export async function POST(req: Request) {
   const startOfDay = new Date()
   startOfDay.setHours(0, 0, 0, 0)
 
-  // Conta quantas ChatSession o usuário já criou hoje
+  // Conta as sessões de hoje que consomem a cota do plano gratuito. Pesquisa e chat
+  // conversacional dividem o mesmo teto; simulador e professor têm gate próprio.
   const todayCount = await prisma.chatSession.count({
     where: {
       userId,
+      chatKind: { in: [...FREE_DAILY_QUOTA_CHAT_KINDS] },
       createdAt: { gte: startOfDay }
     }
   })
@@ -227,7 +233,11 @@ export async function POST(req: Request) {
   try {
     // ── 4) Cria identificador local e registra ChatSession ─────────────
     const threadId = randomUUID()
-    const chatSession = await createChatSessionWithThread(userId, threadId)
+    const chatSession = await createChatSessionWithThread(
+      userId,
+      threadId,
+      SYMPTOM_SEARCH_CHAT_KIND
+    )
 
     // ── 5) Persiste mensagem do usuário antes de chamar o webhook ─────
     await saveChatMessage({
