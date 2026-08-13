@@ -183,54 +183,56 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Mensagem inválida' }, { status: 400 })
   }
 
-  // ── 1) Verifica limite de sessões hoje ─────────────────────────────
-  // Início do dia (00:00)
-  const startOfDay = new Date()
-  startOfDay.setHours(0, 0, 0, 0)
+  // As checagens de cota e acesso ficam dentro do try junto com o resto: elas tocam o
+  // banco, e uma falha ali precisa virar JSON com mensagem — não um 500 sem corpo.
+  try {
+    // ── 1) Verifica limite de sessões hoje ─────────────────────────────
+    // Início do dia (00:00)
+    const startOfDay = new Date()
+    startOfDay.setHours(0, 0, 0, 0)
 
-  // Conta as sessões de hoje que consomem a cota do plano gratuito. Pesquisa e chat
-  // conversacional dividem o mesmo teto; simulador e professor têm gate próprio.
-  const todayCount = await prisma.chatSession.count({
-    where: {
-      userId,
-      chatKind: { in: [...FREE_DAILY_QUOTA_CHAT_KINDS] },
-      createdAt: { gte: startOfDay }
-    }
-  })
-
-  // ── 2) Acesso premium (inclui cancelada com período ainda vigente) ─
-  const hasPremiumAccess = await isUserPremium(userId)
-
-  // ── 3) Sem premium: plano gratuito (limite + popup) ─────────────────
-  if (!hasPremiumAccess) {
-    // Busca informações do usuário para saber a data de cadastro
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { createdAt: true }
+    // Conta as sessões de hoje que consomem a cota do plano gratuito. Pesquisa e chat
+    // conversacional dividem o mesmo teto; simulador e professor têm gate próprio.
+    const todayCount = await prisma.chatSession.count({
+      where: {
+        userId,
+        chatKind: { in: [...FREE_DAILY_QUOTA_CHAT_KINDS] },
+        createdAt: { gte: startOfDay }
+      }
     })
 
-    if (!user) {
-      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
+    // ── 2) Acesso premium (inclui cancelada com período ainda vigente) ─
+    const hasPremiumAccess = await isUserPremium(userId)
+
+    // ── 3) Sem premium: plano gratuito (limite + popup) ─────────────────
+    if (!hasPremiumAccess) {
+      // Busca informações do usuário para saber a data de cadastro
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { createdAt: true }
+      })
+
+      if (!user) {
+        return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
+      }
+
+      // Determina o período e limites do usuário
+      const userPeriod = getUserPeriod(user.createdAt)
+      const { searchLimit } = getUserLimits(userPeriod)
+
+      // Verifica se excedeu o limite baseado no período
+      if (todayCount >= searchLimit) {
+        return NextResponse.json(
+          {
+            limitReached: true,
+            period: userPeriod,
+            searchLimit
+          },
+          { status: 403 }
+        )
+      }
     }
 
-    // Determina o período e limites do usuário
-    const userPeriod = getUserPeriod(user.createdAt)
-    const { searchLimit } = getUserLimits(userPeriod)
-
-    // Verifica se excedeu o limite baseado no período
-    if (todayCount >= searchLimit) {
-      return NextResponse.json(
-        {
-          limitReached: true,
-          period: userPeriod,
-          searchLimit
-        },
-        { status: 403 }
-      )
-    }
-  }
-
-  try {
     // ── 4) Cria identificador local e registra ChatSession ─────────────
     const threadId = randomUUID()
     const chatSession = await createChatSessionWithThread(
@@ -310,15 +312,26 @@ export async function POST(req: Request) {
     // Retorna mensagem de erro mais específica
     const errorMessage = err instanceof Error ? err.message : String(err)
     let errorResponse = 'Erro ao processar assistant'
-    
+
+    // Enum/coluna ausente indica migration pendente no banco — o sintoma clássico é
+    // `invalid input value for enum "ChatKind"` quando o deploy sobe antes da migration.
+    const looksLikeSchemaDrift =
+      errorMessage.includes('invalid input value for enum') ||
+      errorMessage.includes('ChatKind') ||
+      errorMessage.includes('P2022') ||
+      errorMessage.includes('does not exist')
+
     if (errorMessage.includes('Webhook do n8n')) {
       errorResponse = 'Erro ao comunicar com o serviço de IA. Tente novamente em alguns instantes.'
     } else if (errorMessage.includes('resposta vazia')) {
       errorResponse = 'O serviço de IA não retornou uma resposta válida. Tente novamente.'
     } else if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('ENOTFOUND')) {
       errorResponse = 'Não foi possível conectar ao serviço. Verifique sua conexão.'
+    } else if (looksLikeSchemaDrift) {
+      console.error('[OpenAI API] Schema desatualizado no banco:', errorMessage)
+      errorResponse = 'A pesquisa está indisponível no momento. Tente novamente em instantes.'
     }
-    
+
     return NextResponse.json({ 
       error: errorResponse,
       details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
