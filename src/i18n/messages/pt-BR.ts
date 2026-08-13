@@ -52,7 +52,7 @@ const messages = {
   'chat.home.intent.painStarter': 'Estou com dor e quero entender melhor',
   'chat.home.intent.talk': 'Conversar',
   'chat.home.intent.talkStarter': 'Preciso conversar sobre o que estou sentindo',
-  'chat.home.intent.research': 'Pesquisar',
+  'chat.home.intent.research': 'Pesquisar sintomas',
   'sidebar.symptomSearch': 'Pesquisa por sintoma',
   'search.home.greeting': 'Oi',
   'search.home.subtitle':
