@@ -196,7 +196,10 @@ export function ChatHomeExperience({
                 <span
                   className={cn(
                     opensResearch
-                      ? 'text-balance break-words text-center leading-tight'
+                      ? // `w-min` encolhe a caixa até a maior palavra. Sem isso o span
+                        // ocupa toda a largura livre da célula e o texto centralizado
+                        // fica visualmente descolado do ícone, ao contrário dos outros.
+                        'w-min break-words text-center leading-tight'
                       : 'truncate'
                   )}
                 >
