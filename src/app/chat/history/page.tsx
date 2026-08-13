@@ -5,7 +5,8 @@ import {
   HeartPulse,
   Home,
   MessageCircle,
-  PawPrint
+  PawPrint,
+  Search
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
@@ -25,13 +26,18 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import type { MedizAgent } from '@/lib/conversational-chat/config'
 import { cn } from '@/lib/utils'
 
-type AgentFilter = 'all' | MedizAgent
+/**
+ * "pesquisa" não é um agente: seleciona o modo pesquisa por sintoma, que vive em
+ * outro chatKind. Os demais valores filtram por agente dentro do chat conversacional.
+ */
+type AgentFilter = 'all' | MedizAgent | 'pesquisa'
 type PeriodFilter = 'all' | '7d' | '30d'
 
 type HistoryItem = {
   id: string
   threadId: string
   agent: MedizAgent | null
+  chatKind: string
   createdAt: string
   firstUserMessage: string
 }
@@ -40,7 +46,8 @@ const agentOptions: Array<{ value: AgentFilter; label: string }> = [
   { value: 'all', label: 'Todos' },
   { value: 'body', label: 'Meu corpo' },
   { value: 'home', label: 'Minha casa' },
-  { value: 'pet', label: 'Meu pet' }
+  { value: 'pet', label: 'Meu pet' },
+  { value: 'pesquisa', label: 'Pesquisa' }
 ]
 
 const agentMeta = {
@@ -69,6 +76,12 @@ const agentMeta = {
   { label: string; Icon: typeof HeartPulse; color: string }
 >
 
+const researchMeta = {
+  label: 'Pesquisa',
+  Icon: Search,
+  color: 'text-violet-700 dark:text-violet-200'
+}
+
 export default function ChatHistoryPage() {
   const router = useRouter()
   const [items, setItems] = useState<HistoryItem[]>([])
@@ -86,9 +99,11 @@ export default function ChatHistoryPage() {
       setError(null)
 
       try {
+        const isResearch = agent === 'pesquisa'
         const params = new URLSearchParams({
-          chatKind: 'SEARCH',
-          agent,
+          chatKind: isResearch ? 'SYMPTOM_SEARCH' : 'SEARCH',
+          // Sessões de pesquisa não têm agente; filtrar por um invalidaria a busca.
+          agent: isResearch ? 'all' : agent,
           period,
           page: String(targetPage),
           limit: '12'
@@ -228,7 +243,12 @@ export default function ChatHistoryPage() {
                 ) : null}
 
                 {items.map(item => {
-                  const meta = item.agent ? agentMeta[item.agent] : null
+                  const isResearch = item.chatKind === 'SYMPTOM_SEARCH'
+                  const meta = isResearch
+                    ? researchMeta
+                    : item.agent
+                      ? agentMeta[item.agent]
+                      : null
                   const Icon = meta?.Icon ?? MessageCircle
                   const date = new Intl.DateTimeFormat('pt-BR', {
                     dateStyle: 'medium',
@@ -241,7 +261,7 @@ export default function ChatHistoryPage() {
                       type="button"
                       onClick={() =>
                         router.push(
-                          `/chat?threadId=${encodeURIComponent(item.threadId)}`
+                          `${isResearch ? '/pesquisa' : '/chat'}?threadId=${encodeURIComponent(item.threadId)}`
                         )
                       }
                       className="group flex w-full items-center gap-4 rounded-[1.5rem] bg-white/75 p-4 text-left shadow-lg shadow-violet-950/5 backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:bg-zinc-900/70 dark:shadow-black/20 dark:hover:bg-zinc-900 sm:p-5"

@@ -529,6 +529,7 @@ export default function Page() {
                 onSubmit={handleSendMessage}
                 onSubmitText={handleSendMessageFromText}
                 onStartConversation={startConversationFromHome}
+                onOpenResearch={() => router.push('/pesquisa')}
               />
             ) : (
               <ChatConversation

@@ -13,6 +13,7 @@ import {
   destinationToSpecialist,
   isMedizAgent,
   isConversationalChatKind,
+  FREE_DAILY_QUOTA_CHAT_KINDS,
   type MedizAgent,
   type ConciergeDestination,
   type ConciergeEntryPoint,
@@ -272,7 +273,9 @@ export async function POST(req: Request) {
           prisma.chatSession.count({
             where: {
               userId,
-              chatKind: 'SEARCH',
+              // Cota compartilhada: o modo pesquisa (`/pesquisa`) consome o mesmo
+              // teto diário que o chat conversacional.
+              chatKind: { in: [...FREE_DAILY_QUOTA_CHAT_KINDS] },
               createdAt: { gte: startOfDay }
             }
           }),

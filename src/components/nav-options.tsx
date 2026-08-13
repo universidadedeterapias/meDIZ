@@ -15,6 +15,7 @@ import {
   MessageSquarePlus,
   PawPrint,
   PlaySquare,
+  Search,
   Star,
   UserRound
 } from 'lucide-react'
@@ -231,6 +232,14 @@ export function NavOptions({
                   }
                 : undefined
             }
+          />
+          {/* Modo pesquisa por sintoma: rota própria, não um agente do chat. */}
+          <NavItem
+            href="/pesquisa"
+            label={t('sidebar.symptomSearch', 'Pesquisa por sintoma')}
+            icon={Search}
+            isActive={pathname === '/pesquisa'}
+            iconClassName="text-violet-600 dark:text-violet-400"
           />
           <NavItem
             href="/chat/history"
