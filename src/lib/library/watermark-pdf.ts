@@ -10,6 +10,71 @@ const WATERMARK_OPACITY = 0.13
 const FOOTER_SIZE = 7
 const DIAGONAL_SIZE = 22
 
+/** Faixa 0x80-0x9F do CP1252, que não existe no Latin-1. */
+const WINANSI_EXTRAS = '€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ'
+
+/**
+ * Letras latinas que o NFD não decompõe (o traço/ponto faz parte do glifo),
+ * então sem isto sumiriam do nome — "Łukasz" viraria "ukasz".
+ */
+const LATIN_FALLBACKS: Record<string, string> = {
+  Ł: 'L',
+  ł: 'l',
+  Đ: 'D',
+  đ: 'd',
+  Ħ: 'H',
+  ħ: 'h',
+  Ŧ: 'T',
+  ŧ: 't',
+  ı: 'i',
+  İ: 'I',
+  ĸ: 'k',
+  Ŀ: 'L',
+  ŀ: 'l',
+  ſ: 's',
+  Ə: 'E',
+  ə: 'e',
+  Œ: 'OE',
+  œ: 'oe'
+}
+
+function isWinAnsiEncodable(char: string): boolean {
+  const cp = char.codePointAt(0) ?? 0
+  if (cp >= 0x20 && cp <= 0x7e) return true
+  if (cp >= 0xa0 && cp <= 0xff) return true
+  return WINANSI_EXTRAS.includes(char)
+}
+
+/**
+ * `StandardFonts.Helvetica` só codifica WinAnsi (CP1252) e o pdf-lib joga
+ * exceção em qualquer caractere fora dela — o que virava 500 no download.
+ * Pega tanto texto decomposto (NFD: "o" + U+0301, visualmente igual a "ó")
+ * quanto alfabetos não latinos vindos de nome/e-mail de cliente estrangeiro.
+ *
+ * Estratégia: compõe em NFC (resolve o caso comum sem perder acento), depois
+ * remove o diacrítico do que sobrar (Č -> C) e, por fim, descarta o que ainda
+ * não couber. Degradar o texto é preferível a não entregar o arquivo.
+ */
+export function toWinAnsiSafe(text: string): string {
+  let out = ''
+  for (const char of text.normalize('NFC')) {
+    if (isWinAnsiEncodable(char)) {
+      out += char
+      continue
+    }
+    const mapped = LATIN_FALLBACKS[char]
+    if (mapped) {
+      out += mapped
+      continue
+    }
+    const stripped = char.normalize('NFD').replace(/\p{Diacritic}/gu, '')
+    for (const fallback of stripped) {
+      if (isWinAnsiEncodable(fallback)) out += fallback
+    }
+  }
+  return out
+}
+
 function formatTimestamp(): string {
   return new Intl.DateTimeFormat('pt-BR', {
     dateStyle: 'short',
@@ -158,12 +223,21 @@ export async function applyPdfWatermark(
   user: WatermarkUserInfo,
   documentTitle: string
 ): Promise<Uint8Array> {
+  // Sanitiza uma vez, na fronteira: tudo abaixo daqui vai para drawText.
+  const safeName = toWinAnsiSafe(user.fullName).trim()
+  const safeUser: WatermarkUserInfo = {
+    fullName: safeName || toWinAnsiSafe(user.email),
+    email: toWinAnsiSafe(user.email),
+    cpf: toWinAnsiSafe(user.cpf)
+  }
+  const safeTitle = toWinAnsiSafe(documentTitle)
+
   const pdfDoc = await PDFDocument.load(originalBytes, { ignoreEncryption: true })
-  await drawLicensePage(pdfDoc, user, documentTitle)
+  await drawLicensePage(pdfDoc, safeUser, safeTitle)
 
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
   for (const page of pdfDoc.getPages()) {
-    stampPage(page, font, user)
+    stampPage(page, font, safeUser)
   }
 
   // Object streams evitam inflar ainda mais PDFs grandes durante a serializacao.
