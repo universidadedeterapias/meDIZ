@@ -160,11 +160,15 @@ export function ChatHomeExperience({
         <p className="text-sm font-semibold tracking-tight text-zinc-700 dark:text-zinc-200">
           {t('chat.home.help.title', 'Posso te ajudar a:')}
         </p>
-        <div className="mt-3 flex gap-2 overflow-x-auto px-0.5 pb-4 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* Grid de 3 colunas em vez de faixa rolável: os atalhos dividem a largura
+            disponível e cabem numa linha só em qualquer viewport. Os rótulos são
+            curtos de proposito (ver `chat.home.intent.*`) e `truncate` é só a rede
+            de segurança para traduções mais longas. */}
+        <div className="mt-3 grid grid-cols-3 gap-2 px-0.5 pb-4 pt-1">
           {intents.map((intent, index) => {
             const Icon = index === 0 ? HeartPulse : index === 1 ? MessageCircleMore : Search
-            // "Quero pesquisar" leva ao modo pesquisa por sintoma, que é uma rota
-            // própria e não uma conversa com o porteiro.
+            // "Pesquisar" leva ao modo pesquisa por sintoma, que é uma rota própria
+            // e não uma conversa com o porteiro — por isso o destaque visual.
             const opensResearch = intent.id === 'research' && Boolean(onOpenResearch)
             return (
               <button
@@ -180,10 +184,25 @@ export function ChatHomeExperience({
                       )
                 }
                 disabled={loading}
-                className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full bg-white/90 px-3 text-xs font-medium text-zinc-700 shadow-lg shadow-violet-950/10 transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-xl hover:shadow-violet-950/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 dark:bg-white/10 dark:text-zinc-100 dark:shadow-black/20 dark:hover:bg-white/15"
+                aria-label={
+                  opensResearch
+                    ? t('sidebar.symptomSearch', 'Pesquisa por sintoma')
+                    : intent.label
+                }
+                title={
+                  opensResearch
+                    ? t('sidebar.symptomSearch', 'Pesquisa por sintoma')
+                    : undefined
+                }
+                className={cn(
+                  'inline-flex min-h-9 w-full min-w-0 items-center justify-center gap-1 rounded-full px-1.5 text-[11px] font-medium shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 sm:gap-1.5 sm:px-3 sm:text-xs',
+                  opensResearch
+                    ? 'bg-gradient-to-br from-violet-600 to-purple-600 text-white shadow-violet-600/30 ring-1 ring-inset ring-white/20 hover:from-violet-500 hover:to-purple-500 hover:shadow-violet-600/40 dark:from-violet-500 dark:to-purple-500'
+                    : 'bg-white/90 text-zinc-700 shadow-violet-950/10 hover:bg-white hover:shadow-violet-950/15 dark:bg-white/10 dark:text-zinc-100 dark:shadow-black/20 dark:hover:bg-white/15'
+                )}
               >
-                <Icon className="size-3.5" />
-                {intent.label}
+                <Icon className="size-3.5 shrink-0" />
+                <span className="truncate">{intent.label}</span>
               </button>
             )
           })}

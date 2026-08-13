@@ -47,11 +47,13 @@ const messages = {
   'chat.home.greeting': 'Hi',
   'chat.home.question': 'What is happening?',
   'chat.home.help.title': 'I can help you:',
-  'chat.home.intent.pain': 'I am in pain',
+  // Short labels: the three shortcuts split the screen width on a single line.
+  'chat.home.intent.pain': 'In pain',
   'chat.home.intent.painStarter': 'I am in pain and want to understand it better',
-  'chat.home.intent.talk': 'I need to talk',
+  'chat.home.intent.talk': 'Talk',
   'chat.home.intent.talkStarter': 'I need to talk about what I am feeling',
-  'chat.home.intent.research': 'I want to research',
+  'chat.home.intent.research': 'Research',
+  'sidebar.symptomSearch': 'Symptom search',
   'search.home.greeting': 'Hi',
   'search.home.subtitle':
     'Describe a symptom and I will put together a report on its possible emotional origin.',

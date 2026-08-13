@@ -47,11 +47,13 @@ const messages = {
   'chat.home.greeting': 'Hola',
   'chat.home.question': '¿Qué está pasando?',
   'chat.home.help.title': 'Puedo ayudarte a:',
-  'chat.home.intent.pain': 'Tengo dolor',
+  // Etiquetas cortas: los tres accesos reparten el ancho de la pantalla en una sola línea.
+  'chat.home.intent.pain': 'Con dolor',
   'chat.home.intent.painStarter': 'Tengo dolor y quiero comprenderlo mejor',
-  'chat.home.intent.talk': 'Necesito conversar',
+  'chat.home.intent.talk': 'Conversar',
   'chat.home.intent.talkStarter': 'Necesito conversar sobre lo que estoy sintiendo',
-  'chat.home.intent.research': 'Quiero investigar',
+  'chat.home.intent.research': 'Investigar',
+  'sidebar.symptomSearch': 'Búsqueda por síntoma',
   'search.home.greeting': 'Hola',
   'search.home.subtitle':
     'Describe un síntoma y prepararé un informe sobre su posible origen emocional.',
