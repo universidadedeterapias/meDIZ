@@ -11,7 +11,9 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 const bodySchema = z.object({
-  productId: z.string().uuid('productId inválido')
+  productId: z.string().uuid('productId inválido'),
+  /** Material específico do curso (`CatalogModuleMedia.id`); ausente = primeiro PDF. */
+  mediaId: z.string().trim().min(1).max(100).optional()
 })
 
 export async function POST(request: NextRequest) {
@@ -28,11 +30,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    await getPdfProductForDownload(parsed.data.productId, auth.user)
+    // Resolve aqui para (a) validar acesso antes de emitir o token e (b) gravar
+    // no token o material que de fato foi resolvido, não o pedido cru.
+    const { mediaId } = await getPdfProductForDownload(
+      parsed.data.productId,
+      auth.user,
+      { mediaId: parsed.data.mediaId }
+    )
 
     const { token, expiresAt } = await createPdfDownloadToken(
       auth.user.id,
-      parsed.data.productId
+      parsed.data.productId,
+      mediaId
     )
 
     const origin =

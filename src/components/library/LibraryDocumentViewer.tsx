@@ -15,12 +15,45 @@ const backButtonClassName = cn(
   'min-h-10 min-w-10'
 )
 
+/**
+ * Antes qualquer 404 virava "Download ainda não disponível neste ambiente",
+ * o que mandava o usuário esperar uma atualização do app por um problema de
+ * catálogo. Traduz o código real da API.
+ */
+function downloadErrorMessage(status: number, code?: string): string {
+  switch (code) {
+    case 'NO_PERMISSION_FOR_THIS_CONTENT':
+      return 'Você não tem acesso a este material.'
+    case 'PDF_SOURCE_NOT_CONFIGURED':
+      return 'Este material ainda não tem PDF liberado para download. Fale com o suporte.'
+    case 'PDF_MEDIA_NOT_FOUND':
+      return 'Este material não está mais disponível. Recarregue a página e tente de novo.'
+    case 'PRODUCT_NOT_FOUND':
+      return 'Conteúdo não encontrado.'
+    case 'PDF_SOURCE_TOO_LARGE':
+      return 'Arquivo grande demais para gerar a cópia licenciada. Fale com o suporte.'
+    case 'TOKEN_INVALID_OR_EXPIRED':
+      return 'O link de download expirou. Tente novamente.'
+    case 'DOWNLOAD_GENERATION_FAILED':
+      return 'Falha ao gerar a cópia licenciada. Tente novamente em alguns minutos.'
+    default:
+      return status >= 500
+        ? 'Erro no servidor ao preparar o download. Tente novamente.'
+        : 'Não foi possível preparar o download.'
+  }
+}
+
 type LibraryDocumentViewerProps = {
   title: string
   streamUrl: string
   backHref: string
   variant?: 'pdf' | 'video'
   productId?: string
+  /**
+   * Material específico de curso (`CatalogModuleMedia.id`). Um produto VIDEO tem
+   * vários PDFs; sem isso o download não sabe qual deles está aberto na tela.
+   */
+  mediaId?: string
   /** Volta in-page (ex.: curso vídeo → PDF) em vez de navegar */
   onBack?: () => void
 }
@@ -31,6 +64,7 @@ export function LibraryDocumentViewer({
   backHref,
   variant = 'pdf',
   productId,
+  mediaId,
   onBack
 }: LibraryDocumentViewerProps) {
   const [ready, setReady] = useState(false)
@@ -63,17 +97,11 @@ export function LibraryDocumentViewer({
       const res = await apiFetch('/api/library/download/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId })
+        body: JSON.stringify({ productId, ...(mediaId ? { mediaId } : {}) })
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const message =
-          res.status === 404
-            ? 'Download ainda não disponível neste ambiente. Aguarde a atualização do app.'
-            : data.message ||
-              data.error ||
-              'Não foi possível preparar o download.'
-        setDownloadError(message)
+        setDownloadError(downloadErrorMessage(res.status, data.error))
         return
       }
       if (!data.downloadUrl) {
@@ -87,7 +115,11 @@ export function LibraryDocumentViewer({
       // feedback visual assim que o clique acontecesse.
       const fileResponse = await apiFetch(data.downloadUrl, { credentials: 'include' })
       if (!fileResponse.ok) {
-        throw new Error('DOWNLOAD_FILE_FAILED')
+        const fileError = await fileResponse.json().catch(() => ({}))
+        setDownloadError(
+          downloadErrorMessage(fileResponse.status, fileError.error)
+        )
+        return
       }
       const blob = await fileResponse.blob()
       const disposition = fileResponse.headers.get('content-disposition') ?? ''

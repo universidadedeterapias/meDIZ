@@ -72,8 +72,11 @@ export async function GET(request: NextRequest) {
   const rangeHeader = request.headers.get('range')
 
   try {
-    const { product, locale } = await getPdfProductForDownload(payload.pid, auth.user)
-    const filename = `${safeFilename(product.title)}-licenciado.pdf`
+    const { product, downloadTitle, mediaId, locale } =
+      await getPdfProductForDownload(payload.pid, auth.user, {
+        mediaId: payload.mid
+      })
+    const filename = `${safeFilename(downloadTitle)}-licenciado.pdf`
     const responseHeaders = {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${filename}"`,
@@ -83,7 +86,7 @@ export async function GET(request: NextRequest) {
       'X-Content-Type-Options': 'nosniff'
     }
 
-    const cacheKey = cacheKeyFor(auth.user.id, product.id)
+    const cacheKey = cacheKeyFor(auth.user.id, product.id, mediaId)
 
     // Já processado neste mês: serve do cache local (com suporte a Range/206),
     // sem reprocessar com pdf-lib e sem contar cota de novo.
@@ -116,10 +119,11 @@ export async function GET(request: NextRequest) {
           email: dbUser.email,
           cpf: formatCpfForDisplay(dbUser.cpf)
         },
-        product.title
+        downloadTitle
       )
       console.log('[library/download/file] watermark', {
         productId: product.id,
+        mediaId,
         sourceBytes: originalBytes.length,
         durationMs: Date.now() - startedAt,
         rssBeforeMb: Math.round(rssBefore / 1024 / 1024),
@@ -133,7 +137,7 @@ export async function GET(request: NextRequest) {
     await logPdfDownload({
       userId: auth.user.id,
       productId: product.id,
-      fileLabel: product.title,
+      fileLabel: downloadTitle,
       clientIp: clientIp(request),
       userAgent: request.headers.get('user-agent')
     })
