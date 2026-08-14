@@ -198,6 +198,8 @@ const messages = {
   'general.start': 'Começar',
   'navbar.account': 'Conta',
   'navbar.logout': 'Sair',
+  'sidebar.loadError': 'Não foi possível carregar seus dados.',
+  'sidebar.retry': 'Tentar novamente',
   'login.title': 'Entrar na plataforma',
   'login.subtitle': 'Bem-vindo de volta! Acesse com seu e-mail e senha.',
   'login.email': 'E-mail',

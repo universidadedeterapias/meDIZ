@@ -91,6 +91,8 @@ const messages = {
   'general.start': 'Comenzar',
   'navbar.account': 'Cuenta',
   'navbar.logout': 'Salir',
+  'sidebar.loadError': 'No se pudieron cargar tus datos.',
+  'sidebar.retry': 'Intentar de nuevo',
   'login.title': 'Iniciar sesión en la plataforma',
   'login.subtitle': '¡Bienvenido de nuevo! Accede con tu correo y contraseña.',
   'login.email': 'Correo electrónico',

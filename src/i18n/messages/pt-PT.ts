@@ -91,6 +91,8 @@ const messages = {
   'general.start': 'Começar',
   'navbar.account': 'Conta',
   'navbar.logout': 'Sair',
+  'sidebar.loadError': 'Não foi possível carregar os seus dados.',
+  'sidebar.retry': 'Tentar novamente',
   'login.title': 'Entrar na plataforma',
   'login.subtitle': 'Bem-vindo de volta! Aceda com o seu e-mail e palavra-passe.',
   'login.email': 'E-mail',

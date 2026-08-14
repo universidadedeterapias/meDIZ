@@ -91,6 +91,8 @@ const messages = {
   'general.start': 'Start',
   'navbar.account': 'Account',
   'navbar.logout': 'Sign out',
+  'sidebar.loadError': "Couldn't load your data.",
+  'sidebar.retry': 'Try again',
   'login.title': 'Sign in to the platform',
   'login.subtitle': 'Welcome back! Access with your email and password.',
   'login.email': 'Email',
