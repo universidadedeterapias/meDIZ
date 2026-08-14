@@ -500,6 +500,30 @@ export default function MyAccountPage() {
           </CardContent>
         </Card>
 
+        {/* Segurança */}
+        <Card className="shadow-sm">
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {t('account.security.title', 'Segurança')}
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {t('account.security.changePasswordDescription', 'Defina uma nova senha para acessar sua conta.')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              className="w-full"
+            >
+              <Link href="/trocar-senha">
+                {t('account.security.changePassword', 'Alterar senha')}
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Planos & Preços */}
         <Card
           className={`shadow-sm ${
