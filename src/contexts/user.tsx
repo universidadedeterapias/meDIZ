@@ -19,6 +19,8 @@ type UserContextType = {
   // Dados otimizados para sidebar
   sidebarUser: SidebarUser | null
   isLoadingSidebar: boolean
+  sidebarError: Error | null
+  retrySidebarUser: () => void
   refreshUser: () => Promise<void>
 }
 
@@ -27,7 +29,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined)
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserFullProps | null>(null)
   const [, setIsLoading] = useState(true)
-  const { user: sidebarUser, isLoading: isLoadingSidebar } = useUserCache()
+  const { user: sidebarUser, isLoading: isLoadingSidebar, error: sidebarError, mutate: retrySidebarUser } = useUserCache()
   const { status } = useSession()
 
   // Debug temporário para verificar propagação do sidebarUser
@@ -90,8 +92,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
     <UserContext.Provider value={{ 
       user, 
       setUser, 
-      sidebarUser, 
+      sidebarUser,
       isLoadingSidebar,
+      sidebarError,
+      retrySidebarUser,
       refreshUser
     }}>
       {children}

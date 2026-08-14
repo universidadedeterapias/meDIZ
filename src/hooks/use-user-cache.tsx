@@ -2,7 +2,7 @@
 
 /// <reference lib="dom" />
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 
 export interface SidebarUser {
@@ -63,11 +63,17 @@ export function useUserCache() {
   
   const [error, setError] = useState<Error | null>(null)
   const mountedRef = useRef(true)
+  const retryCountRef = useRef(0)
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { status: sessionStatus } = useSession()
+
+  const MAX_RETRIES = 3
+  const RETRY_BASE_DELAY_MS = 1000 // 1s, 2s, 4s
 
   useEffect(() => {
     return () => {
       mountedRef.current = false
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current)
     }
   }, [])
 
@@ -147,8 +153,9 @@ export function useUserCache() {
     }
   }, [isLoading, user, sessionStatus])
 
-  useEffect(() => {
-    const fetchUser = async () => {
+  // useCallback (em vez de função só dentro do useEffect) pra podermos chamar fetchUser()
+  // de novo a partir de `mutate()` (retry manual) sem duplicar a lógica.
+  const fetchUser = useCallback(async () => {
       // Aguarda autenticação antes de buscar dados
       // MAS: Se cache já tem dados válidos, não precisa aguardar
       if (sessionStatus === 'loading') {
@@ -159,11 +166,8 @@ export function useUserCache() {
           setIsLoading(false)
           return
         }
-        // Se user já está null e isLoading já está true, não precisa fazer nada
-        // Mas se isLoading ainda não foi setado, mantém loading
-        if (!user && !isLoading) {
-          setIsLoading(true)
-        }
+        // Mantém loading enquanto a sessão carrega (setState com mesmo valor é no-op no React)
+        setIsLoading(true)
         return // Aguarda a sessão carregar
       }
 
@@ -293,37 +297,60 @@ export function useUserCache() {
         // CRÍTICO: SEMPRE atualiza o estado, mesmo que componente esteja desmontado
         // React vai aplicar o setState quando o componente remontar
         // Isso garante que o estado esteja correto para a próxima renderização
+        retryCountRef.current = 0
         setUser(data)
         setIsLoading(false)
       } catch (err) {
         // Limpa promise mesmo em erro
         globalCache.promise = null
-        
+
+        const isAuthError = err instanceof Error && err.message.includes('401')
+
+        // Falha transitória (rede, timeout, 5xx): tenta de novo com backoff em vez de
+        // deixar a sidebar presa em loading pra sempre (era o bug original — sem retry,
+        // um único erro passageiro travava `isLoading=false`/`user=null` de vez).
+        if (!isAuthError && mountedRef.current && retryCountRef.current < MAX_RETRIES) {
+          const attempt = retryCountRef.current + 1
+          retryCountRef.current = attempt
+          const delay = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1)
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn(`[useUserCache] Tentativa ${attempt}/${MAX_RETRIES} falhou, tentando de novo em ${delay}ms`, err)
+          }
+          retryTimeoutRef.current = setTimeout(() => {
+            if (mountedRef.current) fetchUser()
+          }, delay)
+          return
+        }
+
         if (mountedRef.current) {
           setError(err as Error)
           setIsLoading(false)
           // Em caso de erro de autenticação, limpa o cache para evitar estados inconsistentes
-          if (err instanceof Error && err.message.includes('401')) {
+          if (isAuthError) {
             // Erro de autenticação - limpa cache e aguarda nova tentativa quando autenticado
             globalCache.data = null
             globalCache.timestamp = 0
           }
         }
       }
-    }
-
-    fetchUser()
   }, [sessionStatus]) // ATENÇÃO: Não adicionar user/isLoading/error aqui - causaria loop infinito
 
-  const mutate = () => {
-    // Limpa cache para forçar nova requisição
+  useEffect(() => {
+    fetchUser()
+  }, [fetchUser])
+
+  const mutate = useCallback(() => {
+    // Limpa cache e contador de retry, e dispara o fetch de novo (retry manual)
     globalCache.data = null
     globalCache.timestamp = 0
     globalCache.promise = null
+    retryCountRef.current = 0
+    if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current)
     setUser(null)
     setIsLoading(true)
     setError(null)
-  }
+    fetchUser()
+  }, [fetchUser])
 
   return {
     user,

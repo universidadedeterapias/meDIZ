@@ -152,7 +152,7 @@ export function AppSidebar({
   onNewChat,
   onStartAgentChat
 }: AppSidebarProps) {
-  const { sidebarUser, isLoadingSidebar } = useUser()
+  const { sidebarUser, isLoadingSidebar, sidebarError, retrySidebarUser } = useUser()
   const { t } = useTranslation()
   const { setOpenMobile } = useSidebar()
 
@@ -172,6 +172,10 @@ export function AppSidebar({
   
   // Loading inicial - usa dados otimizados da sidebar
   if (isLoadingSidebar || !sidebarUser) {
+    // Falha terminal (já esgotou os retries automáticos do useUserCache): mostra uma
+    // opção de tentar de novo em vez de deixar o skeleton girando pra sempre.
+    const failedPermanently = !isLoadingSidebar && !sidebarUser && !!sidebarError
+
     return (
       <Sidebar
         collapsible="icon"
@@ -181,7 +185,22 @@ export function AppSidebar({
         className="!border-0"
       >
         <SidebarHeader className={cn(glassPanelClass, 'm-2 mb-1 rounded-2xl')}>
-          <SidebarSkeleton />
+          {failedPermanently ? (
+            <div className="flex items-center justify-between gap-3 p-4">
+              <span className="text-xs text-muted-foreground">
+                {t('sidebar.loadError', 'Não foi possível carregar seus dados.')}
+              </span>
+              <button
+                type="button"
+                onClick={retrySidebarUser}
+                className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-violet-700 hover:bg-violet-50 hover:underline dark:text-violet-300 dark:hover:bg-violet-500/10"
+              >
+                {t('sidebar.retry', 'Tentar novamente')}
+              </button>
+            </div>
+          ) : (
+            <SidebarSkeleton />
+          )}
         </SidebarHeader>
         <SidebarContent className={sidebarContentClass}>
           <NavOptions
