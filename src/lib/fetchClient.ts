@@ -17,6 +17,21 @@ function shouldInterceptPasswordReset(url: string, init?: FetchInit): boolean {
   return true
 }
 
+/**
+ * Guarda para onde a pessoa estava indo quando o gate da senha disparou.
+ *
+ * Sem isso, quem entra pelo link de acesso e cai na biblioteca e jogado para a
+ * troca de senha e, de la, sempre para o /chat — o comprador de livro acabava
+ * dentro dos gates do chat sem nunca ter visto o que comprou.
+ */
+function buildPasswordResetUrl(): string {
+  const current = `${window.location.pathname}${window.location.search}`
+  if (!current.startsWith('/') || current.startsWith('/trocar-senha')) {
+    return '/trocar-senha'
+  }
+  return `/trocar-senha?next=${encodeURIComponent(current)}`
+}
+
 async function handlePasswordResetResponse(response: Response): Promise<Response> {
   if (response.status !== 403) return response
 
@@ -24,7 +39,7 @@ async function handlePasswordResetResponse(response: Response): Promise<Response
     const clone = response.clone()
     const data = await clone.json()
     if (data?.error === PASSWORD_RESET_ERROR) {
-      window.location.href = '/trocar-senha'
+      window.location.href = buildPasswordResetUrl()
     }
   } catch {
     // ignore parse errors
