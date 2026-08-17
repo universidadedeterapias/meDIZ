@@ -5,6 +5,7 @@ import { PHASE_PRODUCTION_BUILD } from 'next/constants'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import { prisma } from '@/lib/prisma'
+import { consumeAccessLink } from '@/lib/auth/access-link'
 
 /**
  * `next build` importa todas as rotas para coletar metadata ("Collecting page data"),
@@ -75,6 +76,33 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!
+    }),
+    /**
+     * Link de primeiro acesso. Recebe o token de uso unico gerado em
+     * `createAccessLink`, queima e devolve o usuario — e por aqui que a pessoa
+     * entra sem digitar senha, no lugar da senha temporaria em texto.
+     */
+    CredentialsProvider({
+      id: 'magic-link',
+      name: 'Link de acesso',
+      credentials: {
+        token: { label: 'Token', type: 'text' }
+      },
+      async authorize(credentials) {
+        const token = (credentials as { token?: string })?.token
+        if (!token) return null
+
+        const consumed = await consumeAccessLink(token)
+        if (!consumed) return null
+
+        const user = await prisma.user.findUnique({
+          where: { id: consumed.userId },
+          select: { id: true, name: true, email: true }
+        })
+        if (!user) return null
+
+        return { id: user.id, name: user.name, email: user.email }
+      }
     }),
     CredentialsProvider({
       name: 'E‑mail e Senha',

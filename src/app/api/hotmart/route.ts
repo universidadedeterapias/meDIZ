@@ -20,7 +20,11 @@ import {
 } from '@/lib/purchases/hotmart-grant-rules'
 import { startBookOnboarding } from '@/lib/purchases/start-book-onboarding'
 import { ensureLibraryUser } from '@/lib/purchases/migrate-legacy-permissions'
-import { notifyN8nNewUser } from '@/lib/purchases/notify-n8n-new-user'
+import { deliverAccess } from '@/lib/purchases/deliver-access'
+import {
+  recordPurchaseEvent,
+  settlePurchaseEvent
+} from '@/lib/purchases/purchase-events'
 import { resolveCatalogProductByHotmartId } from '@/lib/purchases/resolve-product'
 import { HotmartEvent, HotmartPayload, PurchaseStatus } from '@/types/hotmart'
 import { NextRequest, NextResponse } from 'next/server'
@@ -431,6 +435,27 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Registra a venda antes de qualquer tentativa de liberar acesso: se algo
+    // falhar daqui pra frente, a compra ainda fica visivel no admin em vez de
+    // sumir num 200 com `ignored: true`.
+    const purchaseEventId = await recordPurchaseEvent({
+      provider: 'hotmart',
+      eventType: parsed.event,
+      externalTransactionId: getPurchaseTransaction(parsed),
+      externalProductId: incomingProductId,
+      externalProductName: parsed.data.product?.name ?? null,
+      email: getBuyerEmail(parsed) || null,
+      nome: getBuyerName(parsed),
+      telefone: getBuyerPhone(parsed),
+      cpf: getBuyerCpf(parsed),
+      currency: parsed.data.purchase.price?.currency_value ?? null,
+      country:
+        parsed.data.buyer?.address?.country_iso ??
+        parsed.data.purchase.checkout_country?.iso ??
+        null,
+      payload: parsed
+    })
+
     const catalogProduct = await resolveCatalogProductByHotmartId(
       incomingProductId
     )
@@ -439,6 +464,11 @@ export async function POST(req: NextRequest) {
       const email = getBuyerEmail(parsed)
       if (!email) {
         logError('❌ Compra de catálogo sem e-mail do comprador')
+        await settlePurchaseEvent(purchaseEventId, {
+          status: 'failed',
+          catalogProductId: catalogProduct.id,
+          reason: 'Payload sem e-mail do comprador'
+        })
         return NextResponse.json(
           { error: 'Buyer email missing', received: true },
           { status: 200 }
@@ -491,15 +521,21 @@ export async function POST(req: NextRequest) {
           })
         }
 
-        await notifyN8nNewUser({
-          userCreated: grant.userCreated,
+        await deliverAccess({
+          userId: grant.userId,
           email,
+          userCreated: grant.userCreated,
           nome: getBuyerName(parsed),
           telefone: getBuyerPhone(parsed),
-          temporaryPassword: grant.temporaryPassword,
           transactionId,
           provider: 'hotmart',
-          productsGranted: grant.productsGranted
+          productsGranted: grant.productsGranted,
+          purchaseEventId
+        })
+
+        await settlePurchaseEvent(purchaseEventId, {
+          status: 'processed',
+          catalogProductId: catalogProduct.id
         })
 
         return NextResponse.json({
@@ -513,6 +549,12 @@ export async function POST(req: NextRequest) {
         })
       } catch (error) {
         logError('❌ Falha ao liberar catálogo', error)
+        await settlePurchaseEvent(purchaseEventId, {
+          status: 'failed',
+          catalogProductId: catalogProduct.id,
+          reason:
+            error instanceof Error ? error.message : 'CATALOG_GRANT_FAILED'
+        })
         return NextResponse.json(
           { received: true, error: 'CATALOG_GRANT_FAILED' },
           { status: 200 }
@@ -521,15 +563,22 @@ export async function POST(req: NextRequest) {
     }
 
     if (!isMedizSubscriptionProduct(incomingProductId)) {
-      log('⏭️ Produto Hotmart não mapeado no catálogo (admin):', {
+      // Nao e "ignorado": e uma venda que nao conseguimos entregar. Fica na fila
+      // de pendentes para o admin cadastrar o ID e reprocessar.
+      logError('⚠️ Produto Hotmart não mapeado — venda pendente de mapeamento', undefined, '[hotmart]', {
         recebido: incomingProductId,
+        nomeProduto: parsed.data.product?.name,
         offerCode
+      })
+      await settlePurchaseEvent(purchaseEventId, {
+        status: 'pending_mapping',
+        reason: `Produto ${incomingProductId} sem mapeamento no catálogo`
       })
       return NextResponse.json({
         received: true,
-        ignored: true,
+        pending_mapping: true,
         reason: 'UNMAPPED_CATALOG_PRODUCT',
-        hint: 'Cadastre o ID Hotmart no admin ou execute npm run sync:catalog-purchase-mapping'
+        hint: 'Cadastre o ID Hotmart no admin e reprocesse a venda em /admin/vendas-pendentes'
       })
     }
 
@@ -652,6 +701,10 @@ export async function POST(req: NextRequest) {
         subscriptionPlanName: parsed.data.subscription?.plan?.name
       })
       logError('💡 Execute: npm run sync-hotmart-plans para sincronizar os planos', undefined, '[hotmart]')
+      await settlePurchaseEvent(purchaseEventId, {
+        status: 'pending_mapping',
+        reason: `Plano Hotmart ${hotmartPlanId} não cadastrado`
+      })
       return NextResponse.json(
         { 
           error: 'Plan not found by hotmartId', 
@@ -842,7 +895,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const { userCreated: subscriptionUserCreated, temporaryPassword } =
+    // A senha temporaria devolvida aqui nao e mais usada: o aviso de acesso leva
+    // link magico, nao credencial. Ver `deliverAccess`.
+    const { userCreated: subscriptionUserCreated } =
       await ensureLibraryUser({
         email,
         nome: getBuyerName(parsed),
@@ -1009,16 +1064,22 @@ export async function POST(req: NextRequest) {
       // Ignorar; não falha o webhook
     }
 
-    await notifyN8nNewUser({
-      userCreated: subscriptionUserCreated,
+    await deliverAccess({
+      userId: user.id,
       email,
+      userCreated: subscriptionUserCreated,
       nome: getBuyerName(parsed),
       telefone: getBuyerPhone(parsed),
-      temporaryPassword:
-        subscriptionUserCreated ? temporaryPassword : null,
       transactionId,
       provider: 'hotmart',
-      productsGranted: [{ id: plan.id, title: plan.name }]
+      productsGranted: [{ id: plan.id, title: plan.name }],
+      purchaseEventId,
+      redirectTo: '/chat'
+    })
+
+    await settlePurchaseEvent(purchaseEventId, {
+      status: 'processed',
+      reason: isRenewal ? 'Assinatura renovada' : 'Assinatura criada'
     })
 
     const duration = Date.now() - startTime
