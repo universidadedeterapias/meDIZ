@@ -558,6 +558,98 @@ model ProductEntitlement {
   @@map("product_entitlements")
 }
 
+/// Registro cru de toda compra recebida por webhook, gravado ANTES de qualquer
+/// tentativa de liberar acesso.
+///
+/// Existe porque hoje uma compra de produto sem mapeamento responde 200 com
+/// `ignored: true`: a plataforma considera entregue, o cliente pagou e ninguem
+/// fica sabendo. Com o registro, a venda vira uma linha visivel com status
+/// `pending_mapping`, que o admin resolve cadastrando o ID e reprocessando.
+///
+/// `provider` e String, e nao o enum PaymentProvider, de proposito: esta tabela
+/// recebe o que chegar — inclusive provedor novo ainda nao modelado — e nao pode
+/// exigir migration para aceitar uma venda.
+model PurchaseEvent {
+  id String @id @default(uuid())
+
+  /// hotmart | stone | stripe — minusculo, normalizado na escrita.
+  provider              String  @db.VarChar(32)
+  /// Nome do evento na origem (PURCHASE_APPROVED, charge.paid, ...).
+  eventType             String? @map("event_type") @db.VarChar(120)
+  externalTransactionId String  @map("external_transaction_id") @db.VarChar(120)
+  /// ID do produto na plataforma. Null quando o payload nao traz.
+  externalProductId     String? @map("external_product_id") @db.VarChar(120)
+  /// Nome do produto na origem — e o que permite ao admin saber o que mapear.
+  externalProductName   String? @map("external_product_name") @db.VarChar(255)
+
+  email    String? @db.VarChar(255)
+  nome     String? @db.VarChar(255)
+  telefone String? @db.VarChar(40)
+  cpf      String? @db.VarChar(20)
+  currency String? @db.VarChar(10)
+  country  String? @db.VarChar(10)
+
+  /// received | processed | pending_mapping | ignored | failed
+  status           String  @default("received") @db.VarChar(32)
+  /// Preenchido quando o produto foi resolvido no catalogo.
+  catalogProductId String? @map("catalog_product_id")
+  /// Motivo do ignored/failed, para o admin ler sem abrir log.
+  reason           String? @db.VarChar(255)
+
+  /// Payload completo — permite reprocessar sem pedir reenvio a plataforma.
+  payload Json
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  processedAt DateTime? @map("processed_at")
+
+  /// Reentrega do mesmo webhook atualiza a linha em vez de duplicar a venda.
+  @@unique([provider, externalTransactionId])
+  @@index([status, createdAt])
+  @@index([email])
+  @@index([externalProductId])
+  @@map("purchase_events")
+}
+
+/// Uma linha por tentativa de avisar o cliente que o acesso esta liberado.
+///
+/// Hoje a chamada ao n8n e fire-and-forget: se falha, sai um `warn` no log e
+/// ninguem descobre — a recuperacao e um admin reenviando na mao. Com esta tabela
+/// a entrega vira estado consultavel ("o acesso do fulano saiu?") e reprocessavel.
+///
+/// A propria tabela e a fila: `status = 'pending'` e trabalho a fazer. Nao usamos
+/// BullMQ aqui porque o REDIS_URL e opcional neste deploy e porque a linha precisa
+/// existir de qualquer forma para o admin — duas filas seriam duas verdades.
+model AccessDelivery {
+  id String @id @default(uuid())
+
+  userId          String? @map("user_id")
+  email           String  @db.VarChar(255)
+  /// Venda que originou o aviso. Null em reenvio pedido pelo suporte.
+  purchaseEventId String? @map("purchase_event_id")
+
+  /// new_account = primeiro acesso, leva link magico.
+  /// products_added = ja tinha conta, leva so o que foi liberado (sem credencial).
+  kind String @db.VarChar(32)
+
+  /// pending | sent | failed
+  status    String  @default("pending") @db.VarChar(32)
+  attempts  Int     @default(0)
+  lastError String? @map("last_error") @db.VarChar(500)
+
+  /// Corpo enviado ao n8n, ja montado. Guardado para reenviar sem recalcular.
+  payload Json
+
+  sentAt    DateTime? @map("sent_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([email])
+  @@index([purchaseEventId])
+  @@map("access_deliveries")
+}
+
 /// Permissões da biblioteca (Hotmart via n8n) — independente de assinatura premium.
 model LibraryPermission {
   id           String   @id @default(uuid())
@@ -664,6 +756,20 @@ model UserProfile {
   lastTopic          String?   @map("last_topic")
   /// Tutorial do meDIZ 2.0: nulo == ainda cai no gate; preenchido ao concluir ou pular.
   tutorialSeenAt     DateTime? @map("tutorial_seen_at")
+  /// Ultima vez que a pessoa disse "agora nao" para a descoberta.
+  ///
+  /// Existe porque `discoveryCompleted` sozinho so tinha dois estados — fez ou nao
+  /// fez — e a unica saida do fluxo era recusar o consentimento, que marcava
+  /// "completou" para sempre. Quem aceitava e nao conseguia concluir ficava preso.
+  discoveryDismissedAt DateTime? @map("discovery_dismissed_at")
+  /// Quantas vezes adiou. Na terceira aparicao o convite deixa de ser opcional.
+  discoveryDismissCount Int      @default(0) @map("discovery_dismiss_count")
+  /// Primeira vez que a pessoa entrou no app depois da compra.
+  ///
+  /// O convite da descoberta so comeca a aparecer a partir da SEGUNDA visita: quem
+  /// acabou de comprar um livro tem o direito de ler o livro antes de ser convidado
+  /// a qualquer outra coisa.
+  firstAccessAt         DateTime? @map("first_access_at")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
   user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
