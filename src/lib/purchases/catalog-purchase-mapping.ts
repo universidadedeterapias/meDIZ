@@ -3,6 +3,8 @@ import type { CatalogProductRef } from '@/lib/purchases/resolve-product-ref'
 export type HotmartPurchaseRule = {
   /** IDs Hotmart que disparam esta regra (primeiro vira hotmartProductId, demais em external_ids) */
   hotmartProductIds: string[]
+  /** IDs Stone/pagar.me (ex.: checkout Guru) que também apontam pro mesmo produto */
+  stoneProductIds?: string[]
   /** Produto comprado no catálogo */
   source: CatalogProductRef
   /** Produtos liberados em cascata (além do source) */
@@ -35,22 +37,35 @@ export const HOTMART_PURCHASE_RULES: HotmartPurchaseRule[] = [
     ]
   },
   {
+    /** EL CUERPO HABLA — produto dedicado (título/PDF em espanhol), criado à parte de
+     * "O CORPO DIZ". 1780425821 = checkout Guru, que cai no /api/stone/webhook. */
     hotmartProductIds: ['6649928'],
+    stoneProductIds: ['1780425821'],
     source: {
       section: 'BIBLIOTECA',
       permissionKey: 'LIVRO_DIGITAL',
       locale: 'es'
     },
+    // Ainda não existe um PDF bônus dedicado em espanhol — libera o mesmo PDF em
+    // português que o livro PT/EN já concedem, até termos a versão localizada.
     alsoGrant: [
       {
         section: 'BIBLIOTECA',
         permissionKey: 'PDF',
-        locale: 'es',
+        locale: 'pt',
         titleIncludes: 'Sentido Biológico'
       }
     ]
   },
   {
+    /** ⚠️ Ainda NÃO existe produto de catálogo dedicado para o livro em inglês — este ID
+     * continua resolvendo via external_id legado direto em "O CORPO DIZ" (ver
+     * migration/script que cadastrou 7377949 lá). Por isso esta regra fica "produto
+     * ausente" e é pulada pelo `sync:catalog-purchase-mapping`: rodar o sync completo
+     * hoje NÃO reaplica este ID em lugar nenhum, mas também não o remove (a regra do
+     * "O CORPO DIZ" acima só lista 6667092/6652189, então preservar isso é intencional —
+     * não inclua 7377949 nela sem criar o produto EN dedicado primeiro, senão o
+     * external_id legado do inglês fica raw no banco sem nenhuma regra apontando pra ele). */
     hotmartProductIds: ['7377949'],
     source: {
       section: 'BIBLIOTECA',

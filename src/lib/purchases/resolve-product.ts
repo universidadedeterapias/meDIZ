@@ -38,6 +38,21 @@ export async function resolveCatalogProductByStoneId(
   })
   if (product) return product
 
+  // Mesmo fallback que resolveCatalogProductByHotmartId: produto pode ter mais de um ID
+  // Stone/Guru (ex.: um checkout Guru adicional pro mesmo produto), registrado em
+  // catalog_product_external_ids em vez do campo único stoneProductId.
+  const external = await prisma.catalogProductExternalId.findFirst({
+    where: {
+      provider: 'STONE',
+      externalId: id,
+      catalogProduct: { active: true }
+    },
+    select: {
+      catalogProduct: { select: { id: true, title: true } }
+    }
+  })
+  if (external) return external.catalogProduct
+
   const mapRaw = process.env.STONE_COURSE_PRODUCT_MAP?.trim()
   if (!mapRaw) return null
 
