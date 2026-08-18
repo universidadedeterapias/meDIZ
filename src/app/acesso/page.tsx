@@ -44,16 +44,28 @@ function AcessoInner() {
       return
     }
 
-    const res = await signIn('magic-link', { token, redirect: false })
+    try {
+      const res = await signIn('magic-link', { token, redirect: false })
 
-    if (res?.error) {
+      if (!res || res.error) {
+        startedRef.current = false
+        setState('erro')
+        return
+      }
+
+      // Navegacao dura de proposito. O cookie de sessao nasce nesta resposta, e
+      // `router.replace` faz navegacao suave: o destino era renderizado a partir
+      // do cache do router, ainda sem sessao, e a pessoa ficava no "Entrando..."
+      // para sempre. Recarregar a URL inteira garante que o servidor veja o
+      // cookie — este e o unico ponto do app que loga e navega no mesmo gesto.
+      window.location.replace(destination)
+    } catch {
+      // Sem este catch, qualquer rejeicao do signIn deixava o spinner girando e
+      // o botao "Tentar de novo" inerte, porque `startedRef` nunca era liberado.
       startedRef.current = false
       setState('erro')
-      return
     }
-
-    router.replace(destination)
-  }, [destination, router, token])
+  }, [destination, token])
 
   useEffect(() => {
     void entrar()
