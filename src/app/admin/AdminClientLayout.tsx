@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Home, LifeBuoy, Settings, User, Users, LayoutDashboard, MessageSquareDashed } from 'lucide-react'
+import { Home, LifeBuoy, PackageCheck, Settings, User, Users, LayoutDashboard, MessageSquareDashed } from 'lucide-react'
 
 interface AdminClientLayoutProps {
   children: React.ReactNode
@@ -32,6 +32,12 @@ export default function AdminClientLayout({
               icon={<LayoutDashboard className="mr-3 h-5 w-5" />}
               text="Dashboard"
               active={pathname === '/admin'}
+            />
+            <MenuItem
+              href="/admin/entregas"
+              icon={<PackageCheck className="mr-3 h-5 w-5" />}
+              text="Compras e entregas"
+              active={pathname === '/admin/entregas'}
             />
             <MenuItem
               href="/admin/popup"
@@ -130,6 +136,8 @@ function getPageTitle(pathname: string): string {
       return 'Dashboard'
     case 'popup':
       return 'Gerenciamento de Pop-ups'
+    case 'entregas':
+      return 'Compras e entregas'
     case 'users':
       return 'Gerenciamento de Usuários'
     case 'settings':
