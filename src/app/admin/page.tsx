@@ -14,7 +14,8 @@ import {
   AlertCircle,
   CheckCircle,
   Activity,
-  Bell
+  Bell,
+  PackageCheck
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -248,6 +249,12 @@ export default function ModernDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            <Button className="w-full justify-start" variant="outline" asChild>
+              <a href="/admin/entregas">
+                <PackageCheck className="mr-2 h-4 w-4" />
+                Compras e entregas
+              </a>
+            </Button>
             <Button className="w-full justify-start" variant="outline" asChild>
               <a href="/admin/users">
                 <Users className="mr-2 h-4 w-4" />

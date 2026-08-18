@@ -21,10 +21,24 @@ export async function GET(request: NextRequest) {
     ? Math.min(Math.max(limitParam, 1), 200)
     : 50
 
-  const [items, counts] = await Promise.all([
+  const offsetParam = Number(request.nextUrl.searchParams.get('offset'))
+  const skip = Number.isFinite(offsetParam) ? Math.max(offsetParam, 0) : 0
+
+  // Busca por e-mail: no atendimento a pergunta quase sempre chega como "fulano
+  // disse que nao recebeu", e nao como "me mostre os que falharam".
+  const busca = request.nextUrl.searchParams.get('email')?.trim() || null
+
+  const where = {
+    ...(status ? { status } : {}),
+    ...(busca ? { email: { contains: busca, mode: 'insensitive' as const } } : {})
+  }
+  const temFiltro = Boolean(status || busca)
+
+  const [items, counts, total] = await Promise.all([
     prisma.accessDelivery.findMany({
-      where: status ? { status } : undefined,
+      where: temFiltro ? where : undefined,
       orderBy: { createdAt: 'desc' },
+      skip,
       take,
       select: {
         id: true,
@@ -41,7 +55,8 @@ export async function GET(request: NextRequest) {
     prisma.accessDelivery.groupBy({
       by: ['status'],
       _count: { _all: true }
-    })
+    }),
+    prisma.accessDelivery.count({ where: temFiltro ? where : undefined })
   ])
 
   return NextResponse.json({
@@ -52,9 +67,15 @@ export async function GET(request: NextRequest) {
     })),
     // O payload nao vai na listagem de proposito: leva o link de acesso, que e
     // credencial. Quem precisar reenviar usa o POST, que nao expoe o link.
+    //
+    // `totals` conta a base inteira e nao muda com o filtro — e o painel de cima
+    // da tela. `total` conta o recorte atual e e o que pagina.
     totals: Object.fromEntries(
       counts.map((row) => [row.status, row._count._all])
-    )
+    ),
+    total,
+    limit: take,
+    offset: skip
   })
 }
 
