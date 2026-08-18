@@ -72,6 +72,22 @@ export type DeliverAccessInput = {
   telefone?: string | null
   transactionId?: string | null
   provider?: string | null
+  /**
+   * ID do produto na plataforma de pagamento (nao no catalogo da meDIZ).
+   *
+   * O n8n usa isso para reconhecer o livro impresso: o catalogo mapeia a compra
+   * fisica para o produto digital, entao depois de liberar o acesso nao ha mais
+   * como saber que aquela venda tinha frete. So o ID de origem preserva isso.
+   */
+  externalProductId?: string | null
+  /**
+   * A compra tem algo para despachar (hoje: o livro impresso).
+   *
+   * Muda o texto da mensagem — quem comprou o impresso precisa saber que o
+   * rastreio vem depois, senao o acesso digital parece ser tudo que comprou.
+   * Quem decide e quem conhece a plataforma de origem, nao esta funcao.
+   */
+  physicalShipment?: boolean
   purchaseEventId?: string | null
   /** Para onde o link magico leva. Default: resolvido pelo produto liberado. */
   redirectTo?: string
@@ -120,7 +136,9 @@ export async function deliverAccess(
         process.env.NEXTAUTH_URL?.trim() || 'https://mediz.app'
       ).toString(),
       transaction_id: input.transactionId ?? null,
-      provider: input.provider ?? null
+      provider: input.provider ?? null,
+      external_product_id: input.externalProductId ?? null,
+      physical_shipment: input.physicalShipment ?? false
     }
 
     const delivery = await prisma.accessDelivery.create({

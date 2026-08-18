@@ -15,6 +15,7 @@ import { validateHotmartHottok } from '@/lib/hotmart/validate-hottok'
 import { normalizeLibraryEmail } from '@/lib/library/email'
 import { grantPurchaseAccess } from '@/lib/purchases/grant-purchase'
 import {
+  HOTMART_PHYSICAL_BOOK_IDS,
   isHotmartBookProduct,
   resolveHotmartGrantProductIds
 } from '@/lib/purchases/hotmart-grant-rules'
@@ -529,6 +530,10 @@ export async function POST(req: NextRequest) {
           telefone: getBuyerPhone(parsed),
           transactionId,
           provider: 'hotmart',
+          externalProductId: incomingProductId,
+          physicalShipment: HOTMART_PHYSICAL_BOOK_IDS.has(
+            incomingProductId.trim()
+          ),
           productsGranted: grant.productsGranted,
           purchaseEventId
         })
@@ -1072,6 +1077,7 @@ export async function POST(req: NextRequest) {
       telefone: getBuyerPhone(parsed),
       transactionId,
       provider: 'hotmart',
+      externalProductId: incomingProductId,
       productsGranted: [{ id: plan.id, title: plan.name }],
       purchaseEventId,
       redirectTo: '/chat'

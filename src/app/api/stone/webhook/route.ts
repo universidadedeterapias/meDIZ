@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
       nome: parsed.nome,
       transactionId: parsed.transactionId,
       provider: 'stone',
+      externalProductId: parsed.stoneProductId,
       productsGranted: grant.productsGranted,
       purchaseEventId
     })

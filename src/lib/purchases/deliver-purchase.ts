@@ -9,6 +9,7 @@ import {
 } from '@/lib/hotmart/buyer'
 import { grantPurchaseAccess } from '@/lib/purchases/grant-purchase'
 import {
+  HOTMART_PHYSICAL_BOOK_IDS,
   isHotmartBookProduct,
   resolveHotmartGrantProductIds
 } from '@/lib/purchases/hotmart-grant-rules'
@@ -53,7 +54,10 @@ type ResolvedPurchase = {
   telefone: string | null
   transactionId: string
   source: 'hotmart' | 'stone'
+  externalProductId: string | null
   isBook: boolean
+  /** Tem despacho fisico — o aviso ao cliente precisa falar do rastreio. */
+  physicalShipment: boolean
   currency: string | null
   country: string | null
 }
@@ -91,7 +95,9 @@ async function resolveFromHotmart(
     telefone: event.telefone ?? getBuyerPhone(payload),
     transactionId: event.externalTransactionId,
     source: 'hotmart',
+    externalProductId: productId,
     isBook: isHotmartBookProduct(productId),
+    physicalShipment: HOTMART_PHYSICAL_BOOK_IDS.has(productId.trim()),
     currency: event.currency,
     country: event.country
   }
@@ -131,7 +137,9 @@ async function resolveFromStone(
     telefone: event.telefone,
     transactionId: event.externalTransactionId,
     source: 'stone',
+    externalProductId: parsed.stoneProductId ?? null,
     isBook: false,
+    physicalShipment: false,
     currency: event.currency,
     country: event.country
   }
@@ -213,6 +221,8 @@ export async function deliverFromPurchaseEvent(
       telefone: resolved.telefone,
       transactionId: resolved.transactionId,
       provider: resolved.source,
+      externalProductId: resolved.externalProductId,
+      physicalShipment: resolved.physicalShipment,
       productsGranted: grant.productsGranted,
       purchaseEventId: event.id
     })
