@@ -14,8 +14,11 @@
  * com o codigo antigo ainda no ar, elas voltariam a cair no redirect da descoberta.
  *
  * Uso:
- *   npx tsx src/scripts/backfill-discovery-dismissal.ts          (simulacao)
- *   npx tsx src/scripts/backfill-discovery-dismissal.ts --apply  (grava)
+ *   npm run backfill:discovery-dismissal             (simulacao)
+ *   npm run backfill:discovery-dismissal -- --apply  (grava)
+ *
+ * O `--` do meio nao e enfeite: sem ele o npm engole a flag como opcao dele
+ * proprio e o script roda em simulacao achando que vai gravar.
  */
 import { config } from 'dotenv'
 config({ path: '.env' })
@@ -24,18 +27,24 @@ if (process.env.DATABASE_URL?.startsWith('prisma+') && process.env.DIRECT_URL) {
   process.env.DATABASE_URL = process.env.DIRECT_URL
 }
 
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 
 const APPLY = process.argv.includes('--apply')
 
 async function main() {
   // Recusa: marcada como concluida, mas sem consentimento e sem perfil gerado.
+  //
+  // `core` e Json?, e ai `{ equals: null }` nao significa o que parece: no Prisma
+  // isso procura o valor JSON `null`, nao a coluna NULL. Escrito assim o filtro
+  // nao casava com ninguem e o script relatava "nada a fazer" com 1942 linhas
+  // esperando. Coluna NULL em campo Json exige `Prisma.DbNull`.
   const where = {
     discoveryCompleted: true,
     consentedAt: null,
     compactProfile: null,
-    core: { equals: null }
-  } as const
+    core: { equals: Prisma.DbNull }
+  }
 
   const alvos = await prisma.userProfile.findMany({
     where,
@@ -59,8 +68,11 @@ async function main() {
     return
   }
 
-  // Conta 1 adiamento, e nao o limite: quem recusou por engano volta a ver o
-  // convite, quem recusou de proposito ainda tem duas dispensas antes do silencio.
+  // Conta 1 adiamento porque a recusa antiga foi uma recusa de verdade — gastou
+  // uma das tres chances. Sobram duas: um convite dispensavel e, depois dele, a
+  // descoberta obrigatoria. Quem recusou por engano volta a ver o convite; quem
+  // recusou de proposito chega ao passo obrigatorio uma visita antes de quem
+  // nunca recusou. Zerar para 0 daria a todos as tres chances cheias.
   const result = await prisma.userProfile.updateMany({
     where,
     data: {
