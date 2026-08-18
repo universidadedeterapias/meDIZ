@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react'
 import { RefreshCw, Loader2 } from 'lucide-react'
 import { AppSidebar } from '@/components/app-sidebar'
 import { ProductOfferList } from '@/components/library/ProductOfferList'
+import { DiscoveryInvite } from '@/components/discovery/DiscoveryInvite'
 import type { CatalogProductOffer } from '@/lib/catalog/types'
 import { Button } from '@/components/ui/button'
 import { AppPageHeader } from '@/components/navigation/AppPageHeader'
@@ -22,6 +23,7 @@ export default function BibliotecaPage() {
   const [products, setProducts] = useState<CatalogProductOffer[]>([])
   const [loading, setLoading] = useState(true)
   const [openingId, setOpeningId] = useState<string | null>(null)
+  const [suggestDiscovery, setSuggestDiscovery] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const loadingLabel = t('library.opening', 'Abrindo...')
@@ -87,6 +89,33 @@ export default function BibliotecaPage() {
     }
   }, [status, router, loadCatalog])
 
+  // A descoberta tambem alcanca quem so compra conteudo — a intencao e que todo
+  // mundo passe por ela. Aqui ela nunca aparece na primeira visita: quem acabou de
+  // comprar um livro le o livro antes de ser convidado a qualquer outra coisa.
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const res = await fetch('/api/discovery/status')
+        if (!res.ok || cancelled) return
+        const data = await res.json()
+        if (data.requiresDiscovery) {
+          router.replace('/descoberta')
+          return
+        }
+        if (!cancelled) setSuggestDiscovery(Boolean(data.suggestDiscovery))
+      } catch {
+        // Consultar a descoberta nunca pode atrapalhar o acesso ao conteudo.
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [status, router])
+
   useEffect(() => {
     pollRef.current = setInterval(() => {
       loadCatalog()
@@ -139,6 +168,12 @@ export default function BibliotecaPage() {
           </AppPageHeader>
 
           <main className="flex-1 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-6">
+            {suggestDiscovery ? (
+              <div className="mx-auto mb-5 w-full max-w-3xl">
+                <DiscoveryInvite onDismissed={() => setSuggestDiscovery(false)} />
+              </div>
+            ) : null}
+
             <ProductOfferList
               pageTitle={t('library.pageTitle', 'Biblioteca')}
               pageSubtitle={t(

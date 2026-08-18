@@ -96,24 +96,30 @@ export async function grantPurchaseAccess(
 
   for (const product of products) {
     const extId = `${input.source}_${input.externalTransactionId}_${product.id}`
-    const existing = await prisma.productEntitlement.findUnique({
-      where: { externalTransactionId: extId },
-      select: { id: true }
-    })
-    if (existing) {
-      productsGranted.push({ id: product.id, title: product.title })
-      continue
-    }
 
-    await prisma.productEntitlement.create({
-      data: {
-        email,
-        catalogProductId: product.id,
-        source: input.source,
-        externalTransactionId: extId
-      }
+    // A tabela tem duas unicidades e elas nao dizem a mesma coisa:
+    // `external_transaction_id` cobre reentrega do mesmo webhook, e
+    // `(email, catalog_product_id)` diz que a pessoa ja tem o produto, tenha vindo
+    // de onde tiver vindo. Conferir so a primeira e criar direto quebrava sempre
+    // que alguem ja possuia o produto por outra compra — recompra apos reembolso,
+    // ou combo que inclui um item avulso ja comprado. O webhook estourava e a
+    // venda caia como `failed` mesmo com o acesso ja garantido.
+    //
+    // `createMany` com `skipDuplicates` resolve as duas de uma vez, sem race entre
+    // os quatro webhooks que a Hotmart dispara para a mesma compra.
+    const { count } = await prisma.productEntitlement.createMany({
+      data: [
+        {
+          email,
+          catalogProductId: product.id,
+          source: input.source,
+          externalTransactionId: extId
+        }
+      ],
+      skipDuplicates: true
     })
-    entitlementsCreated++
+
+    entitlementsCreated += count
     productsGranted.push({ id: product.id, title: product.title })
   }
 

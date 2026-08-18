@@ -7,7 +7,7 @@ import {
   ensureLibraryUser,
   grantEntitlementsFromLegacyFlags
 } from '@/lib/purchases/migrate-legacy-permissions'
-import { notifyN8nNewUser } from '@/lib/purchases/notify-n8n-new-user'
+import { deliverAccess } from '@/lib/purchases/deliver-access'
 import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
@@ -51,7 +51,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'CPF inválido' }, { status: 400 })
     }
 
-    const { userCreated, temporaryPassword } = await ensureLibraryUser({
+    const { userCreated } = await ensureLibraryUser({
       email: normalizedEmail,
       nome: nome ?? null,
       cpf: cpfDigits
@@ -73,16 +73,22 @@ export async function PUT(request: NextRequest) {
       select: { id: true, title: true }
     })
 
-    await notifyN8nNewUser({
-      userCreated,
-      email: normalizedEmail,
-      nome: nome ?? null,
-      telefone: null,
-      temporaryPassword: userCreated ? temporaryPassword : null,
-      transactionId: `legacy_api_${Date.now()}`,
-      provider: 'hotmart',
-      productsGranted
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true }
     })
+
+    if (user) {
+      await deliverAccess({
+        userId: user.id,
+        email: normalizedEmail,
+        userCreated,
+        nome: nome ?? null,
+        transactionId: `legacy_api_${Date.now()}`,
+        provider: 'library_permissions_api',
+        productsGranted
+      })
+    }
 
     return NextResponse.json(
       {

@@ -18,6 +18,7 @@ import type { AgentId } from '@/components/chat/ChatHomeExperience'
 import { Footer } from '@/components/Footer'
 import PromotionPopup from '@/components/PromotionPopup'
 import Spinner from '@/components/Spinner'
+import { DiscoveryInvite } from '@/components/discovery/DiscoveryInvite'
 import {
   SidebarInset,
   SidebarProvider
@@ -72,6 +73,7 @@ export default function Page() {
   const [chatError, setChatError] = useState<string | null>(null)
   const [limitReached, setLimitReached] = useState(false)
   const [promptTestMode, setPromptTestMode] = useState(false)
+  const [suggestDiscovery, setSuggestDiscovery] = useState(false)
   const revealTimersRef = useRef<number[]>([])
   const skipNextThreadLoadRef = useRef(false)
   const handledSidebarStartRef = useRef<string | null>(null)
@@ -126,8 +128,9 @@ export default function Page() {
           return
         }
 
-        // Descoberta: gate de onboarding por voz, roda apos o cadastro/WhatsApp/form
-        // estarem completos, na primeira visita autenticada ao chat.
+        // Descoberta: nas duas primeiras aparicoes e um convite dispensavel aqui na
+        // tela (ver DiscoveryInvite). Na terceira ela deixa de ser opcional, e so
+        // entao volta a redirecionar. Nunca na primeira visita.
         try {
           const discoveryRes = await fetch('/api/discovery/status')
           if (discoveryRes.ok) {
@@ -135,6 +138,9 @@ export default function Page() {
             if (discoveryData.requiresDiscovery) {
               router.replace('/descoberta')
               return
+            }
+            if (!cancelled) {
+              setSuggestDiscovery(Boolean(discoveryData.suggestDiscovery))
             }
           }
         } catch {
@@ -520,6 +526,13 @@ export default function Page() {
           <ChatAppHeader onSuggestion={() => router.push('/suggestion')} />
 
           <main className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-transparent">
+            {/* So na home do chat: no meio de uma conversa o convite seria interrupcao. */}
+            {suggestDiscovery && messages.length === 0 && !loading ? (
+              <div className="mx-auto w-full max-w-2xl shrink-0 px-4 pt-3">
+                <DiscoveryInvite onDismissed={() => setSuggestDiscovery(false)} />
+              </div>
+            ) : null}
+
             {messages.length === 0 && !loading ? (
               <ChatHomeExperience
                 userName={FirstName(user.name)}

@@ -38,17 +38,24 @@ export async function POST(req: Request) {
     // Hash da nova senha (bcrypt)
     const passwordHash = await bcrypt.hash(newPassword, 10)
 
+    // O delete do token estava comentado porque falhava: "VerificationToken" nao
+    // tem chave primaria e o banco publica DELETE, entao o Postgres recusava
+    // (55000). Sem ele, o link de recuperacao seguia valido depois de usado — dava
+    // para trocar a senha de novo com o mesmo link dentro da validade. A migration
+    // 20260818120000 marcou a tabela com REPLICA IDENTITY FULL e o delete voltou.
+    //
+    // A sessao nao entra aqui de proposito: a estrategia e JWT, e a sessao vive no
+    // cookie assinado, nao em linha de banco. `session.deleteMany` apagaria nada e
+    // daria a impressao falsa de que trocar a senha derruba os outros dispositivos.
+    // Revogar de verdade exige versionar o token — outro assunto.
     await prisma.$transaction([
       prisma.user.update({
         where: { email },
         data: { passwordHash }
+      }),
+      prisma.verificationToken.deleteMany({
+        where: { identifier: email, token: tokenHash }
       })
-      // prisma.verificationToken.deleteMany({
-      //   where: { identifier: email, token: tokenHash }
-      // }),
-      // prisma.session.deleteMany({
-      //   where: { user: { email } }
-      // })
     ])
 
     return NextResponse.json({ success: true })

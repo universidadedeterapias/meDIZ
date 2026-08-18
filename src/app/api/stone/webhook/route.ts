@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { normalizeLibraryEmail } from '@/lib/library/email'
 import { grantPurchaseAccess } from '@/lib/purchases/grant-purchase'
-import { notifyN8nNewUser } from '@/lib/purchases/notify-n8n-new-user'
+import { deliverAccess } from '@/lib/purchases/deliver-access'
+import {
+  recordPurchaseEvent,
+  settlePurchaseEvent
+} from '@/lib/purchases/purchase-events'
 import {
   resolveCatalogProductByStoneId
 } from '@/lib/purchases/resolve-product'
@@ -10,11 +14,18 @@ import {
   isStoneRefundEvent,
   parseStoneWebhook
 } from '@/lib/stone/parse-webhook'
+import { validateWebhookBearerWhenConfigured } from '@/lib/webhookAuth'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
+  const authError = validateWebhookBearerWhenConfigured(
+    request,
+    'STONE_WEBHOOK_SECRET'
+  )
+  if (authError) return authError
+
   try {
     const bodyText = await request.text()
     if (!bodyText?.trim()) {
@@ -53,6 +64,19 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Venda Guru tambem chega por aqui: o Guru cobra por Pagar.me/Stone. O
+    // registro guarda a transacao mesmo quando o produto ainda nao tem mapeamento.
+    const purchaseEventId = await recordPurchaseEvent({
+      provider: 'stone',
+      eventType: parsed.eventType,
+      externalTransactionId: parsed.transactionId,
+      externalProductId: parsed.stoneProductId,
+      email: parsed.email,
+      nome: parsed.nome,
+      cpf: parsed.cpf,
+      payload
+    })
+
     let catalogProductId = parsed.catalogProductId
     if (!catalogProductId && parsed.stoneProductId) {
       const resolved = await resolveCatalogProductByStoneId(
@@ -62,9 +86,16 @@ export async function POST(request: NextRequest) {
     }
 
     if (!catalogProductId) {
+      await settlePurchaseEvent(purchaseEventId, {
+        status: 'pending_mapping',
+        reason: parsed.stoneProductId
+          ? `Produto Stone ${parsed.stoneProductId} sem mapeamento no catálogo`
+          : 'Payload sem identificação de produto'
+      })
       return NextResponse.json(
         {
           received: true,
+          pending_mapping: true,
           error: 'COURSE_PRODUCT_NOT_MAPPED',
           stoneProductId: parsed.stoneProductId
         },
@@ -81,15 +112,21 @@ export async function POST(request: NextRequest) {
       source: 'stone'
     })
 
-    await notifyN8nNewUser({
-      userCreated: grant.userCreated,
+    await deliverAccess({
+      userId: grant.userId,
       email: normalizeLibraryEmail(parsed.email),
+      userCreated: grant.userCreated,
       nome: parsed.nome,
-      telefone: null,
-      temporaryPassword: grant.temporaryPassword,
       transactionId: parsed.transactionId,
       provider: 'stone',
-      productsGranted: grant.productsGranted
+      externalProductId: parsed.stoneProductId,
+      productsGranted: grant.productsGranted,
+      purchaseEventId
+    })
+
+    await settlePurchaseEvent(purchaseEventId, {
+      status: 'processed',
+      catalogProductId
     })
 
     return NextResponse.json({

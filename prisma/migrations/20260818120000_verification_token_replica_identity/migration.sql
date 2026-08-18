@@ -1,0 +1,15 @@
+-- "VerificationToken" nao tem chave primaria: so `token @unique` e o unique
+-- composto. O banco participa de uma publicacao logica que publica DELETE, e o
+-- Postgres recusa apagar de tabela sem replica identity nessa situacao:
+--
+--   55000: cannot delete from table "VerificationToken" because it does not
+--          have a replica identity and publishes deletes
+--
+-- Todo delete nessa tabela falhava. O link de acesso nunca queimava — o
+-- `consumeAccessLink` engolia o erro e devolvia null, e o login virava
+-- CredentialsSignin. Pelo mesmo motivo o delete do token de reset de senha esta
+-- comentado em `api/reset-password`, o que deixa aquele token valido apos o uso.
+--
+-- REPLICA IDENTITY FULL usa a linha inteira como identidade. Nao altera colunas,
+-- indices nem dados: muda so o que o Postgres publica no WAL ao apagar.
+ALTER TABLE "VerificationToken" REPLICA IDENTITY FULL;

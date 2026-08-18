@@ -85,6 +85,9 @@ export default function DiscoveryPage() {
   const router = useRouter()
   const [status, setStatus] = useState<DiscoveryStatus>('checking')
   const [testMode, setTestMode] = useState(false)
+  const [obrigatoria, setObrigatoria] = useState(false)
+  /** Falha do fluxo, e nao escolha da pessoa: libera a saida mesmo na obrigatoria. */
+  const [falhaTecnica, setFalhaTecnica] = useState(false)
   const [messages, setMessages] = useState<DiscoveryTranscriptMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -179,8 +182,12 @@ export default function DiscoveryPage() {
       if (cancelled) return
 
       setTestMode(Boolean(data.testMode))
+      // Terceira aparicao: a descoberta deixa de ser dispensavel, e o "agora nao"
+      // some. A saida por falha tecnica continua existindo — obrigatorio vale para
+      // a escolha da pessoa, nunca para o fluxo quebrar.
+      setObrigatoria(Boolean(data.requiresDiscovery))
 
-      if (!data.requiresDiscovery) {
+      if (!data.eligibleForDiscovery) {
         if (data.testMode) {
           setStatus('completed-test-mode')
         } else {
@@ -201,6 +208,40 @@ export default function DiscoveryPage() {
     }
   }, [router])
 
+  /**
+   * Saida sempre disponivel do fluxo.
+   *
+   * Antes, sair so era possivel recusando o consentimento — o que marcava a
+   * descoberta como concluida para sempre. E quem ja tinha consentido nem essa
+   * saida tinha: a tela de consentimento nao aparece mais depois do aceite, entao
+   * uma falha no realtime deixava a pessoa presa indo e voltando do /chat.
+   *
+   * Adiar nao marca como concluida: o convite volta depois, no chat.
+   */
+  /** Pode sair por escolha? Na terceira aparicao, so se o fluxo tiver falhado. */
+  const podeAdiar = !obrigatoria || falhaTecnica
+
+  async function adiarDescoberta() {
+    if (!podeAdiar) {
+      setError(
+        'Essa conversa é rápida e só acontece uma vez — depois dela o meDIZ passa a te responder considerando o seu contexto.'
+      )
+      return
+    }
+
+    // Falha tecnica nao conta como recusa: a pessoa nao escolheu adiar, o fluxo
+    // e que nao abriu.
+    if (!falhaTecnica) {
+      try {
+        await fetch('/api/discovery/dismiss', { method: 'POST' })
+      } catch {
+        // Sair da tela importa mais que registrar o adiamento.
+      }
+    }
+
+    router.replace('/chat')
+  }
+
   async function connectRealtime() {
     if (realtimeClientSecret) return
 
@@ -220,6 +261,9 @@ export default function DiscoveryPage() {
       setRealtimeInstructions(data.instructions)
     } catch {
       setError('Não consegui abrir a conversa por voz agora. Você ainda pode escrever.')
+      // Falha nossa, nao escolha da pessoa: libera a saida mesmo quando a
+      // descoberta esta obrigatoria. E o que impede o travamento de voltar.
+      setFalhaTecnica(true)
     }
   }
 
@@ -506,7 +550,15 @@ export default function DiscoveryPage() {
         />
       )}
 
-      <ChatAppHeader onSuggestion={() => {}} onBack={() => router.push('/chat')} />
+      {/*
+        Voltar adia em vez de so navegar. Antes ele levava ao /chat, que
+        redirecionava de volta para ca — o loop so terminava quando a pessoa
+        recusava o consentimento, e quem ja tinha consentido nem essa opcao via.
+      */}
+      <ChatAppHeader
+        onSuggestion={() => {}}
+        onBack={() => void adiarDescoberta()}
+      />
 
       <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden px-4 pb-4">
         {status === 'checking' ? (
@@ -621,6 +673,24 @@ export default function DiscoveryPage() {
                 <div ref={conversationEndRef} />
               </div>
             </div>
+
+            {/*
+              Saida visivel durante a conversa. Sem ela, quem ja consentiu e nao
+              consegue concluir — realtime fora do ar, aba fechada no meio — nao
+              tem como sair: a tela de consentimento, que tinha o unico botao de
+              recusa, nao aparece mais depois do aceite.
+            */}
+            {status !== 'finishing' && podeAdiar ? (
+              <button
+                type="button"
+                onClick={() => void adiarDescoberta()}
+                className="mb-2 self-center rounded-full px-4 py-1.5 text-xs font-medium text-zinc-500 transition hover:bg-white/60 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-200"
+              >
+                {falhaTecnica
+                  ? 'Continuar para o chat'
+                  : 'Agora não — continuar para o chat'}
+              </button>
+            ) : null}
 
             {audioBlocked ? (
               <button

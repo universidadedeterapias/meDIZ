@@ -96,18 +96,8 @@ export default function Page() {
           return
         }
 
-        try {
-          const discoveryRes = await fetch('/api/discovery/status')
-          if (discoveryRes.ok) {
-            const discoveryData = await discoveryRes.json()
-            if (discoveryData.requiresDiscovery) {
-              router.replace('/descoberta')
-              return
-            }
-          }
-        } catch {
-          // Falha ao consultar descoberta nao deve bloquear o acesso.
-        }
+        // A descoberta deixou de ser gate: o convite vive no chat, e a pesquisa
+        // nao interrompe mais ninguem para pedir uma conversa por voz.
 
         try {
           const tutorialRes = await fetch('/api/tutorial/status')

@@ -123,7 +123,8 @@
     "revenue-by-plans": "tsx src/scripts/revenue-by-plans.ts",
     "cypress": "cypress open",
     "cypress:run": "cypress run",
-    "test:e2e": "cypress run"
+    "test:e2e": "cypress run",
+    "backfill:discovery-dismissal": "tsx src/scripts/backfill-discovery-dismissal.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.9.0",
