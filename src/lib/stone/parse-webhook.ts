@@ -1,4 +1,5 @@
 import { isValidCpf, normalizeCpf } from '@/lib/cpf'
+import { montarTelefoneBR } from '@/lib/phone'
 
 export type StoneWebhookPurchase = {
   eventType: string
@@ -6,6 +7,7 @@ export type StoneWebhookPurchase = {
   email: string
   nome: string | null
   cpf: string | null
+  telefone: string | null
   stoneProductId: string | null
   catalogProductId: string | null
 }
@@ -73,6 +75,43 @@ function extractCpf(payload: Record<string, unknown>): string | null {
   if (!document) return null
   const digits = normalizeCpf(document)
   return digits.length === 11 && isValidCpf(digits) ? digits : null
+}
+
+/**
+ * Telefone do comprador, ja com DDI.
+ *
+ * A Stone entrega o numero partido em tres campos (`country_code`, `area_code`,
+ * `number`) e nunca como string pronta. Enquanto isso nao era lido, toda venda
+ * Guru chegava ao aviso com `telefone: null` e o cliente so recebia e-mail — o
+ * WhatsApp, que e o canal principal, ficava de fora sem nenhum erro aparecer.
+ *
+ * `shipping.recipient_phone` ja vem no formato `+5532988037060`, e serve de
+ * reserva quando o bloco `phones` nao veio.
+ */
+function extractTelefone(payload: Record<string, unknown>): string | null {
+  const data = (payload.data ?? payload) as Record<string, unknown>
+  const customer = data.customer as Record<string, unknown> | undefined
+
+  const movel =
+    (dig(customer, 'phones.mobile_phone') as Record<string, unknown>) ??
+    (dig(data, 'customer.phones.mobile_phone') as Record<string, unknown>) ??
+    (dig(customer, 'phones.home_phone') as Record<string, unknown>)
+
+  if (movel) {
+    const montado = montarTelefoneBR({
+      ddi: movel.country_code,
+      ddd: movel.area_code,
+      numero: movel.number
+    })
+    if (montado) return montado
+  }
+
+  const reserva = asString(
+    dig(data, 'shipping.recipient_phone') || dig(customer, 'phone')
+  )
+  if (reserva) return montarTelefoneBR({ numero: reserva })
+
+  return null
 }
 
 function extractStoneProductId(payload: Record<string, unknown>): string | null {
@@ -169,6 +208,7 @@ export function parseStoneWebhook(
     email,
     nome: extractName(payload),
     cpf: extractCpf(payload),
+    telefone: extractTelefone(payload),
     stoneProductId: extractStoneProductId(payload),
     catalogProductId: extractCatalogProductId(payload)
   }

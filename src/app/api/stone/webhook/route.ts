@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
       externalProductId: parsed.stoneProductId,
       email: parsed.email,
       nome: parsed.nome,
+      telefone: parsed.telefone,
       cpf: parsed.cpf,
       payload
     })
@@ -117,6 +118,7 @@ export async function POST(request: NextRequest) {
       email: normalizeLibraryEmail(parsed.email),
       userCreated: grant.userCreated,
       nome: parsed.nome,
+      telefone: parsed.telefone,
       transactionId: parsed.transactionId,
       provider: 'stone',
       externalProductId: parsed.stoneProductId,

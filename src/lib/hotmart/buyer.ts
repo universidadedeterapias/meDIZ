@@ -1,4 +1,5 @@
 import { isValidCpf, normalizeCpf } from '@/lib/cpf'
+import { montarTelefoneBR } from '@/lib/phone'
 import type { HotmartPayload } from '@/types/hotmart'
 
 export function getBuyerEmail(p: HotmartPayload): string {
@@ -37,10 +38,12 @@ export function getOfferCode(p: HotmartPayload): string | null {
 export function getBuyerPhone(p: HotmartPayload): string | null {
   const buyer = p.data.buyer
   if (!buyer) return null
-  const code = buyer.checkout_phone_code?.trim() ?? ''
-  const phone = buyer.checkout_phone?.trim() ?? ''
-  const digits = `${code}${phone}`.replace(/\D/g, '')
-  return digits || null
+  // Concatenar os dois campos as cegas repetia o DDD: a Hotmart manda o codigo
+  // separado, mas `checkout_phone` costuma ja traze-lo dentro. Ver `montarTelefoneBR`.
+  return montarTelefoneBR({
+    ddd: buyer.checkout_phone_code,
+    numero: buyer.checkout_phone
+  })
 }
 
 export function getPurchaseTransaction(p: HotmartPayload): string {
