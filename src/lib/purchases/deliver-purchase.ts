@@ -14,6 +14,7 @@ import {
   resolveHotmartGrantProductIds
 } from '@/lib/purchases/hotmart-grant-rules'
 import { deliverAccess } from '@/lib/purchases/deliver-access'
+import { ensureBookShipment } from '@/lib/shipping/book-shipment'
 import { settlePurchaseEvent } from '@/lib/purchases/purchase-events'
 import {
   resolveCatalogProductByHotmartId,
@@ -213,6 +214,21 @@ export async function deliverFromPurchaseEvent(
       })
     }
 
+    // Registrado antes do aviso: o aviso carrega o id do despacho, e e por ele
+    // que a planilha da grafica devolve o codigo de rastreio.
+    const shipment = resolved.physicalShipment
+      ? await ensureBookShipment({
+          purchaseEventId: event.id,
+          userId: grant.userId,
+          email: resolved.email,
+          nome: resolved.nome,
+          telefone: resolved.telefone,
+          provider: resolved.source,
+          externalTransactionId: resolved.transactionId,
+          externalProductId: resolved.externalProductId
+        })
+      : null
+
     await deliverAccess({
       userId: grant.userId,
       email: resolved.email,
@@ -223,6 +239,7 @@ export async function deliverFromPurchaseEvent(
       provider: resolved.source,
       externalProductId: resolved.externalProductId,
       physicalShipment: resolved.physicalShipment,
+      shipmentId: shipment?.id ?? null,
       productsGranted: grant.productsGranted,
       purchaseEventId: event.id
     })

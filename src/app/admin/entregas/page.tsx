@@ -35,6 +35,7 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
+import { BookShipmentsCard } from '@/components/admin/BookShipmentsCard'
 import {
   Table,
   TableBody,
@@ -544,6 +545,8 @@ export default function EntregasPage() {
           ) : null}
         </CardContent>
       </Card>
+
+      <BookShipmentsCard />
     </div>
   )
 }
