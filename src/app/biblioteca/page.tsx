@@ -7,6 +7,7 @@ import { RefreshCw, Loader2 } from 'lucide-react'
 import { AppSidebar } from '@/components/app-sidebar'
 import { ProductOfferList } from '@/components/library/ProductOfferList'
 import { DiscoveryInvite } from '@/components/discovery/DiscoveryInvite'
+import { BookShipmentStatus } from '@/components/library/BookShipmentStatus'
 import type { CatalogProductOffer } from '@/lib/catalog/types'
 import { Button } from '@/components/ui/button'
 import { AppPageHeader } from '@/components/navigation/AppPageHeader'
@@ -168,6 +169,8 @@ export default function BibliotecaPage() {
           </AppPageHeader>
 
           <main className="flex-1 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-6">
+            <BookShipmentStatus />
+
             {suggestDiscovery ? (
               <div className="mx-auto mb-5 w-full max-w-3xl">
                 <DiscoveryInvite onDismissed={() => setSuggestDiscovery(false)} />

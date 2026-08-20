@@ -22,6 +22,7 @@ import {
 import { startBookOnboarding } from '@/lib/purchases/start-book-onboarding'
 import { ensureLibraryUser } from '@/lib/purchases/migrate-legacy-permissions'
 import { deliverAccess } from '@/lib/purchases/deliver-access'
+import { ensureBookShipment } from '@/lib/shipping/book-shipment'
 import {
   recordPurchaseEvent,
   settlePurchaseEvent
@@ -522,6 +523,24 @@ export async function POST(req: NextRequest) {
           })
         }
 
+        // O despacho e registrado antes do aviso porque o aviso leva o id dele:
+        // e por esse id que a planilha da grafica devolve o codigo de rastreio.
+        const temDespacho = HOTMART_PHYSICAL_BOOK_IDS.has(
+          incomingProductId.trim()
+        )
+        const shipment = temDespacho
+          ? await ensureBookShipment({
+              purchaseEventId,
+              userId: grant.userId,
+              email,
+              nome: getBuyerName(parsed),
+              telefone: getBuyerPhone(parsed),
+              provider: 'hotmart',
+              externalTransactionId: transactionId,
+              externalProductId: incomingProductId
+            })
+          : null
+
         await deliverAccess({
           userId: grant.userId,
           email,
@@ -531,9 +550,8 @@ export async function POST(req: NextRequest) {
           transactionId,
           provider: 'hotmart',
           externalProductId: incomingProductId,
-          physicalShipment: HOTMART_PHYSICAL_BOOK_IDS.has(
-            incomingProductId.trim()
-          ),
+          physicalShipment: temDespacho,
+          shipmentId: shipment?.id ?? null,
           productsGranted: grant.productsGranted,
           purchaseEventId
         })

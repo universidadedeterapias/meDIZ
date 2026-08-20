@@ -650,6 +650,57 @@ model AccessDelivery {
   @@map("access_deliveries")
 }
 
+/// Livro impresso a despachar.
+///
+/// A linha nasce na compra, e nao quando o codigo de rastreio aparece. Se ela so
+/// existisse depois que a grafica preenchesse a planilha, o livro que a grafica
+/// nunca postou seria invisivel: ninguem teria como saber que ele existe. E o
+/// mesmo buraco do `pending_mapping` — o silencio e o que machuca.
+///
+/// Quem consulta a transportadora e o n8n; aqui e so o estado e o historico, para
+/// o admin e para o comprador enxergarem a mesma coisa.
+model BookShipment {
+  id String @id @default(uuid())
+
+  /// Venda que originou o despacho. Null so em linha criada na mao pelo suporte.
+  purchaseEventId String? @map("purchase_event_id")
+  userId          String? @map("user_id")
+  email           String  @db.VarChar(255)
+  nome            String? @db.VarChar(255)
+  telefone        String? @db.VarChar(40)
+
+  provider              String  @db.VarChar(32)
+  externalTransactionId String  @map("external_transaction_id") @db.VarChar(120)
+  externalProductId     String? @map("external_product_id") @db.VarChar(120)
+
+  /// aguardando_postagem | postado | em_transito | entregue | devolvido | problema
+  status String @default("aguardando_postagem") @db.VarChar(32)
+
+  trackingCode String? @map("tracking_code") @db.VarChar(60)
+  /// Deduzida do formato do codigo — a grafica posta por mais de um canal.
+  carrier      String? @db.VarChar(32)
+  /// Null quando a transportadora nao tem pagina publica de rastreio.
+  trackingUrl  String? @map("tracking_url") @db.VarChar(500)
+
+  /// Ultima descricao vinda da transportadora, em texto que o cliente entenda.
+  lastStatusLabel String?   @map("last_status_label") @db.VarChar(255)
+  /// Historico cru do rastreio, como o n8n mandou.
+  events          Json?
+  postedAt        DateTime? @map("posted_at")
+  deliveredAt     DateTime? @map("delivered_at")
+  lastCheckedAt   DateTime? @map("last_checked_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Reentrega do mesmo webhook nao cria um segundo despacho.
+  @@unique([provider, externalTransactionId])
+  @@index([status, createdAt])
+  @@index([email])
+  @@index([trackingCode])
+  @@map("book_shipments")
+}
+
 /// Permissões da biblioteca (Hotmart via n8n) — independente de assinatura premium.
 model LibraryPermission {
   id           String   @id @default(uuid())

@@ -88,6 +88,14 @@ export type DeliverAccessInput = {
    * Quem decide e quem conhece a plataforma de origem, nao esta funcao.
    */
   physicalShipment?: boolean
+  /**
+   * Despacho ja registrado em `book_shipments`.
+   *
+   * Vai no payload para virar coluna na planilha da grafica. E o que permite ao
+   * job que le a planilha devolver o codigo de rastreio apontando para a venda
+   * certa - casar por e-mail erra em quem comprou duas vezes.
+   */
+  shipmentId?: string | null
   purchaseEventId?: string | null
   /** Para onde o link magico leva. Default: resolvido pelo produto liberado. */
   redirectTo?: string
@@ -138,7 +146,8 @@ export async function deliverAccess(
       transaction_id: input.transactionId ?? null,
       provider: input.provider ?? null,
       external_product_id: input.externalProductId ?? null,
-      physical_shipment: input.physicalShipment ?? false
+      physical_shipment: input.physicalShipment ?? false,
+      shipment_id: input.shipmentId ?? null
     }
 
     const delivery = await prisma.accessDelivery.create({
