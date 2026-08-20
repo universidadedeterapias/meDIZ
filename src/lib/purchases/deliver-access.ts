@@ -36,8 +36,14 @@ const MAX_ATTEMPTS = 5
  * joga o comprador de biblioteca para dentro dos gates do chat.
  */
 async function resolveDestination(
-  productIds: string[]
+  productIds: string[],
+  options: { physicalShipment: boolean }
 ): Promise<string> {
+  // Livro impresso: o exemplar vai pelos Correios e leva dias. O bonus de
+  // audioterapia e o que ele consegue usar hoje, entao e para la que o link
+  // leva — a biblioteca continua a um clique no menu.
+  if (options.physicalShipment) return '/audioterapia'
+
   if (productIds.length === 0) return '/biblioteca'
 
   const products = await prisma.catalogProduct.findMany({
@@ -119,7 +125,9 @@ export async function deliverAccess(
   try {
     const destination =
       input.redirectTo ??
-      (await resolveDestination(input.productsGranted.map((p) => p.id)))
+      (await resolveDestination(input.productsGranted.map((p) => p.id), {
+        physicalShipment: input.physicalShipment ?? false
+      }))
 
     // O link so existe para quem esta entrando pela primeira vez. Quem ja tem
     // conta usa a senha que definiu — mandar link para essa pessoa seria criar
@@ -137,12 +145,22 @@ export async function deliverAccess(
       products_granted: input.productsGranted,
       access_link: accessLink?.url ?? null,
       access_link_expires_at: accessLink?.expiresAt.toISOString() ?? null,
+      // Valor do botao de URL do template oficial. A Meta so aceita o sufixo que
+      // ela concatena a URL base cadastrada no template (`.../acesso`), nunca a
+      // URL inteira — entao ele sai pronto daqui, e o n8n nao precisa fatiar
+      // string para descobrir onde a base termina.
+      access_link_button_value: accessLink
+        ? new URL(accessLink.url).search
+        : null,
       // Quem ja tem conta nao recebe link magico, mas precisa de um caminho
       // direto para o que foi liberado — senao cai na home e se perde.
       destination_url: new URL(
         destination,
         process.env.NEXTAUTH_URL?.trim() || 'https://mediz.app'
       ).toString(),
+      // O caminho puro, para quem ja tem conta: sem token nao existe botao de
+      // link magico, e o n8n precisa do destino para montar a mensagem.
+      destination_path: destination,
       transaction_id: input.transactionId ?? null,
       provider: input.provider ?? null,
       external_product_id: input.externalProductId ?? null,
