@@ -38,9 +38,12 @@ function AcessoInner() {
     startedRef.current = true
     setState('entrando')
 
+    // Sem token nao ha o que consumir, e isso nao e erro: e o aviso de quem ja
+    // tem conta e entra com a propria senha. O botao do template do WhatsApp cai
+    // aqui porque a URL base cadastrada na Meta e fixa em /acesso — quem manda
+    // essa pessoa para o login e esta pagina, e nao a tela de "link expirado".
     if (!token) {
-      startedRef.current = false
-      setState('erro')
+      router.replace(`/login?next=${encodeURIComponent(destination)}`)
       return
     }
 
@@ -65,7 +68,7 @@ function AcessoInner() {
       startedRef.current = false
       setState('erro')
     }
-  }, [destination, token])
+  }, [destination, router, token])
 
   useEffect(() => {
     void entrar()

@@ -1,5 +1,5 @@
 import { isValidCpf, normalizeCpf } from '@/lib/cpf'
-import { montarTelefoneBR } from '@/lib/phone'
+import { montarTelefone } from '@/lib/phone'
 
 export type StoneWebhookPurchase = {
   eventType: string
@@ -98,7 +98,7 @@ function extractTelefone(payload: Record<string, unknown>): string | null {
     (dig(customer, 'phones.home_phone') as Record<string, unknown>)
 
   if (movel) {
-    const montado = montarTelefoneBR({
+    const montado = montarTelefone({
       ddi: movel.country_code,
       ddd: movel.area_code,
       numero: movel.number
@@ -109,7 +109,7 @@ function extractTelefone(payload: Record<string, unknown>): string | null {
   const reserva = asString(
     dig(data, 'shipping.recipient_phone') || dig(customer, 'phone')
   )
-  if (reserva) return montarTelefoneBR({ numero: reserva })
+  if (reserva) return montarTelefone({ numero: reserva })
 
   return null
 }
