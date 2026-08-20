@@ -1,5 +1,5 @@
 import { isValidCpf, normalizeCpf } from '@/lib/cpf'
-import { montarTelefoneBR } from '@/lib/phone'
+import { montarTelefone } from '@/lib/phone'
 import type { HotmartPayload } from '@/types/hotmart'
 
 export function getBuyerEmail(p: HotmartPayload): string {
@@ -39,10 +39,13 @@ export function getBuyerPhone(p: HotmartPayload): string | null {
   const buyer = p.data.buyer
   if (!buyer) return null
   // Concatenar os dois campos as cegas repetia o DDD: a Hotmart manda o codigo
-  // separado, mas `checkout_phone` costuma ja traze-lo dentro. Ver `montarTelefoneBR`.
-  return montarTelefoneBR({
+  // separado, mas `checkout_phone` costuma ja traze-lo dentro. Ver `montarTelefone`.
+  // O pais decide o DDI. Sem ele, comprador de fora do Brasil era descartado
+  // por nao ter 10 ou 11 digitos, e ficava sem WhatsApp nenhum.
+  return montarTelefone({
     ddd: buyer.checkout_phone_code,
-    numero: buyer.checkout_phone
+    numero: buyer.checkout_phone,
+    paisIso: buyer.address?.country_iso ?? p.data.purchase?.checkout_country?.iso
   })
 }
 
