@@ -86,6 +86,36 @@ async function resolveMainProductTitle(
   return livro?.title ?? null
 }
 
+/**
+ * Primeiro acesso e "nunca escolheu a senha", nao "a conta nasceu agora".
+ *
+ * Quem compra quatro produtos na mesma tarde cria a conta na primeira compra e
+ * ja existe nas outras tres. Decidir pelo `userCreated` mandava, nessas tres, o
+ * aviso de "entre com o mesmo e-mail e a mesma senha de sempre" — para alguem que
+ * nunca definiu senha nenhuma. A pessoa abria o ultimo aviso, caia num login sem
+ * chave, e concluia que nao tinha acesso ao que acabara de comprar.
+ *
+ * `mustResetPassword` e o sinal certo. Nao adianta olhar `passwordHash`: toda
+ * conta nasce com uma senha temporaria, entao ele nunca e nulo. A flag so cai
+ * quando a pessoa troca a senha de verdade, em `/api/auth/change-password`.
+ *
+ * Na duvida (usuario sumido), manda link: um link a mais e ruido, um aviso sem
+ * credencial e uma porta trancada.
+ */
+async function resolveKind(
+  userId: string,
+  userCreated: boolean
+): Promise<AccessDeliveryKind> {
+  if (userCreated) return 'new_account'
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { mustResetPassword: true }
+  })
+
+  return user && !user.mustResetPassword ? 'products_added' : 'new_account'
+}
+
 function resolveWebhookUrl(): string | null {
   return (
     process.env.N8N_ACCESS_DELIVERY_WEBHOOK_URL?.trim() ||
@@ -145,7 +175,7 @@ export async function deliverAccess(
 ): Promise<{ deliveryId: string | null; sent: boolean }> {
   const email = normalizeLibraryEmail(input.email)
   const kind: AccessDeliveryKind =
-    input.kind ?? (input.userCreated ? 'new_account' : 'products_added')
+    input.kind ?? (await resolveKind(input.userId, input.userCreated))
 
   try {
     const destination =
