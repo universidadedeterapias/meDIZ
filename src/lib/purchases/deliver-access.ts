@@ -61,6 +61,31 @@ async function resolveDestination(
   return '/biblioteca'
 }
 
+/**
+ * O que a pessoa comprou, quando a compra tem despacho.
+ *
+ * O livro impresso libera o digital e o PDF bonus junto, e listar os tres na
+ * mensagem faz o comprador achar que comprou tres coisas. Ele comprou uma: a que
+ * vai chegar pelos Correios. O bonus ele encontra na biblioteca.
+ *
+ * Identificado pela `permissionKey`, e nao pela posicao no array:
+ * `grantPurchaseAccess` monta `productsGranted` a partir de um `findMany` com
+ * `in`, entao a ordem e a que o Postgres devolver — hoje o livro vem primeiro por
+ * acaso, nao por regra.
+ */
+async function resolveMainProductTitle(
+  productIds: string[]
+): Promise<string | null> {
+  if (productIds.length === 0) return null
+
+  const livro = await prisma.catalogProduct.findFirst({
+    where: { id: { in: productIds }, permissionKey: 'LIVRO_DIGITAL' },
+    select: { title: true }
+  })
+
+  return livro?.title ?? null
+}
+
 function resolveWebhookUrl(): string | null {
   return (
     process.env.N8N_ACCESS_DELIVERY_WEBHOOK_URL?.trim() ||
@@ -129,6 +154,12 @@ export async function deliverAccess(
         physicalShipment: input.physicalShipment ?? false
       }))
 
+    // So a compra com despacho precisa disso: nas outras, listar tudo que foi
+    // liberado e exatamente o que a pessoa quer ler.
+    const mainProductTitle = input.physicalShipment
+      ? await resolveMainProductTitle(input.productsGranted.map((p) => p.id))
+      : null
+
     // O link so existe para quem esta entrando pela primeira vez. Quem ja tem
     // conta usa a senha que definiu — mandar link para essa pessoa seria criar
     // uma credencial nova sem motivo.
@@ -143,6 +174,9 @@ export async function deliverAccess(
       nome: input.nome ?? null,
       telefone: input.telefone ?? null,
       products_granted: input.productsGranted,
+      // O nome que vai na mensagem quando ha despacho. Null nas demais compras,
+      // e ai quem avisa lista tudo que foi liberado.
+      main_product_title: mainProductTitle,
       access_link: accessLink?.url ?? null,
       access_link_expires_at: accessLink?.expiresAt.toISOString() ?? null,
       // Valor do botao de URL do template oficial. A Meta so aceita o sufixo que
