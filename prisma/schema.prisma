@@ -628,6 +628,12 @@ model AccessDelivery {
   /// Venda que originou o aviso. Null em reenvio pedido pelo suporte.
   purchaseEventId String? @map("purchase_event_id")
 
+  /// Identidade da venda. E o que torna o aviso idempotente: a plataforma manda
+  /// mais de um webhook para a mesma compra, e so o primeiro vira mensagem.
+  /// Null no reenvio do atendimento, que pode repetir a vontade.
+  provider              String? @db.VarChar(32)
+  externalTransactionId String? @map("external_transaction_id") @db.VarChar(120)
+
   /// new_account = primeiro acesso, leva link magico.
   /// products_added = ja tinha conta, leva so o que foi liberado (sem credencial).
   kind String @db.VarChar(32)
@@ -644,6 +650,9 @@ model AccessDelivery {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
+  /// Um aviso por venda. NULL nao conflita com NULL no Postgres, entao reenvio
+  /// sem transacao fica de fora da trava.
+  @@unique([provider, externalTransactionId])
   @@index([status, createdAt])
   @@index([email])
   @@index([purchaseEventId])

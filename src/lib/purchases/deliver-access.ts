@@ -116,6 +116,65 @@ async function resolveKind(
   return user && !user.mustResetPassword ? 'products_added' : 'new_account'
 }
 
+/**
+ * Aviso ja registrado para esta venda, se houver.
+ *
+ * So faz sentido perguntar quando a venda tem identidade. O reenvio pedido no
+ * atendimento nao tem transacao, e deve poder repetir quantas vezes o atendente
+ * pedir — e por isso que a trava do banco ignora linha com campo nulo.
+ */
+async function buscarAvisoDaVenda(
+  provider: string | null,
+  externalTransactionId: string | null
+): Promise<AccessDelivery | null> {
+  if (!provider || !externalTransactionId) return null
+
+  return prisma.accessDelivery.findFirst({
+    where: { provider, externalTransactionId }
+  })
+}
+
+/**
+ * Conflito de unicidade do Prisma.
+ *
+ * Conferido pela forma, e nao com `instanceof`, porque `Prisma` entra aqui como
+ * import de tipo — trazer o namespace como valor so para isto puxaria o client
+ * inteiro para o bundle.
+ */
+function ehConflitoDeUnicidade(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { code?: unknown }).code === 'P2002'
+  )
+}
+
+/**
+ * Grava o aviso, ou devolve o que outro webhook gravou primeiro.
+ *
+ * A garantia real e o indice unico de `(provider, external_transaction_id)`, e
+ * nao a consulta que roda antes: os dois webhooks da mesma compra chegam juntos,
+ * os dois consultam antes de qualquer um gravar, e os dois concluem que sao o
+ * primeiro. A consulta evita o trabalho; o indice evita a mensagem duplicada.
+ */
+async function criarAviso(
+  data: Prisma.AccessDeliveryUncheckedCreateInput
+): Promise<AccessDelivery> {
+  try {
+    return await prisma.accessDelivery.create({ data })
+  } catch (error) {
+    if (!ehConflitoDeUnicidade(error)) throw error
+
+    const existente = await buscarAvisoDaVenda(
+      data.provider ?? null,
+      data.externalTransactionId ?? null
+    )
+    if (!existente) throw error
+
+    return existente
+  }
+}
+
 function resolveWebhookUrl(): string | null {
   return (
     process.env.N8N_ACCESS_DELIVERY_WEBHOOK_URL?.trim() ||
@@ -174,10 +233,27 @@ export async function deliverAccess(
   input: DeliverAccessInput
 ): Promise<{ deliveryId: string | null; sent: boolean }> {
   const email = normalizeLibraryEmail(input.email)
-  const kind: AccessDeliveryKind =
-    input.kind ?? (await resolveKind(input.userId, input.userCreated))
+  const provider = input.provider?.trim() || null
+  const externalTransactionId = input.transactionId?.trim() || null
 
   try {
+    // Hotmart e Stone mandam mais de um webhook para a mesma compra. Sair aqui
+    // evita gerar um link magico novo — e um registro novo — a cada repeticao.
+    const jaExiste = await buscarAvisoDaVenda(provider, externalTransactionId)
+    if (jaExiste) {
+      if (jaExiste.status === 'sent') {
+        return { deliveryId: jaExiste.id, sent: true }
+      }
+
+      // O aviso existe mas nao chegou a sair. O webhook repetido, que ate agora
+      // so atrapalhava, vira uma tentativa a mais de entregar o que faltou.
+      const reenviado = await sendAccessDelivery(jaExiste)
+      return { deliveryId: jaExiste.id, sent: reenviado }
+    }
+
+    const kind: AccessDeliveryKind =
+      input.kind ?? (await resolveKind(input.userId, input.userCreated))
+
     const destination =
       input.redirectTo ??
       (await resolveDestination(input.productsGranted.map((p) => p.id), {
@@ -232,16 +308,21 @@ export async function deliverAccess(
       shipment_id: input.shipmentId ?? null
     }
 
-    const delivery = await prisma.accessDelivery.create({
-      data: {
-        userId: input.userId,
-        email,
-        purchaseEventId: input.purchaseEventId ?? null,
-        kind,
-        status: 'pending',
-        payload: payload as unknown as Prisma.InputJsonValue
-      }
+    const delivery = await criarAviso({
+      userId: input.userId,
+      email,
+      purchaseEventId: input.purchaseEventId ?? null,
+      provider,
+      externalTransactionId,
+      kind,
+      status: 'pending',
+      payload: payload as unknown as Prisma.InputJsonValue
     })
+
+    // Outro webhook ganhou a corrida e ja entregou: nao manda de novo.
+    if (delivery.status === 'sent') {
+      return { deliveryId: delivery.id, sent: true }
+    }
 
     const sent = await sendAccessDelivery(delivery)
     return { deliveryId: delivery.id, sent }
