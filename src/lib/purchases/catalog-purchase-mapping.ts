@@ -138,7 +138,7 @@ export const HOTMART_PURCHASE_RULES: HotmartPurchaseRule[] = [
     ]
   },
   {
-    hotmartProductIds: ['468008'],
+    hotmartProductIds: ['4680085'],
     source: {
       section: 'AUDIOTERAPIA',
       permissionKey: 'AUDIOTERAPIA',
@@ -154,7 +154,7 @@ export const HOTMART_PURCHASE_RULES: HotmartPurchaseRule[] = [
     ]
   },
   {
-    hotmartProductIds: ['469034'],
+    hotmartProductIds: ['4690342'],
     source: {
       section: 'AUDIOTERAPIA',
       permissionKey: 'AUDIOTERAPIA',

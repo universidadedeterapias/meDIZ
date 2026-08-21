@@ -163,9 +163,24 @@ export function isDeliverFailure(
   return result.ok === false
 }
 
+export type DeliverOptions = {
+  /**
+   * `false` libera o acesso sem falar com o cliente: nenhum `AccessDelivery`,
+   * nenhuma esteira de e-mail, nenhum despacho. E para a venda que ficou parada
+   * por mapeamento errado depois de o comprador ja ter sido avisado pelo item
+   * principal do mesmo pedido — avisar de novo so confundiria quem ja esta
+   * dentro. Fora desse caso, entregue com aviso.
+   */
+  notify?: boolean
+  /** Texto gravado no evento. O padrao descreve o reprocessamento comum. */
+  reason?: string
+}
+
 export async function deliverFromPurchaseEvent(
-  event: PurchaseEvent
+  event: PurchaseEvent,
+  options: DeliverOptions = {}
 ): Promise<DeliverResult> {
+  const notify = options.notify !== false
   let resolved: ResolvedPurchase | DeliverFailure
 
   switch (event.provider) {
@@ -202,7 +217,7 @@ export async function deliverFromPurchaseEvent(
       grantProductIds: resolved.grantProductIds
     })
 
-    if (resolved.isBook) {
+    if (resolved.isBook && notify) {
       await startBookOnboarding({
         userId: grant.userId,
         email: resolved.email,
@@ -215,8 +230,10 @@ export async function deliverFromPurchaseEvent(
     }
 
     // Registrado antes do aviso: o aviso carrega o id do despacho, e e por ele
-    // que a planilha da grafica devolve o codigo de rastreio.
-    const shipment = resolved.physicalShipment
+    // que a planilha da grafica devolve o codigo de rastreio. Por isso anda
+    // junto com o `notify` — despachar em silencio deixaria um envio que
+    // ninguem cobra.
+    const shipment = resolved.physicalShipment && notify
       ? await ensureBookShipment({
           purchaseEventId: event.id,
           userId: grant.userId,
@@ -229,25 +246,29 @@ export async function deliverFromPurchaseEvent(
         })
       : null
 
-    await deliverAccess({
-      userId: grant.userId,
-      email: resolved.email,
-      userCreated: grant.userCreated,
-      nome: resolved.nome,
-      telefone: resolved.telefone,
-      transactionId: resolved.transactionId,
-      provider: resolved.source,
-      externalProductId: resolved.externalProductId,
-      physicalShipment: resolved.physicalShipment,
-      shipmentId: shipment?.id ?? null,
-      productsGranted: grant.productsGranted,
-      purchaseEventId: event.id
-    })
+    if (notify) {
+      await deliverAccess({
+        userId: grant.userId,
+        email: resolved.email,
+        userCreated: grant.userCreated,
+        nome: resolved.nome,
+        telefone: resolved.telefone,
+        transactionId: resolved.transactionId,
+        provider: resolved.source,
+        externalProductId: resolved.externalProductId,
+        physicalShipment: resolved.physicalShipment,
+        shipmentId: shipment?.id ?? null,
+        productsGranted: grant.productsGranted,
+        purchaseEventId: event.id
+      })
+    }
 
     await settlePurchaseEvent(event.id, {
       status: 'processed',
       catalogProductId: resolved.catalogProductId,
-      reason: 'Liberado no reprocessamento'
+      reason:
+        options.reason ??
+        (notify ? 'Liberado no reprocessamento' : 'Liberado sem aviso')
     })
 
     return { ok: true, productsGranted: grant.productsGranted }
