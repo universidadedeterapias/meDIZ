@@ -51,12 +51,12 @@ const MAPPINGS: Mapping[] = [
   },
   {
     title: 'Liberando Almas',
-    hotmartPrimary: '468008',
+    hotmartPrimary: '4680085',
     grantTitles: ['SENTIDO BIOLÓGICO']
   },
   {
     title: 'Liberando Traumas',
-    hotmartPrimary: '469034',
+    hotmartPrimary: '4690342',
     grantTitles: ['SENTIDO BIOLÓGICO']
   }
 ]
@@ -71,8 +71,8 @@ const ALL_HOTMART_IDS = [
   '5831214',
   '5468221',
   '6199323',
-  '468008',
-  '469034'
+  '4680085',
+  '4690342'
 ]
 
 async function findProductByTitle(title: string) {
