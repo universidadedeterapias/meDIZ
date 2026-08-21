@@ -209,7 +209,7 @@ const messages = {
   'login.form.title': 'Login',
   'login.stats': 'pessoas já usaram',
   'login.button.loading': 'Entrando...',
-  'login.forgot.whatsappSending': 'Enviando via WhatsApp…',
+  'login.forgot.emailSending': 'Enviando o link…',
   'login.forgot.action': 'Esqueci minha senha',
   'login.divider.or': 'ou',
   'login.google': 'Continuar com Google',
@@ -221,11 +221,13 @@ const messages = {
   'login.terms.and': 'e',
   'login.terms.privacy': 'Política de Privacidade',
   'login.error.invalidCredentials': 'E-mail ou senha inválidos.',
-  'login.error.emailRequiredWhatsapp': 'Informe seu e-mail para enviarmos o link pelo WhatsApp.',
-  'login.whatsapp.modal.title': 'Confira seu WhatsApp',
-  'login.whatsapp.modal.sent': 'Enviamos um link de redefinição para o número com final {phone}.',
-  'login.whatsapp.modal.sentFallback':
-    'Se existir uma conta com esse e-mail, enviaremos um link de redefinição via WhatsApp.',
+  'login.error.emailRequiredReset': 'Informe seu e-mail para enviarmos o link de redefinição.',
+  'login.reset.modal.title': 'Confira seu e-mail',
+  'login.reset.modal.sent':
+    'Se existir uma conta com {email}, o link de redefinição chega em instantes. Ele vale por 30 minutos.',
+  'login.reset.modal.errorTitle': 'Não conseguimos enviar',
+  'login.reset.modal.error':
+    'Houve uma falha no envio. Tente de novo em alguns minutos.',
   'login.alert.google.title': 'Atenção',
   'login.alert.google.message': 'Se você fez login com Google, a recuperação de senha deve ser feita pela sua conta Google.',
   'login.alert.firstAccess.title': 'Primeiro acesso?',

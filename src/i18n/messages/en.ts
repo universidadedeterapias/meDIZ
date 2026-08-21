@@ -102,7 +102,7 @@ const messages = {
   'login.form.title': 'Sign in',
   'login.stats': 'people have already used it',
   'login.button.loading': 'Signing in...',
-  'login.forgot.whatsappSending': 'Sending via WhatsApp…',
+  'login.forgot.emailSending': 'Sending the link…',
   'login.forgot.action': 'Forgot my password',
   'login.divider.or': 'or',
   'login.google': 'Continue with Google',
@@ -114,11 +114,13 @@ const messages = {
   'login.terms.and': 'and',
   'login.terms.privacy': 'Privacy Policy',
   'login.error.invalidCredentials': 'Invalid email or password.',
-  'login.error.emailRequiredWhatsapp': 'Enter your email so we can send the link via WhatsApp.',
-  'login.whatsapp.modal.title': 'Check your WhatsApp',
-  'login.whatsapp.modal.sent': 'We sent a reset link to the number ending in {phone}.',
-  'login.whatsapp.modal.sentFallback':
-    'If an account exists with this email, we will send a reset link via WhatsApp.',
+  'login.error.emailRequiredReset': 'Enter your email so we can send the reset link.',
+  'login.reset.modal.title': 'Check your email',
+  'login.reset.modal.sent':
+    'If an account exists for {email}, the reset link will arrive shortly. It is valid for 30 minutes.',
+  'login.reset.modal.errorTitle': 'We could not send it',
+  'login.reset.modal.error':
+    'Something went wrong while sending. Please try again in a few minutes.',
   'login.alert.google.title': 'Attention',
   'login.alert.google.message': 'If you signed in with Google, password recovery must be done through your Google account.',
   'login.alert.firstAccess.title': 'First time?',

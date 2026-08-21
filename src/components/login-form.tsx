@@ -38,10 +38,10 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  // estados do envio via WhatsApp
+  // estados do envio do link de redefinição por e-mail
   const [sending, setSending] = useState(false)
   const [openModal, setOpenModal] = useState(false)
-  const [maskedPhone, setMaskedPhone] = useState<string | null>(null)
+  const [resetFailed, setResetFailed] = useState(false)
 
   // Carregar email salvo quando componente monta
   useEffect(() => {
@@ -94,12 +94,12 @@ export function LoginForm({
     }
   }
 
-  const handleForgotByWhatsapp = async () => {
+  const handleForgotByEmail = async () => {
     if (!email) {
       setError(
         t(
-          'login.error.emailRequiredWhatsapp',
-          'Informe seu e-mail para enviarmos o link pelo WhatsApp.'
+          'login.error.emailRequiredReset',
+          'Informe seu e-mail para enviarmos o link de redefinição.'
         )
       )
       return
@@ -107,17 +107,19 @@ export function LoginForm({
     try {
       setSending(true)
       setError(null)
-      const res = await fetch('/api/request-reset-whatsapp', {
+      const res = await fetch('/api/auth/request-password-reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       })
-      const data = await res.json().catch(() => ({}))
-      setMaskedPhone(data?.maskedPhone ?? null)
+      // Só o que impede a pessoa de receber o link vira aviso de falha. Conta
+      // inexistente responde 200 igual às demais, e o modal diz o mesmo para
+      // todo mundo — não é aqui que se descobre quem tem cadastro.
+      setResetFailed(!res.ok)
       setOpenModal(true)
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
-      setMaskedPhone(null)
+      setResetFailed(true)
       setOpenModal(true)
     } finally {
       setSending(false)
@@ -217,12 +219,12 @@ export function LoginForm({
           <div className="space-y-3 text-sm sm:space-y-4">
             <button
               type="button"
-              onClick={handleForgotByWhatsapp}
+              onClick={handleForgotByEmail}
               className="w-full text-left text-xs text-zinc-500 underline hover:text-zinc-700 sm:text-sm dark:text-zinc-400 dark:hover:text-zinc-200"
               disabled={sending}
             >
               {sending
-                ? t('login.forgot.whatsappSending', 'Enviando via WhatsApp…')
+                ? t('login.forgot.emailSending', 'Enviando o link…')
                 : t('login.forgot.action', 'Esqueci minha senha')}
             </button>
 
@@ -283,30 +285,32 @@ export function LoginForm({
       <Dialog open={openModal} onOpenChange={setOpenModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('login.whatsapp.modal.title', 'Confira seu WhatsApp')}</DialogTitle>
+            <DialogTitle>
+              {resetFailed
+                ? t('login.reset.modal.errorTitle', 'Não conseguimos enviar')
+                : t('login.reset.modal.title', 'Confira seu e-mail')}
+            </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-zinc-700 dark:text-zinc-300">
-            {maskedPhone ? (() => {
-              const template = t(
-                'login.whatsapp.modal.sent',
-                'Enviamos um link de redefinição para o número com final {phone}.'
-              )
-              const [prefix, suffix] = template.split('{phone}')
-              return (
-                <>
-                  {prefix}
-                  <b>{maskedPhone}</b>
-                  {suffix}
-                </>
-              )
-            })() : (
-              <>
-                {t(
-                  'login.whatsapp.modal.sentFallback',
-                  'Se existir uma conta com esse e-mail, enviaremos um link de redefinição via WhatsApp.'
-                )}
-              </>
-            )}
+            {resetFailed
+              ? t(
+                  'login.reset.modal.error',
+                  'Houve uma falha no envio. Tente de novo em alguns minutos.'
+                )
+              : (() => {
+                  const template = t(
+                    'login.reset.modal.sent',
+                    'Se existir uma conta com {email}, o link de redefinição chega em instantes. Ele vale por 30 minutos.'
+                  )
+                  const [prefix, suffix] = template.split('{email}')
+                  return (
+                    <>
+                      {prefix}
+                      <b>{email}</b>
+                      {suffix}
+                    </>
+                  )
+                })()}
           </p>
           <DialogFooter>
             <Button onClick={() => setOpenModal(false)}>

@@ -102,7 +102,7 @@ const messages = {
   'login.form.title': 'Login',
   'login.stats': 'pessoas já utilizaram',
   'login.button.loading': 'A entrar...',
-  'login.forgot.whatsappSending': 'A enviar via WhatsApp…',
+  'login.forgot.emailSending': 'A enviar a ligação…',
   'login.forgot.action': 'Esqueci-me da palavra-passe',
   'login.divider.or': 'ou',
   'login.google': 'Continuar com Google',
@@ -114,11 +114,13 @@ const messages = {
   'login.terms.and': 'e',
   'login.terms.privacy': 'Política de Privacidade',
   'login.error.invalidCredentials': 'E-mail ou palavra-passe inválidos.',
-  'login.error.emailRequiredWhatsapp': 'Indique o seu e-mail para enviarmos o link via WhatsApp.',
-  'login.whatsapp.modal.title': 'Verifique o seu WhatsApp',
-  'login.whatsapp.modal.sent': 'Enviámos um link de redefinição para o número com final {phone}.',
-  'login.whatsapp.modal.sentFallback':
-    'Se existir uma conta com esse e-mail, enviaremos um link de redefinição via WhatsApp.',
+  'login.error.emailRequiredReset': 'Indique o seu e-mail para enviarmos a ligação de redefinição.',
+  'login.reset.modal.title': 'Verifique o seu e-mail',
+  'login.reset.modal.sent':
+    'Se existir uma conta com {email}, a ligação de redefinição chega dentro de momentos. É válida durante 30 minutos.',
+  'login.reset.modal.errorTitle': 'Não foi possível enviar',
+  'login.reset.modal.error':
+    'Ocorreu uma falha no envio. Tente novamente dentro de alguns minutos.',
   'login.alert.google.title': 'Atenção',
   'login.alert.google.message': 'Se fez login com Google, a recuperação de palavra-passe deve ser feita pela sua conta Google.',
   'login.alert.firstAccess.title': 'Primeiro acesso?',

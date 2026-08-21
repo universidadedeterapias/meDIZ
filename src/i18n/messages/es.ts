@@ -102,7 +102,7 @@ const messages = {
   'login.form.title': 'Iniciar sesión',
   'login.stats': 'personas ya lo han usado',
   'login.button.loading': 'Iniciando sesión...',
-  'login.forgot.whatsappSending': 'Enviando por WhatsApp…',
+  'login.forgot.emailSending': 'Enviando el enlace…',
   'login.forgot.action': 'Olvidé mi contraseña',
   'login.divider.or': 'o',
   'login.google': 'Continuar con Google',
@@ -114,11 +114,13 @@ const messages = {
   'login.terms.and': 'y',
   'login.terms.privacy': 'Política de Privacidad',
   'login.error.invalidCredentials': 'Correo o contraseña inválidos.',
-  'login.error.emailRequiredWhatsapp': 'Ingresa tu correo para enviarte el enlace por WhatsApp.',
-  'login.whatsapp.modal.title': 'Revisa tu WhatsApp',
-  'login.whatsapp.modal.sent': 'Enviamos un enlace de restablecimiento al número que termina en {phone}.',
-  'login.whatsapp.modal.sentFallback':
-    'Si existe una cuenta con ese correo, enviaremos un enlace de restablecimiento por WhatsApp.',
+  'login.error.emailRequiredReset': 'Ingresa tu correo para enviarte el enlace de restablecimiento.',
+  'login.reset.modal.title': 'Revisa tu correo',
+  'login.reset.modal.sent':
+    'Si existe una cuenta con {email}, el enlace de restablecimiento llegará en instantes. Es válido por 30 minutos.',
+  'login.reset.modal.errorTitle': 'No pudimos enviarlo',
+  'login.reset.modal.error':
+    'Hubo un fallo en el envío. Inténtalo de nuevo en unos minutos.',
   'login.alert.google.title': 'Atención',
   'login.alert.google.message': 'Si iniciaste sesión con Google, la recuperación de contraseña debe hacerse a través de tu cuenta de Google.',
   'login.alert.firstAccess.title': '¿Primera vez?',
