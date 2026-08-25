@@ -71,13 +71,22 @@ export async function createAccessLink(
 }
 
 /**
- * Valida e queima o token, devolvendo o id do usuario.
+ * Valida o token e devolve o id do usuario. Nao apaga nada.
  *
- * Deleta antes de devolver: uso unico. Se o delete nao encontrar a linha, outra
- * requisicao chegou primeiro e este uso nao vale — evita que um retry de rede ou
- * um crawler de preview consumam o link em nome de outra pessoa.
+ * O delete morava aqui e acontecia antes de existir sessao. Qualquer tropeco
+ * depois dele — o segundo pedido de uma corrida, uma falha de rede na volta, o
+ * cookie que nao vingou no navegador embutido do app de e-mail — deixava a pessoa
+ * de fora com o link ja destruido. Nas 48h anteriores a esta mudanca, seis
+ * compradores ficaram nesse estado: token consumido, `firstAccessAt` nulo.
+ *
+ * O mesmo token sai por WhatsApp e por e-mail. Com uso unico na leitura, os dois
+ * canais disputavam: o primeiro a ser tocado vencia e o outro virava tela de link
+ * morto. Agora os dois funcionam ate a pessoa entrar de verdade.
+ *
+ * Quem queima e `burnAccessLinks`, chamado quando o app registra o primeiro
+ * acesso. Ate la vale a validade de sete dias.
  */
-export async function consumeAccessLink(
+export async function validateAccessLink(
   token: string
 ): Promise<{ userId: string } | null> {
   const trimmed = token?.trim()
@@ -94,17 +103,14 @@ export async function consumeAccessLink(
 
     const userId = record.identifier.slice(IDENTIFIER_PREFIX.length)
 
+    // Expirado morre na hora: a tela de "link nao vale mais" passa a ser verdade
+    // so nos dois casos que a justificam — ja entrou, ou passou da validade.
     if (record.expires.getTime() < Date.now()) {
       await prisma.verificationToken
         .delete({ where: { token: trimmed } })
         .catch(() => undefined)
       return null
     }
-
-    const deleted = await prisma.verificationToken.deleteMany({
-      where: { token: trimmed }
-    })
-    if (deleted.count === 0) return null
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -115,10 +121,35 @@ export async function consumeAccessLink(
     return { userId: user.id }
   } catch (error) {
     logger.error(
-      'Falha ao consumir link de acesso',
+      'Falha ao validar link de acesso',
       error instanceof Error ? error : undefined,
       '[auth/access-link]'
     )
     return null
+  }
+}
+
+/**
+ * Queima os links de acesso da pessoa — chamado quando o app registra o primeiro
+ * acesso dela, que e a prova de que a sessao vingou e a biblioteca carregou.
+ *
+ * Apaga todos os links do usuario, e nao so o que foi clicado: duas compras
+ * seguidas geram dois links, e depois de entrar nenhum dos dois precisa continuar
+ * de pe.
+ *
+ * Nunca lanca. Falhar aqui deixa um link vivo ate expirar, o que e bem menos
+ * grave do que derrubar o primeiro acesso de quem acabou de comprar.
+ */
+export async function burnAccessLinks(userId: string): Promise<void> {
+  try {
+    await prisma.verificationToken.deleteMany({
+      where: { identifier: identifierFor(userId) }
+    })
+  } catch (error) {
+    logger.error(
+      'Falha ao queimar links de acesso apos o primeiro acesso',
+      error instanceof Error ? error : undefined,
+      '[auth/access-link]'
+    )
   }
 }

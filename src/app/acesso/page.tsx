@@ -97,8 +97,9 @@ function AcessoInner() {
               Este link não vale mais
             </p>
             <p className="text-sm text-zinc-600 dark:text-zinc-300">
-              Links de acesso valem por 7 dias e só podem ser usados uma vez. Peça
-              um novo no atendimento, ou entre com seu e-mail e senha.
+              O link vale por 7 dias e deixa de funcionar depois que você entra
+              pela primeira vez. Se já entrou antes, use seu e-mail e senha. Se
+              não, peça um novo no atendimento.
             </p>
           </div>
           <div className="flex flex-col items-center gap-3">
