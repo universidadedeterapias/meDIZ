@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { burnAccessLinks } from '@/lib/auth/access-link'
 import { prisma } from '@/lib/prisma'
 import { requireUser } from '@/lib/requireAuth'
 import { validateNewPassword } from '@/lib/passwordValidation'
@@ -45,6 +46,18 @@ export async function POST(request: Request) {
         temporaryPasswordPlain: null
       }
     })
+
+    // Aqui morre o link de acesso, e nao antes.
+    //
+    // Este e o unico ponto por onde todo comprador passa: a conta nasce com
+    // `mustResetPassword`, e o `requireAuth` barra qualquer rota protegida ate a
+    // pessoa definir a senha. Chegar neste update prova sessao valida, cookie
+    // guardado e reenviado, e a etapa obrigatoria concluida — nao ha mais nada
+    // que o link precise fazer.
+    //
+    // Enquanto o token era queimado na validacao, qualquer tropeco antes disso
+    // trancava o comprador para fora com o link ja destruido.
+    await burnAccessLinks(auth.user.id)
 
     return NextResponse.json({ ok: true })
   } catch (error) {
