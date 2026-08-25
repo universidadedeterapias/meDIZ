@@ -1,5 +1,4 @@
 import { auth } from '@/auth'
-import { burnAccessLinks } from '@/lib/auth/access-link'
 import {
   getDiscoveryRolloutConfig,
   isDiscoveryTestModeEnabled,
@@ -56,12 +55,6 @@ export async function GET() {
           select: { id: true }
         })
         .catch(() => undefined)
-
-      // Chegar aqui e a prova que faltava: sessao valida e app carregado. So
-      // agora o link de acesso pode morrer. Antes ele era queimado na validacao
-      // do token, e quem tropecasse no meio do caminho ficava de fora com o link
-      // ja destruido.
-      await burnAccessLinks(session.user.id)
     }
 
     const rollout = getDiscoveryRolloutConfig()

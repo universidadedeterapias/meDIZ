@@ -83,8 +83,8 @@ export async function createAccessLink(
  * canais disputavam: o primeiro a ser tocado vencia e o outro virava tela de link
  * morto. Agora os dois funcionam ate a pessoa entrar de verdade.
  *
- * Quem queima e `burnAccessLinks`, chamado quando o app registra o primeiro
- * acesso. Ate la vale a validade de sete dias.
+ * Quem queima e `burnAccessLinks`, chamado quando a pessoa define a propria
+ * senha. Ate la vale a validade de sete dias.
  */
 export async function validateAccessLink(
   token: string
@@ -130,8 +130,14 @@ export async function validateAccessLink(
 }
 
 /**
- * Queima os links de acesso da pessoa — chamado quando o app registra o primeiro
- * acesso dela, que e a prova de que a sessao vingou e a biblioteca carregou.
+ * Queima os links de acesso da pessoa — chamado quando ela define a propria
+ * senha, em `api/auth/change-password`.
+ *
+ * E o unico ponto por onde todo comprador passa. A conta nasce com
+ * `mustResetPassword`, e o `requireAuth` barra qualquer rota protegida ate a
+ * senha ser definida: nao importa se o link levava para a biblioteca, a
+ * audioterapia ou os cursos, ninguem usa o app sem passar por la. Por isso o
+ * gancho mora ali, e nao numa pagina especifica.
  *
  * Apaga todos os links do usuario, e nao so o que foi clicado: duas compras
  * seguidas geram dois links, e depois de entrar nenhum dos dois precisa continuar
