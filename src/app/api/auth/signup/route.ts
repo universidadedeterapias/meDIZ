@@ -2,9 +2,7 @@
 import { PrismaClient } from '@prisma/client'
 import { hash } from 'bcryptjs'
 import { NextResponse } from 'next/server'
-import { sendSignupConfirmation, isWhatsAppConfigured, simulateWhatsAppSend } from '@/lib/whatsappService'
-import { randomUUID } from 'crypto'
-import { getCurrentLanguage } from '@/i18n/server'
+import { sendSignupConfirmationLink } from '@/lib/auth/signup-confirmation'
 
 const prisma = new PrismaClient()
 
@@ -48,58 +46,36 @@ export async function POST(request: Request) {
       }
     })
 
-    // 4) Se tem WhatsApp, enviar verificação automaticamente
+    // 4) Dispara o link de confirmação por e-mail e, se houver telefone, tambem
+    // pelo WhatsApp. O e-mail sempre sai: e o canal que nao depende da Z-API.
+    let emailSent = false
     let whatsappSent = false
-    if (whatsapp) {
-      try {
-        // Gerar token de verificação
-        const verificationToken = randomUUID()
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 horas
+    let confirmationSent = false
 
-        // Salvar token no banco
-        await prisma.verificationToken.create({
-          data: {
-            identifier: email,
-            token: verificationToken,
-            expires: expiresAt
-          }
-        })
-
-        // Criar URL de confirmação
-        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3001'
-        const confirmationUrl = `${baseUrl}/confirm-signup?token=${verificationToken}&email=${encodeURIComponent(email)}`
-        
-        console.log('[DEBUG] Signup - URL de confirmação gerada:', confirmationUrl)
-
-        // Enviar via WhatsApp
-        const userName = email.split('@')[0] // Usar parte antes do @ como nome
-        const language = await getCurrentLanguage() // Obter idioma do cookie/header
-        if (isWhatsAppConfigured()) {
-          whatsappSent = await sendSignupConfirmation(whatsapp, userName, confirmationUrl, language)
-        } else {
-          // Modo de desenvolvimento - simular envio com mensagem traduzida
-          const messages: Record<string, string> = {
-            'pt-BR': `Link de confirmação: ${confirmationUrl}`,
-            'pt-PT': `Ligação de confirmação: ${confirmationUrl}`,
-            'en': `Confirmation link: ${confirmationUrl}`,
-            'es': `Enlace de confirmación: ${confirmationUrl}`
-          }
-          simulateWhatsAppSend(whatsapp, messages[language] || messages['pt-BR'])
-          whatsappSent = true
-        }
-      } catch (whatsappError) {
-        console.error('Erro ao enviar WhatsApp:', whatsappError)
-        // Não falhar o cadastro se WhatsApp falhar
-      }
+    try {
+      const confirmacao = await sendSignupConfirmationLink({
+        email,
+        nome: null,
+        whatsapp: whatsapp || null
+      })
+      emailSent = confirmacao.emailSent
+      whatsappSent = confirmacao.whatsappSent
+      confirmationSent = confirmacao.sent
+    } catch (confirmationError) {
+      // Cadastro feito e link nao enviado ainda tem saida: a tela de espera
+      // oferece reenvio. Derrubar o 201 aqui perderia a conta ja criada.
+      console.error('Erro ao enviar confirmação de cadastro:', confirmationError)
     }
 
     // 5) Retorna 201 com os dados
-    return NextResponse.json({ 
+    return NextResponse.json({
       user,
+      confirmationSent,
+      emailSent,
       whatsappSent,
-      message: whatsappSent 
-        ? 'Usuário criado e link enviado via WhatsApp!'
-        : 'Usuário criado. Verifique seu WhatsApp para ativar a conta.'
+      message: confirmationSent
+        ? 'Usuário criado e link de confirmação enviado!'
+        : 'Usuário criado. Reenvie o link de confirmação para ativar a conta.'
     }, { status: 201 })
   } catch (err) {
     console.error(err)

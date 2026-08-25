@@ -101,7 +101,7 @@ export default function VerifyWhatsAppPage() {
             <Alert>
               <CheckCircle className="h-4 w-4" />
               <AlertDescription>
-                {t('verifyWhatsapp.success.message', 'Link de confirmação enviado para seu WhatsApp!')}{' '}
+                {t('verifyWhatsapp.success.message', 'Link de confirmação enviado para seu e-mail e WhatsApp!')}{' '}
                 {t('verifyWhatsapp.success.hint', 'Verifique se digitou o número corretamente.')}
               </AlertDescription>
             </Alert>
@@ -147,7 +147,7 @@ export default function VerifyWhatsAppPage() {
 
               <div className="text-center">
                 <p className="text-xs text-gray-500">
-                  {t('verifyWhatsapp.info', 'Ao continuar, você receberá um link via WhatsApp para confirmar seu cadastro.')}
+                  {t('verifyWhatsapp.info', 'Ao continuar, você receberá um link por e-mail e WhatsApp para confirmar seu cadastro.')}
                 </p>
               </div>
             </>

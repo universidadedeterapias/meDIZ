@@ -82,7 +82,8 @@ export function SignupForm({
       return
     }
 
-    if (result.whatsappSent) {
+    // Basta um canal ter saido — o link e o mesmo no e-mail e no WhatsApp.
+    if (result.confirmationSent) {
       router.push(`/confirm-signup?email=${encodeURIComponent(data.email)}&sent=true`)
     } else {
       router.push(`/verify-whatsapp?email=${encodeURIComponent(data.email)}`)
