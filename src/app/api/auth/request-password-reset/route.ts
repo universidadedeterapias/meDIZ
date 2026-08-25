@@ -10,6 +10,10 @@ import {
   checkRateLimit,
   extractRateLimitIdentifier
 } from '@/lib/rateLimiter'
+import {
+  hashResetToken,
+  resetIdentifierFor
+} from '@/lib/auth/password-reset-token'
 
 /**
  * Pedido de redefinicao de senha — o link vai por e-mail.
@@ -20,10 +24,6 @@ import {
  */
 
 const TOKEN_EXPIRY_MINUTES = 30
-
-function hashToken(token: string) {
-  return crypto.createHash('sha256').update(token).digest('hex')
-}
 
 function resolveBaseUrl(): string {
   const fromEnv =
@@ -90,10 +90,14 @@ export async function POST(req: Request) {
   const expires = addMinutes(new Date(), TOKEN_EXPIRY_MINUTES)
 
   // Um pedido novo invalida o anterior: dois links validos ao mesmo tempo so
-  // aumentam a janela de quem interceptar o primeiro.
-  await prisma.verificationToken.deleteMany({ where: { identifier: email } })
+  // aumentam a janela de quem interceptar o primeiro. O filtro e o identifier
+  // prefixado — com o e-mail puro o delete levava junto o token de confirmacao de
+  // cadastro, que divide esta tabela e grava sem prefixo.
+  const identifier = resetIdentifierFor(email)
+
+  await prisma.verificationToken.deleteMany({ where: { identifier } })
   await prisma.verificationToken.create({
-    data: { identifier: email, token: hashToken(rawToken), expires }
+    data: { identifier, token: hashResetToken(rawToken), expires }
   })
 
   const resetUrl = `${resolveBaseUrl()}/reset?token=${rawToken}&email=${encodeURIComponent(email)}`

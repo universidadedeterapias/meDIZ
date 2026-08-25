@@ -1,11 +1,10 @@
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
-import crypto from 'crypto'
 import { NextResponse } from 'next/server'
-
-function hashToken(token: string) {
-  return crypto.createHash('sha256').update(token).digest('hex')
-}
+import {
+  acceptedResetIdentifiers,
+  hashResetToken
+} from '@/lib/auth/password-reset-token'
 
 export async function POST(req: Request) {
   try {
@@ -18,11 +17,14 @@ export async function POST(req: Request) {
       )
     }
 
-    // Confere token no banco (não logar o token por segurança)
-    const tokenHash = hashToken(token)
+    // Confere token no banco (não logar o token por segurança).
+    // Aceita os dois identifiers: o prefixado, que a rota de pedido grava hoje, e
+    // o e-mail puro dos links emitidos antes do deploy — eles valem por 30 minutos
+    // e nao podem quebrar na troca.
+    const tokenHash = hashResetToken(token)
     const verification = await prisma.verificationToken.findFirst({
       where: {
-        identifier: email,
+        identifier: { in: acceptedResetIdentifiers(email) },
         token: tokenHash,
         expires: { gt: new Date() }
       }
@@ -54,7 +56,7 @@ export async function POST(req: Request) {
         data: { passwordHash }
       }),
       prisma.verificationToken.deleteMany({
-        where: { identifier: email, token: tokenHash }
+        where: { identifier: verification.identifier, token: tokenHash }
       })
     ])
 
