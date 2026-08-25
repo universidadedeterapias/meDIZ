@@ -114,19 +114,11 @@ export default function Page() {
         }
         const raw: RawUser = await res.json()
 
-        // checa se faltam campos obrigatórios do form
-        const missing =
-          !raw.fullName ||
-          !raw.age ||
-          !raw.gender ||
-          !raw.profession ||
-          !raw.appUsage ||
-          !raw.description
-
-        if (missing) {
-          router.replace('/form')
-          return
-        }
+        // O formulario de perfil deixou de barrar a entrada: nenhum dos campos que
+        // ele coleta (age, gender, profession, appUsage, description) alimenta o
+        // chat — so o proprio bloqueio os lia. `/form` segue de pe para quem
+        // quiser preencher; para religar a obrigatoriedade, basta voltar o
+        // redirect que ficava aqui e no `catch` la embaixo.
 
         // Descoberta: nas duas primeiras aparicoes e um convite dispensavel aqui na
         // tela (ver DiscoveryInvite). Na terceira ela deixa de ser opcional, e so
@@ -191,7 +183,10 @@ export default function Page() {
           setCheckingProfile(false)
         }
       } catch {
-        router.replace('/form')
+        // Sem conseguir carregar o usuario nao da para saber nem quem esta logado —
+        // segue a mesma saida do `!res.ok` acima. Mandar para `/form` era atalho de
+        // quando perfil incompleto barrava a entrada.
+        router.replace('/login')
       }
     }
 

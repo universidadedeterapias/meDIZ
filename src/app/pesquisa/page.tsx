@@ -83,18 +83,8 @@ export default function Page() {
         }
         const raw: RawUser = await res.json()
 
-        const missing =
-          !raw.fullName ||
-          !raw.age ||
-          !raw.gender ||
-          !raw.profession ||
-          !raw.appUsage ||
-          !raw.description
-
-        if (missing) {
-          router.replace('/form')
-          return
-        }
+        // O formulario de perfil deixou de barrar a entrada — mesma mudanca do
+        // chat. `/form` segue acessivel para quem quiser preencher.
 
         // A descoberta deixou de ser gate: o convite vive no chat, e a pesquisa
         // nao interrompe mais ninguem para pedir uma conversa por voz.
@@ -128,7 +118,8 @@ export default function Page() {
           setCheckingProfile(false)
         }
       } catch {
-        router.replace('/form')
+        // Mesma saida do chat: falha ao carregar o usuario volta para o login.
+        router.replace('/login')
       }
     }
 

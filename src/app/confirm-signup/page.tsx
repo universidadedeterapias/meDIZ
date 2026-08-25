@@ -74,7 +74,7 @@ export default function ConfirmSignupPage() {
   const getMessage = () => {
     switch (status) {
       case 'waiting':
-        return t('confirmSignup.waiting.message', 'Link de confirmação enviado para seu WhatsApp!')
+        return t('confirmSignup.waiting.message', 'Link de confirmação enviado para seu e-mail e WhatsApp!')
       case 'success':
         return t('confirmSignup.success.message', 'Cadastro confirmado com sucesso! Você já pode fazer login.')
       case 'expired':
@@ -130,7 +130,7 @@ export default function ConfirmSignupPage() {
           </div>
           <CardTitle className="text-2xl">{t('confirmSignup.title', 'Confirmação de Cadastro')}</CardTitle>
           <CardDescription>
-            {t('confirmSignup.subtitle', 'Verificando seu cadastro via WhatsApp')}
+            {t('confirmSignup.subtitle', 'Verificando seu cadastro')}
           </CardDescription>
         </CardHeader>
         
@@ -259,7 +259,7 @@ export default function ConfirmSignupPage() {
 
           <div className="text-center text-sm text-gray-500">
             <p>{t('confirmSignup.footer.notReceived', 'Não recebeu o link?')}</p>
-            <p>{t('confirmSignup.footer.checkNumber', 'Verifique se digitou o número correto.')}</p>
+            <p>{t('confirmSignup.footer.checkNumber', 'Confira a caixa de spam e se digitou o número correto.')}</p>
           </div>
         </CardContent>
       </Card>
