@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { normalizeLibraryEmail } from '@/lib/library/email'
+import { normalizeCpf } from '@/lib/cpf'
 import { validateWebhookBearer } from '@/lib/webhookAuth'
 import {
   applyTrackingUpdate,
@@ -35,6 +36,7 @@ type LinhaEntrada = {
   transaction_id?: unknown
   tracking_code?: unknown
   email?: unknown
+  cpf?: unknown
   status?: unknown
   status_label?: unknown
   events?: unknown
@@ -48,7 +50,12 @@ type Resultado = {
   status?: string
   /** Preenchido so no erro, para o n8n logar a linha que nao casou. */
   reason?: string
-  input?: { shipment_id?: string; transaction_id?: string; email?: string }
+  input?: {
+    shipment_id?: string
+    transaction_id?: string
+    email?: string
+    cpf?: string
+  }
 }
 
 function texto(value: unknown): string | null {
@@ -121,13 +128,16 @@ async function processarLinha(linha: LinhaEntrada): Promise<Resultado> {
   const shipmentId = texto(linha.shipment_id)
   const transactionId = texto(linha.transaction_id)
   const email = texto(linha.email)
+  const cpfBruto = texto(linha.cpf)
+  const cpf = cpfBruto ? normalizeCpf(cpfBruto) : null
   const codigoBruto = texto(linha.tracking_code)
   const codigo = codigoBruto ? normalizeTrackingCode(codigoBruto) : null
 
   const entrada = {
     ...(shipmentId ? { shipment_id: shipmentId } : {}),
     ...(transactionId ? { transaction_id: transactionId } : {}),
-    ...(email ? { email } : {})
+    ...(email ? { email } : {}),
+    ...(cpf ? { cpf } : {})
   }
 
   try {
@@ -135,7 +145,8 @@ async function processarLinha(linha: LinhaEntrada): Promise<Resultado> {
       shipmentId,
       transactionId,
       codigo,
-      email
+      email,
+      cpf
     })
 
     if (!shipment) {
@@ -186,18 +197,23 @@ async function processarLinha(linha: LinhaEntrada): Promise<Resultado> {
  * Acha o despacho, do identificador mais confiavel para o menos.
  *
  * `shipment_id` e o caminho pretendido: ele viaja no aviso de acesso, o n8n grava
- * numa coluna da planilha e devolve. Os outros existem para linha antiga, criada
- * antes desta coluna existir.
+ * numa coluna da planilha e devolve. `transaction_id` e o segundo melhor — so
+ * existe nas vendas registradas depois que a coluna foi criada na planilha.
  *
- * O e-mail e o ultimo recurso de proposito: quem comprou duas vezes tem dois
- * despachos, e casar por e-mail escolheria um deles no chute. Por isso, no
- * e-mail, so entra o despacho que ainda espera codigo — e apenas quando ha um so.
+ * CPF cobre o resto (planilha antiga, sem transaction_id): resolve para o usuario
+ * pelo CPF gravado no cadastro (preenchido na compra) e dali pega o despacho.
+ * Segue a mesma cautela do e-mail — so entra quando ha exatamente um despacho
+ * esperando codigo, porque quem comprou o livro fisico duas vezes tem dois
+ * despachos, e escolher um no chute seria pior do que nao casar.
+ *
+ * O e-mail e o ultimo recurso, pela mesma razao.
  */
 async function localizar(chaves: {
   shipmentId: string | null
   transactionId: string | null
   codigo: string | null
   email: string | null
+  cpf: string | null
 }) {
   if (chaves.shipmentId) {
     return prisma.bookShipment.findUnique({ where: { id: chaves.shipmentId } })
@@ -208,6 +224,21 @@ async function localizar(chaves: {
       where: { externalTransactionId: chaves.transactionId }
     })
     if (achado) return achado
+  }
+
+  if (chaves.cpf && chaves.cpf.length === 11) {
+    const usuario = await prisma.user.findFirst({
+      where: { cpf: chaves.cpf },
+      select: { id: true }
+    })
+    if (usuario) {
+      const candidatos = await prisma.bookShipment.findMany({
+        where: { userId: usuario.id, status: 'aguardando_postagem' },
+        orderBy: { createdAt: 'desc' },
+        take: 2
+      })
+      if (candidatos.length === 1) return candidatos[0]
+    }
   }
 
   if (chaves.codigo) {
