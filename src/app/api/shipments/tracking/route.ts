@@ -200,11 +200,15 @@ async function processarLinha(linha: LinhaEntrada): Promise<Resultado> {
  * numa coluna da planilha e devolve. `transaction_id` e o segundo melhor — so
  * existe nas vendas registradas depois que a coluna foi criada na planilha.
  *
+ * Depois deles vem o proprio `tracking_code`, que casa o reenvio da mesma linha
+ * com o despacho que ja recebeu aquele codigo. Ele fica acima de CPF e e-mail de
+ * proposito: e casamento exato, e os dois abaixo sao palpite.
+ *
  * CPF cobre o resto (planilha antiga, sem transaction_id): resolve para o usuario
  * pelo CPF gravado no cadastro (preenchido na compra) e dali pega o despacho.
- * Segue a mesma cautela do e-mail — so entra quando ha exatamente um despacho
- * esperando codigo, porque quem comprou o livro fisico duas vezes tem dois
- * despachos, e escolher um no chute seria pior do que nao casar.
+ * So entra quando ha exatamente um despacho esperando codigo, porque quem comprou
+ * o livro fisico duas vezes tem dois despachos, e escolher um no chute seria pior
+ * do que nao casar.
  *
  * O e-mail e o ultimo recurso, pela mesma razao.
  */
@@ -226,6 +230,13 @@ async function localizar(chaves: {
     if (achado) return achado
   }
 
+  if (chaves.codigo) {
+    const achado = await prisma.bookShipment.findFirst({
+      where: { trackingCode: chaves.codigo }
+    })
+    if (achado) return achado
+  }
+
   if (chaves.cpf && chaves.cpf.length === 11) {
     const usuario = await prisma.user.findFirst({
       where: { cpf: chaves.cpf },
@@ -239,13 +250,6 @@ async function localizar(chaves: {
       })
       if (candidatos.length === 1) return candidatos[0]
     }
-  }
-
-  if (chaves.codigo) {
-    const achado = await prisma.bookShipment.findFirst({
-      where: { trackingCode: chaves.codigo }
-    })
-    if (achado) return achado
   }
 
   if (chaves.email) {
