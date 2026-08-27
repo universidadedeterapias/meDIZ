@@ -39,24 +39,38 @@ O meDIZ não consulta transportadora nenhuma. Quem consulta é o n8n; aqui só e
 
 **`SHIPMENT_TRACKING_SECRET` precisa existir no ambiente de produção.** O endpoint usa autenticação fechada de saída: sem a env, ele responde `503 {"error":"Webhook not configured"}` para qualquer chamada — inclusive as certas. Não está no `.env` local; confirmar se está na Vercel antes de ligar o job.
 
-**As colunas da seção 3.1 na planilha.** Sem elas o job não tem onde escrever a resposta, e reprocessa a planilha inteira todo dia sem que ninguém saiba o que falhou.
+**As quatro colunas da seção 3.1 na planilha.** Já criadas. Sem elas o job não tem onde escrever a resposta, e reprocessa a planilha inteira todo dia sem que ninguém saiba o que falhou.
 
 ## 3.1 Colunas da planilha
 
-Quatro colunas novas. As de identidade a gráfica nunca preenche — quem escreve é máquina.
+Quatro colunas novas, já criadas. As de identidade a gráfica nunca preenche — quem escreve é máquina.
 
 | Coluna | Quem escreve | Conteúdo |
 |---|---|---|
-| `shipment_id` | fluxo de criação da linha **e** o job | Id do despacho no meDIZ. Chave preferencial. |
-| `transaction_id` | fluxo de criação da linha | O `HP…` da Hotmart. Chave reserva. |
-| `mediz_status` | o job | `atualizado`, `nao_encontrado`, `ambiguo` ou `erro`. |
-| `mediz_atualizado_em` | o job | Quando o job escreveu, em ISO. |
+| `SHIPMENT_ID` | fluxo de criação da linha **e** o job | Id do despacho no meDIZ. Chave preferencial. |
+| `TRANSACTION_ID` | fluxo de criação da linha | O `HP…` da Hotmart. Chave reserva. |
+| `MEDIZ_STATUS` | o job | `atualizado`, `nao_encontrado`, `ambiguo`, `codigo_invalido` ou `erro`. |
+| `MEDIZ_ATUALIZADO_EM` | o job | Quando o job escreveu, em ISO. |
+
+> As colunas são MAIÚSCULAS; os campos do JSON da API são minúsculos (`shipment_id`, `tracking_code`, …). São nomes parecidos de coisas diferentes, e o nó do n8n faz a ponte entre os dois.
 
 CPF, e-mail, nome e endereço já existem na planilha e continuam como estão. O CPF é a chave que faz as linhas antigas casarem.
 
-**`shipment_id` tem dois escritores de propósito.** O fluxo que cria a linha preenche daqui para frente — ele já recebe o campo no aviso de acesso. As linhas antigas nascem sem, e é aí que entra o job: quando o casamento por CPF dá certo, a resposta traz o `shipment_id`, e o job grava na coluna. Da segunda passada em diante aquela linha para de depender de palpite e passa a casar pela chave forte. A planilha se conserta sozinha, linha a linha, sem ninguém digitar nada.
+**`SHIPMENT_ID` tem dois escritores de propósito.** O fluxo que cria a linha preenche daqui para frente — ele já recebe o campo no aviso de acesso. As linhas antigas nascem sem, e é aí que entra o job: quando o casamento por CPF dá certo, a resposta traz o `shipment_id`, e o job grava na coluna. Da segunda passada em diante aquela linha para de depender de palpite e passa a casar pela chave forte. A planilha se conserta sozinha, linha a linha, sem ninguém digitar nada.
 
-**Quais linhas o job processa.** Toda linha que tem `tracking_code` preenchido e `mediz_status` diferente de `atualizado`. Ou seja: `erro`, `nao_encontrado` e `ambiguo` voltam na próxima passada. Isso é intencional e barato — são poucas linhas — e faz o conserto chegar sozinho:
+**Quais linhas o job processa.**
+
+```
+tracking_code preenchido
+E  data da linha >= 2026-08-18
+E  MEDIZ_STATUS vazio ou diferente de "atualizado"
+```
+
+O corte de 18/08 não é proteção — o endpoint só sabe achar e atualizar, e os únicos despachos que existem são dessa data em diante, então linha velha não tem como sujar a base. O corte existe para o job não escrever `nao_encontrado` em centenas de linhas antigas de uma planilha que a gráfica usa todo dia.
+
+Se a coluna de data for a do despacho e não a da venda, o corte fica levemente generoso: venda de 15/08 despachada em 20/08 entra e volta `nao_encontrado`. Não quebra nada, só marca algumas linhas a mais.
+
+Tudo que não é `atualizado` volta na próxima passada — `erro`, `nao_encontrado`, `ambiguo`, `codigo_invalido`. Isso é intencional e barato, e faz o conserto chegar sozinho:
 
 - Uma venda `failed` reprocessada faz a linha `nao_encontrado` passar a casar.
 - Um `ambiguo` resolvido na mão no admin ganha o código no despacho certo; na passada seguinte a linha casa pela regra do `tracking_code`, que é exata, e vira `atualizado`.
@@ -125,15 +139,17 @@ Também aceita um objeto solto (uma linha só) ou um array puro, sem o envelope 
 
 Decida pelo `reason_code`, nunca pelo texto de `reason` — o código é estável, o texto em português muda.
 
-| Resultado | `mediz_status` | Também escreve | O que fazer |
+Cada resultado volta com o `row` que entrou — é ele que diz em qual linha escrever.
+
+| Resultado | `MEDIZ_STATUS` | Também escreve | O que fazer |
 |---|---|---|---|
-| `ok: true` | `atualizado` | `shipment_id` da resposta, se a coluna estiver vazia | Nada. Linha resolvida. |
+| `ok: true` | `atualizado` | o `shipment_id` da resposta em `SHIPMENT_ID`, se a coluna estiver vazia | Nada. Linha resolvida. |
 | `reason_code: "nao_encontrado"` | `nao_encontrado` | — | Venda que o meDIZ não conhece. Conferir se é anterior a 18/08. |
 | `reason_code: "ambiguo"` | `ambiguo` | — | A pessoa tem mais de um livro a caminho. Alguém no admin precisa dizer qual código é de qual. |
 | `reason_code: "codigo_invalido"` | `codigo_invalido` | — | A coluna do código traz outra coisa (`#N/A ()`, `CANCELADO`). Alguém precisa olhar o que aconteceu com aquele despacho. |
 | `reason_code: "falha"` | `erro` | — | Achou o despacho e estourou ao gravar. Volta na próxima passada; se repetir, é bug. |
 
-`mediz_atualizado_em` recebe a data em todos os quatro casos — inclusive nos que não casaram, que é justamente onde interessa saber há quanto tempo a linha está parada.
+`MEDIZ_ATUALIZADO_EM` recebe a data nos cinco casos — inclusive nos que não casaram, que é justamente onde interessa saber há quanto tempo a linha está parada.
 
 ## 7. Como o meDIZ acha o despacho
 
