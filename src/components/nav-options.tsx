@@ -13,6 +13,7 @@ import {
   Library,
   LogOut,
   MessageSquarePlus,
+  Package,
   PawPrint,
   PlaySquare,
   Search,
@@ -33,6 +34,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem
 } from '@/components/ui/sidebar'
+import { useHasShipment } from '@/hooks/use-has-shipment'
 import { useSubscriptionStatus } from '@/hooks/use-subscription-status'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useLanguage } from '@/i18n/useLanguage'
@@ -144,6 +146,7 @@ export function NavOptions({
   const { t } = useTranslation()
   const { language } = useLanguage()
   const { isPremium, isLoading: isLoadingPremium } = useSubscriptionStatus()
+  const temDespacho = useHasShipment()
   const [openUpgradeModal, setOpenUpgradeModal] = useState(false)
 
   const handlePremiumNav = (
@@ -342,6 +345,18 @@ export function NavOptions({
             iconClassName="text-indigo-600 dark:text-indigo-400"
             showNewBadge
           />
+          {/* So para quem comprou o impresso. A grande maioria nunca comprou, e
+              um item que leva a uma tela vazia ensina a ignorar o menu. */}
+          {temDespacho ? (
+            <NavItem
+              href="/rastreio"
+              label="Meu livro impresso"
+              icon={Package}
+              isActive={pathname === '/rastreio'}
+              iconClassName="text-amber-600 dark:text-amber-400"
+              showNewBadge
+            />
+          ) : null}
         </SidebarMenu>
       </SidebarNavSection>
 

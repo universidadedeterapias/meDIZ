@@ -697,6 +697,10 @@ model BookShipment {
   events          Json?
   postedAt        DateTime? @map("posted_at")
   deliveredAt     DateTime? @map("delivered_at")
+  /// Quando o proprio comprador confirmou que recebeu. Separada de `deliveredAt`
+  /// porque as duas dizem "chegou" por bocas diferentes — e a transportadora
+  /// dizer que entregou sem ninguem confirmar e exatamente o caso a investigar.
+  deliveryConfirmedAt DateTime? @map("delivery_confirmed_at")
   lastCheckedAt   DateTime? @map("last_checked_at")
 
   createdAt DateTime @default(now()) @map("created_at")
