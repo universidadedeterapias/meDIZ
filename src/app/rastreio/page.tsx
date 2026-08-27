@@ -258,9 +258,9 @@ export default function RastreioPage() {
 
           <main className="flex-1 px-3 py-4 sm:px-4 sm:py-6">
             <div className="mx-auto w-full max-w-3xl">
-              <h1 className="text-xl font-semibold">Meu livro impresso</h1>
+              <h1 className="text-xl font-semibold">Entregas</h1>
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                Acompanhe a entrega e confirme quando receber.
+                Acompanhe o que está a caminho e confirme quando receber.
               </p>
 
               {erro ? (
@@ -277,7 +277,7 @@ export default function RastreioPage() {
                 <div className="mt-8 rounded-lg border bg-white p-6 text-center dark:bg-zinc-900">
                   <Package className="mx-auto h-8 w-8 text-zinc-300" />
                   <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-                    Você ainda não tem nenhum livro impresso a caminho.
+                    Você ainda não tem nenhuma entrega a caminho.
                   </p>
                 </div>
               ) : (

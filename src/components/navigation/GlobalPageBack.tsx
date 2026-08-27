@@ -11,7 +11,8 @@ const PAGES_WITH_HEADER_BACK = [
   '/cursos',
   '/symptoms-dashboard',
   '/myAccount',
-  '/account/payments-history'
+  '/account/payments-history',
+  '/rastreio'
 ] as const
 
 /** Rotas “home” ou fluxo onde voltar não faz sentido */

@@ -345,12 +345,16 @@ export function NavOptions({
             iconClassName="text-indigo-600 dark:text-indigo-400"
             showNewBadge
           />
-          {/* So para quem comprou o impresso. A grande maioria nunca comprou, e
-              um item que leva a uma tela vazia ensina a ignorar o menu. */}
+          {/* So para quem tem entrega registrada. A grande maioria nunca comprou
+              nada fisico, e um item que leva a uma tela vazia ensina a ignorar o
+              menu.
+
+              "Entregas" e nao "Meu livro impresso": hoje so existe o livro, mas
+              o nome do menu nao precisa envelhecer junto com o catalogo. */}
           {temDespacho ? (
             <NavItem
               href="/rastreio"
-              label="Meu livro impresso"
+              label="Entregas"
               icon={Package}
               isActive={pathname === '/rastreio'}
               iconClassName="text-amber-600 dark:text-amber-400"
