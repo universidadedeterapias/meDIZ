@@ -2,10 +2,9 @@
  * Reconhecimento da transportadora pelo formato do codigo de rastreio.
  *
  * A grafica nao posta tudo pelo mesmo canal. Numa mesma remessa vieram codigos
- * `AD803652820BR` (Correios) e `LG1017869652988...` (23 caracteres, outro
- * formato). Fixar "e Correios" mandaria metade dos compradores para uma pagina
- * que responde "objeto nao encontrado" — pior que nao ter link nenhum, porque
- * parece que o pedido sumiu.
+ * `AD803652820BR` (Correios) e `LG1017869652988...` (Loggi). Fixar "e Correios"
+ * mandaria metade dos compradores para uma pagina que responde "objeto nao
+ * encontrado" — pior que nao ter link nenhum, porque parece que o pedido sumiu.
  *
  * Por isso a transportadora e deduzida, e o codigo que nao bate com nada conhecido
  * fica sem URL em vez de ganhar uma errada.
@@ -32,14 +31,13 @@ const CARRIERS: Array<{ pattern: RegExp; carrier: Carrier }> = [
     }
   },
   {
-    // Visto em producao, transportadora ainda nao identificada. Fica registrado
-    // como forma conhecida para nao cair no balaio do desconhecido, mas sem URL:
-    // enquanto nao soubermos quem entrega, nao ha para onde mandar o cliente.
+    // Loggi. O `id` continua `lg` porque e o que ja esta gravado no banco —
+    // renomear obrigaria a reescrever linha antiga para ganhar nada.
     pattern: /^LG\d{21}$/,
     carrier: {
       id: 'lg',
-      label: 'Transportadora (código LG)',
-      buildUrl: null
+      label: 'Loggi',
+      buildUrl: (code) => `https://app.loggi.com/rastreador/${code}`
     }
   }
 ]

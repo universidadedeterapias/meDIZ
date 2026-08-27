@@ -16,7 +16,8 @@
  */
 
 import { useEffect, useState } from 'react'
-import { ExternalLink, Package, Truck } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowRight, Package, Truck } from 'lucide-react'
 import { apiFetch } from '@/lib/fetchClient'
 
 type Shipment = {
@@ -107,31 +108,18 @@ export function BookShipmentStatus() {
                 {s.lastStatusLabel ?? EXPLICACAO[s.status] ?? ''}
               </p>
 
-              {s.trackingCode ? (
-                <div className="mt-2 text-xs">
-                  <span className="opacity-70">
-                    {s.carrierLabel ? `${s.carrierLabel} · ` : ''}
-                  </span>
-                  {s.trackingUrl ? (
-                    <a
-                      href={s.trackingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 font-mono font-medium underline underline-offset-2"
-                    >
-                      {s.trackingCode}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  ) : (
-                    /* Sem pagina publica de rastreio, o codigo sozinho ja vale:
-                       o atendimento consegue consultar com ele. Mandar para um
-                       site errado seria pior. */
-                    <span className="font-mono font-medium">
-                      {s.trackingCode}
-                    </span>
-                  )}
-                </div>
-              ) : null}
+              {/* O codigo em si mora em /rastreio, onde ele e botao de copiar e
+                  de abrir a transportadora. Aqui, no meio de uma tela de livros
+                  digitais, ele so ocupava espaco sem dar o que fazer. */}
+              <Link
+                href="/rastreio"
+                className="mt-2 inline-flex items-center gap-1 text-xs font-medium underline underline-offset-2"
+              >
+                {s.trackingCode
+                  ? 'Ver rastreio e confirmar recebimento'
+                  : 'Acompanhar a entrega'}
+                <ArrowRight className="h-3 w-3" />
+              </Link>
             </div>
           </div>
         </div>
