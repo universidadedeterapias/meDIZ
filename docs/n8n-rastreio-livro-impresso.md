@@ -130,6 +130,7 @@ Decida pelo `reason_code`, nunca pelo texto de `reason` — o código é estáve
 | `ok: true` | `atualizado` | `shipment_id` da resposta, se a coluna estiver vazia | Nada. Linha resolvida. |
 | `reason_code: "nao_encontrado"` | `nao_encontrado` | — | Venda que o meDIZ não conhece. Conferir se é anterior a 18/08. |
 | `reason_code: "ambiguo"` | `ambiguo` | — | A pessoa tem mais de um livro a caminho. Alguém no admin precisa dizer qual código é de qual. |
+| `reason_code: "codigo_invalido"` | `codigo_invalido` | — | A coluna do código traz outra coisa (`#N/A ()`, `CANCELADO`). Alguém precisa olhar o que aconteceu com aquele despacho. |
 | `reason_code: "falha"` | `erro` | — | Achou o despacho e estourou ao gravar. Volta na próxima passada; se repetir, é bug. |
 
 `mediz_atualizado_em` recebe a data em todos os quatro casos — inclusive nos que não casaram, que é justamente onde interessa saber há quanto tempo a linha está parada.

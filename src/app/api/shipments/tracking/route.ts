@@ -3,7 +3,7 @@ import type { BookShipment } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { normalizeLibraryEmail } from '@/lib/library/email'
-import { normalizeCpf } from '@/lib/cpf'
+import { isValidCpf } from '@/lib/cpf'
 import { validateWebhookBearer } from '@/lib/webhookAuth'
 import {
   applyTrackingUpdate,
@@ -72,9 +72,10 @@ type Resultado = {
    * `nao_encontrado` = nenhuma chave bateu.
    * `ambiguo` = a chave bateu em mais de um despacho esperando codigo, e
    *   escolher no chute gravaria o rastreio no livro errado.
+   * `codigo_invalido` = o que veio na coluna do codigo nao e um codigo.
    * `falha` = a atualizacao estourou depois de encontrar o despacho.
    */
-  reason_code?: 'nao_encontrado' | 'ambiguo' | 'falha'
+  reason_code?: 'nao_encontrado' | 'ambiguo' | 'codigo_invalido' | 'falha'
   /** Preenchido so no erro, para o n8n logar a linha que nao casou. */
   reason?: string
   input?: {
@@ -96,6 +97,50 @@ function data(value: unknown): Date | null {
   if (!s) return null
   const d = new Date(s)
   return Number.isNaN(d.getTime()) ? null : d
+}
+
+/**
+ * CPF do jeito que a planilha entrega.
+ *
+ * Celula numerica come o zero da frente: `01234567890` chega como
+ * `1234567890`. Completar de volta e seguro porque quem decide no fim e o
+ * digito verificador — numero remendado que nao fecha nao vira consulta.
+ *
+ * Acima de 11 digitos e CNPJ na coluna errada, e ai nao se corta nada: fatiar
+ * nos 11 primeiros produziria um numero do tamanho certo que nunca foi CPF de
+ * ninguem, e sairia batendo no cadastro com ele.
+ */
+function cpfDaPlanilha(value: unknown): string | null {
+  const bruto = texto(value)
+  if (!bruto) return null
+
+  const digitos = bruto.replace(/\D/g, '')
+  if (!digitos || digitos.length > 11) return null
+
+  const cpf = digitos.padStart(11, '0')
+  return isValidCpf(cpf) ? cpf : null
+}
+
+/**
+ * Codigo de rastreio do jeito que a planilha entrega — inclusive quando ela
+ * entrega `#N/A ()` ou `CANCELADO`.
+ *
+ * Sem esta peneira, uma linha dessas que casasse por CPF gravaria a palavra
+ * `CANCELADO` como rastreio, e seria isso que o comprador leria na biblioteca.
+ *
+ * Nao e reconhecer transportadora — transportadora nova tem formato novo, e
+ * recusar o desconhecido quebraria o dia em que a grafica trocar de canal. E so
+ * recusar o que nao tem como ser codigo: curto demais, ou sem um unico numero.
+ */
+function codigoDaPlanilha(value: unknown): string | null {
+  const bruto = texto(value)
+  if (!bruto) return null
+
+  const codigo = normalizeTrackingCode(bruto)
+  if (codigo.length < 8) return null
+  if (!/^[A-Z0-9]+$/.test(codigo)) return null
+  if (!/\d/.test(codigo)) return null
+  return codigo
 }
 
 export async function POST(request: NextRequest) {
@@ -157,16 +202,28 @@ async function processarLinha(linha: LinhaEntrada): Promise<Resultado> {
   const shipmentId = texto(linha.shipment_id)
   const transactionId = texto(linha.transaction_id)
   const email = texto(linha.email)
-  const cpfBruto = texto(linha.cpf)
-  const cpf = cpfBruto ? normalizeCpf(cpfBruto) : null
+  const cpf = cpfDaPlanilha(linha.cpf)
   const codigoBruto = texto(linha.tracking_code)
-  const codigo = codigoBruto ? normalizeTrackingCode(codigoBruto) : null
+  const codigo = codigoDaPlanilha(linha.tracking_code)
 
   const entrada = {
     ...(shipmentId ? { shipment_id: shipmentId } : {}),
     ...(transactionId ? { transaction_id: transactionId } : {}),
     ...(email ? { email } : {}),
     ...(cpf ? { cpf } : {})
+  }
+
+  // A linha inteira para aqui. Um `CANCELADO` na coluna do codigo nao e ruido a
+  // ignorar — e a noticia de que aquele despacho mudou de historia, e quem
+  // atualiza a planilha precisa ver isso em vez de um "nao encontrado" morno.
+  if (codigoBruto && !codigo) {
+    return {
+      ok: false,
+      ...eco,
+      reason_code: 'codigo_invalido',
+      reason: `"${codigoBruto}" não é um código de rastreio`,
+      input: entrada
+    }
   }
 
   try {
@@ -286,7 +343,9 @@ async function localizar(chaves: {
   // deles se resolve na mao.
   let ambiguo = false
 
-  if (chaves.cpf && chaves.cpf.length === 11) {
+  // Chega aqui com 11 digitos e digito verificador conferido: quem peneira e o
+  // `cpfDaPlanilha`, na entrada.
+  if (chaves.cpf) {
     const usuario = await prisma.user.findFirst({
       where: { cpf: chaves.cpf },
       select: { id: true }
