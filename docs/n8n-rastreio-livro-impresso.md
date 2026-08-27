@@ -1,0 +1,155 @@
+# Rastreio do livro impresso — contrato n8n ↔ meDIZ
+
+> Documento para validação. Descreve o que o job do n8n deve mandar, o que o meDIZ devolve, e o que o n8n escreve de volta na planilha da gráfica.
+
+## 1. Problema que resolve
+
+A gráfica trabalha na planilha: recebe a lista de quem comprou o livro impresso e, quando despacha, escreve o código de rastreio numa coluna. Esse código morre ali. Quem comprou não vê nada, e o atendimento só responde "e o meu livro?" abrindo a planilha na mão.
+
+Do lado do meDIZ existe a tabela `book_shipments`, que já sabe quem comprou e está esperando. Falta o caminho de volta: alguém ler o código na planilha e gravar no despacho certo.
+
+Esse alguém é o job do n8n. Este documento é o contrato entre ele e o endpoint.
+
+## 2. Como as peças se encaixam
+
+```
+Hotmart  →  /api/hotmart  →  purchase_event + book_shipment (aguardando_postagem)
+                          →  aviso de acesso ao n8n
+                                     │
+                                     ▼
+                     n8n preenche a linha na planilha da gráfica
+                                     │
+                                     ▼
+                    gráfica despacha e escreve o código de rastreio
+                                     │
+                                     ▼
+        ┌──── job do n8n (este contrato) ─────────────────────┐
+        │  lê as linhas com código e sem marca de processado  │
+        │  POST /api/shipments/tracking                       │
+        │  escreve o resultado de volta na planilha           │
+        └─────────────────────────────────────────────────────┘
+                                     │
+                                     ▼
+        comprador vê o status em /biblioteca, admin vê no painel
+```
+
+O meDIZ não consulta transportadora nenhuma. Quem consulta é o n8n; aqui só entra o resultado.
+
+## 3. Pré-requisitos
+
+**`SHIPMENT_TRACKING_SECRET` precisa existir no ambiente de produção.** O endpoint usa autenticação fechada de saída: sem a env, ele responde `503 {"error":"Webhook not configured"}` para qualquer chamada — inclusive as certas. Não está no `.env` local; confirmar se está na Vercel antes de ligar o job.
+
+**Uma coluna de write-back na planilha.** Chame do que quiser (`meDIZ`, `status_base`); o job escreve nela e, na passada seguinte, pula toda linha que já tem valor. Sem ela o job reprocessa a planilha inteira todo dia — funciona, porque o endpoint é idempotente, mas gasta à toa e esconde o que falhou.
+
+## 4. Entrada
+
+`POST https://<host>/api/shipments/tracking`
+`Authorization: Bearer <SHIPMENT_TRACKING_SECRET>`
+
+Uma linha ou um lote (até **200** por chamada):
+
+```json
+{
+  "shipments": [
+    {
+      "row": "42",
+      "cpf": "12345678901",
+      "tracking_code": "AA123456789BR",
+      "status": "postado",
+      "status_label": "Objeto postado",
+      "posted_at": "2026-08-26T14:30:00Z"
+    }
+  ]
+}
+```
+
+| Campo | Obrigatório | Para que serve |
+|---|---|---|
+| `row` | recomendado | Devolvido intacto no resultado. É como o n8n sabe em que linha escrever a resposta. Use o número da linha da planilha, ou qualquer id estável dela. |
+| `cpf` | — | Chave de casamento das linhas antigas. Aceita com ou sem pontuação. |
+| `tracking_code` | — | O código que a gráfica escreveu. É o que o meDIZ vai gravar. |
+| `shipment_id` | — | Chave preferencial, quando existir na planilha. |
+| `transaction_id` | — | Segunda melhor chave (o `HP…` da Hotmart). |
+| `email` | — | Último recurso de casamento. |
+| `status` | — | Um de `aguardando_postagem`, `postado`, `em_transito`, `entregue`, `devolvido`, `problema`. |
+| `status_label` | — | Texto da transportadora. Quando `status` não vem, o meDIZ deduz o status daqui. |
+| `posted_at` / `delivered_at` | — | Datas ISO. |
+
+Se nem `status` nem `status_label` vierem, a simples chegada do código já move o despacho de `aguardando_postagem` para `postado` — porque o código só existe depois que a gráfica postou.
+
+Também aceita um objeto solto (uma linha só) ou um array puro, sem o envelope `shipments`.
+
+## 5. Saída
+
+```json
+{
+  "ok": true,
+  "processados": 3,
+  "atualizados": 2,
+  "nao_encontrados": 1,
+  "resultados": [
+    { "ok": true,  "row": "42", "shipment_id": "uuid…", "status": "postado" },
+    { "ok": true,  "row": "43", "shipment_id": "uuid…", "status": "entregue" },
+    { "ok": false, "row": "44", "reason_code": "ambiguo",
+      "reason": "Mais de um despacho esperando código para esta pessoa — resolver no admin",
+      "input": { "cpf": "12345678901" } }
+  ]
+}
+```
+
+`ok: true` no topo significa "o lote foi processado", não "tudo casou". O que importa por linha está em `resultados`, e cada resultado traz de volta o `row` que entrou.
+
+## 6. O que escrever de volta na planilha
+
+Decida pelo `reason_code`, nunca pelo texto de `reason` — o código é estável, o texto em português muda.
+
+| Resultado | Coluna de write-back | O que fazer |
+|---|---|---|
+| `ok: true` | `atualizado` | Nada. Linha resolvida, não volta na próxima passada. |
+| `reason_code: "nao_encontrado"` | `nao encontrado` | Venda que o meDIZ não conhece. Vale conferir se é anterior a 18/08. |
+| `reason_code: "ambiguo"` | `ambiguo` | A pessoa tem mais de um livro a caminho. Precisa de alguém no admin dizendo qual código é de qual. |
+| `reason_code: "falha"` | `erro` | Achou o despacho e estourou ao gravar. Deixar para a próxima passada; se repetir, é bug. |
+
+## 7. Como o meDIZ acha o despacho
+
+Da chave mais confiável para a menos:
+
+1. **`shipment_id`** — id direto. Viaja no aviso de acesso desde 20/08.
+2. **`transaction_id`** — o `HP…` da venda.
+3. **`tracking_code`** — casa o reenvio da mesma linha com o despacho que já recebeu aquele código.
+4. **`cpf`** — resolve para o usuário e pega o despacho dele que ainda espera código.
+5. **`email`** — mesma coisa, por e-mail.
+
+As duas últimas são palpite, não casamento exato, e por isso só entram quando a pessoa tem **exatamente um** despacho esperando código. Quem comprou o livro duas vezes tem dois; escolher um no chute gravaria o rastreio no livro errado, o que é pior do que não casar. Esse é o caso que volta como `ambiguo`.
+
+## 8. Reprocessar é seguro
+
+O endpoint é idempotente por natureza:
+
+- Mandar a mesma linha duas vezes acha o mesmo despacho (pelo `tracking_code`, na segunda vez) e regrava o mesmo valor.
+- O status só anda para frente: `postado` chegando depois de `entregue` não apaga a entrega. `devolvido` e `problema` são exceção e sempre valem, porque são exatamente a notícia que ninguém pode perder.
+- `posted_at` só é preenchido uma vez.
+
+Ou seja: em caso de dúvida, reprocessar a planilha inteira não estraga nada.
+
+## 9. Estado da base em 27/08/2026
+
+| | |
+|---|---|
+| Despachos aguardando código | **80** |
+| Com CPF válido para casar | **80** (100%) |
+| CPFs que casam sozinhos | **78** |
+| CPFs ambíguos | **1** (dois despachos: `HP3795148869` e `HP3750517996`) |
+
+Os identificadores citados aqui e na seção 10 são o número da transação na Hotmart, não dado pessoal — é por ele que se acha a venda no admin. CPF e e-mail de cliente ficam fora deste documento de propósito.
+| Cobertura | vendas de **18/08** em diante |
+
+Os 28 despachos de 18 a 20/08 foram criados por backfill (`npm run backfill:book-shipments`), a partir dos `purchase_events` — a tabela `book_shipments` só passou a existir em 19/08 e essas vendas ficaram sem linha.
+
+## 10. O que fica de fora
+
+**Três vendas com status `failed`** (`HP4104156954C1`, `HP4182623304C1`, `HP2080736774C1`) não têm despacho e não vão casar com nada. Não é problema de rastreio: a venda estourou no cadastro e essas pessoas não têm acesso ao meDIZ. Precisam ser reprocessadas antes de qualquer conversa sobre despacho.
+
+**Linhas da planilha anteriores a 18/08**, se existirem, não têm contraparte no meDIZ nem como `purchase_event` — o registro de vendas começa nessa data. Vão voltar como `nao_encontrado` e não há o que fazer pelo endpoint.
+
+**Ninguém é avisado quando o código chega.** Hoje o rastreio entra no banco e só aparece se a pessoa abrir `/biblioteca`. Quem esperava o código não recebe WhatsApp nem e-mail dizendo que saiu. É a próxima peça, e é ela que fecha o buraco de "não viram no meDIZ".

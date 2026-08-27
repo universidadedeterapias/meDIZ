@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { BookShipment } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { normalizeLibraryEmail } from '@/lib/library/email'
@@ -24,6 +25,14 @@ export const runtime = 'nodejs'
  * Aceita uma linha ou um lote: quem le planilha le muitas linhas de uma vez, e
  * uma chamada por linha seria desperdicio.
  *
+ * Cada resultado sai com o `row` que entrou, para o n8n escrever a resposta de
+ * volta na linha certa da planilha, e com `reason_code` quando nao casa — e o
+ * que separa "essa venda o meDIZ nao conhece" de "essa pessoa tem dois livros a
+ * caminho e alguem precisa dizer qual e qual".
+ *
+ * O contrato completo, do lado do n8n, esta em
+ * `docs/n8n-rastreio-livro-impresso.md`.
+ *
  * A autenticacao aqui e fechada de saida (`validateWebhookBearer`, e nao o
  * `...WhenConfigured`): endpoint novo nao tem venda em producao para proteger,
  * entao nao existe motivo para nascer aberto.
@@ -32,6 +41,12 @@ export const runtime = 'nodejs'
 const MAX_LOTE = 200
 
 type LinhaEntrada = {
+  /**
+   * Devolvido intacto no resultado. E como o n8n sabe em qual linha da planilha
+   * escrever a resposta: sem ele, sobra a ordem do array, que casa por acidente
+   * e para de casar no dia em que alguem filtrar o lote.
+   */
+  row?: unknown
   shipment_id?: unknown
   transaction_id?: unknown
   tracking_code?: unknown
@@ -46,8 +61,20 @@ type LinhaEntrada = {
 
 type Resultado = {
   ok: boolean
+  /** Eco do `row` da entrada, sempre — e por ele que o n8n acha a linha. */
+  row?: string
   shipment_id?: string
   status?: string
+  /**
+   * Por que nao casou, em codigo estavel: o n8n escreve na planilha a partir
+   * disto, e texto em portugues muda com o tempo.
+   *
+   * `nao_encontrado` = nenhuma chave bateu.
+   * `ambiguo` = a chave bateu em mais de um despacho esperando codigo, e
+   *   escolher no chute gravaria o rastreio no livro errado.
+   * `falha` = a atualizacao estourou depois de encontrar o despacho.
+   */
+  reason_code?: 'nao_encontrado' | 'ambiguo' | 'falha'
   /** Preenchido so no erro, para o n8n logar a linha que nao casou. */
   reason?: string
   input?: {
@@ -125,6 +152,8 @@ function extrairLinhas(body: unknown): LinhaEntrada[] | null {
 }
 
 async function processarLinha(linha: LinhaEntrada): Promise<Resultado> {
+  const row = texto(linha.row)
+  const eco = row ? { row } : {}
   const shipmentId = texto(linha.shipment_id)
   const transactionId = texto(linha.transaction_id)
   const email = texto(linha.email)
@@ -141,7 +170,7 @@ async function processarLinha(linha: LinhaEntrada): Promise<Resultado> {
   }
 
   try {
-    const shipment = await localizar({
+    const { shipment, ambiguo } = await localizar({
       shipmentId,
       transactionId,
       codigo,
@@ -152,7 +181,11 @@ async function processarLinha(linha: LinhaEntrada): Promise<Resultado> {
     if (!shipment) {
       return {
         ok: false,
-        reason: 'Despacho não encontrado',
+        ...eco,
+        reason_code: ambiguo ? 'ambiguo' : 'nao_encontrado',
+        reason: ambiguo
+          ? 'Mais de um despacho esperando código para esta pessoa — resolver no admin'
+          : 'Despacho não encontrado',
         input: entrada
       }
     }
@@ -178,7 +211,12 @@ async function processarLinha(linha: LinhaEntrada): Promise<Resultado> {
       deliveredAt: data(linha.delivered_at)
     })
 
-    return { ok: true, shipment_id: atualizado.id, status: atualizado.status }
+    return {
+      ok: true,
+      ...eco,
+      shipment_id: atualizado.id,
+      status: atualizado.status
+    }
   } catch (error) {
     logger.error(
       'Falha ao aplicar rastreio',
@@ -187,6 +225,8 @@ async function processarLinha(linha: LinhaEntrada): Promise<Resultado> {
     )
     return {
       ok: false,
+      ...eco,
+      reason_code: 'falha',
       reason: error instanceof Error ? error.message : 'Falha ao aplicar',
       input: entrada
     }
@@ -218,24 +258,33 @@ async function localizar(chaves: {
   codigo: string | null
   email: string | null
   cpf: string | null
-}) {
+}): Promise<{ shipment: BookShipment | null; ambiguo: boolean }> {
   if (chaves.shipmentId) {
-    return prisma.bookShipment.findUnique({ where: { id: chaves.shipmentId } })
+    const achado = await prisma.bookShipment.findUnique({
+      where: { id: chaves.shipmentId }
+    })
+    return { shipment: achado, ambiguo: false }
   }
 
   if (chaves.transactionId) {
     const achado = await prisma.bookShipment.findFirst({
       where: { externalTransactionId: chaves.transactionId }
     })
-    if (achado) return achado
+    if (achado) return { shipment: achado, ambiguo: false }
   }
 
   if (chaves.codigo) {
     const achado = await prisma.bookShipment.findFirst({
       where: { trackingCode: chaves.codigo }
     })
-    if (achado) return achado
+    if (achado) return { shipment: achado, ambiguo: false }
   }
+
+  // Empate nas chaves fracas nao vira erro na hora: o e-mail ainda pode desempatar
+  // o que o CPF nao desempatou. Guarda-se a lembranca para o resultado dizer
+  // "ambiguo" em vez de "nao encontrado" — sao problemas diferentes, e so um
+  // deles se resolve na mao.
+  let ambiguo = false
 
   if (chaves.cpf && chaves.cpf.length === 11) {
     const usuario = await prisma.user.findFirst({
@@ -243,26 +292,33 @@ async function localizar(chaves: {
       select: { id: true }
     })
     if (usuario) {
-      const candidatos = await prisma.bookShipment.findMany({
-        where: { userId: usuario.id, status: 'aguardando_postagem' },
-        orderBy: { createdAt: 'desc' },
-        take: 2
-      })
-      if (candidatos.length === 1) return candidatos[0]
+      const candidatos = await esperandoCodigo({ userId: usuario.id })
+      if (candidatos.length === 1) return { shipment: candidatos[0], ambiguo: false }
+      if (candidatos.length > 1) ambiguo = true
     }
   }
 
   if (chaves.email) {
-    const candidatos = await prisma.bookShipment.findMany({
-      where: {
-        email: normalizeLibraryEmail(chaves.email),
-        status: 'aguardando_postagem'
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 2
+    const candidatos = await esperandoCodigo({
+      email: normalizeLibraryEmail(chaves.email)
     })
-    if (candidatos.length === 1) return candidatos[0]
+    if (candidatos.length === 1) return { shipment: candidatos[0], ambiguo: false }
+    if (candidatos.length > 1) ambiguo = true
   }
 
-  return null
+  return { shipment: null, ambiguo }
+}
+
+/**
+ * Despachos da pessoa que ainda esperam codigo.
+ *
+ * Traz dois e para: quem chama so precisa saber se ha exatamente um. Contar a
+ * lista inteira seria trabalho para uma resposta que nao muda.
+ */
+function esperandoCodigo(quem: { userId: string } | { email: string }) {
+  return prisma.bookShipment.findMany({
+    where: { ...quem, status: 'aguardando_postagem' },
+    orderBy: { createdAt: 'desc' },
+    take: 2
+  })
 }
