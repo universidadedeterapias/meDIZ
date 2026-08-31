@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
     if (found.ambiguous) {
       return NextResponse.json(
         {
+          status: 'nao_encontrado',
           ok: false,
           reason: 'AMBIGUOUS',
           message:
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
     if (!found.found || !found.customer) {
       return NextResponse.json(
         {
+          status: 'nao_encontrado',
           ok: false,
           reason: 'NOT_FOUND',
           message: 'Não encontrei conta com esses dados.',
@@ -88,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { ok: false, reason: 'NOT_FOUND' },
+        { status: 'nao_encontrado', ok: false, reason: 'NOT_FOUND' },
         { status: 404 }
       )
     }
@@ -102,6 +104,7 @@ export async function POST(request: NextRequest) {
     )
 
     return NextResponse.json({
+      status: 'ok',
       ok: true,
       link: {
         url: link.url,
@@ -118,6 +121,13 @@ export async function POST(request: NextRequest) {
       error instanceof Error ? error : undefined,
       '[customer/access-link]'
     )
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json(
+      {
+        status: 'erro',
+        error: 'Internal server error',
+        mensagem: 'A geracao do link falhou. Nao afirme que a pessoa nao e cliente.'
+      },
+      { status: 500 }
+    )
   }
 }

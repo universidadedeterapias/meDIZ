@@ -54,10 +54,12 @@ export async function POST(request: NextRequest) {
     if (found.ambiguous) {
       return NextResponse.json(
         {
+          status: 'nao_encontrado',
           ok: false,
           reason: 'AMBIGUOUS',
           message:
-            'Mais de uma conta usa esse telefone. Peça o e-mail ou o CPF.'
+            'Mais de uma conta usa esse telefone. Peça o e-mail ou o CPF.',
+          mensagem: 'Telefone bate em mais de uma conta.'
         },
         { status: 409 }
       )
@@ -66,10 +68,12 @@ export async function POST(request: NextRequest) {
     if (!found.found || !found.customer) {
       return NextResponse.json(
         {
+          status: 'nao_encontrado',
           ok: false,
           reason: 'NOT_FOUND',
           message: 'Não encontrei conta com esses dados.',
-          vendas_pendentes: found.vendas_pendentes
+          vendas_pendentes: found.vendas_pendentes,
+          mensagem: 'Nenhuma conta com os dados informados.'
         },
         { status: 404 }
       )
@@ -82,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { ok: false, reason: 'NOT_FOUND' },
+        { status: 'nao_encontrado', ok: false, reason: 'NOT_FOUND' },
         { status: 404 }
       )
     }
@@ -105,6 +109,10 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json({
+      // Reenvio registrado que nao saiu nao e sucesso: dizer "reenviei" para
+      // quem nao vai receber nada troca um problema por dois. Fica na fila do
+      // admin, e a Aline nao promete o que nao aconteceu.
+      status: result.sent ? 'ok' : 'erro',
       ok: true,
       delivery_id: result.deliveryId,
       enviado: result.sent,
@@ -123,6 +131,13 @@ export async function POST(request: NextRequest) {
       error instanceof Error ? error : undefined,
       '[customer/resend-access]'
     )
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json(
+      {
+        status: 'erro',
+        error: 'Internal server error',
+        mensagem: 'O reenvio falhou. Nao afirme que a pessoa nao e cliente.'
+      },
+      { status: 500 }
+    )
   }
 }
