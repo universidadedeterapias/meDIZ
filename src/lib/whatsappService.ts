@@ -1,33 +1,54 @@
 // src/lib/whatsappService.ts
 
+import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js'
 
 /**
- * Converte número para formato E164 (Brasil)
+ * Converte número para E.164, sem assumir Brasil quando o número já vem com
+ * DDI (ex.: um contato de Portugal salvo como "+351 965 314 854").
+ *
+ * `defaultCountry` só é usado quando o número não tem "+"/DDI — é o fallback
+ * pra base de usuários hoje, majoritariamente brasileira.
  */
+export function toE164(phone: string, defaultCountry: CountryCode = 'BR'): string {
+  const parsed = parsePhoneNumberFromString(phone, defaultCountry)
+  if (parsed?.isValid()) {
+    return parsed.number
+  }
+
+  // Não deu pra validar (número incompleto, formato estranho etc.) — cai pra
+  // heurística antiga em vez de falhar o envio.
+  return legacyToBrazilE164(phone)
+}
+
+/** @deprecated use {@link toE164} */
 export function toBrazilE164(phone: string): string {
+  return toE164(phone, 'BR')
+}
+
+function legacyToBrazilE164(phone: string): string {
   // Remove todos os caracteres não numéricos
   const cleanPhone = phone.replace(/\D/g, '')
-  
+
   // Se já tem código do país, retorna
   if (cleanPhone.startsWith('55')) {
     return `+${cleanPhone}`
   }
-  
+
   // Se tem 11 dígitos (celular), adiciona código do país
   if (cleanPhone.length === 11) {
     return `+55${cleanPhone}`
   }
-  
+
   // Se tem 10 dígitos (fixo), adiciona código do país
   if (cleanPhone.length === 10) {
     return `+55${cleanPhone}`
   }
-  
+
   // Se tem 9 dígitos, assume que falta o DDD
   if (cleanPhone.length === 9) {
     return `+5511${cleanPhone}` // Assume SP como padrão
   }
-  
+
   // Retorna como está se não conseguir formatar
   return `+55${cleanPhone}`
 }
@@ -37,7 +58,7 @@ export function toBrazilE164(phone: string): string {
  */
 export async function sendWhatsAppText(phone: string, message: string): Promise<boolean> {
   try {
-    const formattedPhone = toBrazilE164(phone)
+    const formattedPhone = toE164(phone)
     
     // Z-API endpoint
     const zapiSendText = `${process.env.ZAPI_BASE_URL}/instances/${process.env.ZAPI_INSTANCE_ID}/token/${process.env.ZAPI_TOKEN}/send-text`
@@ -78,7 +99,7 @@ export async function sendWhatsAppText(phone: string, message: string): Promise<
  */
 export async function sendWhatsAppLink(phone: string, title: string, url: string, description: string): Promise<boolean> {
   try {
-    const formattedPhone = toBrazilE164(phone)
+    const formattedPhone = toE164(phone)
     
     // Z-API endpoints
     const zapiSendMessageLink = `${process.env.ZAPI_BASE_URL}/instances/${process.env.ZAPI_INSTANCE_ID}/token/${process.env.ZAPI_TOKEN}/send-message-link`
