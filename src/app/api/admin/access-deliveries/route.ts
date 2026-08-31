@@ -5,9 +5,15 @@ import { retryPendingDeliveries } from '@/lib/purchases/deliver-access'
 
 export const dynamic = 'force-dynamic'
 
-const VALID_STATUSES = new Set(['pending', 'sent', 'failed'])
+const VALID_STATUSES = new Set(['pending', 'sent', 'failed', 'skipped'])
 
-/** Avisos de acesso. O uso principal e `status=failed` — quem pagou e nao soube. */
+/**
+ * Avisos de acesso. O uso principal e `status=failed` — quem pagou e nao soube.
+ *
+ * `skipped` responde a outra pergunta, e cada vez mais a comum: a compra existe,
+ * o aviso nao saiu, e nao houve erro nenhum — a pessoa ja tinha recebido o dela.
+ * O motivo fica em `payload.skipped_reason`.
+ */
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.ok === false) return auth.response

@@ -86,7 +86,11 @@ export async function PUT(request: NextRequest) {
         nome: nome ?? null,
         transactionId: `legacy_api_${Date.now()}`,
         provider: 'library_permissions_api',
-        productsGranted
+        productsGranted,
+        // Esta rota concede por flag, e nao por venda: a unica que corresponde ao
+        // livro e `livro_digital`. Liberar so audioterapia ou so PDF por aqui
+        // segue a mesma regra dos webhooks — acesso sim, mensagem nao.
+        bookPurchase: permissoes.livro_digital
       })
     }
 

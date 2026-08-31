@@ -18,7 +18,15 @@ export type GrantPurchaseAccessInput = {
   source: 'hotmart' | 'stone' | 'manual'
   nome?: string | null
   cpf?: string | null
-  /** Quando definido, ignora grants automáticos do catálogo e libera só estes produtos. */
+  /**
+   * Quando definido, ignora grants automáticos do catálogo e libera só estes
+   * produtos.
+   *
+   * Lista vazia é uma resposta legítima, e não "não informado": o livro impresso
+   * é uma compra que não desbloqueia nada na tela — o que ela entrega vai pelos
+   * Correios. Antes, vazio caía no grant padrão do catálogo, que para o impresso
+   * significa o livro digital: exatamente o upsell que a compra não inclui.
+   */
   grantProductIds?: string[]
 }
 
@@ -36,9 +44,11 @@ export async function grantPurchaseAccess(
   const email = normalizeLibraryEmail(input.email)
   const nome = input.nome?.trim() || null
   const cpfDigits = input.cpf?.trim() || null
-  const productIds =
-    input.grantProductIds?.length ?
-      [...new Set(input.grantProductIds)]
+  // `undefined` e `[]` querem dizer coisas opostas, entao a checagem e pela
+  // presenca, e nao pelo tamanho.
+  const grantExplicito = input.grantProductIds !== undefined
+  const productIds = grantExplicito
+    ? [...new Set(input.grantProductIds)]
     : await collectProductIdsToGrant(input.sourceCatalogProductId)
 
   const products = await prisma.catalogProduct.findMany({
@@ -46,7 +56,10 @@ export async function grantPurchaseAccess(
     select: { id: true, title: true }
   })
 
-  if (products.length === 0) {
+  // So e erro quando ninguem escolheu: o produto da venda nao resolveu para nada
+  // no catalogo, e ai a venda esta mesmo quebrada. Quem escolheu liberar nada
+  // escolheu — a conta e criada, a compra e registrada, e nao ha entitlement.
+  if (products.length === 0 && !grantExplicito) {
     throw new Error('CATALOG_PRODUCT_NOT_FOUND')
   }
 
