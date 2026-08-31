@@ -264,8 +264,10 @@ export default function MyAccountPage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Avatar className="w-14 h-14 cursor-pointer">
-                  <AvatarImage src={user.image!} alt="Foto de perfil" />
-                  <AvatarFallback>{user.fullName![0]}</AvatarFallback>
+                  <AvatarImage src={user.image ?? undefined} alt="Foto de perfil" />
+                  <AvatarFallback>
+                    {(user.fullName || user.email)[0].toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
@@ -475,7 +477,9 @@ export default function MyAccountPage() {
                 />
               ) : (
                 // exibe já formatado
-                <p className="text-sm">{formatPhone(user.whatsapp!)}</p>
+                <p className="text-sm">
+                  {user.whatsapp ? formatPhone(user.whatsapp) : '—'}
+                </p>
               )}
 
               {errors.whatsapp && (
@@ -646,13 +650,19 @@ export default function MyAccountPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="m-0 max-h-[100dvh] max-w-[100vw] border-0 bg-black/90 p-0">
           <div className="relative flex h-[100dvh] w-full items-center justify-center">
-            <Image
-              src={user.image!}
-              alt="Avatar full"
-              fill
-              sizes="100vw"
-              style={{ objectFit: 'contain' }}
-            />
+            {user.image ? (
+              <Image
+                src={user.image}
+                alt="Avatar full"
+                fill
+                sizes="100vw"
+                style={{ objectFit: 'contain' }}
+              />
+            ) : (
+              <p className="text-sm text-white/70">
+                {t('account.avatar.noImage', 'Nenhuma imagem de perfil definida.')}
+              </p>
+            )}
           </div>
         </DialogContent>
       </Dialog>
