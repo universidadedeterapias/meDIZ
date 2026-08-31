@@ -24,17 +24,26 @@ function idsDoAmbiente(nome: string): string[] {
 }
 
 /**
- * Livro impresso no checkout Guru (cobranca Stone/pagar.me).
+ * Livro impresso no checkout Guru (Digital Manager Guru, cobrado pela Stone).
  *
- * Fica em variavel de ambiente, e nao no codigo, porque o ID do impresso na Guru
- * muda quando a oferta e recriada — e trocar isso nao deveria exigir deploy. Sem
- * a variavel a venda continua sendo reconhecida como livro (pelo produto de
- * catalogo, abaixo); o que se perde e so o "tem frete", que muda o texto da
- * mensagem e registra o despacho.
+ * Os dois valores sao a mesma oferta: o UUID e o `metadata.product_id`, que o
+ * `extractStoneProductId` prefere, e o numerico e o `items[].code`, que ele usa
+ * quando o metadata nao vem. Cobrir os dois evita o mesmo defeito voltar pela
+ * outra porta.
+ *
+ * Fixo no codigo, e nao so em env, pelo mesmo motivo dos IDs da Hotmart: valor
+ * que precisa ser configurado e valor que alguem esquece. E o custo do esquecimento
+ * aqui e caro — sem ser reconhecida como impressa, a venda cai na regra do digital
+ * e libera de graca justamente o upsell, alem de nao virar despacho. Foi o que
+ * aconteceu com as seis primeiras vendas do impresso pelo Guru.
+ *
+ * O env continua valendo, somado, para uma oferta nova entrar sem deploy.
  */
-export const STONE_PHYSICAL_BOOK_IDS = new Set(
-  idsDoAmbiente('STONE_PHYSICAL_BOOK_PRODUCT_IDS')
-)
+export const STONE_PHYSICAL_BOOK_IDS = new Set([
+  'a1efe6c8-b98d-4d9e-9e22-4cab1e780424',
+  '1780515697',
+  ...idsDoAmbiente('STONE_PHYSICAL_BOOK_PRODUCT_IDS')
+])
 
 /** Livro digital no checkout Guru. 1780425821 = EL CUERPO HABLA. */
 export const STONE_DIGITAL_BOOK_IDS = new Set([

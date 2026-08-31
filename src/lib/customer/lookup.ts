@@ -70,6 +70,24 @@ function maskTail(value: string | null, visible: number): string | null {
   return `${'•'.repeat(Math.min(digits.length - visible, 8))}${digits.slice(-visible)}`
 }
 
+/**
+ * E-mail reduzido ao que permite reconhecer, e nao ao que permite escrever para.
+ *
+ * O agente precisa dizer PARA ONDE o acesso foi — "mandei para o pat***@gmail.com
+ * da compra" — e quem esta do outro lado da conversa nem sempre e o dono da conta:
+ * basta digitar o e-mail de outra pessoa. Devolver o endereco inteiro entregaria
+ * de graca justamente o dado que a pessoa estava tentando descobrir.
+ *
+ * O dominio fica visivel de proposito: e o que resolve o caso comum de quem tem
+ * duas contas e nao lembra em qual comprou.
+ */
+function maskEmail(value: string | null): string | null {
+  if (!value) return null
+  const [local, dominio] = value.split('@')
+  if (!dominio) return null
+  return `${local.slice(0, 3)}***@${dominio}`
+}
+
 const EMPTY: CustomerLookupResult = {
   found: false,
   ambiguous: false,
@@ -215,7 +233,7 @@ export async function lookupCustomer(
     customer: {
       id: user.id,
       nome: user.fullName ?? user.name,
-      email,
+      email: maskEmail(email),
       whatsapp: maskTail(user.whatsapp, 4),
       cpf: maskTail(user.cpf, 3),
       senha_definida: !user.mustResetPassword,

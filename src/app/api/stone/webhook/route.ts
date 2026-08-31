@@ -7,6 +7,7 @@ import {
   isPhysicalBookProduct
 } from '@/lib/purchases/book-purchase'
 import { deliverAccess } from '@/lib/purchases/deliver-access'
+import { startBookOnboarding } from '@/lib/purchases/start-book-onboarding'
 import { ensureBookShipment } from '@/lib/shipping/book-shipment'
 import {
   recordPurchaseEvent,
@@ -81,6 +82,8 @@ export async function POST(request: NextRequest) {
       nome: parsed.nome,
       telefone: parsed.telefone,
       cpf: parsed.cpf,
+      currency: parsed.currency,
+      country: parsed.country,
       payload
     })
 
@@ -124,12 +127,6 @@ export async function POST(request: NextRequest) {
     // tambem aponta para o produto de catalogo do digital, entao deixar o grant
     // padrao decidir daria o digital de brinde — o mesmo upsell que a oferta
     // seguinte vende.
-    //
-    // O que continua faltando e o `startBookOnboarding` (7 dias de Profissional
-    // + esteira): ele escolhe o idioma pela moeda e pelo pais, e o
-    // `parseStoneWebhook` ainda nao le nem um nem outro — o comprador de EL
-    // CUERPO HABLA cairia na esteira em portugues. Ler esses dois campos e o
-    // passo que falta para ligar o onboarding aqui tambem.
     const ehLivro = await isBookPurchase({
       provider: 'stone',
       externalProductId: parsed.stoneProductId,
@@ -149,6 +146,22 @@ export async function POST(request: NextRequest) {
         ? await resolvePhysicalBookGrantProductIds()
         : undefined
     })
+
+    // Compra de livro pelo Guru recebe o mesmo que pela Hotmart: os 7 dias de
+    // Profissional e a esteira pos-compra. O idioma sai da moeda e do pais que o
+    // `parseStoneWebhook` agora le — sem eles, o comprador de EL CUERPO HABLA
+    // entrava numa sequencia em portugues.
+    if (ehLivro) {
+      await startBookOnboarding({
+        userId: grant.userId,
+        email: parsed.email,
+        name: parsed.nome,
+        source: 'stone',
+        externalTransactionId: parsed.transactionId,
+        currency: parsed.currency,
+        country: parsed.country
+      })
+    }
 
     // Antes do aviso porque o aviso leva o id do despacho: e por ele que a
     // planilha da grafica devolve o codigo de rastreio.
