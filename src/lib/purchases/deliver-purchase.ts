@@ -61,17 +61,13 @@ type ResolvedPurchase = {
   transactionId: string
   source: 'hotmart' | 'stone'
   externalProductId: string | null
-  /** Compra do livro — e o que decide se o cliente recebe mensagem. */
-  isBook: boolean
   /**
-   * Alem da mensagem, a compra puxa os 7 dias de Profissional e a esteira.
+   * Compra do livro. Decide a mensagem, os 7 dias de Profissional e a esteira.
    *
-   * Anda separado de `isBook` porque a esteira escolhe idioma por moeda e pais, e
-   * o payload da Stone ainda nao entrega nenhum dos dois — inscrever o comprador
-   * de EL CUERPO HABLA hoje o colocaria numa sequencia em portugues. Ler esses
-   * campos no `parseStoneWebhook` e o que falta para os dois voltarem a ser um.
+   * Vale igual para Hotmart e para o checkout Guru: o `parseStoneWebhook` passou
+   * a ler moeda e pais, entao a esteira do comprador de la sai no idioma certo.
    */
-  bookOnboarding: boolean
+  isBook: boolean
   /** Tem despacho fisico — o aviso ao cliente precisa falar do rastreio. */
   physicalShipment: boolean
   currency: string | null
@@ -120,7 +116,6 @@ async function resolveFromHotmart(
     source: 'hotmart',
     externalProductId: productId,
     isBook: ehLivro,
-    bookOnboarding: ehLivro,
     physicalShipment: isPhysicalBookProduct('hotmart', productId),
     currency: event.currency,
     country: event.country
@@ -183,7 +178,6 @@ async function resolveFromStone(
       externalProductId: parsed.stoneProductId,
       catalogProductId
     }),
-    bookOnboarding: false,
     physicalShipment: temDespacho,
     currency: event.currency,
     country: event.country
@@ -261,7 +255,7 @@ export async function deliverFromPurchaseEvent(
       grantProductIds: resolved.grantProductIds
     })
 
-    if (resolved.bookOnboarding && notify) {
+    if (resolved.isBook && notify) {
       await startBookOnboarding({
         userId: grant.userId,
         email: resolved.email,

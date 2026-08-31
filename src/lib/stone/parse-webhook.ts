@@ -10,6 +10,10 @@ export type StoneWebhookPurchase = {
   telefone: string | null
   stoneProductId: string | null
   catalogProductId: string | null
+  /** Moeda da cobranca. Decide o idioma da esteira quando o pais nao vem. */
+  currency: string | null
+  /** Pais do comprador. Tem precedencia sobre a moeda na escolha do idioma. */
+  country: string | null
 }
 
 function dig(
@@ -114,6 +118,36 @@ function extractTelefone(payload: Record<string, unknown>): string | null {
   return null
 }
 
+/**
+ * Moeda e pais do comprador — o que decide o idioma da esteira pos-compra.
+ *
+ * Enquanto nao eram lidos, toda venda pelo checkout Guru caia no padrao pt-BR, e
+ * o comprador de EL CUERPO HABLA entrava numa sequencia em portugues falando de
+ * um livro que ele comprou em espanhol. Era por isso que o onboarding do livro
+ * ficava desligado neste caminho.
+ *
+ * A Stone repete os dois em mais de um lugar do payload. A ordem aqui e do mais
+ * proximo do comprador para o mais proximo da cobranca: o endereco dele diz de
+ * onde ele e, e a cobranca so diz onde a oferta foi cobrada.
+ */
+function extractCurrency(payload: Record<string, unknown>): string | null {
+  const data = (payload.data ?? payload) as Record<string, unknown>
+  return (
+    asString(dig(data, 'currency')) ||
+    asString(dig(data, 'charges.0.currency')) ||
+    asString(dig(data, 'order.currency'))
+  )
+}
+
+function extractCountry(payload: Record<string, unknown>): string | null {
+  const data = (payload.data ?? payload) as Record<string, unknown>
+  return (
+    asString(dig(data, 'customer.address.country')) ||
+    asString(dig(data, 'shipping.address.country')) ||
+    asString(dig(data, 'charges.0.customer.address.country'))
+  )
+}
+
 function extractStoneProductId(payload: Record<string, unknown>): string | null {
   const data = (payload.data ?? payload) as Record<string, unknown>
   const metadata = (data.metadata ?? payload.metadata) as
@@ -210,6 +244,8 @@ export function parseStoneWebhook(
     cpf: extractCpf(payload),
     telefone: extractTelefone(payload),
     stoneProductId: extractStoneProductId(payload),
-    catalogProductId: extractCatalogProductId(payload)
+    catalogProductId: extractCatalogProductId(payload),
+    currency: extractCurrency(payload),
+    country: extractCountry(payload)
   }
 }
