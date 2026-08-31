@@ -82,6 +82,8 @@ const CORES_STATUS: Record<string, string> = {
   pending_mapping: 'bg-amber-100 text-amber-800',
   pending: 'bg-amber-100 text-amber-800',
   failed: 'bg-red-100 text-red-700',
+  // Nao e erro: o aviso nao saiu porque a pessoa ja tinha recebido o dela.
+  skipped: 'bg-gray-100 text-gray-600',
   ignored: 'bg-gray-100 text-gray-600',
   received: 'bg-blue-100 text-blue-700'
 }
@@ -118,7 +120,8 @@ const FILTROS: Array<{ valor: string; rotulo: string }> = [
   { valor: '', rotulo: 'Todos' },
   { valor: 'pending', rotulo: 'Parados' },
   { valor: 'failed', rotulo: 'Falharam' },
-  { valor: 'sent', rotulo: 'Entregues' }
+  { valor: 'sent', rotulo: 'Entregues' },
+  { valor: 'skipped', rotulo: 'Ja avisados' }
 ]
 
 export default function EntregasPage() {

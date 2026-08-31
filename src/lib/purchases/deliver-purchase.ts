@@ -9,10 +9,13 @@ import {
 } from '@/lib/hotmart/buyer'
 import { grantPurchaseAccess } from '@/lib/purchases/grant-purchase'
 import {
-  HOTMART_PHYSICAL_BOOK_IDS,
-  isHotmartBookProduct,
-  resolveHotmartGrantProductIds
+  resolveHotmartGrantProductIds,
+  resolvePhysicalBookGrantProductIds
 } from '@/lib/purchases/hotmart-grant-rules'
+import {
+  isBookPurchase,
+  isPhysicalBookProduct
+} from '@/lib/purchases/book-purchase'
 import { deliverAccess } from '@/lib/purchases/deliver-access'
 import { ensureBookShipment } from '@/lib/shipping/book-shipment'
 import { settlePurchaseEvent } from '@/lib/purchases/purchase-events'
@@ -48,6 +51,8 @@ export type DeliverResult =
 
 type ResolvedPurchase = {
   catalogProductId: string
+  /** Nome do produto da venda. E o que a mensagem do impresso anuncia. */
+  catalogProductTitle: string | null
   grantProductIds?: string[]
   email: string
   nome: string | null
@@ -56,7 +61,17 @@ type ResolvedPurchase = {
   transactionId: string
   source: 'hotmart' | 'stone'
   externalProductId: string | null
+  /** Compra do livro — e o que decide se o cliente recebe mensagem. */
   isBook: boolean
+  /**
+   * Alem da mensagem, a compra puxa os 7 dias de Profissional e a esteira.
+   *
+   * Anda separado de `isBook` porque a esteira escolhe idioma por moeda e pais, e
+   * o payload da Stone ainda nao entrega nenhum dos dois — inscrever o comprador
+   * de EL CUERPO HABLA hoje o colocaria numa sequencia em portugues. Ler esses
+   * campos no `parseStoneWebhook` e o que falta para os dois voltarem a ser um.
+   */
+  bookOnboarding: boolean
   /** Tem despacho fisico — o aviso ao cliente precisa falar do rastreio. */
   physicalShipment: boolean
   currency: string | null
@@ -87,8 +102,15 @@ async function resolveFromHotmart(
     return { ok: false, status: 'failed', reason: 'Payload sem e-mail' }
   }
 
+  const ehLivro = await isBookPurchase({
+    provider: 'hotmart',
+    externalProductId: productId,
+    catalogProductId: product.id
+  })
+
   return {
     catalogProductId: product.id,
+    catalogProductTitle: product.title,
     grantProductIds: await resolveHotmartGrantProductIds(productId, product.id),
     email,
     nome: event.nome ?? getBuyerName(payload),
@@ -97,8 +119,9 @@ async function resolveFromHotmart(
     transactionId: event.externalTransactionId,
     source: 'hotmart',
     externalProductId: productId,
-    isBook: isHotmartBookProduct(productId),
-    physicalShipment: HOTMART_PHYSICAL_BOOK_IDS.has(productId.trim()),
+    isBook: ehLivro,
+    bookOnboarding: ehLivro,
+    physicalShipment: isPhysicalBookProduct('hotmart', productId),
     currency: event.currency,
     country: event.country
   }
@@ -114,11 +137,18 @@ async function resolveFromStone(
     return { ok: false, status: 'failed', reason: 'Payload Stone ilegível' }
   }
 
-  const catalogProductId =
-    parsed.catalogProductId ??
-    (parsed.stoneProductId
-      ? (await resolveCatalogProductByStoneId(parsed.stoneProductId))?.id ?? null
-      : null)
+  // Guarda o produto inteiro, e nao so o id: a mensagem da compra com despacho
+  // anuncia o titulo, e busca-lo de novo seria uma consulta a mais em toda venda
+  // Stone. Fica null quando o proprio payload ja trouxe o id do catalogo — ai nao
+  // houve resolucao, e o aviso cai na busca pelos produtos liberados.
+  const resolvido = parsed.catalogProductId
+    ? null
+    : parsed.stoneProductId
+      ? await resolveCatalogProductByStoneId(parsed.stoneProductId)
+      : null
+
+  const catalogProductId = parsed.catalogProductId ?? resolvido?.id ?? null
+  const temDespacho = isPhysicalBookProduct('stone', parsed.stoneProductId)
 
   if (!catalogProductId) {
     return {
@@ -132,6 +162,12 @@ async function resolveFromStone(
 
   return {
     catalogProductId,
+    catalogProductTitle: resolvido?.title ?? null,
+    // Mesmo motivo do caminho Hotmart: o impresso aponta para o produto de
+    // catalogo do digital, entao o grant padrao daria de graca o upsell.
+    grantProductIds: temDespacho
+      ? await resolvePhysicalBookGrantProductIds()
+      : undefined,
     email: parsed.email,
     nome: parsed.nome,
     cpf: parsed.cpf,
@@ -139,8 +175,16 @@ async function resolveFromStone(
     transactionId: event.externalTransactionId,
     source: 'stone',
     externalProductId: parsed.stoneProductId ?? null,
-    isBook: false,
-    physicalShipment: false,
+    // O livro tambem sai pelo checkout Guru, que cobra pela Stone. Dizer `false`
+    // aqui fazia toda venda Guru avisar como se fosse curso, e nenhuma venda do
+    // impresso por esse caminho virar despacho.
+    isBook: await isBookPurchase({
+      provider: 'stone',
+      externalProductId: parsed.stoneProductId,
+      catalogProductId
+    }),
+    bookOnboarding: false,
+    physicalShipment: temDespacho,
     currency: event.currency,
     country: event.country
   }
@@ -217,7 +261,7 @@ export async function deliverFromPurchaseEvent(
       grantProductIds: resolved.grantProductIds
     })
 
-    if (resolved.isBook && notify) {
+    if (resolved.bookOnboarding && notify) {
       await startBookOnboarding({
         userId: grant.userId,
         email: resolved.email,
@@ -258,8 +302,10 @@ export async function deliverFromPurchaseEvent(
         externalProductId: resolved.externalProductId,
         physicalShipment: resolved.physicalShipment,
         shipmentId: shipment?.id ?? null,
+        mainProductTitle: resolved.catalogProductTitle,
         productsGranted: grant.productsGranted,
-        purchaseEventId: event.id
+        purchaseEventId: event.id,
+        bookPurchase: resolved.isBook
       })
     }
 

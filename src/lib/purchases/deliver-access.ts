@@ -17,6 +17,17 @@ import type { GrantedProductSummary } from '@/lib/purchases/grant-purchase'
  *
  * A entrega em si continua sendo do n8n, que fala com a ChatVolt. O que muda e
  * que agora existe registro do que saiu, e o que falha da para reprocessar.
+ *
+ * Duas regras decidem quem recebe:
+ *
+ * 1. So compra do livro, impresso ou digital. Audioterapia avulsa, PDF solto e
+ *    assinatura liberam o acesso em silencio — a mensagem inteira fala do livro.
+ * 2. Uma por pessoa, para sempre. Nao uma por venda: quem leva o impresso e o
+ *    digital no mesmo checkout recebe um aviso, nao dois. O rastreio de cada
+ *    exemplar sai depois, pelo fluxo de rastreio, um codigo por despacho.
+ *
+ * O reenvio pedido no atendimento (`kind: 'access_resent'`) e isento das duas:
+ * ele existe justamente para repetir.
  */
 
 export type AccessDeliveryKind =
@@ -28,6 +39,15 @@ export type AccessDeliveryKind =
   | 'access_resent'
 
 const MAX_ATTEMPTS = 5
+
+/**
+ * Aviso que nasceu barrado: a pessoa ja tinha recebido o dela.
+ *
+ * Fica gravado, e nao descartado, porque a pergunta do atendimento e sempre "por
+ * que fulano nao recebeu o aviso DESTA compra?" — e a resposta precisa estar em
+ * algum lugar. Nunca sai: fica fora da fila de reenvio e ignora reprocessamento.
+ */
+const STATUS_BARRADO = 'skipped'
 
 /**
  * Onde a pessoa cai ao entrar pelo link: o que ela comprou, nao a home.
@@ -64,14 +84,14 @@ async function resolveDestination(
 /**
  * O que a pessoa comprou, quando a compra tem despacho.
  *
- * O livro impresso libera o digital e o PDF bonus junto, e listar os tres na
- * mensagem faz o comprador achar que comprou tres coisas. Ele comprou uma: a que
- * vai chegar pelos Correios. O bonus ele encontra na biblioteca.
+ * Reserva: hoje quem sabe o nome e o webhook, que passa `mainProductTitle` a
+ * partir do produto de catalogo da venda. Esta busca so responde quando ele nao
+ * passou — e desde que o impresso deixou de liberar o digital ela nao acha mais
+ * nada no caminho do livro, porque a unica coisa liberada por ali e o PDF bonus.
  *
  * Identificado pela `permissionKey`, e nao pela posicao no array:
  * `grantPurchaseAccess` monta `productsGranted` a partir de um `findMany` com
- * `in`, entao a ordem e a que o Postgres devolver — hoje o livro vem primeiro por
- * acaso, nao por regra.
+ * `in`, entao a ordem e a que o Postgres devolver.
  */
 async function resolveMainProductTitle(
   productIds: string[]
@@ -175,12 +195,67 @@ async function criarAviso(
   }
 }
 
+/**
+ * Reserva a unica mensagem desta pessoa.
+ *
+ * `updateMany` com `accessMessageAt: null` no filtro e um teste-e-grava atomico:
+ * de dois webhooks que chegam no mesmo instante, o Postgres deixa so um encontrar
+ * a coluna vazia. Checar com `findUnique` antes de gravar nao faria isso — os
+ * dois leriam null antes de qualquer um escrever, e os dois mandariam.
+ *
+ * Devolve o instante gravado (para poder desfazer) ou null quando a pessoa ja
+ * tinha recebido o aviso dela.
+ */
+async function reservarMensagem(userId: string): Promise<Date | null> {
+  const reservadoEm = new Date()
+  const { count } = await prisma.user.updateMany({
+    where: { id: userId, accessMessageAt: null },
+    data: { accessMessageAt: reservadoEm }
+  })
+  return count > 0 ? reservadoEm : null
+}
+
+/**
+ * Devolve a reserva quando o aviso nao chegou a ser gravado.
+ *
+ * Sem isso, uma falha de banco entre a reserva e o registro deixaria a pessoa
+ * marcada como "ja avisada" sem nunca ter recebido nada — e sem linha nenhuma na
+ * fila para reenviar. O filtro pelo proprio instante evita apagar a reserva de
+ * outro fluxo que tenha gravado no meio.
+ */
+async function liberarReserva(userId: string, reservadoEm: Date): Promise<void> {
+  try {
+    await prisma.user.updateMany({
+      where: { id: userId, accessMessageAt: reservadoEm },
+      data: { accessMessageAt: null }
+    })
+  } catch (error) {
+    logger.error(
+      'Falha ao liberar reserva de aviso de acesso',
+      error instanceof Error ? error : undefined,
+      '[purchases/deliver-access]'
+    )
+  }
+}
+
 function resolveWebhookUrl(): string | null {
   return (
     process.env.N8N_ACCESS_DELIVERY_WEBHOOK_URL?.trim() ||
     process.env.N8N_NEW_USER_WEBHOOK_URL?.trim() ||
     null
   )
+}
+
+export type DeliverAccessResult = {
+  deliveryId: string | null
+  sent: boolean
+  /**
+   * Por que nao saiu mensagem, quando nao houve falha nenhuma.
+   *
+   * `nao_e_livro`: a compra nao era do livro — nada a avisar.
+   * `ja_avisado`: a pessoa ja tinha recebido a mensagem dela.
+   */
+  skipped?: 'nao_e_livro' | 'ja_avisado'
 }
 
 export type DeliverAccessInput = {
@@ -216,7 +291,23 @@ export type DeliverAccessInput = {
    * certa - casar por e-mail erra em quem comprou duas vezes.
    */
   shipmentId?: string | null
+  /**
+   * Nome do que foi comprado, para a mensagem de compra com despacho.
+   *
+   * E o titulo do produto de catalogo que a venda resolveu — o livro —, e nao um
+   * dos produtos liberados: o impresso libera so o PDF bonus, entao a lista de
+   * liberados nao tem mais o nome do livro dentro.
+   */
+  mainProductTitle?: string | null
   purchaseEventId?: string | null
+  /**
+   * A venda e compra do livro (impresso ou digital).
+   *
+   * Sem isso nao ha mensagem. Quem sabe responder e quem conhece a origem da
+   * venda — o webhook —, entao a decisao chega pronta; aqui so se obedece. Ver
+   * `isBookPurchase` em `@/lib/purchases/book-purchase`.
+   */
+  bookPurchase?: boolean
   /** Para onde o link magico leva. Default: resolvido pelo produto liberado. */
   redirectTo?: string
   /** Sobrescreve o tipo inferido de `userCreated` — usado pelo reenvio. */
@@ -231,10 +322,16 @@ export type DeliverAccessInput = {
  */
 export async function deliverAccess(
   input: DeliverAccessInput
-): Promise<{ deliveryId: string | null; sent: boolean }> {
+): Promise<DeliverAccessResult> {
   const email = normalizeLibraryEmail(input.email)
   const provider = input.provider?.trim() || null
   const externalTransactionId = input.transactionId?.trim() || null
+
+  // O reenvio do atendimento nao e o aviso da compra: e alguem pedindo segunda
+  // via porque nao consegue entrar. Fica fora das duas regras.
+  const reenvioManual = input.kind === 'access_resent'
+  let reservadoEm: Date | null = null
+  let avisoGravado = false
 
   try {
     // Hotmart e Stone mandam mais de um webhook para a mesma compra. Sair aqui
@@ -245,11 +342,33 @@ export async function deliverAccess(
         return { deliveryId: jaExiste.id, sent: true }
       }
 
+      // Aviso barrado nao vira tentativa: o payload dele nunca foi feito para
+      // sair. Reprocessar a venda no admin nao pode transformar isso em mensagem.
+      if (jaExiste.status === STATUS_BARRADO) {
+        return { deliveryId: jaExiste.id, sent: false, skipped: 'ja_avisado' }
+      }
+
       // O aviso existe mas nao chegou a sair. O webhook repetido, que ate agora
       // so atrapalhava, vira uma tentativa a mais de entregar o que faltou.
       const reenviado = await sendAccessDelivery(jaExiste)
       return { deliveryId: jaExiste.id, sent: reenviado }
     }
+
+    // Compra que nao e do livro libera o acesso e nao fala nada. Nem registro
+    // fica: nao ha aviso pendente para o atendimento cobrar, porque nunca houve
+    // aviso a fazer.
+    if (!reenvioManual && !input.bookPurchase) {
+      logger.info(
+        `Compra sem aviso: nao e livro (${provider ?? 'sem provedor'}/${externalTransactionId ?? 'sem transacao'})`,
+        '[purchases/deliver-access]'
+      )
+      return { deliveryId: null, sent: false, skipped: 'nao_e_livro' }
+    }
+
+    // Trava de uma mensagem por pessoa. Vem antes do link magico de proposito:
+    // nao se emite credencial para uma mensagem que ja se sabe que nao vai sair.
+    reservadoEm = reenvioManual ? null : await reservarMensagem(input.userId)
+    const primeiraMensagem = reenvioManual || reservadoEm !== null
 
     const kind: AccessDeliveryKind =
       input.kind ?? (await resolveKind(input.userId, input.userCreated))
@@ -262,15 +381,22 @@ export async function deliverAccess(
 
     // So a compra com despacho precisa disso: nas outras, listar tudo que foi
     // liberado e exatamente o que a pessoa quer ler.
+    //
+    // O impresso nao libera o digital, entao o nome do livro nao esta mais entre
+    // os produtos liberados — a unica coisa que sai por ali e o PDF bonus, e uma
+    // mensagem anunciando "seu Sentido Biologico esta a caminho" descreveria a
+    // compra errada. Por isso o nome vem de quem resolveu a venda.
     const mainProductTitle = input.physicalShipment
-      ? await resolveMainProductTitle(input.productsGranted.map((p) => p.id))
+      ? input.mainProductTitle?.trim() ||
+        (await resolveMainProductTitle(input.productsGranted.map((p) => p.id)))
       : null
 
     // O link so existe para quem esta entrando pela primeira vez. Quem ja tem
     // conta usa a senha que definiu — mandar link para essa pessoa seria criar
-    // uma credencial nova sem motivo.
+    // uma credencial nova sem motivo. Aviso barrado tambem nao leva link: ele
+    // fica gravado so como explicacao, e nunca e entregue.
     const accessLink =
-      kind === 'products_added'
+      kind === 'products_added' || !primeiraMensagem
         ? null
         : await createAccessLink(input.userId, { redirectTo: destination })
 
@@ -305,28 +431,63 @@ export async function deliverAccess(
       provider: input.provider ?? null,
       external_product_id: input.externalProductId ?? null,
       physical_shipment: input.physicalShipment ?? false,
-      shipment_id: input.shipmentId ?? null
+      shipment_id: input.shipmentId ?? null,
+      // So aparece no aviso barrado, e e o que o admin le para entender por que
+      // esta compra nao virou mensagem.
+      skipped_reason: primeiraMensagem ? null : 'ja_avisado'
     }
 
-    const delivery = await criarAviso({
+    let delivery = await criarAviso({
       userId: input.userId,
       email,
       purchaseEventId: input.purchaseEventId ?? null,
       provider,
       externalTransactionId,
       kind,
-      status: 'pending',
+      status: primeiraMensagem ? 'pending' : STATUS_BARRADO,
       payload: payload as unknown as Prisma.InputJsonValue
     })
+    avisoGravado = true
+
+    // A reserva e nossa, mas outro webhook DESTA MESMA venda gravou um aviso
+    // barrado um instante antes — ele perdeu a reserva justamente para nos. A
+    // venda so aceita uma linha, entao o caminho e promover a que existe: sem
+    // isso sairia o payload dele, que nasceu sem link magico.
+    if (primeiraMensagem && delivery.status === STATUS_BARRADO) {
+      delivery = await prisma.accessDelivery.update({
+        where: { id: delivery.id },
+        data: {
+          kind,
+          status: 'pending',
+          payload: payload as unknown as Prisma.InputJsonValue
+        }
+      })
+    }
 
     // Outro webhook ganhou a corrida e ja entregou: nao manda de novo.
     if (delivery.status === 'sent') {
       return { deliveryId: delivery.id, sent: true }
     }
 
+    // A pessoa ja tinha o aviso dela. O acesso saiu igual, o despacho foi
+    // registrado igual — o que nao sai e a segunda mensagem.
+    if (!primeiraMensagem) {
+      logger.info(
+        `Compra sem aviso: pessoa ja avisada (${provider ?? 'sem provedor'}/${externalTransactionId ?? 'sem transacao'})`,
+        '[purchases/deliver-access]'
+      )
+      return { deliveryId: delivery.id, sent: false, skipped: 'ja_avisado' }
+    }
+
     const sent = await sendAccessDelivery(delivery)
     return { deliveryId: delivery.id, sent }
   } catch (error) {
+    // A reserva so vale se o aviso chegou a ser gravado. Falhando antes disso,
+    // devolve-la e o que mantem a pessoa elegivel ao aviso que ela nao recebeu.
+    if (reservadoEm && !avisoGravado) {
+      await liberarReserva(input.userId, reservadoEm)
+    }
+
     logger.error(
       'Falha ao preparar aviso de acesso',
       error instanceof Error ? error : undefined,

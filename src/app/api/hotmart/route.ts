@@ -14,11 +14,11 @@ import {
 import { validateHotmartHottok } from '@/lib/hotmart/validate-hottok'
 import { normalizeLibraryEmail } from '@/lib/library/email'
 import { grantPurchaseAccess } from '@/lib/purchases/grant-purchase'
+import { resolveHotmartGrantProductIds } from '@/lib/purchases/hotmart-grant-rules'
 import {
-  HOTMART_PHYSICAL_BOOK_IDS,
-  isHotmartBookProduct,
-  resolveHotmartGrantProductIds
-} from '@/lib/purchases/hotmart-grant-rules'
+  isBookPurchase,
+  isPhysicalBookProduct
+} from '@/lib/purchases/book-purchase'
 import { startBookOnboarding } from '@/lib/purchases/start-book-onboarding'
 import { ensureLibraryUser } from '@/lib/purchases/migrate-legacy-permissions'
 import { deliverAccess } from '@/lib/purchases/deliver-access'
@@ -506,9 +506,19 @@ export async function POST(req: NextRequest) {
           grantProductIds
         })
 
+        // Uma unica pergunta responde por tudo que fala com o cliente: o
+        // onboarding do livro e a mensagem de acesso. Elas tem de concordar —
+        // uma esteira que promete o livro para quem nao recebeu aviso nenhum e
+        // um aviso de livro sem os 7 dias de trial sao o mesmo defeito.
+        const ehLivro = await isBookPurchase({
+          provider: 'hotmart',
+          externalProductId: incomingProductId,
+          catalogProductId: catalogProduct.id
+        })
+
         // Compra de livro tambem inicia os 7 dias de Profissional e a esteira de
         // e-mails pos-compra. Nao lanca — falha aqui nao pode bloquear o acesso.
-        if (isHotmartBookProduct(incomingProductId)) {
+        if (ehLivro) {
           await startBookOnboarding({
             userId: grant.userId,
             email,
@@ -525,9 +535,7 @@ export async function POST(req: NextRequest) {
 
         // O despacho e registrado antes do aviso porque o aviso leva o id dele:
         // e por esse id que a planilha da grafica devolve o codigo de rastreio.
-        const temDespacho = HOTMART_PHYSICAL_BOOK_IDS.has(
-          incomingProductId.trim()
-        )
+        const temDespacho = isPhysicalBookProduct('hotmart', incomingProductId)
         const shipment = temDespacho
           ? await ensureBookShipment({
               purchaseEventId,
@@ -552,8 +560,10 @@ export async function POST(req: NextRequest) {
           externalProductId: incomingProductId,
           physicalShipment: temDespacho,
           shipmentId: shipment?.id ?? null,
+          mainProductTitle: catalogProduct.title,
           productsGranted: grant.productsGranted,
-          purchaseEventId
+          purchaseEventId,
+          bookPurchase: ehLivro
         })
 
         await settlePurchaseEvent(purchaseEventId, {
@@ -1087,6 +1097,10 @@ export async function POST(req: NextRequest) {
       // Ignorar; não falha o webhook
     }
 
+    // Assinatura nao e compra de livro, entao hoje isto nao manda nada: o
+    // `deliverAccess` barra na entrada. A chamada fica de pe porque a assinatura
+    // e a candidata obvia a voltar a avisar, e quando voltar e uma flag aqui —
+    // nao um fluxo a reconstruir. Enquanto isso o assinante entra pelo /login.
     await deliverAccess({
       userId: user.id,
       email,
@@ -1098,7 +1112,8 @@ export async function POST(req: NextRequest) {
       externalProductId: incomingProductId,
       productsGranted: [{ id: plan.id, title: plan.name }],
       purchaseEventId,
-      redirectTo: '/chat'
+      redirectTo: '/chat',
+      bookPurchase: false
     })
 
     await settlePurchaseEvent(purchaseEventId, {

@@ -45,6 +45,15 @@ model User {
   mustResetPassword        Boolean                   @default(false) @map("must_reset_password")
   temporaryPasswordPlain   String?                   @map("temporary_password_plain") @db.VarChar(32)
   whatsappSentAt           DateTime?                 @map("whatsapp_sent_at")
+  /// Instante em que o unico aviso de acesso desta pessoa foi criado.
+  ///
+  /// A regra e uma mensagem por pessoa, e nao uma por venda: quem compra o livro
+  /// impresso e o digital na mesma tarde recebe um aviso, nao dois. Esta coluna e
+  /// a trava, e a corrida entre dois webhooks simultaneos se resolve nela. Ficar
+  /// em `User`, e nao em `access_deliveries`, e o que permite a garantia ser do
+  /// banco: a tabela de avisos ja nasceu com varias linhas por pessoa, entao um
+  /// indice unico la nem subiria. Reenvio do atendimento nao passa por aqui.
+  accessMessageAt          DateTime?                 @map("access_message_at")
   cpf                      String?                   @db.VarChar(14)
   pdfDownloads             PdfDownload[]
   pdfDownloadTokens        PdfDownloadToken[]

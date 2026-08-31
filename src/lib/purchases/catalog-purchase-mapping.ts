@@ -20,7 +20,15 @@ export type HotmartPurchaseRule = {
  */
 export const HOTMART_PURCHASE_RULES: HotmartPurchaseRule[] = [
   {
-    /** 6667092 = livro físico | 6652189 = livro digital (mesmo produto no catálogo) */
+    /**
+     * 6667092 = livro físico | 6652189 = livro digital.
+     *
+     * Os dois apontam para o mesmo produto de catálogo, e isso é só
+     * IDENTIFICAÇÃO: é o que faz a venda do impresso ser reconhecida como livro,
+     * virar despacho e ganhar nome na mensagem. O que cada um LIBERA é outra
+     * pergunta, e quem responde é `hotmart-grant-rules.ts` — o impresso libera só
+     * o PDF bônus, porque o digital é um upsell com preço próprio.
+     */
     hotmartProductIds: ['6667092', '6652189'],
     source: {
       section: 'BIBLIOTECA',
