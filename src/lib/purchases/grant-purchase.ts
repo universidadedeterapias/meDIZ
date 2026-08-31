@@ -38,6 +38,20 @@ export type GrantPurchaseAccessResult = {
   entitlementsCreated: number
 }
 
+/**
+ * Conflito de unicidade do Prisma.
+ *
+ * Conferido pela forma, e nao com `instanceof`, porque `Prisma` entraria aqui
+ * como valor so para isto e puxaria o client inteiro para o bundle.
+ */
+function ehConflitoDeUnicidade(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { code?: unknown }).code === 'P2002'
+  )
+}
+
 export async function grantPurchaseAccess(
   input: GrantPurchaseAccessInput
 ): Promise<GrantPurchaseAccessResult> {
@@ -63,7 +77,7 @@ export async function grantPurchaseAccess(
     throw new Error('CATALOG_PRODUCT_NOT_FOUND')
   }
 
-  const existingUser = await prisma.user.findUnique({
+  let existingUser = await prisma.user.findUnique({
     where: { email },
     select: { id: true, cpf: true, temporaryPasswordPlain: true }
   })
@@ -75,22 +89,53 @@ export async function grantPurchaseAccess(
   if (!existingUser) {
     temporaryPassword = DEFAULT_TEMPORARY_PASSWORD
     const passwordHash = await hashPassword(temporaryPassword)
-    const created = await prisma.user.create({
-      data: {
-        email,
-        name: nome,
-        fullName: nome,
-        cpf: cpfDigits,
-        passwordHash,
-        temporaryPasswordPlain: temporaryPassword,
-        mustResetPassword: true,
-        emailVerified: new Date()
-      },
-      select: { id: true }
-    })
-    userId = created.id
-    userCreated = true
-  } else {
+
+    try {
+      const created = await prisma.user.create({
+        data: {
+          email,
+          name: nome,
+          fullName: nome,
+          cpf: cpfDigits,
+          passwordHash,
+          temporaryPasswordPlain: temporaryPassword,
+          mustResetPassword: true,
+          emailVerified: new Date()
+        },
+        select: { id: true }
+      })
+      userId = created.id
+      userCreated = true
+    } catch (error) {
+      // Outro webhook da mesma compra criou a conta primeiro.
+      //
+      // Order bump: tres produtos no mesmo checkout viram tres webhooks
+      // simultaneos. Os tres consultam antes de qualquer um gravar, os tres
+      // concluem que a conta nao existe, e dois estouram no unique de `email`.
+      // A venda que estourava caia como `failed` — e o comprador ficava sem o
+      // item, sem despacho, e fora do backfill, que pula `failed` de proposito.
+      // Foi o que aconteceu com tres compras do livro impresso em agosto.
+      //
+      // A consulta acima evita o trabalho; so este catch evita a corrida.
+      if (!ehConflitoDeUnicidade(error)) throw error
+
+      const encontrado = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true, cpf: true, temporaryPasswordPlain: true }
+      })
+      if (!encontrado) throw error
+
+      existingUser = encontrado
+      userId = encontrado.id
+      temporaryPassword = encontrado.temporaryPasswordPlain
+      // `userCreated` fica falso porque ESTA chamada nao criou nada. Quem decide
+      // o texto do aviso e o `resolveKind`, que olha `mustResetPassword` — e a
+      // conta recem-criada ainda tem a flag ligada, entao o comprador continua
+      // recebendo o aviso de primeiro acesso, com link.
+    }
+  }
+
+  if (existingUser) {
     userId = existingUser.id
     if (cpfDigits || nome) {
       await prisma.user.update({
