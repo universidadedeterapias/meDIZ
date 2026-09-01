@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { requireUser } from '@/lib/requireAuth'
+import { marcaLivroRecebido } from '@/lib/journey/gatilhos'
 import { normalizeLibraryEmail } from '@/lib/library/email'
 
 export const dynamic = 'force-dynamic'
@@ -109,6 +110,12 @@ export async function POST(request: NextRequest) {
       },
       select: { status: true, deliveryConfirmedAt: true }
     })
+
+    // A pessoa dizendo que recebeu vale mais que a transportadora, e o corredor
+    // trata as duas do mesmo jeito: o livro esta na mao dela. O caminho pela
+    // transportadora sai do `applyTrackingUpdate`; este e o do botao, que nao
+    // passa por la.
+    marcaLivroRecebido(auth.user.id, agora)
 
     return NextResponse.json({
       ok: true,

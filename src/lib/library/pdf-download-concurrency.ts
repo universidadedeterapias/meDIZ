@@ -3,8 +3,20 @@ const MAX_CONCURRENT_GENERATIONS = Number.parseInt(
   10
 )
 
+/**
+ * Teto do PDF de origem que aceitamos marcar.
+ *
+ * Estava em 300 MB, que e corda suficiente para o container se enforcar: o
+ * pdf-lib carrega, reescreve e serializa, e um arquivo desses passa de 1,5 GB de
+ * RSS — com dois em paralelo, o processo morre e derruba quem nao tem nada a ver
+ * com download nenhum.
+ *
+ * 60 MB e folga larga para os livros de hoje (o maior tem 21 MB depois de
+ * reprocessado) e transforma "alguem publicou um PDF sem otimizar" num erro
+ * claro no admin, em vez de num container reiniciando.
+ */
 const MAX_SOURCE_BYTES = Number.parseInt(
-  process.env.PDF_DOWNLOAD_MAX_SOURCE_BYTES ?? String(300 * 1024 * 1024),
+  process.env.PDF_DOWNLOAD_MAX_SOURCE_BYTES ?? String(60 * 1024 * 1024),
   10
 )
 

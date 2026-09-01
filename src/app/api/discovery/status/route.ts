@@ -6,6 +6,7 @@ import {
   shouldRunDiscovery,
   shouldSuggestDiscovery
 } from '@/lib/discovery-access'
+import { marcaPrimeiroAcesso } from '@/lib/journey/gatilhos'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
@@ -47,14 +48,21 @@ export async function GET() {
     // toda sessao autenticada passa, e e idempotente (so grava quando esta nulo).
     const firstAccessAt = user.userProfile?.firstAccessAt ?? null
     if (!firstAccessAt) {
-      await prisma.userProfile
+      const agora = new Date()
+      const marcou = await prisma.userProfile
         .upsert({
           where: { userId: session.user.id },
-          create: { userId: session.user.id, firstAccessAt: new Date() },
-          update: { firstAccessAt: new Date() },
+          create: { userId: session.user.id, firstAccessAt: agora },
+          update: { firstAccessAt: agora },
           select: { id: true }
         })
-        .catch(() => undefined)
+        .catch(() => null)
+
+      // O corredor precisa saber que a pessoa entrou, e este e o instante exato:
+      // ja passou pela compra, ja tem senha, e acabou de abrir o app. E o que
+      // separa "comprou e sumiu" de "comprou e esta explorando" — sem esse
+      // evento, o unico jeito de a Aline saber seria perguntar.
+      if (marcou) marcaPrimeiroAcesso(session.user.id, agora)
     }
 
     const rollout = getDiscoveryRolloutConfig()

@@ -24,6 +24,11 @@ import {
   requestConversationalResponse,
   resolveRequestLanguage
 } from '@/lib/conversational-chat/webhook'
+import {
+  marcaPesquisa,
+  marcaUsouProf,
+  marcaUsouSimulador
+} from '@/lib/journey/gatilhos'
 import { isUserPremium } from '@/lib/premiumUtils'
 import { prisma } from '@/lib/prisma'
 import { getUserLimits, getUserPeriod } from '@/lib/userPeriod'
@@ -457,6 +462,26 @@ export async function POST(req: Request) {
       })
       newMessages.push(saved)
     }
+
+    // Corredor de conversao: o que a pessoa acabou de fazer vira variavel na
+    // conversa dela no WhatsApp. Fica DEPOIS de gravar as respostas de proposito
+    // — uso e um fato consumado, e a pesquisa so aconteceu quando a resposta
+    // chegou. Marcar antes contaria como pesquisa a chamada que estourou no
+    // webhook, e a Aline falaria de algo que a pessoa nao chegou a ver.
+    //
+    // Conversa com o porteiro nao entra: enquanto ele nao encaminha, nao houve
+    // pesquisa em dominio nenhum. Por isso o teste e no `resolvedAgent`, que ja
+    // considera o encaminhamento fechado nesta mesma resposta.
+    if (chatKind === 'SEARCH') {
+      if (resolvedAgent && resolvedAgent !== 'concierge') {
+        marcaPesquisa(userId, resolvedAgent)
+      }
+    } else if (chatKind === 'PROF') {
+      marcaUsouProf(userId)
+    } else if (chatKind === 'SIMULADOR') {
+      marcaUsouSimulador(userId)
+    }
+
     if (assistantResponse.action?.type === 'share' && newMessages.length > 0) {
       newMessages[newMessages.length - 1].action = assistantResponse.action
     }

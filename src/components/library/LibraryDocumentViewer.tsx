@@ -34,6 +34,8 @@ function downloadErrorMessage(status: number, code?: string): string {
       return 'Arquivo grande demais para gerar a cópia licenciada. Fale com o suporte.'
     case 'TOKEN_INVALID_OR_EXPIRED':
       return 'O link de download expirou. Tente novamente.'
+    case 'PDF_DOWNLOAD_QUOTA_EXCEEDED':
+      return 'Você atingiu o limite de downloads deste mês. Fale com o suporte.'
     case 'DOWNLOAD_GENERATION_FAILED':
       return 'Falha ao gerar a cópia licenciada. Tente novamente em alguns minutos.'
     default:
@@ -89,6 +91,37 @@ export function LibraryDocumentViewer({
     }
   }, [])
 
+  /**
+   * Espera a cópia ficar pronta, perguntando ao servidor.
+   *
+   * A marcação leva ~11s e antes acontecia dentro do próprio request de
+   * download, com o arquivo inteiro sendo montado na memória do navegador. Era
+   * isso que derrubava o celular: 21 MB (antes 147) num blob, sem retomada se a
+   * rede oscilasse, e uma conexão aberta sem trafegar nada enquanto o servidor
+   * marcava as páginas.
+   */
+  const esperaFicarPronto = async (statusUrl: string): Promise<string | null> => {
+    const limite = Date.now() + 3 * 60_000
+
+    while (Date.now() < limite) {
+      await new Promise((r) => setTimeout(r, 1500))
+
+      const res = await apiFetch(statusUrl, { credentials: 'include' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) return downloadErrorMessage(res.status, data.error)
+
+      if (data.estado === 'pronto') return null
+      if (data.estado === 'falhou') {
+        return downloadErrorMessage(500, 'DOWNLOAD_GENERATION_FAILED')
+      }
+      // `ausente` significa que o preparo se perdeu (deploy, reinício). A rota
+      // de download sabe se virar sozinha nesse caso, então segue em frente.
+      if (data.estado === 'ausente') return null
+    }
+
+    return 'A preparação está demorando mais que o normal. Tente de novo.'
+  }
+
   const handleDownload = async () => {
     if (!productId || downloading) return
     setDownloading(true)
@@ -109,30 +142,19 @@ export function LibraryDocumentViewer({
         return
       }
 
-      // Baixa via fetch (em vez de navegar direto pro link) pra manter o
-      // spinner ativo durante a geração/watermark no servidor — uma
-      // navegação de anexo não recarrega a página, então o app perderia o
-      // feedback visual assim que o clique acontecesse.
-      const fileResponse = await apiFetch(data.downloadUrl, { credentials: 'include' })
-      if (!fileResponse.ok) {
-        const fileError = await fileResponse.json().catch(() => ({}))
-        setDownloadError(
-          downloadErrorMessage(fileResponse.status, fileError.error)
-        )
-        return
+      if (!data.pronto && data.statusUrl) {
+        const erro = await esperaFicarPronto(data.statusUrl)
+        if (erro) {
+          setDownloadError(erro)
+          return
+        }
       }
-      const blob = await fileResponse.blob()
-      const disposition = fileResponse.headers.get('content-disposition') ?? ''
-      const filename = /filename="?([^"]+)"?/.exec(disposition)?.[1] ?? 'documento.pdf'
 
-      const objectUrl = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = objectUrl
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000)
+      // Entrega para o navegador, que baixa direto para o disco: sem cópia na
+      // memória, com barra de progresso de verdade e com retomada quando a rede
+      // cai. Como a resposta vem com `Content-Disposition: attachment`, a página
+      // atual não sai do lugar.
+      window.location.href = data.downloadUrl
     } catch {
       setDownloadError('Erro de rede ao solicitar download.')
     } finally {

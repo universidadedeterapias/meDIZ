@@ -2,6 +2,7 @@ import type { BookShipment, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { normalizeLibraryEmail } from '@/lib/library/email'
+import { marcaLivroRecebido } from '@/lib/journey/gatilhos'
 import {
   buildTrackingUrl,
   detectCarrier,
@@ -195,10 +196,54 @@ export async function applyTrackingUpdate(
     data.deliveredAt = update.deliveredAt
   }
 
-  return prisma.bookShipment.update({
+  const atualizado = await prisma.bookShipment.update({
     where: { id: shipment.id },
     data
   })
+
+  // O livro chegando e o melhor gancho de conversa que o corredor tem: e o unico
+  // momento em que o objeto fisico e o app podem ser ligados na mesma frase. So
+  // avisa na TRANSICAO — releitura da planilha que reafirma 'entregue' nao e
+  // noticia nova, e reavisar viraria a mesma comemoracao toda semana.
+  if (atualizado.status === 'entregue' && shipment.status !== 'entregue') {
+    await avisaCorredorDaEntrega(atualizado)
+  }
+
+  return atualizado
+}
+
+/**
+ * Conta ao corredor que o livro chegou.
+ *
+ * O despacho nem sempre tem `user_id`: as vendas antigas foram criadas so com
+ * e-mail, e a conta pode ter nascido depois. Por isso o e-mail e o caminho
+ * reserva — sem ele, justamente quem comprou primeiro ficaria de fora.
+ *
+ * Nunca lanca: a entrega do livro ja esta gravada quando esta funcao roda, e um
+ * problema na fila do atendimento nao pode desfazer isso.
+ */
+async function avisaCorredorDaEntrega(shipment: BookShipment): Promise<void> {
+  try {
+    let userId = shipment.userId
+
+    if (!userId && shipment.email) {
+      const user = await prisma.user.findUnique({
+        where: { email: normalizeLibraryEmail(shipment.email) },
+        select: { id: true }
+      })
+      userId = user?.id ?? null
+    }
+
+    if (!userId) return
+
+    marcaLivroRecebido(userId, shipment.deliveredAt ?? new Date())
+  } catch (error) {
+    logger.error(
+      'Falha ao avisar o corredor sobre a entrega do livro',
+      error instanceof Error ? error : undefined,
+      '[shipping]'
+    )
+  }
 }
 
 function podeAvancar(atual: string, proximo: string): boolean {

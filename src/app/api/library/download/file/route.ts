@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { requireUser } from '@/lib/requireAuth'
-import { fetchOriginalPdfBytes } from '@/lib/library/fetch-pdf-bytes'
-import { logPdfDownload } from '@/lib/library/pdf-download-limits'
 import { verifyPdfDownloadToken } from '@/lib/library/pdf-download-token'
-import {
-  applyPdfWatermark,
-  formatCpfForDisplay,
-  resolveDisplayName
-} from '@/lib/library/watermark-pdf'
 import {
   getPdfProductForDownload,
   PdfDownloadAccessError
@@ -16,15 +8,10 @@ import {
 import {
   cacheKeyFor,
   getCachedPath,
-  isCacheFresh,
-  pruneExpiredCacheEntries,
-  writeCacheAtomically
+  pruneExpiredCacheEntries
 } from '@/lib/library/pdf-download-cache'
-import {
-  assertPdfSourceSize,
-  PdfSourceTooLargeError,
-  withPdfGenerationSlot
-} from '@/lib/library/pdf-download-concurrency'
+import { PdfSourceTooLargeError } from '@/lib/library/pdf-download-concurrency'
+import { garantePreparo } from '@/lib/library/prepare-pdf-download'
 import { streamFileResponse } from '@/lib/library/range-stream'
 
 export const dynamic = 'force-dynamic'
@@ -45,13 +32,24 @@ function safeFilename(title: string): string {
   return (
     title
       .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
+      .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-zA-Z0-9._-]+/g, '-')
       .replace(/-+/g, '-')
       .slice(0, 80) || 'documento'
   )
 }
 
+/**
+ * Entrega a cópia licenciada.
+ *
+ * No caminho normal o arquivo já foi preparado pelo `/request` e esta rota só
+ * transmite — com Range, então o navegador retoma sozinho se a rede cair no meio,
+ * que é o caso comum em 4G.
+ *
+ * O `garantePreparo` cobre a exceção: o cache pode ter sumido entre o preparo e o
+ * clique (limpeza por TTL, reinício do container). Sem ele a pessoa receberia
+ * erro num arquivo que o app acabou de mostrar como pronto.
+ */
 export async function GET(request: NextRequest) {
   const auth = await requireUser({ pathname: '/api/library/download/file' })
   if (auth.ok === false) return auth.response
@@ -69,80 +67,36 @@ export async function GET(request: NextRequest) {
     void pruneExpiredCacheEntries().catch(() => {})
   }
 
-  const rangeHeader = request.headers.get('range')
-
   try {
     const { product, downloadTitle, mediaId, locale } =
       await getPdfProductForDownload(payload.pid, auth.user, {
         mediaId: payload.mid
       })
+
+    const cacheKey = cacheKeyFor(auth.user.id, product.id, mediaId)
+
+    await garantePreparo({
+      userId: auth.user.id,
+      cacheKey,
+      productId: product.id,
+      permissionKey: product.permissionKey,
+      mediaFileName: product.mediaFileName,
+      downloadTitle,
+      locale,
+      clientIp: clientIp(request),
+      userAgent: request.headers.get('user-agent')
+    })
+
     const filename = `${safeFilename(downloadTitle)}-licenciado.pdf`
-    const responseHeaders = {
+
+    return await streamFileResponse(getCachedPath(cacheKey), request.headers.get('range'), {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${filename}"`,
       'Cache-Control': 'private, no-store, no-cache, must-revalidate, max-age=0',
       Pragma: 'no-cache',
       Expires: '0',
       'X-Content-Type-Options': 'nosniff'
-    }
-
-    const cacheKey = cacheKeyFor(auth.user.id, product.id, mediaId)
-
-    // Já processado neste mês: serve do cache local (com suporte a Range/206),
-    // sem reprocessar com pdf-lib e sem contar cota de novo.
-    if (await isCacheFresh(cacheKey)) {
-      return await streamFileResponse(getCachedPath(cacheKey), rangeHeader, responseHeaders)
-    }
-
-    const dbUser = await prisma.user.findUnique({
-      where: { id: auth.user.id },
-      select: { fullName: true, name: true, email: true, cpf: true }
     })
-    if (!dbUser) {
-      return NextResponse.json({ error: 'USER_NOT_FOUND' }, { status: 404 })
-    }
-
-    const watermarked = await withPdfGenerationSlot(async () => {
-      const originalBytes = await fetchOriginalPdfBytes(
-        product.permissionKey,
-        product.mediaFileName,
-        locale
-      )
-      assertPdfSourceSize(originalBytes.length)
-
-      const startedAt = Date.now()
-      const rssBefore = process.memoryUsage().rss
-      const result = await applyPdfWatermark(
-        originalBytes,
-        {
-          fullName: resolveDisplayName(dbUser.fullName, dbUser.name, dbUser.email),
-          email: dbUser.email,
-          cpf: formatCpfForDisplay(dbUser.cpf)
-        },
-        downloadTitle
-      )
-      console.log('[library/download/file] watermark', {
-        productId: product.id,
-        mediaId,
-        sourceBytes: originalBytes.length,
-        durationMs: Date.now() - startedAt,
-        rssBeforeMb: Math.round(rssBefore / 1024 / 1024),
-        rssAfterMb: Math.round(process.memoryUsage().rss / 1024 / 1024)
-      })
-      return result
-    })
-
-    await writeCacheAtomically(cacheKey, watermarked)
-
-    await logPdfDownload({
-      userId: auth.user.id,
-      productId: product.id,
-      fileLabel: downloadTitle,
-      clientIp: clientIp(request),
-      userAgent: request.headers.get('user-agent')
-    })
-
-    return await streamFileResponse(getCachedPath(cacheKey), rangeHeader, responseHeaders)
   } catch (e) {
     if (e instanceof PdfDownloadAccessError) {
       return NextResponse.json({ error: e.message }, { status: e.status })
