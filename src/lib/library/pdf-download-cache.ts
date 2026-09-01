@@ -16,11 +16,21 @@ function cacheRoot(): string {
  * produto VIDEO colidiriam na mesma entrada e o segundo download serviria o
  * arquivo do primeiro.
  */
+/**
+ * A versao serve para invalidar tudo de uma vez quando o resultado muda.
+ *
+ * O PDF de origem NAO entra na chave — e caro descobrir qual arquivo esta la sem
+ * baixa-lo. Entao quando a origem e trocada, quem ja baixou no mes continuaria
+ * recebendo a copia velha ate o TTL de 48h expirar, e a troca pareceria nao ter
+ * funcionado. Subir a versao aqui, no mesmo deploy da troca, resolve na hora.
+ *
+ * v2: livros reprocessados (O CORPO DIZ saiu de 147 MB para 21 MB).
+ */
 export function cacheKeyFor(
   userId: string,
   productId: string,
   mediaId?: string | null,
-  watermarkVersion = 'v1'
+  watermarkVersion = 'v2'
 ): string {
   const month = new Date().toISOString().slice(0, 7)
   const raw = `${userId}:${productId}:${mediaId ?? ''}:${watermarkVersion}:${month}`
