@@ -63,6 +63,7 @@ model User {
   conversationEvents       ConversationEvent[]
   userFacts                UserFact[]
   emailSequenceEnrollments EmailSequenceEnrollment[]
+  journeyEvents            JourneyEvent[]
 
   @@index([mensagem_enviada])
   @@index([status_verificacao])
@@ -922,6 +923,40 @@ model ConversationEvent {
   @@index([sessionId])
   @@index([availableAt, status])
   @@map("conversation_events")
+}
+
+/// Outbox dos eventos de uso que viram variavel de conversa no Chatvolt.
+///
+/// O corredor de conversao reage ao que a pessoa FAZ, e nao ao calendario: uma
+/// jornada guiada por data manda "aproveite seu ultimo dia" para quem nunca
+/// entrou. Cada linha aqui e um fato de uso esperando virar variavel na conversa
+/// do WhatsApp, e o n8n e quem resolve a conversa a partir do e-mail/telefone.
+///
+/// Uma linha por pessoa por evento: o unique e a propria regra de "so a primeira
+/// vez". O unico recorrente e `pesquisa`, que reaproveita a mesma linha para
+/// atualizar a data da ultima — sem isso, quem pesquisa dez vezes por dia geraria
+/// dez escritas do mesmo valor.
+model JourneyEvent {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  eventName   String    @map("event_name") @db.VarChar(32)
+  /// Contato no momento do evento, para o n8n achar a conversa sem consultar o app.
+  email       String    @db.VarChar(255)
+  whatsapp    String?   @db.VarChar(40)
+  /// `[{ nome, valor }]` — um evento pode gravar mais de uma variavel.
+  variables   Json
+  status      String    @default("pending") @db.VarChar(16)
+  attempts    Int       @default(0)
+  lastError   String?   @map("last_error")
+  availableAt DateTime  @default(now()) @map("available_at")
+  processedAt DateTime? @map("processed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventName])
+  @@index([availableAt, status])
+  @@map("journey_events")
 }
 
 /// ID Vida (Story 4.2): fatos de vida extraidos das conversas — duas naturezas (marker/ongoing).
