@@ -18,6 +18,7 @@
  * Uso:
  *   npx tsx src/scripts/aplicar-migration.ts --migration=20260901120000_eventos_de_jornada
  *   npx tsx src/scripts/aplicar-migration.ts --migration=<pasta> --aplicar
+ *   npx tsx src/scripts/aplicar-migration.ts --migration=<pasta> --url=MIGRATION_URL --aplicar
  *
  * Sem `--aplicar` o script so mostra o que faria.
  */
@@ -28,12 +29,48 @@ import { join } from 'path'
 config({ path: '.env' })
 config({ path: '.env.local', override: true })
 
-// O Accelerate nao aceita DDL. Migration precisa da conexao direta.
-if (process.env.DATABASE_URL?.startsWith('prisma+') && process.env.DIRECT_URL) {
+/**
+ * Conexao com permissao de DDL.
+ *
+ * `DATABASE_URL` aponta para o Accelerate, que responde como
+ * `prisma_application` — papel sem permissao de criar no schema. O `DIRECT_URL`
+ * e a conexao TCP com o `prisma_migration`, dono das tabelas, e e por ele que
+ * toda migration precisa passar.
+ *
+ * O `--url=<ENV>` existe para o caso de a conexao certa estar em outra env.
+ */
+const envDaUrl = process.argv
+  .find((a) => a.startsWith('--url='))
+  ?.slice('--url='.length)
+
+if (envDaUrl) {
+  const url = process.env[envDaUrl]?.trim()
+  if (!url) {
+    console.error(`A env ${envDaUrl} nao esta definida.`)
+    process.exit(1)
+  }
+  process.env.DATABASE_URL = url
+} else if (process.env.DATABASE_URL?.startsWith('prisma+') && process.env.DIRECT_URL) {
   process.env.DATABASE_URL = process.env.DIRECT_URL
 }
 
-import { prisma } from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
+
+/**
+ * Cliente proprio, e nao o singleton de `@/lib/prisma`.
+ *
+ * O `import` do singleton e icado para o topo do modulo pelo ESM: ele nasceria
+ * com a `DATABASE_URL` que estivesse valendo ANTES da troca abaixo — a do
+ * Accelerate, que responde como `prisma_application` e nao cria tabela. O erro
+ * disso e enganoso ("permission denied for schema public", como se a credencial
+ * estivesse errada) quando o que esta errado e a conexao escolhida.
+ *
+ * Passar a URL na construcao e o que garante que a migration sai pela conexao
+ * decidida aqui, e nao pela que o modulo capturou primeiro.
+ */
+const prisma = new PrismaClient({
+  datasources: { db: { url: process.env.DATABASE_URL } }
+})
 
 function arg(nome: string): string | null {
   const hit = process.argv.find((a) => a.startsWith(`--${nome}=`))
