@@ -77,6 +77,7 @@ html,body{
 
 /* --- topo: bandeja do que ela ja ganhou (sem numeros) --- */
 #topo{ display:flex; align-items:center; gap:8px; flex:0 0 auto; min-height:0;
+  padding-left:clamp(58px,11vmin,104px);
   padding-right:clamp(44px,8vmin,62px); }
 .bandeja{
   display:flex; align-items:center; gap:4px; flex-wrap:nowrap; overflow:hidden;
@@ -86,6 +87,50 @@ html,body{
 .bandeja svg{ width:clamp(18px,4vmin,34px); height:clamp(18px,4vmin,34px); flex:0 0 auto; }
 .bandeja svg.novo{ animation:entrarPremio .6s ease-out; }
 @keyframes entrarPremio{ 0%{transform:scale(0) rotate(-40deg)} 60%{transform:scale(1.4)} 100%{transform:scale(1)} }
+/* --- girafa DJ: o controle de musica que a propria crianca entende --- */
+#girafa{
+  position:fixed; z-index:50;
+  top:calc(8px + env(safe-area-inset-top)); left:calc(8px + env(safe-area-inset-left));
+  border:none; background:transparent; padding:0; cursor:pointer;
+  width:clamp(64px,13vmin,118px); height:clamp(64px,13vmin,118px);
+  transform-origin:50% 90%;
+}
+#girafa svg{ width:100%; height:100%; display:block; filter:drop-shadow(0 4px 6px rgba(0,0,0,.3)); }
+#girafa.tocando{ animation:girafaDanca 0.62s ease-in-out infinite; }
+@keyframes girafaDanca{
+  0%,100%{ transform:rotate(-5deg) translateY(0); }
+  50%{ transform:rotate(5deg) translateY(-6%); }
+}
+#girafa .notas{ position:absolute; left:78%; top:18%; width:62%; height:62%; pointer-events:none; }
+#girafa .nota{
+  position:absolute; bottom:0; left:0; width:42%; opacity:0;
+  animation:subirNota 2.1s ease-out infinite;
+}
+#girafa .nota:nth-child(2){ left:34%; animation-delay:.7s; }
+#girafa .nota:nth-child(3){ left:64%; animation-delay:1.4s; }
+#girafa.mudo .nota{ animation:none; opacity:0; }
+@keyframes subirNota{
+  0%{ opacity:0; transform:translate(0,0) scale(.55); }
+  25%{ opacity:1; }
+  100%{ opacity:0; transform:translate(45%,-85%) scale(1.05) rotate(16deg); }
+}
+#girafa .cortado{
+  position:absolute; right:-8%; bottom:-6%; width:56%; height:56%;
+  opacity:0; transition:opacity .3s;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.4));
+}
+#girafa.mudo .cortado{ opacity:1; }
+#girafa > svg:first-child{ transition:opacity .3s, filter .3s; }
+#girafa.mudo > svg:first-child{ opacity:.6; filter:grayscale(.6); }
+
+/* --- premios que voam ate a bandeja: a regra explicada sem uma palavra --- */
+.voando{
+  position:fixed; z-index:55; pointer-events:none;
+  width:clamp(34px,7vmin,64px); height:clamp(34px,7vmin,64px);
+  transition:transform 1s cubic-bezier(.2,.75,.3,1), opacity .35s ease .75s;
+  filter:drop-shadow(0 4px 8px rgba(0,0,0,.35));
+}
+
 #btnAdulto{
   position:fixed; z-index:50;
   top:calc(8px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right));
@@ -371,6 +416,53 @@ html,body{
     <polygon points="49,36 88,60 49,84" fill="#E8112D" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
   </symbol>
 
+  <!-- girafa DJ: oculos escuros, brincos de argola e fone -->
+  <symbol id="simGirafa" viewBox="0 0 100 100">
+    <!-- pescoco -->
+    <path d="M42 96 L44 58 Q50 48 58 50 L60 96 Z" fill="#FFB300" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="48" cy="70" r="4.4" fill="#E07C00"/>
+    <circle cx="55" cy="82" r="3.6" fill="#E07C00"/>
+    <circle cx="46" cy="88" r="3.2" fill="#E07C00"/>
+    <!-- chifrinhos -->
+    <g stroke="#E07C00" stroke-width="4.5" stroke-linecap="round">
+      <line x1="40" y1="24" x2="37" y2="15"/><line x1="58" y1="23" x2="61" y2="14"/>
+    </g>
+    <circle cx="36" cy="13" r="4.2" fill="#E8112D"/>
+    <circle cx="62" cy="12" r="4.2" fill="#E8112D"/>
+    <!-- orelhas -->
+    <ellipse cx="26" cy="34" rx="9" ry="5.6" fill="#FFB300" stroke="#fff" stroke-width="2.6" transform="rotate(-18 26 34)"/>
+    <ellipse cx="72" cy="33" rx="9" ry="5.6" fill="#FFB300" stroke="#fff" stroke-width="2.6" transform="rotate(16 72 33)"/>
+    <!-- cabeca -->
+    <ellipse cx="49" cy="36" rx="23" ry="19" fill="#FFC734" stroke="#fff" stroke-width="3"/>
+    <ellipse cx="49" cy="46" rx="13" ry="9" fill="#FFD98A"/>
+    <circle cx="45" cy="46" r="1.8" fill="#8A5A00"/><circle cx="53" cy="46" r="1.8" fill="#8A5A00"/>
+    <path d="M43 51 Q49 55 55 51" stroke="#8A5A00" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    <!-- fone de ouvido -->
+    <path d="M24 34 Q49 6 74 33" stroke="#FF3F9E" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <rect x="16" y="28" width="14" height="20" rx="7" fill="#FF3F9E" stroke="#fff" stroke-width="2.6"/>
+    <rect x="68" y="27" width="14" height="20" rx="7" fill="#FF3F9E" stroke="#fff" stroke-width="2.6"/>
+    <!-- brincos de argola -->
+    <circle cx="23" cy="53" r="6" fill="none" stroke="#FFD400" stroke-width="3.4"/>
+    <circle cx="75" cy="52" r="6" fill="none" stroke="#FFD400" stroke-width="3.4"/>
+    <!-- oculos escuros -->
+    <path d="M30 36 H68" stroke="#101820" stroke-width="4"/>
+    <rect x="29" y="30" width="17" height="12" rx="5" fill="#101820"/>
+    <rect x="52" y="30" width="17" height="12" rx="5" fill="#101820"/>
+    <path d="M32 33 L38 33" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".85"/>
+    <path d="M55 33 L61 33" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".85"/>
+  </symbol>
+
+  <symbol id="simNota" viewBox="0 0 100 100">
+    <path d="M40 78 V26 L78 16 V66" stroke="#FFD400" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="30" cy="78" r="13" fill="#FFD400"/>
+    <circle cx="68" cy="66" r="13" fill="#FFD400"/>
+  </symbol>
+
+  <symbol id="simMudo" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="34" fill="none" stroke="#E8112D" stroke-width="9" opacity=".9"/>
+    <line x1="26" y1="26" x2="74" y2="74" stroke="#E8112D" stroke-width="9" stroke-linecap="round"/>
+  </symbol>
+
   <!-- mesa de festa (o premio grande) -->
   <symbol id="simMesaFesta" viewBox="0 0 260 176">
     <circle cx="130" cy="82" r="80" fill="#FFD400" opacity=".22"/>
@@ -465,6 +557,16 @@ html,body{
     </div>
   </div>
 
+  <button id="girafa" type="button" aria-label="Ligar e desligar a música">
+    <svg viewBox="0 0 100 100"><use href="#simGirafa"/></svg>
+    <span class="notas">
+      <svg class="nota" viewBox="0 0 100 100"><use href="#simNota"/></svg>
+      <svg class="nota" viewBox="0 0 100 100"><use href="#simNota"/></svg>
+      <svg class="nota" viewBox="0 0 100 100"><use href="#simNota"/></svg>
+    </span>
+    <svg class="cortado" viewBox="0 0 100 100"><use href="#simMudo"/></svg>
+  </button>
+
   <button id="btnAdulto" type="button" aria-label="Cantinho do adulto">&#9881;</button>
 
   <!-- ===================== CENAS ===================== -->
@@ -504,6 +606,10 @@ html,body{
   <div class="cartao">
     <h1 class="titulo">Reino do Gelo Cintilante</h1>
     <p class="subtitulo">O jogo de esperar a mágica, com a Princesa Lumi<br>para crianças de 2 a 4 anos</p>
+    <p class="nota" style="margin:0 0 14px">
+      Aprender a esperar é uma habilidade que se treina. Aqui a criança escolhe entre um doce
+      agora e dois doces depois de uma espera curta — sem nunca perder nada, sem tela de derrota.
+    </p>
 
     <div class="retratoAlvo" id="retratoPreview">M</div>
     <div class="linha">
@@ -514,7 +620,7 @@ html,body{
 
     <div class="secao">
       <h2>Nome da criança</h2>
-      <input type="text" id="inputNome" class="campoTexto" value="Maricotta" autocomplete="off" spellcheck="false">
+      <input type="text" id="inputNome" class="campoTexto" value="" placeholder="opcional" autocomplete="off" spellcheck="false">
     </div>
 
     <div class="secao">
@@ -534,7 +640,8 @@ html,body{
     <div class="linha" style="margin-top:10px">
       <button class="botao pequeno" id="btnAbrirVoz" type="button">Ajustes de voz e som</button>
     </div>
-    <p class="nota">O jogo abre numa tela de espera. Nada acontece até a criança tocar no botão amarelo.</p>
+    <p class="nota">O jogo abre numa tela parada. Nada acontece até a criança tocar no botão amarelo.<br>
+      Funciona sem internet e não guarda nada fora deste aparelho.</p>
   </div>
 </div>
 
@@ -564,11 +671,14 @@ html,body{
     </div>
 
     <div class="secao">
-      <h2>Som</h2>
+      <h2>Som e música</h2>
       <div class="linha">
         <button class="botao pequeno" id="btnSom" type="button">Som: ligado</button>
+        <button class="botao pequeno" id="btnMusica" type="button">Música: ligada</button>
         <button class="botao pequeno" id="btnTelaAcesa" type="button">Manter tela acesa: sim</button>
       </div>
+      <p class="nota">A girafa DJ no canto da tela liga e desliga a música. É de propósito:
+        a criança aprende sozinha que ela pode escolher o silêncio.</p>
     </div>
 
     <div class="secao">
@@ -578,6 +688,17 @@ html,body{
         <button class="botao pequeno rosa" id="btnZerar" type="button">Recomeçar do 3 s</button>
       </div>
       <p class="nota" id="notaProgresso"></p>
+    </div>
+
+    <div class="secao">
+      <h2>Como usar</h2>
+      <p class="nota" style="line-height:1.5">
+        Fique ao lado nas primeiras vezes e comemore junto quando ela esperar.<br>
+        Pegar o docinho na hora não é erro: é o que faz a diferença ficar clara na próxima.<br>
+        Duas a quatro rodadas por sessão bastam nessa idade — pare enquanto ela ainda quer.<br>
+        O jogo é inteiro compreensível sem som: a voz é só um extra.<br>
+        No Safari, use Compartilhar → Adicionar à Tela de Início para abrir em tela cheia.
+      </p>
     </div>
 
     <div class="linha" style="margin-top:16px">
@@ -659,17 +780,23 @@ var RITMO = {
   travaToque:      800,   // ignora toque logo apos comecar a espera (dedo parado na tela)
   festejar:       3400,   // celebracao antes de oferecer o botao de novo
   consolar:       3600,   // consolo antes de oferecer o botao de novo
-  minimoFala:     1400    // nenhuma fala e seguida por outra antes disso
+  minimoFala:     1600    // piso de cada etapa, mesmo sem voz nenhuma
 };
 
 var NIVEIS = [3, 5, 8, 12];   // segundos de espera, na ordem da progressao
 var CHAVE = 'reinoGelo.v2';
 
 var estado = {
-  nome:'Maricotta', foto:null,
+  nome:'', foto:null,
   nivel:0, doces:0, estrelas:0,
-  som:true, modoVoz:'tts', telaAcesa:true
+  som:true, musica:true, modoVoz:'off', telaAcesa:true
 };
+
+/* o nome so entra na frase quando existe: o jogo funciona sem nome nenhum */
+function comNome(txt){
+  if (!estado.nome) return txt;
+  return txt.replace('!', ', ' + estado.nome + '!');
+}
 
 function salvar(){ try{ localStorage.setItem(CHAVE, JSON.stringify(estado)); }catch(e){} }
 function carregar(){
@@ -743,6 +870,119 @@ function somFesta(tamanho){
 }
 
 /* =========================================================================
+   2b. MUSICA DE FUNDO (a girafa DJ)
+   Loop curto, lento e baixinho, em escala pentatonica — nao briga com os
+   sons do jogo e nao cansa quem escuta muitas vezes. Abaixa sozinha
+   quando a princesa fala ou quando a festa acontece.
+   ========================================================================= */
+var Musica = {
+  ganho:null, ruido:null, timer:0, proximo:0, passo:0, ligada:false,
+
+  /* 4 compassos em 8 tempos cada; acordes em pentatonica de Do */
+  BAIXOS:[65.41, 55.00, 43.65, 49.00],                    /* C2  A1  F1  G1 */
+  ARPEJOS:[
+    [523.25, 659.25, 783.99, 659.25, 523.25, 659.25, 987.77, 783.99],
+    [440.00, 523.25, 659.25, 523.25, 440.00, 659.25, 880.00, 659.25],
+    [349.23, 440.00, 523.25, 659.25, 523.25, 440.00, 698.46, 523.25],
+    [392.00, 493.88, 587.33, 493.88, 392.00, 587.33, 783.99, 587.33]
+  ],
+  DURACAO_PASSO:0.33,   /* ~91 bpm em colcheias */
+
+  preparar:function(){
+    var c = audio(); if (!c) return null;
+    if (!this.ganho){
+      this.ganho = c.createGain();
+      this.ganho.gain.value = 0;
+      this.ganho.connect(c.destination);
+      /* ruidinho de chocalho */
+      var quadros = Math.floor(c.sampleRate * 0.2);
+      this.ruido = c.createBuffer(1, quadros, c.sampleRate);
+      var dados = this.ruido.getChannelData(0);
+      for (var i=0;i<quadros;i++) dados[i] = (Math.random()*2-1) * (1 - i/quadros);
+    }
+    return c;
+  },
+
+  tocar:function(){
+    if (!estado.musica || !estado.som) return;
+    var c = this.preparar(); if (!c) return;
+    if (this.ligada) return;
+    this.ligada = true;
+    this.passo = 0;
+    this.proximo = c.currentTime + 0.1;
+    this.ganho.gain.cancelScheduledValues(c.currentTime);
+    this.ganho.gain.setValueAtTime(0.0001, c.currentTime);
+    this.ganho.gain.linearRampToValueAtTime(0.5, c.currentTime + 1.2);
+    var self = this;
+    this.timer = setInterval(function(){ self.agendar(); }, 25);
+    marcarGirafa();
+  },
+
+  parar:function(){
+    if (!this.ligada) return;
+    this.ligada = false;
+    clearInterval(this.timer);
+    var c = ctx;
+    if (c && this.ganho){
+      this.ganho.gain.cancelScheduledValues(c.currentTime);
+      this.ganho.gain.setValueAtTime(this.ganho.gain.value, c.currentTime);
+      this.ganho.gain.linearRampToValueAtTime(0.0001, c.currentTime + 0.4);
+    }
+    marcarGirafa();
+  },
+
+  /* abaixa o volume enquanto alguem fala ou enquanto a festa toca */
+  abafar:function(quanto, segundos){
+    if (!this.ligada || !ctx || !this.ganho) return;
+    var g = this.ganho.gain, t = ctx.currentTime;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(quanto, t + 0.25);
+    g.linearRampToValueAtTime(0.5, t + (segundos || 2));
+  },
+
+  agendar:function(){
+    var c = ctx; if (!c || !this.ligada) return;
+    while (this.proximo < c.currentTime + 0.15){
+      this.tocarPasso(this.passo, this.proximo);
+      this.proximo += this.DURACAO_PASSO;
+      this.passo = (this.passo + 1) % 32;
+    }
+  },
+
+  tocarPasso:function(passo, quando){
+    var c = ctx, compasso = Math.floor(passo/8), dentro = passo % 8;
+
+    /* baixo macio no primeiro e no quinto tempo */
+    if (dentro === 0 || dentro === 4) this.voz(this.BAIXOS[compasso], quando, 0.9, 0.16, 'sine');
+
+    /* melodia tipo marimba */
+    var n = this.ARPEJOS[compasso][dentro];
+    if (n) this.voz(n, quando, 0.42, dentro % 2 ? 0.05 : 0.08, 'triangle');
+
+    /* chocalho leve nos contratempos */
+    if (dentro % 2 === 1 && this.ruido){
+      var f = c.createBufferSource(); f.buffer = this.ruido;
+      var pf = c.createBiquadFilter(); pf.type = 'highpass'; pf.frequency.value = 5200;
+      var g = c.createGain(); g.gain.value = 0.055;
+      f.connect(pf); pf.connect(g); g.connect(this.ganho);
+      f.start(quando); f.stop(quando + 0.12);
+    }
+  },
+
+  voz:function(freq, quando, dur, vol, tipo){
+    var c = ctx;
+    var o = c.createOscillator(), g = c.createGain();
+    o.type = tipo; o.frequency.setValueAtTime(freq, quando);
+    g.gain.setValueAtTime(0.0001, quando);
+    g.gain.exponentialRampToValueAtTime(vol, quando + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.0001, quando + dur);
+    o.connect(g); g.connect(this.ganho);
+    o.start(quando); o.stop(quando + dur + 0.05);
+  }
+};
+
+/* =========================================================================
    3. VOZ
    Duas fontes: a voz gravada pelo adulto (melhor opcao para a crianca) e,
    como reserva, a voz do aparelho — escolhida entre as melhores pt-BR
@@ -795,7 +1035,7 @@ var Voz = {
   dizer:function(id, aoTerminar){
     var frase = null;
     for (var i=0;i<FRASES.length;i++) if (FRASES[i].id === id) frase = FRASES[i];
-    var texto = frase ? frase.txt.replace('!', ', ' + estado.nome + '!') : '';
+    var texto = frase ? comNome(frase.txt) : '';
     var pronto = false, self = this, comecou = Date.now();
     function terminar(){
       if (pronto) return; pronto = true;
@@ -809,6 +1049,7 @@ var Voz = {
     this.parar();
 
     if (estado.modoVoz === 'off'){ depois(RITMO.minimoFala, terminar); return; }
+    Musica.abafar(0.12, 4);
 
     /* 1) voz gravada pelo adulto */
     if (estado.modoVoz === 'gravada' && this.clipes[id]){
@@ -961,6 +1202,47 @@ var gemas = $('gemas'), mesaPremio = $('mesaPremio');
 var repetirFesta = $('repetirFesta'), repetirConsolo = $('repetirConsolo');
 
 /* =========================================================================
+   5b. PREMIOS QUE VOAM
+   O que cada caminho da e mostrado: o doce (ou os dois doces mais a
+   estrela) sai do painel e voa ate a bandeja. E assim que a crianca
+   entende a diferenca entre os dois lados sem ouvir uma palavra.
+   ========================================================================= */
+function voar(origem, destino, simbolo, atraso){
+  depois(atraso || 0, function(){
+    var a = origem.getBoundingClientRect(), b = destino.getBoundingClientRect();
+    var el = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    el.setAttribute('viewBox','0 0 100 100');
+    el.setAttribute('class','voando');
+    var u = document.createElementNS('http://www.w3.org/2000/svg','use');
+    u.setAttribute('href', simbolo);
+    el.appendChild(u);
+    document.body.appendChild(el);
+
+    var tam = el.getBoundingClientRect().width || 48;
+    el.style.left = (a.left + a.width/2 - tam/2) + 'px';
+    el.style.top  = (a.top  + a.height/2 - tam/2) + 'px';
+
+    var dx = (b.left + b.width/2) - (a.left + a.width/2);
+    var dy = (b.top  + b.height/2) - (a.top  + a.height/2);
+
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        el.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(.45) rotate(300deg)';
+        el.style.opacity = '0';
+      });
+    });
+    depois(1400, function(){ if (el.parentNode) el.parentNode.removeChild(el); });
+  });
+}
+
+/* mostra o que este caminho entrega */
+function mostrarPremio(deOnde, quantosDoces, comEstrela){
+  var doces = $('bandejaDoces'), estrelas = $('bandejaEstrelas');
+  for (var i=0;i<quantosDoces;i++) voar(deOnde, doces, '#simDoce', i*260);
+  if (comEstrela) voar(deOnde, estrelas, '#simEstrelaCheia', quantosDoces*260);
+}
+
+/* =========================================================================
    6. MAQUINA DE ESTADOS DO JOGO
    repouso -> apresentacao -> espera -> (festa | consolo) -> repouso
    ========================================================================= */
@@ -1022,6 +1304,7 @@ function comecarRodada(){
     caminhoDoce.classList.add('destacado');
     somAponta();
     princesaCaixa.classList.add('acena');
+    mostrarPremio(caminhoDoce, 1, false);       /* este da 1 doce */
     Voz.dizer('doce', function(){
       depois(RITMO.pausaEntreBeats, beat2);
     });
@@ -1036,6 +1319,7 @@ function comecarRodada(){
     caminhoFesta.classList.remove('apagado');
     caminhoFesta.classList.add('destacado');
     somAponta();
+    mostrarPremio(caminhoFesta, 2, true);       /* este da 2 doces e a estrela */
     Voz.dizer('festa', function(){
       depois(RITMO.pausaEntreBeats, beat3);
     });
@@ -1061,14 +1345,14 @@ function apresentacaoCurta(){
   depois(500, function(){
     if (fase !== 'apresentacao') return;
     caminhoDoce.classList.remove('apagado'); caminhoDoce.classList.add('destacado');
-    somAponta();
-    depois(900, function(){
+    somAponta(); mostrarPremio(caminhoDoce, 1, false);
+    depois(1400, function(){
       if (fase !== 'apresentacao') return;
       podePegarDoce = true;              /* a escolha ja existe assim que ela ve o doce */
       caminhoDoce.classList.remove('destacado');
       caminhoFesta.classList.remove('apagado'); caminhoFesta.classList.add('destacado');
-      somAponta();
-      depois(900, function(){
+      somAponta(); mostrarPremio(caminhoFesta, 2, true);
+      depois(1900, function(){
         if (fase !== 'apresentacao') return;
         caminhoFesta.classList.remove('destacado');
         blocoEspera.classList.add('visivel');
@@ -1168,7 +1452,9 @@ function venceu(){
   /* a festa fica maior conforme o tempo esperado */
   mesaPremio.style.width = 'min(' + (50 + tamanho*6) + 'vw, ' + (330 + tamanho*60) + 'px)';
 
+  mostrarPremio(caminhoFesta, 2, true);
   cenaFesta.classList.add('ativa');
+  Musica.abafar(0.1, 4.5);
   somFesta(tamanho);
   soltarConfete(80 + tamanho*60);
   depois(500,  function(){ soltarConfete(60 + tamanho*45); });
@@ -1191,6 +1477,7 @@ function pegouDoce(){
   podePegarDoce = false;
 
   somDoce();                                   /* resposta imediata ao dedo dela */
+  mostrarPremio(caminhoDoce, 1, false);
   estado.doces += 1; salvar(); desenharBandejas(true);
 
   caminhoDoce.classList.remove('chamando');
@@ -1243,11 +1530,14 @@ function desenharBandejas(animarUltimo){
    8. FOTO E NOME
    ========================================================================= */
 function aplicarPerfil(){
-  var inicial = (estado.nome||'M').trim().charAt(0).toUpperCase() || 'M';
+  var inicial = (estado.nome||'').trim().charAt(0).toUpperCase();
   [retrato, retratoPreview].forEach(function(el){
     if (estado.foto){ el.style.backgroundImage = 'url(' + estado.foto + ')'; el.textContent = ''; }
     else { el.style.backgroundImage = 'none'; el.textContent = inicial; }
   });
+  /* sem foto e sem nome, o medalhao some em vez de mostrar um circulo vazio */
+  retrato.style.display = (estado.foto || inicial) ? 'flex' : 'none';
+  retratoPreview.textContent = retratoPreview.textContent || (estado.foto ? '' : '+');
 }
 
 $('inputFoto').addEventListener('change', function(e){
@@ -1288,7 +1578,7 @@ function montarListaFrases(){
 
     var txt = document.createElement('span');
     txt.className = 'txt';
-    txt.textContent = f.txt.replace('!', ', ' + estado.nome + '!');
+    txt.textContent = comNome(f.txt);
 
     var bGravar = document.createElement('button');
     bGravar.className = 'botao pequeno';
@@ -1394,6 +1684,7 @@ function irParaJogo(){
   telaSetup.classList.remove('ativa');
   telaPainel.classList.remove('ativa');
   irParaRepouso();
+  audio(); Musica.tocar(); marcarGirafa();
 }
 function abrirSetup(){
   bloquearToques();
@@ -1426,13 +1717,43 @@ function manterTelaAcesa(){
   try{ navigator.wakeLock.request('screen').then(function(t){ travaTela = t; }).catch(function(){}); }catch(e){}
 }
 document.addEventListener('visibilitychange', function(){
-  if (document.visibilityState === 'visible') manterTelaAcesa();
-  else { limparAgenda(); Voz.parar(); }
+  if (document.visibilityState === 'visible'){
+    manterTelaAcesa();
+    if (estado.musica && !telaSetup.classList.contains('ativa')) Musica.tocar();
+  } else {
+    limparAgenda(); Voz.parar(); Musica.parar();
+  }
 });
+
+/* =========================================================================
+   10b. GIRAFA DJ
+   ========================================================================= */
+function marcarGirafa(){
+  var g = $('girafa');
+  var ligada = estado.musica && estado.som;
+  g.classList.toggle('tocando', !!(ligada && Musica.ligada));
+  g.classList.toggle('mudo', !ligada);
+}
+
+function alternarMusica(){
+  estado.musica = !estado.musica;
+  salvar();
+  if (estado.musica){ audio(); Musica.tocar(); }
+  else Musica.parar();
+  marcarGirafa();
+  var b = $('btnMusica');
+  if (b) b.textContent = 'Música: ' + (estado.musica ? 'ligada' : 'desligada');
+}
 
 /* =========================================================================
    11. LIGACOES DE TOQUE
    ========================================================================= */
+aoTocar($('girafa'), function(){
+  /* a girafa responde na hora, com um sinal claro de ligado/desligado */
+  audio();
+  alternarMusica();
+  if (estado.musica) nota(880, 0, 0.18, 0.14); else nota(392, 0, 0.22, 0.12);
+});
 aoTocar($('botaoComecar'), function(){
   audio(); somToque();          /* o primeiro toque tambem libera o audio no iOS */
   pedirTelaCheia(); manterTelaAcesa();
@@ -1467,7 +1788,7 @@ aoTocar(caminhoFesta, function(){
 aoTocar($('btnEscolherFoto'), function(){ $('inputFoto').click(); });
 aoTocar($('btnRemoverFoto'), function(){ estado.foto = null; salvar(); aplicarPerfil(); });
 $('inputNome').addEventListener('input', function(){
-  estado.nome = this.value.trim() || 'Maricotta';
+  estado.nome = this.value.trim();
   salvar(); aplicarPerfil();
 });
 
@@ -1501,6 +1822,7 @@ aoTocar($('btnIrParaJogo'), function(){ audio(); somToque(); irParaJogo(); });
 aoTocar($('btnAbrirVoz'), function(){ abrirPainel(); });
 aoTocar($('btnFecharPainel'), function(){ irParaJogo(); });
 aoTocar($('btnVoltarSetup'), function(){ abrirSetup(); });
+aoTocar($('btnMusica'), function(){ audio(); alternarMusica(); });
 aoTocar($('btnZerar'), function(){
   estado.nivel = 0; estado.doces = 0; estado.estrelas = 0;
   precisaApresentar = true;
@@ -1509,7 +1831,9 @@ aoTocar($('btnZerar'), function(){
 aoTocar($('btnSom'), function(){
   estado.som = !estado.som; salvar();
   $('btnSom').textContent = 'Som: ' + (estado.som ? 'ligado' : 'desligado');
-  if (estado.som){ audio(); somToque(); }
+  if (estado.som){ audio(); somToque(); if (estado.musica) Musica.tocar(); }
+  else Musica.parar();
+  marcarGirafa();
 });
 aoTocar($('btnTelaAcesa'), function(){
   estado.telaAcesa = !estado.telaAcesa; salvar();
@@ -1524,12 +1848,13 @@ aoTocar($('btnTelaAcesa'), function(){
 carregar();
 $('inputNome').value = estado.nome;
 $('btnSom').textContent = 'Som: ' + (estado.som ? 'ligado' : 'desligado');
+$('btnMusica').textContent = 'Música: ' + (estado.musica ? 'ligada' : 'desligada');
 $('btnTelaAcesa').textContent = 'Manter tela acesa: ' + (estado.telaAcesa ? 'sim' : 'não');
 aplicarPerfil();
 desenharBandejas(false);
 montarGemas(0);
 definirProgresso(0);
-marcarBotoesTempo(); marcarBotoesVoz(); atualizarNotaProgresso();
+marcarBotoesTempo(); marcarBotoesVoz(); atualizarNotaProgresso(); marcarGirafa();
 
 DB.ler(function(clipes){
   for (var id in clipes) Voz.clipes[id] = URL.createObjectURL(clipes[id]);
