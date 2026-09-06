@@ -4,319 +4,333 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0B3FCC">
-<title>Reino do Gelo Cintilante - O Jogo da Espera</title>
+<meta name="theme-color" content="#062A8C">
+<title>Reino do Gelo Cintilante</title>
 <style>
-  /* ===================================================================
-     REINO DO GELO CINTILANTE — jogo da gratificacao adiada (3 anos)
-     Versao 1: visualizacao funcional simples (formas + sons basicos)
-     =================================================================== */
+/* =====================================================================
+   REINO DO GELO CINTILANTE — jogo da espera (gratificacao adiada)
+   Publico: criancas de 2 a 4 anos. Toque com o dedo, sem texto na tela
+   do jogo, ritmo lento e previsivel, tela cheia em celular e tablet.
+   ===================================================================== */
 
-  :root{
-    --azul-escuro:#062A8C;
-    --azul:#0B5FFF;
-    --azul-claro:#4DA3FF;
-    --azul-gelo:#BFE4FF;
-    --amarelo:#FFD400;
-    --amarelo-forte:#FFB300;
-    --vermelho:#E8112D;
-    --rosa:#FF6FB5;
-    --branco:#FFFFFF;
-    --sombra:0 8px 0 rgba(6,42,140,.35);
-  }
+:root{
+  --azul-escuro:#062A8C;
+  --azul:#0B5FFF;
+  --azul-claro:#4DA3FF;
+  --azul-gelo:#BFE4FF;
+  --amarelo:#FFD400;
+  --amarelo-claro:#FFF07A;
+  --amarelo-escuro:#C98C00;
+  --vermelho:#E8112D;
+  --vermelho-claro:#FF5AA8;
+  --rosa:#FF6FB5;
+  --branco:#FFFFFF;
+  --altura:100dvh;
+}
 
-  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
-  html,body{
-    height:100%;
-    margin:0;
-    overflow:hidden;
-    overscroll-behavior:none;
-    touch-action:manipulation;
-    -webkit-user-select:none;
-    user-select:none;
-    font-family:"Baloo 2", "Trebuchet MS", "Verdana", system-ui, sans-serif;
-    background:var(--azul-escuro);
-    color:#fff;
-  }
+html,body{
+  margin:0; padding:0;
+  height:100%;
+  overflow:hidden;
+  overscroll-behavior:none;
+  touch-action:manipulation;
+  -webkit-user-select:none; user-select:none;
+  -webkit-text-size-adjust:100%;
+  font-family:"Baloo 2","Trebuchet MS",Verdana,system-ui,sans-serif;
+  background:var(--azul-escuro);
+  color:#fff;
+}
 
-  body{
-    position:fixed;
-    inset:0;
-    background:
-      radial-gradient(circle at 20% 12%, #6FC5FF 0%, transparent 55%),
-      radial-gradient(circle at 82% 18%, #9BD9FF 0%, transparent 45%),
-      linear-gradient(180deg, #0B5FFF 0%, #0A46D6 55%, #062A8C 100%);
-  }
+/* a moldura ocupa a tela inteira em qualquer aparelho.
+   --altura e recalculada por JS a cada giro/redimensionamento. */
+#moldura{
+  position:fixed; inset:0;
+  height:var(--altura,100dvh);
+  width:100%;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 22% 10%, #7FCEFF 0%, transparent 52%),
+    radial-gradient(circle at 84% 16%, #A6DEFF 0%, transparent 44%),
+    linear-gradient(180deg,#0B5FFF 0%, #0A46D6 52%, #062A8C 100%);
+}
 
-  /* ---------- neve de fundo ---------- */
-  #neve{ position:absolute; inset:0; pointer-events:none; z-index:1; }
-  .floco{
-    position:absolute; top:-8vh; color:#fff; opacity:.75;
-    animation:cair linear infinite;
-  }
-  @keyframes cair{
-    0%{ transform:translateY(-10vh) rotate(0deg); }
-    100%{ transform:translateY(115vh) rotate(360deg); }
-  }
+/* ---------------- neve de fundo ---------------- */
+#neve{ position:absolute; inset:0; pointer-events:none; z-index:1; }
+.floco{ position:absolute; top:-12vh; opacity:.6; animation:cair linear infinite; }
+@keyframes cair{
+  0%{ transform:translateY(-12vh) rotate(0); }
+  100%{ transform:translateY(118vh) rotate(360deg); }
+}
 
-  /* ---------- estrutura de telas ---------- */
-  .tela{
-    position:absolute; inset:0; z-index:5;
-    display:none;
-    flex-direction:column;
-    padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right))
-            calc(10px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
-  }
-  .tela.ativa{ display:flex; }
+/* ================= TELA DO JOGO (crianca) ================= */
+#jogo{
+  position:absolute; inset:0; z-index:5;
+  display:flex; flex-direction:column;
+  gap:1vh;
+  padding:calc(8px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right))
+          calc(8px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
+}
 
-  /* ===================== TELA DE AJUSTES ===================== */
-  #telaAjustes{ align-items:center; justify-content:flex-start; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+/* --- topo: bandeja do que ela ja ganhou (sem numeros) --- */
+#topo{ display:flex; align-items:center; gap:8px; flex:0 0 auto; min-height:0;
+  padding-right:clamp(44px,8vmin,62px); }
+.bandeja{
+  display:flex; align-items:center; gap:4px; flex-wrap:nowrap; overflow:hidden;
+  background:rgba(255,255,255,.15); border:3px solid rgba(255,255,255,.45);
+  border-radius:999px; padding:5px 12px; min-height:clamp(34px,6vmin,54px);
+}
+.bandeja svg{ width:clamp(18px,4vmin,34px); height:clamp(18px,4vmin,34px); flex:0 0 auto; }
+.bandeja svg.novo{ animation:entrarPremio .6s ease-out; }
+@keyframes entrarPremio{ 0%{transform:scale(0) rotate(-40deg)} 60%{transform:scale(1.4)} 100%{transform:scale(1)} }
+#btnAdulto{
+  position:fixed; z-index:50;
+  top:calc(8px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right));
+  width:clamp(34px,6vmin,50px); height:clamp(34px,6vmin,50px);
+  border-radius:50%; border:3px solid rgba(255,255,255,.4);
+  background:rgba(255,255,255,.12); color:#fff; opacity:.5;
+  display:flex; align-items:center; justify-content:center; font-size:clamp(14px,3vmin,22px);
+}
 
-  .cartao{
-    margin:auto;
-    width:min(92vw, 640px);
-    background:rgba(255,255,255,.14);
-    border:4px solid rgba(255,255,255,.55);
-    border-radius:32px;
-    padding:22px 4vw;
-    text-align:center;
-    backdrop-filter:blur(6px);
-  }
-  .titulo{
-    font-size:clamp(26px, 5.2vw, 52px);
-    font-weight:900;
-    line-height:1.05;
-    margin:0 0 1vh;
-    color:var(--amarelo);
-    text-shadow:0 4px 0 #C98C00, 0 0 26px rgba(255,212,0,.55);
-  }
-  .subtitulo{ font-size:clamp(15px, 2.6vw, 24px); margin:0 0 2vh; color:#EAF5FF; font-weight:700; }
+/* --- palco: princesa + estrela da espera --- */
+#palco{
+  flex:0 0 auto; min-height:0;
+  display:flex; align-items:center; justify-content:center; gap:3vmin;
+  padding:0.6vh 0;
+}
 
-  .campo{ display:block; width:100%; margin:1.4vh 0; }
-  .campo label{ display:block; font-size:clamp(14px,2.2vw,20px); font-weight:800; margin-bottom:6px; color:#fff; }
-  .campo input[type=text]{
-    width:100%; padding:16px 18px; font-size:clamp(20px,3.4vw,30px); font-weight:800;
-    text-align:center; border:4px solid var(--amarelo); border-radius:20px;
-    background:#fff; color:var(--azul-escuro); font-family:inherit;
-  }
+.princesaCaixa{ position:relative; display:flex; align-items:flex-end; flex:0 0 auto; }
+#princesa{ width:clamp(96px,26vmin,250px); height:auto; display:block;
+  filter:drop-shadow(0 8px 12px rgba(0,0,0,.35)); }
+.princesaCaixa.pula{ animation:pular 1.1s ease-in-out infinite; }
+@keyframes pular{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3%)} }
+.braco{ transform-box:view-box; transform-origin:74px 70px; }
+.princesaCaixa.acena .braco{ animation:acenarBraco .75s ease-in-out infinite; }
+@keyframes acenarBraco{ 0%,100%{transform:rotate(0)} 50%{transform:rotate(-30deg)} }
 
-  .botao{
-    display:inline-flex; align-items:center; justify-content:center; gap:10px;
-    border:none; border-radius:999px; cursor:pointer;
-    font-family:inherit; font-weight:900; color:#fff;
-    padding:18px 34px; font-size:clamp(18px,3.2vw,30px);
-    background:linear-gradient(180deg,#33A0FF,#0B5FFF);
-    box-shadow:var(--sombra);
-    transition:transform .12s ease;
-  }
-  .botao:active{ transform:translateY(4px); box-shadow:0 4px 0 rgba(6,42,140,.35); }
-  .botao.amarelo{ background:linear-gradient(180deg,#FFE45C,#FFB300); color:#5A3B00; box-shadow:0 8px 0 #B37D00; }
-  .botao.rosa{ background:linear-gradient(180deg,#FF9ACF,#FF3F9E); box-shadow:0 8px 0 #B7156A; }
-  .botao.grande{ padding:22px 46px; font-size:clamp(22px,4.2vw,38px); }
+#retrato{
+  position:absolute; right:-10%; bottom:6%;
+  width:clamp(38px,9vmin,96px); height:clamp(38px,9vmin,96px);
+  border-radius:50%; border:4px solid var(--amarelo);
+  background:#fff center/cover no-repeat;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--azul); font-weight:900; font-size:clamp(18px,4.4vmin,44px);
+  box-shadow:0 0 16px rgba(255,212,0,.85);
+}
 
-  .fotoAlvo{
-    width:min(34vw,150px); height:min(34vw,150px);
-    border-radius:50%; margin:0 auto;
-    border:6px solid var(--amarelo);
-    background:#fff center/cover no-repeat;
-    display:flex; align-items:center; justify-content:center;
-    color:var(--azul); font-size:min(16vw,64px); font-weight:900;
-    box-shadow:0 0 0 6px rgba(255,255,255,.35), 0 10px 24px rgba(0,0,0,.3);
-  }
-  .linhaBotoes{ display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin-top:1.6vh; }
-  #inputFoto{ display:none; }
+/* estrela da espera + pedacinhos que acendem */
+#espera{
+  flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:1.2vmin;
+  opacity:0; transform:scale(.7); transition:opacity .5s ease, transform .5s ease;
+}
+#espera.visivel{ opacity:1; transform:scale(1); }
+#estrela{ width:clamp(96px,27vmin,260px); height:auto; display:block; }
+#espera.pulsa #estrela{ animation:pulsarEstrela 1.4s ease-in-out infinite; }
+@keyframes pulsarEstrela{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
 
-  /* ===================== TELA DE JOGO ===================== */
-  #telaJogo{ gap:1vh; }
+#gemas{ display:flex; gap:1.4vmin; }
+.gema{
+  width:clamp(14px,3.4vmin,34px); height:clamp(14px,3.4vmin,34px);
+  border-radius:50%; background:rgba(255,255,255,.28);
+  border:3px solid rgba(255,255,255,.65);
+}
+.gema.aceso{
+  background:var(--amarelo); border-color:#fff;
+  box-shadow:0 0 14px rgba(255,212,0,.95);
+  animation:acender .45s ease-out;
+}
+@keyframes acender{ 0%{transform:scale(.3)} 60%{transform:scale(1.5)} 100%{transform:scale(1)} }
 
-  .topo{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
-  .placar{
-    display:flex; align-items:center; gap:8px;
-    background:rgba(255,255,255,.16); border:3px solid rgba(255,255,255,.5);
-    border-radius:999px; padding:6px 16px;
-    font-weight:900; font-size:clamp(14px,2.4vw,22px);
-  }
-  .placar svg{ width:clamp(20px,3.4vw,32px); height:clamp(20px,3.4vw,32px); }
-  #btnAjustes{
-    width:44px; height:44px; border-radius:50%; border:3px solid rgba(255,255,255,.5);
-    background:rgba(255,255,255,.16); color:#fff; font-size:20px; line-height:1;
-    display:flex; align-items:center; justify-content:center; opacity:.55;
-  }
+/* --- os dois caminhos --- */
+#caminhos{ flex:1 1 55%; min-height:0; display:flex; gap:2.4vmin; }
+.caminho{
+  flex:1 1 0; min-width:0;
+  border:5px solid rgba(255,255,255,.6); border-radius:28px;
+  display:flex; align-items:center; justify-content:center;
+  padding:1.5vmin; margin:0; position:relative; overflow:hidden;
+  font:inherit; color:inherit; cursor:pointer;
+  transition:transform .35s ease, opacity .35s ease, filter .35s ease;
+}
+.caminho svg{ width:100%; height:auto; max-height:100%;
+  filter:drop-shadow(0 6px 10px rgba(0,0,0,.35)); }
+#caminhoDoce{ background:linear-gradient(180deg,#FF5AA8,#E8112D); }
+#caminhoFesta{ background:linear-gradient(180deg,#3A93FF,#0A3AC0); border-color:var(--amarelo); }
 
-  /* palco: princesa + estrela */
-  .palco{
-    display:flex; align-items:center; justify-content:center;
-    gap:2vw; flex:0 0 auto; min-height:0;
-  }
-  .princesaBox{ position:relative; display:flex; align-items:flex-end; }
-  .princesaBox svg.princesa{ width:min(26vw,190px); height:auto; filter:drop-shadow(0 8px 12px rgba(0,0,0,.3)); }
-  .princesaBox.acena svg.princesa{ animation:acenar .8s ease-in-out 3; transform-origin:50% 90%; }
-  @keyframes acenar{ 0%,100%{transform:rotate(0)} 30%{transform:rotate(-5deg)} 70%{transform:rotate(5deg)} }
+/* estados usados na apresentacao da regra e na espera */
+.caminho.apagado{ opacity:.28; transform:scale(.92); filter:saturate(.5); }
+.caminho.destacado{ transform:scale(1.06); box-shadow:0 0 0 6px rgba(255,255,255,.5), 0 0 40px rgba(255,255,255,.6); }
+#caminhoDoce.chamando{ animation:chamar 1.6s ease-in-out infinite; }
+@keyframes chamar{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.04) rotate(-1deg)} }
+#caminhoFesta.crescendo svg{ transition:transform .6s ease; }
+#caminhoFesta.brilhando{ animation:brilhoFesta 2s ease-in-out infinite; }
+@keyframes brilhoFesta{
+  0%,100%{ box-shadow:inset 0 0 24px rgba(255,212,0,.45); }
+  50%{ box-shadow:inset 0 0 60px rgba(255,212,0,.95), 0 0 26px rgba(255,212,0,.75); }
+}
+.caminho:disabled{ cursor:default; }
 
-  #medalhao{
-    position:absolute; right:-12%; bottom:8%;
-    width:min(13vw,86px); height:min(13vw,86px);
-    border-radius:50%; border:5px solid var(--amarelo);
-    background:#fff center/cover no-repeat;
-    display:flex; align-items:center; justify-content:center;
-    color:var(--azul); font-weight:900; font-size:min(6.5vw,38px);
-    box-shadow:0 0 18px rgba(255,212,0,.8);
-  }
+/* ================= CAMADAS DE CENA ================= */
+.cena{
+  position:fixed; inset:0; height:var(--altura,100dvh); z-index:30;
+  display:none; flex-direction:column; align-items:center; justify-content:center;
+  gap:3vmin; padding:4vmin;
+  padding-top:calc(4vmin + env(safe-area-inset-top));
+  padding-bottom:calc(4vmin + env(safe-area-inset-bottom));
+}
+.cena.ativa{ display:flex; }
 
-  .estrelaBox{ position:relative; width:min(30vw,210px); flex:0 0 auto; }
-  .estrelaBox svg{ width:100%; height:auto; display:block; }
-  #numeroEstrela{
-    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    font-size:min(12vw,80px); font-weight:900; color:#fff; padding-top:6%;
-    text-shadow:
-      -4px -4px 0 #062A8C, 4px -4px 0 #062A8C, -4px 4px 0 #062A8C, 4px 4px 0 #062A8C,
-      0 -4px 0 #062A8C, 0 4px 0 #062A8C, -4px 0 0 #062A8C, 4px 0 0 #062A8C,
-      0 8px 14px rgba(0,0,0,.35);
-  }
-  .estrelaBox.pulsa{ animation:pulsar .9s ease-in-out infinite; }
-  @keyframes pulsar{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+/* tela de repouso: a crianca precisa tocar pra comecar */
+#cenaInicio{ background:linear-gradient(180deg, rgba(11,95,255,.55), rgba(6,42,140,.75)); }
+#botaoComecar{
+  border:none; padding:0; background:transparent; cursor:pointer;
+  width:clamp(150px,42vmin,340px); height:clamp(150px,42vmin,340px);
+  display:flex; align-items:center; justify-content:center;
+  animation:respirar 1.8s ease-in-out infinite;
+  filter:drop-shadow(0 0 30px rgba(255,212,0,.9));
+}
+#botaoComecar svg{ width:100%; height:100%; }
+@keyframes respirar{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.09)} }
+#botaoComecar:active{ transform:scale(.94); }
 
-  /* balao de fala */
-  #balao{
-    margin:0 auto; max-width:min(94vw,900px);
-    background:#fff; color:var(--azul-escuro);
-    border:5px solid var(--amarelo);
-    border-radius:26px; padding:12px 20px;
-    font-size:clamp(16px,3vw,30px); font-weight:900; text-align:center;
-    line-height:1.2; min-height:1.2em;
-    box-shadow:0 8px 0 rgba(0,0,0,.18);
-  }
+/* vitoria */
+#cenaFesta{
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255,212,0,.8) 0%, rgba(255,111,181,.35) 40%, transparent 66%),
+    linear-gradient(180deg,#0B5FFF,#062A8C);
+}
+#mesaPremio{ width:min(62vw,460px); height:auto; animation:crescerFesta .9s ease-out;
+  transform-origin:50% 100%; filter:drop-shadow(0 10px 16px rgba(0,0,0,.4)); }
+@keyframes crescerFesta{ 0%{transform:scale(.2)} 65%{transform:scale(1.12)} 100%{transform:scale(1)} }
+.doces{ display:flex; gap:4vmin; align-items:center; }
+.doces svg{ width:clamp(56px,15vmin,150px); height:auto; }
+.doces svg:nth-child(1){ animation:saltar .7s ease-out .2s backwards; }
+.doces svg:nth-child(2){ animation:saltar .7s ease-out .5s backwards; }
+@keyframes saltar{ 0%{transform:scale(0) rotate(-30deg)} 60%{transform:scale(1.3) rotate(10deg)} 100%{transform:scale(1)} }
 
-  /* barra de espera */
-  .barra{
-    width:min(92vw,900px); height:clamp(16px,2.6vh,26px); margin:0 auto;
-    background:rgba(255,255,255,.25); border:3px solid #fff; border-radius:999px; overflow:hidden;
-  }
-  #barraFill{ height:100%; width:0%; border-radius:999px; background:linear-gradient(90deg,#FFE45C,#FFB300); }
+/* consolo */
+#cenaConsolo{ background:linear-gradient(180deg,#0B5FFF,#062A8C); }
+#doceConsolo{ width:clamp(90px,30vmin,260px); height:auto; animation:saltar .7s ease-out; }
 
-  /* os dois caminhos */
-  .caminhos{
-    flex:1 1 auto; min-height:0;
-    display:flex; gap:2.4vw; align-items:stretch; padding:1vh 0 0;
-  }
-  .caminho{
-    flex:1 1 0; min-width:0;
-    border-radius:30px; padding:1.2vh 1.6vw;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.8vh;
-    border:5px solid rgba(255,255,255,.6);
-    position:relative; overflow:hidden;
-  }
-  .caminho .rotulo{
-    font-size:clamp(14px,2.5vw,26px); font-weight:900; text-align:center; line-height:1.1;
-    text-shadow:0 2px 0 rgba(0,0,0,.25);
-  }
+/* a festa que aparece e vai embora */
+#festaEscapando{
+  position:fixed; inset:0; height:var(--altura,100dvh); z-index:28;
+  display:none; flex-direction:column; align-items:center; justify-content:center; gap:2vmin;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(255,212,0,.85) 0%, rgba(255,111,181,.4) 40%, transparent 70%),
+    linear-gradient(180deg, rgba(11,95,255,.92), rgba(6,42,140,.94));
+}
+#festaEscapando.rodando{ display:flex; animation:escapar 2.8s ease-in-out forwards; }
+#festaEscapando svg{ width:min(62vw,460px); height:auto; }
+@keyframes escapar{
+  0%{ opacity:0; transform:scale(.75); }
+  22%{ opacity:1; transform:scale(1); }
+  62%{ opacity:1; transform:scale(1.02); }
+  100%{ opacity:0; transform:scale(.7) translateY(-16vh); }
+}
 
-  #caminhoAgora{ background:linear-gradient(180deg, #FF5AA8 0%, #E8112D 100%); }
-  #caminhoAgora:active{ transform:scale(.97); }
-  #caminhoAgora .doceAgora{ width:min(30vw,190px); height:auto; filter:drop-shadow(0 6px 8px rgba(0,0,0,.35)); }
-  #caminhoAgora.tremer{ animation:tremer .5s ease-in-out infinite; }
-  @keyframes tremer{ 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+/* botao grande de repetir (simbolo, sem texto) */
+.botaoRepetir{
+  border:none; background:transparent; padding:0; cursor:pointer;
+  width:clamp(110px,28vmin,220px); height:clamp(110px,28vmin,220px);
+  animation:respirar 1.8s ease-in-out infinite;
+  filter:drop-shadow(0 0 24px rgba(255,212,0,.8));
+  opacity:0; pointer-events:none; transition:opacity .5s ease;
+}
+.botaoRepetir.aparece{ opacity:1; pointer-events:auto; }
+.botaoRepetir svg{ width:100%; height:100%; }
 
-  #caminhoEsperar{
-    background:linear-gradient(180deg, #3A93FF 0%, #0A3AC0 100%);
-    border-color:var(--amarelo);
-    animation:brilhar 2s ease-in-out infinite;
-  }
-  @keyframes brilhar{
-    0%,100%{ box-shadow:inset 0 0 26px rgba(255,212,0,.45), 0 0 12px rgba(255,212,0,.5); }
-    50%{ box-shadow:inset 0 0 64px rgba(255,212,0,.95), 0 0 34px rgba(255,212,0,.9); }
-  }
-  .mesaFesta{ width:min(42vw,340px); height:auto; filter:drop-shadow(0 8px 10px rgba(0,0,0,.35)); }
+#confete{ position:fixed; inset:0; z-index:40; pointer-events:none; }
 
-  /* ===================== OVERLAYS ===================== */
-  .overlay{
-    position:fixed; inset:0; z-index:30;
-    display:none; flex-direction:column; align-items:center; justify-content:center; gap:2vh;
-    padding:4vh 5vw; text-align:center;
-  }
-  .overlay.ativa{ display:flex; }
+/* ================= TELAS DO ADULTO (com texto) ================= */
+.telaAdulto{
+  position:fixed; inset:0; height:var(--altura,100dvh); z-index:60;
+  display:none; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  background:linear-gradient(180deg,#0B5FFF,#062A8C);
+  padding:calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+}
+.telaAdulto.ativa{ display:block; }
+.cartao{
+  margin:auto; width:min(94vw,620px);
+  background:rgba(255,255,255,.12); border:3px solid rgba(255,255,255,.45);
+  border-radius:26px; padding:20px 18px; text-align:center;
+}
+.titulo{
+  margin:0 0 4px; font-size:clamp(22px,5vw,40px); font-weight:900; line-height:1.05;
+  color:var(--amarelo); text-shadow:0 3px 0 var(--amarelo-escuro);
+}
+.subtitulo{ margin:0 0 14px; font-size:clamp(13px,2.6vw,18px); font-weight:700; color:#DCEEFF; }
+.secao{ margin:16px 0; text-align:left; }
+.secao h2{
+  font-size:clamp(13px,2.6vw,17px); text-transform:uppercase; letter-spacing:.08em;
+  color:var(--azul-gelo); margin:0 0 8px; font-weight:900;
+}
+.linha{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+.botao{
+  border:none; border-radius:999px; cursor:pointer; font-family:inherit; font-weight:900; color:#fff;
+  padding:13px 22px; font-size:clamp(14px,2.6vw,20px);
+  background:linear-gradient(180deg,#33A0FF,#0B5FFF); box-shadow:0 6px 0 rgba(6,42,140,.5);
+}
+.botao:active{ transform:translateY(3px); box-shadow:0 3px 0 rgba(6,42,140,.5); }
+.botao.amarelo{ background:linear-gradient(180deg,#FFE45C,#FFB300); color:#5A3B00; box-shadow:0 6px 0 #B37D00; }
+.botao.rosa{ background:linear-gradient(180deg,#FF9ACF,#FF3F9E); box-shadow:0 6px 0 #B7156A; }
+.botao.grande{ padding:18px 34px; font-size:clamp(17px,3.4vw,26px); }
+.botao.pequeno{ padding:9px 14px; font-size:clamp(12px,2.2vw,16px); box-shadow:0 4px 0 rgba(6,42,140,.5); }
+.botao[aria-pressed="true"]{ outline:4px solid var(--amarelo); }
+.botao.gravando{ background:linear-gradient(180deg,#FF6B6B,#D30000); animation:piscarGrav 1s ease-in-out infinite; }
+@keyframes piscarGrav{ 0%,100%{opacity:1} 50%{opacity:.6} }
 
-  #overlayFesta{
-    background:
-      radial-gradient(circle at 50% 42%, rgba(255,212,0,.75) 0%, rgba(255,111,181,.35) 38%, transparent 62%),
-      linear-gradient(180deg,#0B5FFF 0%, #062A8C 100%);
-  }
-  #overlayDocinho{ background:linear-gradient(180deg,#0B5FFF 0%, #062A8C 100%); }
+.campoTexto{
+  width:100%; padding:14px; font-size:clamp(18px,3.4vw,26px); font-weight:800; text-align:center;
+  border:4px solid var(--amarelo); border-radius:16px; background:#fff; color:var(--azul-escuro);
+  font-family:inherit;
+}
+.retratoAlvo{
+  width:clamp(84px,22vw,130px); height:clamp(84px,22vw,130px); border-radius:50%; margin:0 auto 10px;
+  border:5px solid var(--amarelo); background:#fff center/cover no-repeat;
+  display:flex; align-items:center; justify-content:center; color:var(--azul);
+  font-size:clamp(34px,10vw,58px); font-weight:900;
+}
+#inputFoto{ display:none; }
+.nota{ font-size:clamp(11px,2.2vw,15px); color:#BFE4FF; font-weight:700; line-height:1.35; margin-top:8px; }
 
-  .mesaPremio{
-    width:min(58vw,440px); height:auto;
-    filter:drop-shadow(0 10px 14px rgba(0,0,0,.35));
-    animation:crescerFesta .8s ease-out;
-    transform-origin:50% 100%;
-  }
-  @keyframes crescerFesta{ 0%{transform:scale(.2)} 65%{transform:scale(1.12)} 100%{transform:scale(1)} }
+.frases{ display:flex; flex-direction:column; gap:8px; }
+.frase{
+  display:flex; align-items:center; gap:8px;
+  background:rgba(255,255,255,.1); border-radius:14px; padding:8px 10px;
+}
+.frase .txt{ flex:1 1 auto; font-size:clamp(11px,2.2vw,15px); font-weight:700; line-height:1.25; text-align:left; }
+.frase .marca{ font-size:14px; width:16px; flex:0 0 auto; }
 
-  .premio{ display:flex; gap:3vw; align-items:center; justify-content:center; }
-  .premio svg{ width:min(20vw,140px); height:auto; animation:saltar .7s ease-out; }
-  #overlayDocinho .premio svg{ width:min(36vw,230px); }
-  @keyframes saltar{ 0%{transform:scale(0) rotate(-25deg)} 60%{transform:scale(1.25) rotate(8deg)} 100%{transform:scale(1) rotate(0)} }
-
-  .mensagemGrande{
-    font-size:clamp(24px,5.6vw,58px); font-weight:900; color:#fff; line-height:1.1;
-    text-shadow:0 5px 0 rgba(0,0,0,.3), 0 0 30px rgba(255,212,0,.6);
-  }
-  .mensagemPequena{ font-size:clamp(16px,3vw,28px); font-weight:800; color:#EAF5FF; }
-
-  /* festa que "escapa" quando toca cedo */
-  #festaFugindo{
-    position:fixed; inset:0; z-index:20; display:none;
-    flex-direction:column; align-items:center; justify-content:center; gap:2vh;
-    pointer-events:none; text-align:center;
-    background:
-      radial-gradient(circle at 50% 44%, rgba(255,212,0,.85) 0%, rgba(255,111,181,.45) 40%, transparent 68%),
-      linear-gradient(180deg, rgba(11,95,255,.92), rgba(6,42,140,.94));
-  }
-  #festaFugindo.rodando{ display:flex; animation:festaEscapa 2.1s ease-in-out forwards; }
-  #festaFugindo svg{ width:min(64vw,480px); height:auto; }
-  .fugindoTexto{
-    font-size:clamp(20px,4.2vw,42px); font-weight:900; color:#fff;
-    text-shadow:0 4px 0 rgba(0,0,0,.3);
-  }
-  @keyframes festaEscapa{
-    0%{ opacity:0; transform:scale(.7); }
-    30%{ opacity:1; transform:scale(1); }
-    65%{ opacity:1; transform:scale(1.02); }
-    100%{ opacity:0; transform:scale(.75) translateY(-14vh); }
-  }
-
-  #confete{ position:absolute; inset:0; z-index:40; pointer-events:none; }
-
-  /* painel do adulto */
-  #painelAdulto{ background:rgba(6,42,140,.94); z-index:60; }
-
-  .dica{ font-size:clamp(12px,2vw,18px); color:#BFE4FF; font-weight:700; }
-
-  /* pouca altura (iPad deitado): compacta o cartao de ajustes */
-  @media (max-height: 820px){
-    .titulo{ font-size:clamp(22px,4vw,38px); }
-    .subtitulo{ font-size:clamp(13px,2vw,18px); margin-bottom:10px; }
-    .cartao{ padding:16px 4vw; }
-    .fotoAlvo{ width:min(22vw,110px); height:min(22vw,110px); font-size:min(11vw,44px); }
-    .botao{ padding:12px 24px; font-size:clamp(15px,2.4vw,22px); }
-    .botao.grande{ padding:16px 32px; font-size:clamp(18px,3vw,28px); }
-    .campo input[type=text]{ padding:10px 14px; font-size:clamp(18px,2.6vw,24px); }
-    .campo{ margin:10px 0; }
-  }
-
-  /* telas pequenas em pe: empilha melhor */
-  @media (max-aspect-ratio: 3/4){
-    .palco{ gap:1vw; }
-    .princesaBox svg.princesa{ width:min(34vw,170px); }
-    .estrelaBox{ width:min(38vw,190px); }
-    .caminhos{ gap:3vw; }
-  }
+/* ================= ajustes por formato de tela ================= */
+/* celular em pe: palco menor, caminhos maiores */
+@media (max-width: 560px) and (orientation: portrait){
+  #retrato{ right:-6%; }
+  #palco{ flex:1 1 auto; }
+  #princesa{ width:clamp(110px,30vw,210px); }
+  #estrela{ width:clamp(110px,32vw,210px); }
+  #caminhos{ flex:0 0 auto; height:56vh; flex-direction:column; gap:2vh; }
+  .caminho{ padding:1vh 3vw; }
+  .caminho svg{ width:auto; height:100%; max-width:100%; }
+}
+/* pouca altura (celular deitado): tudo mais baixo */
+@media (max-height: 480px){
+  #palco{ gap:2vmin; padding:0; }
+  #princesa{ width:clamp(60px,18vmin,150px); }
+  #estrela{ width:clamp(60px,20vmin,150px); }
+  .bandeja{ min-height:30px; padding:3px 8px; }
+}
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
+}
 </style>
 </head>
 <body>
 
-<!-- ============ biblioteca de desenhos (SVG) ============ -->
+<!-- ============ desenhos reutilizaveis ============ -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
     <linearGradient id="gVestido" x1="0" y1="0" x2="0" y2="1">
@@ -327,7 +341,6 @@
     </clipPath>
   </defs>
 
-  <!-- docinho pequeno -->
   <symbol id="simDoce" viewBox="0 0 100 100">
     <polygon points="6,30 28,50 6,70" fill="#FF6FB5" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
     <polygon points="94,30 72,50 94,70" fill="#FF6FB5" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
@@ -337,689 +350,1191 @@
     <circle cx="40" cy="39" r="6" fill="#fff" opacity=".9"/>
   </symbol>
 
-  <!-- estrela cheia (placar) -->
-  <symbol id="simEstrela" viewBox="0 0 100 100">
+  <symbol id="simEstrelaCheia" viewBox="0 0 100 100">
     <path d="M50 5 L62 36 L96 38 L69 59 L79 92 L50 73 L21 92 L31 59 L4 38 L38 36 Z"
           fill="#FFD400" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
   </symbol>
 
-  <!-- floco de neve -->
   <symbol id="simFloco" viewBox="0 0 100 100">
     <g stroke="#fff" stroke-width="8" stroke-linecap="round">
-      <line x1="50" y1="8" x2="50" y2="92"/>
-      <line x1="14" y1="29" x2="86" y2="71"/>
+      <line x1="50" y1="8" x2="50" y2="92"/><line x1="14" y1="29" x2="86" y2="71"/>
       <line x1="14" y1="71" x2="86" y2="29"/>
       <line x1="50" y1="24" x2="36" y2="14"/><line x1="50" y1="24" x2="64" y2="14"/>
       <line x1="50" y1="76" x2="36" y2="86"/><line x1="50" y1="76" x2="64" y2="86"/>
     </g>
   </symbol>
 
-  <!-- princesa do gelo (personagem original: Princesa Lumi) -->
-  <symbol id="simPrincesa" viewBox="0 0 120 170">
-    <!-- vestido -->
-    <path d="M60 62 L96 158 Q60 168 24 158 Z" fill="url(#gVestido)" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
-    <path d="M60 62 L78 158 Q60 162 42 158 Z" fill="#8FCBFF" opacity=".85"/>
-    <!-- capa de gelo -->
-    <path d="M46 66 Q22 110 30 156 Q40 150 44 120 Z" fill="#BFE4FF" opacity=".8"/>
-    <path d="M74 66 Q98 110 90 156 Q80 150 76 120 Z" fill="#BFE4FF" opacity=".8"/>
-    <!-- bracos -->
-    <path d="M46 70 Q28 84 30 104" stroke="#FFD9BE" stroke-width="9" fill="none" stroke-linecap="round"/>
-    <path d="M74 70 Q92 82 92 100" stroke="#FFD9BE" stroke-width="9" fill="none" stroke-linecap="round"/>
-    <!-- corpete -->
-    <path d="M60 46 Q46 50 46 68 Q60 74 74 68 Q74 50 60 46 Z" fill="#0B5FFF" stroke="#fff" stroke-width="3"/>
-    <circle cx="60" cy="60" r="5" fill="#FFD400"/>
-    <!-- cabelo atras -->
-    <path d="M60 8 Q28 12 30 52 Q34 70 44 74 Q36 44 46 30 Z" fill="#EAF6FF"/>
-    <path d="M60 8 Q92 12 90 52 Q86 70 76 74 Q84 44 74 30 Z" fill="#EAF6FF"/>
-    <!-- rosto -->
-    <circle cx="60" cy="34" r="21" fill="#FFD9BE"/>
-    <path d="M39 30 Q42 12 60 12 Q78 12 81 30 Q70 22 60 24 Q50 22 39 30 Z" fill="#EAF6FF"/>
-    <circle cx="52" cy="35" r="3.4" fill="#0B2B6B"/>
-    <circle cx="68" cy="35" r="3.4" fill="#0B2B6B"/>
-    <circle cx="53.2" cy="34" r="1.2" fill="#fff"/>
-    <circle cx="69.2" cy="34" r="1.2" fill="#fff"/>
-    <circle cx="45" cy="42" r="4.2" fill="#FF9ACF" opacity=".85"/>
-    <circle cx="75" cy="42" r="4.2" fill="#FF9ACF" opacity=".85"/>
-    <path d="M53 44 Q60 51 67 44" stroke="#C4324F" stroke-width="2.6" fill="none" stroke-linecap="round"/>
-    <!-- coroa de gelo -->
-    <path d="M42 16 L48 6 L54 14 L60 2 L66 14 L72 6 L78 16 Z" fill="#FFD400" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/>
-    <circle cx="60" cy="12" r="2.6" fill="#4DA3FF"/>
+  <!-- botao de comecar: estrela grande com um "play" de doce dentro -->
+  <symbol id="simBotaoPlay" viewBox="0 0 120 120">
+    <circle cx="60" cy="60" r="54" fill="#FFD400" stroke="#fff" stroke-width="7"/>
+    <circle cx="60" cy="60" r="42" fill="#FFE45C"/>
+    <polygon points="49,36 88,60 49,84" fill="#E8112D" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
   </symbol>
 
-  <!-- mesa grande de festa de doces -->
-  <symbol id="simMesaFesta" viewBox="0 0 260 170">
-    <!-- brilho -->
-    <circle cx="130" cy="80" r="78" fill="#FFD400" opacity=".22"/>
-    <!-- mesa -->
-    <rect x="14" y="118" width="232" height="20" rx="10" fill="#FF6FB5" stroke="#fff" stroke-width="4"/>
-    <rect x="40" y="138" width="14" height="26" rx="6" fill="#0B3FCC"/>
-    <rect x="206" y="138" width="14" height="26" rx="6" fill="#0B3FCC"/>
-    <!-- bolo central -->
-    <rect x="96" y="66" width="68" height="26" rx="6" fill="#fff" stroke="#0B5FFF" stroke-width="3"/>
-    <rect x="86" y="92" width="88" height="26" rx="6" fill="#4DA3FF" stroke="#fff" stroke-width="3"/>
-    <rect x="96" y="60" width="68" height="10" rx="5" fill="#FF6FB5"/>
-    <rect x="126" y="40" width="8" height="20" rx="4" fill="#FFD400"/>
-    <path d="M130 30 Q124 38 130 42 Q136 38 130 30 Z" fill="#E8112D"/>
-    <!-- cupcakes -->
-    <g>
-      <path d="M30 96 L38 118 H58 L66 96 Z" fill="#FFD400" stroke="#fff" stroke-width="3"/>
-      <path d="M28 96 Q30 76 48 76 Q66 76 68 96 Z" fill="#FF6FB5" stroke="#fff" stroke-width="3"/>
-      <circle cx="48" cy="72" r="6" fill="#E8112D" stroke="#fff" stroke-width="2"/>
-    </g>
-    <g>
-      <path d="M194 96 L202 118 H222 L230 96 Z" fill="#FFD400" stroke="#fff" stroke-width="3"/>
-      <path d="M192 96 Q194 76 212 76 Q230 76 232 96 Z" fill="#FF6FB5" stroke="#fff" stroke-width="3"/>
-      <circle cx="212" cy="72" r="6" fill="#E8112D" stroke="#fff" stroke-width="2"/>
-    </g>
-    <!-- pirulitos -->
-    <g>
-      <rect x="80" y="86" width="5" height="34" rx="2.5" fill="#fff"/>
-      <circle cx="82.5" cy="80" r="16" fill="#E8112D" stroke="#fff" stroke-width="4"/>
-      <path d="M82.5 68 A12 12 0 0 1 94.5 80" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/>
-    </g>
-    <g>
-      <rect x="176" y="86" width="5" height="34" rx="2.5" fill="#fff"/>
-      <circle cx="178.5" cy="80" r="16" fill="#4DA3FF" stroke="#fff" stroke-width="4"/>
-      <path d="M178.5 68 A12 12 0 0 1 190.5 80" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/>
-    </g>
-    <!-- estrelinhas -->
+  <!-- mesa de festa (o premio grande) -->
+  <symbol id="simMesaFesta" viewBox="0 0 260 176">
+    <circle cx="130" cy="82" r="80" fill="#FFD400" opacity=".22"/>
+    <rect x="14" y="120" width="232" height="20" rx="10" fill="#FF6FB5" stroke="#fff" stroke-width="4"/>
+    <rect x="40" y="140" width="14" height="26" rx="6" fill="#0B3FCC"/>
+    <rect x="206" y="140" width="14" height="26" rx="6" fill="#0B3FCC"/>
+    <rect x="96" y="68" width="68" height="26" rx="6" fill="#fff" stroke="#0B5FFF" stroke-width="3"/>
+    <rect x="86" y="94" width="88" height="26" rx="6" fill="#4DA3FF" stroke="#fff" stroke-width="3"/>
+    <rect x="96" y="62" width="68" height="10" rx="5" fill="#FF6FB5"/>
+    <rect x="126" y="42" width="8" height="20" rx="4" fill="#FFD400"/>
+    <path d="M130 32 Q124 40 130 44 Q136 40 130 32 Z" fill="#E8112D"/>
+    <g><path d="M30 98 L38 120 H58 L66 98 Z" fill="#FFD400" stroke="#fff" stroke-width="3"/>
+       <path d="M28 98 Q30 78 48 78 Q66 78 68 98 Z" fill="#FF6FB5" stroke="#fff" stroke-width="3"/>
+       <circle cx="48" cy="74" r="6" fill="#E8112D" stroke="#fff" stroke-width="2"/></g>
+    <g><path d="M194 98 L202 120 H222 L230 98 Z" fill="#FFD400" stroke="#fff" stroke-width="3"/>
+       <path d="M192 98 Q194 78 212 78 Q230 78 232 98 Z" fill="#FF6FB5" stroke="#fff" stroke-width="3"/>
+       <circle cx="212" cy="74" r="6" fill="#E8112D" stroke="#fff" stroke-width="2"/></g>
+    <g><rect x="80" y="88" width="5" height="34" rx="2.5" fill="#fff"/>
+       <circle cx="82.5" cy="82" r="16" fill="#E8112D" stroke="#fff" stroke-width="4"/>
+       <path d="M82.5 70 A12 12 0 0 1 94.5 82" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/></g>
+    <g><rect x="176" y="88" width="5" height="34" rx="2.5" fill="#fff"/>
+       <circle cx="178.5" cy="82" r="16" fill="#4DA3FF" stroke="#fff" stroke-width="4"/>
+       <path d="M178.5 70 A12 12 0 0 1 190.5 82" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/></g>
     <g fill="#FFD400">
-      <polygon points="20,30 24,42 36,42 26,49 30,61 20,54 10,61 14,49 4,42 16,42"/>
-      <polygon points="240,26 244,38 256,38 246,45 250,57 240,50 230,57 234,45 224,38 236,38"/>
+      <polygon points="20,32 24,44 36,44 26,51 30,63 20,56 10,63 14,51 4,44 16,44"/>
+      <polygon points="240,28 244,40 256,40 246,47 250,59 240,52 230,59 234,47 224,40 236,40"/>
     </g>
   </symbol>
 </svg>
 
-<!-- neve de fundo -->
-<div id="neve" aria-hidden="true"></div>
+<div id="moldura">
+  <div id="neve" aria-hidden="true"></div>
 
-<!-- ======================= TELA DE AJUSTES ======================= -->
-<section class="tela ativa" id="telaAjustes">
-  <div class="cartao">
-    <h1 class="titulo">Reino do Gelo Cintilante</h1>
-    <p class="subtitulo">O jogo de esperar a mágica<br><span class="dica">com a Princesa Lumi</span></p>
-
-    <div class="fotoAlvo" id="fotoPreview">M</div>
-
-    <div class="linhaBotoes">
-      <button class="botao" id="btnEscolherFoto" type="button">Escolher a foto</button>
-      <button class="botao rosa" id="btnTirarFoto" type="button">Remover a foto</button>
-    </div>
-    <input type="file" id="inputFoto" accept="image/*">
-
-    <div class="campo">
-      <label for="inputNome">Nome da criança</label>
-      <input type="text" id="inputNome" value="Maricotta" autocomplete="off" spellcheck="false">
+  <!-- ===================== TELA DO JOGO ===================== -->
+  <div id="jogo">
+    <div id="topo">
+      <div class="bandeja" id="bandejaDoces" aria-label="doces ganhos"></div>
+      <div class="bandeja" id="bandejaEstrelas" aria-label="esperas completas"></div>
     </div>
 
-    <button class="botao amarelo grande" id="btnComecar" type="button">Começar a brincar</button>
-    <p class="dica" style="margin-top:14px">Toque com o dedo. Sem mouse, sem teclado, sem setas.</p>
-  </div>
-</section>
+    <div id="palco">
+      <div class="princesaCaixa" id="princesaCaixa">
+        <!-- princesa Lumi: personagem original, desenhada em SVG -->
+        <svg id="princesa" viewBox="0 0 120 170" aria-label="Princesa Lumi">
+          <path d="M60 62 L96 158 Q60 168 24 158 Z" fill="url(#gVestido)" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+          <path d="M60 62 L78 158 Q60 162 42 158 Z" fill="#8FCBFF" opacity=".85"/>
+          <path d="M46 66 Q22 110 30 156 Q40 150 44 120 Z" fill="#BFE4FF" opacity=".8"/>
+          <path d="M74 66 Q98 110 90 156 Q80 150 76 120 Z" fill="#BFE4FF" opacity=".8"/>
+          <path d="M46 70 Q28 84 30 104" stroke="#FFD9BE" stroke-width="9" fill="none" stroke-linecap="round"/>
+          <g class="braco">
+            <path d="M74 70 Q92 82 92 100" stroke="#FFD9BE" stroke-width="9" fill="none" stroke-linecap="round"/>
+            <circle cx="92" cy="102" r="6" fill="#FFD9BE"/>
+          </g>
+          <path d="M60 46 Q46 50 46 68 Q60 74 74 68 Q74 50 60 46 Z" fill="#0B5FFF" stroke="#fff" stroke-width="3"/>
+          <circle cx="60" cy="60" r="5" fill="#FFD400"/>
+          <path d="M60 8 Q28 12 30 52 Q34 70 44 74 Q36 44 46 30 Z" fill="#EAF6FF"/>
+          <path d="M60 8 Q92 12 90 52 Q86 70 76 74 Q84 44 74 30 Z" fill="#EAF6FF"/>
+          <circle cx="60" cy="34" r="21" fill="#FFD9BE"/>
+          <path d="M39 30 Q42 12 60 12 Q78 12 81 30 Q70 22 60 24 Q50 22 39 30 Z" fill="#EAF6FF"/>
+          <circle cx="52" cy="35" r="3.4" fill="#0B2B6B"/><circle cx="68" cy="35" r="3.4" fill="#0B2B6B"/>
+          <circle cx="53.2" cy="34" r="1.2" fill="#fff"/><circle cx="69.2" cy="34" r="1.2" fill="#fff"/>
+          <circle cx="45" cy="42" r="4.2" fill="#FF9ACF" opacity=".85"/>
+          <circle cx="75" cy="42" r="4.2" fill="#FF9ACF" opacity=".85"/>
+          <path d="M53 44 Q60 51 67 44" stroke="#C4324F" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+          <path d="M42 16 L48 6 L54 14 L60 2 L66 14 L72 6 L78 16 Z" fill="#FFD400" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/>
+          <circle cx="60" cy="12" r="2.6" fill="#4DA3FF"/>
+        </svg>
+        <div id="retrato">M</div>
+      </div>
 
-<!-- ======================= TELA DE JOGO ======================= -->
-<section class="tela" id="telaJogo">
-
-  <div class="topo">
-    <div class="placar">
-      <svg viewBox="0 0 100 100"><use href="#simDoce"/></svg>
-      <span id="placarDoces">0</span>
-    </div>
-    <div class="placar">
-      <svg viewBox="0 0 100 100"><use href="#simEstrela"/></svg>
-      <span id="placarEsperas">0</span>
-    </div>
-    <button id="btnAjustes" type="button" aria-label="Ajustes do adulto">&#9881;</button>
-  </div>
-
-  <div class="palco">
-    <div class="princesaBox" id="princesaBox">
-      <svg class="princesa" viewBox="0 0 120 170"><use href="#simPrincesa"/></svg>
-      <div id="medalhao">M</div>
-    </div>
-
-    <div class="estrelaBox" id="estrelaBox">
-      <svg viewBox="0 0 100 100">
-        <path d="M50 5 L62 36 L96 38 L69 59 L79 92 L50 73 L21 92 L31 59 L4 38 L38 36 Z"
-              fill="#0B3FCC" opacity=".55"/>
-        <g clip-path="url(#recorteEstrela)">
-          <rect id="estrelaFill" x="0" y="100" width="100" height="100" fill="#FFD400"/>
-          <rect id="estrelaBrilho" x="0" y="100" width="100" height="8" fill="#FFF6B0"/>
-        </g>
-        <path d="M50 5 L62 36 L96 38 L69 59 L79 92 L50 73 L21 92 L31 59 L4 38 L38 36 Z"
-              fill="none" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
-      </svg>
-      <div id="numeroEstrela">3</div>
-    </div>
-  </div>
-
-  <div id="balao">Vamos brincar!</div>
-
-  <div class="barra"><div id="barraFill"></div></div>
-
-  <div class="caminhos">
-    <div class="caminho" id="caminhoAgora">
-      <svg class="doceAgora" viewBox="0 0 100 100"><use href="#simDoce"/></svg>
-      <div class="rotulo">1 docinho<br>agora</div>
+      <div id="espera">
+        <svg id="estrela" viewBox="0 0 100 100" aria-label="estrela da espera">
+          <path d="M50 5 L62 36 L96 38 L69 59 L79 92 L50 73 L21 92 L31 59 L4 38 L38 36 Z" fill="#0B3FCC" opacity=".5"/>
+          <g clip-path="url(#recorteEstrela)">
+            <rect id="estrelaFill" x="0" y="100" width="100" height="100" fill="#FFD400"/>
+            <rect id="estrelaBrilho" x="0" y="100" width="100" height="7" fill="#FFF6B0"/>
+          </g>
+          <path d="M50 5 L62 36 L96 38 L69 59 L79 92 L50 73 L21 92 L31 59 L4 38 L38 36 Z"
+                fill="none" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
+        </svg>
+        <div id="gemas"></div>
+      </div>
     </div>
 
-    <div class="caminho" id="caminhoEsperar">
-      <svg class="mesaFesta" viewBox="0 0 260 170"><use href="#simMesaFesta"/></svg>
-      <div class="rotulo">2 doces e a<br>festa mágica</div>
+    <div id="caminhos">
+      <button class="caminho" id="caminhoDoce" type="button" aria-label="pegar um docinho agora">
+        <svg viewBox="0 0 100 100"><use href="#simDoce"/></svg>
+      </button>
+      <button class="caminho" id="caminhoFesta" type="button" aria-label="esperar a festa">
+        <svg viewBox="0 0 260 176"><use href="#simMesaFesta"/></svg>
+      </button>
     </div>
   </div>
 
-  <!-- festa que aparece e escapa quando a crianca toca cedo -->
-  <div id="festaFugindo">
-    <svg viewBox="0 0 260 170"><use href="#simMesaFesta"/></svg>
-    <div class="fugindoTexto">Poxa... a festa foi embora</div>
+  <button id="btnAdulto" type="button" aria-label="Cantinho do adulto">&#9881;</button>
+
+  <!-- ===================== CENAS ===================== -->
+  <div class="cena" id="cenaInicio">
+    <button id="botaoComecar" type="button" aria-label="Começar">
+      <svg viewBox="0 0 120 120"><use href="#simBotaoPlay"/></svg>
+    </button>
   </div>
 
-  <!-- premio: esperou ate o fim -->
-  <div class="overlay" id="overlayFesta">
-    <div class="mensagemGrande" id="tituloFesta">Você esperou!</div>
-    <svg class="mesaPremio" id="mesaPremio" viewBox="0 0 260 170"><use href="#simMesaFesta"/></svg>
-    <div class="premio">
+  <div class="cena" id="cenaFesta">
+    <svg id="mesaPremio" viewBox="0 0 260 176"><use href="#simMesaFesta"/></svg>
+    <div class="doces">
       <svg viewBox="0 0 100 100"><use href="#simDoce"/></svg>
       <svg viewBox="0 0 100 100"><use href="#simDoce"/></svg>
     </div>
-    <div class="mensagemPequena" id="subtituloFesta">Ganhou 2 doces e a festa mágica!</div>
-    <button class="botao amarelo grande" id="btnDeNovoFesta" type="button">Brincar de novo</button>
+    <button class="botaoRepetir" id="repetirFesta" type="button" aria-label="Jogar de novo">
+      <svg viewBox="0 0 120 120"><use href="#simBotaoPlay"/></svg>
+    </button>
   </div>
 
-  <!-- premio: pegou o docinho antes -->
-  <div class="overlay" id="overlayDocinho">
-    <div class="mensagemGrande" id="tituloDocinho">Você ganhou 1 docinho!</div>
-    <div class="premio"><svg viewBox="0 0 100 100"><use href="#simDoce"/></svg></div>
-    <div class="mensagemPequena" id="subtituloDocinho">A festa foi embora dessa vez... vamos tentar esperar?</div>
-    <button class="botao grande" id="btnDeNovoDocinho" type="button">Quero tentar de novo</button>
+  <div class="cena" id="cenaConsolo">
+    <svg id="doceConsolo" viewBox="0 0 100 100"><use href="#simDoce"/></svg>
+    <button class="botaoRepetir" id="repetirConsolo" type="button" aria-label="Jogar de novo">
+      <svg viewBox="0 0 120 120"><use href="#simBotaoPlay"/></svg>
+    </button>
   </div>
 
-  <!-- painel do adulto -->
-  <div class="overlay" id="painelAdulto">
-    <div class="mensagemGrande" style="font-size:clamp(20px,4vw,38px)">Cantinho do adulto</div>
-    <div class="linhaBotoes">
-      <button class="botao" id="btnSom" type="button">Som: ligado</button>
-      <button class="botao" id="btnVoz" type="button">Voz: ligada</button>
-    </div>
-    <div class="linhaBotoes">
-      <button class="botao rosa" id="btnEditarPerfil" type="button">Trocar foto / nome</button>
-      <button class="botao rosa" id="btnZerar" type="button">Começar do início</button>
-    </div>
-    <div class="mensagemPequena" id="infoNivel">Espera atual: 3 segundos</div>
-    <button class="botao amarelo grande" id="btnFecharPainel" type="button">Voltar ao jogo</button>
+  <div id="festaEscapando">
+    <svg viewBox="0 0 260 176"><use href="#simMesaFesta"/></svg>
   </div>
-
-</section>
+</div>
 
 <canvas id="confete"></canvas>
 
+<!-- ===================== TELA INICIAL DO ADULTO ===================== -->
+<div class="telaAdulto ativa" id="telaSetup">
+  <div class="cartao">
+    <h1 class="titulo">Reino do Gelo Cintilante</h1>
+    <p class="subtitulo">O jogo de esperar a mágica, com a Princesa Lumi<br>para crianças de 2 a 4 anos</p>
+
+    <div class="retratoAlvo" id="retratoPreview">M</div>
+    <div class="linha">
+      <button class="botao pequeno" id="btnEscolherFoto" type="button">Escolher a foto</button>
+      <button class="botao pequeno rosa" id="btnRemoverFoto" type="button">Remover</button>
+    </div>
+    <input type="file" id="inputFoto" accept="image/*">
+
+    <div class="secao">
+      <h2>Nome da criança</h2>
+      <input type="text" id="inputNome" class="campoTexto" value="Maricotta" autocomplete="off" spellcheck="false">
+    </div>
+
+    <div class="secao">
+      <h2>Tempo de espera para começar</h2>
+      <div class="linha" id="escolhaTempo">
+        <button class="botao pequeno" data-nivel="0" type="button">3 s</button>
+        <button class="botao pequeno" data-nivel="1" type="button">5 s</button>
+        <button class="botao pequeno" data-nivel="2" type="button">8 s</button>
+        <button class="botao pequeno" data-nivel="3" type="button">12 s</button>
+      </div>
+      <p class="nota">O tempo sobe sozinho a cada espera bem-sucedida. Comece sempre por 3 s nas primeiras sessões.</p>
+    </div>
+
+    <div class="linha" style="margin-top:18px">
+      <button class="botao amarelo grande" id="btnIrParaJogo" type="button">Ir para o jogo</button>
+    </div>
+    <div class="linha" style="margin-top:10px">
+      <button class="botao pequeno" id="btnAbrirVoz" type="button">Ajustes de voz e som</button>
+    </div>
+    <p class="nota">O jogo abre numa tela de espera. Nada acontece até a criança tocar no botão amarelo.</p>
+  </div>
+</div>
+
+<!-- ===================== PAINEL DO ADULTO (durante o jogo) ===================== -->
+<div class="telaAdulto" id="telaPainel">
+  <div class="cartao">
+    <h1 class="titulo" style="font-size:clamp(18px,4vw,30px)">Cantinho do adulto</h1>
+
+    <div class="secao">
+      <h2>Voz da princesa</h2>
+      <div class="linha" id="escolhaVoz">
+        <button class="botao pequeno" data-voz="gravada" type="button">Minha voz gravada</button>
+        <button class="botao pequeno" data-voz="tts" type="button">Voz do aparelho</button>
+        <button class="botao pequeno" data-voz="off" type="button">Sem voz</button>
+      </div>
+      <p class="nota" id="notaVoz"></p>
+    </div>
+
+    <div class="secao">
+      <h2>Gravar minha voz</h2>
+      <p class="nota" style="margin:0 0 10px">
+        A voz de quem a criança ama vale mais que qualquer voz sintética. Toque em Gravar, fale a frase
+        com calma e toque em Parar. O ✓ mostra o que já está gravado.
+      </p>
+      <div class="frases" id="listaFrases"></div>
+      <p class="nota" id="notaGravacao"></p>
+    </div>
+
+    <div class="secao">
+      <h2>Som</h2>
+      <div class="linha">
+        <button class="botao pequeno" id="btnSom" type="button">Som: ligado</button>
+        <button class="botao pequeno" id="btnTelaAcesa" type="button">Manter tela acesa: sim</button>
+      </div>
+    </div>
+
+    <div class="secao">
+      <h2>Jogo</h2>
+      <div class="linha">
+        <button class="botao pequeno rosa" id="btnVoltarSetup" type="button">Trocar foto, nome e tempo</button>
+        <button class="botao pequeno rosa" id="btnZerar" type="button">Recomeçar do 3 s</button>
+      </div>
+      <p class="nota" id="notaProgresso"></p>
+    </div>
+
+    <div class="linha" style="margin-top:16px">
+      <button class="botao amarelo grande" id="btnFecharPainel" type="button">Voltar ao jogo</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
-  "use strict";
+"use strict";
 
-  /* ================= utilidades ================= */
-  var $ = function(id){ return document.getElementById(id); };
+/* =========================================================================
+   0. FERRAMENTAS BASICAS
+   ========================================================================= */
+var $ = function(id){ return document.getElementById(id); };
 
-  // toque unico e confiavel no iPad (pointerdown + fallback click, com anti-duplo)
-  function aoTocar(el, fn){
-    var ultimo = 0;
-    function h(e){
-      var agora = Date.now();
-      if (agora - ultimo < 450) return;
-      ultimo = agora;
-      if (e.cancelable) e.preventDefault();
-      fn(e);
-    }
-    el.addEventListener('pointerdown', h, {passive:false});
-    el.addEventListener('click', h, {passive:false});
+/* trava curta apos qualquer troca de tela */
+var bloqueadoAte = 0;
+function bloquearToques(ms){ bloqueadoAte = Date.now() + (ms || 450); }
+
+/* toque unico e confiavel (pointer + clique, sem disparo duplo) */
+function aoTocar(el, fn){
+  var ultimo = 0;
+  function h(e){
+    var agora = Date.now();
+    if (agora < bloqueadoAte) { if (e.cancelable) e.preventDefault(); return; }
+    if (agora - ultimo < 500) return;
+    ultimo = agora;
+    if (e.cancelable) e.preventDefault();
+    fn(e);
   }
+  el.addEventListener('pointerdown', h, {passive:false});
+  el.addEventListener('click', h, {passive:false});
+}
 
-  // bloqueia zoom por gesto/duplo toque no Safari
-  ['gesturestart','gesturechange','gestureend'].forEach(function(ev){
-    document.addEventListener(ev, function(e){ e.preventDefault(); }, {passive:false});
+/* agenda com cancelamento em bloco: nenhuma etapa antiga invade a proxima */
+var agendados = [];
+function depois(ms, fn){
+  var id = setTimeout(function(){
+    var i = agendados.indexOf(id); if (i >= 0) agendados.splice(i,1);
+    fn();
+  }, ms);
+  agendados.push(id);
+  return id;
+}
+function limparAgenda(){
+  for (var i=0;i<agendados.length;i++) clearTimeout(agendados[i]);
+  agendados = [];
+}
+
+/* zoom por gesto e rolagem: desligados */
+['gesturestart','gesturechange','gestureend'].forEach(function(ev){
+  document.addEventListener(ev, function(e){ e.preventDefault(); }, {passive:false});
+});
+document.addEventListener('touchmove', function(e){
+  if (e.touches.length > 1) e.preventDefault();
+}, {passive:false});
+
+/* altura real da tela: resolve a barra do Safari no iPhone/iPad */
+function medirAltura(){
+  var h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  document.documentElement.style.setProperty('--altura', h + 'px');
+}
+medirAltura();
+window.addEventListener('resize', medirAltura);
+window.addEventListener('orientationchange', function(){ setTimeout(medirAltura, 300); });
+if (window.visualViewport) window.visualViewport.addEventListener('resize', medirAltura);
+
+/* =========================================================================
+   1. RITMO DO JOGO
+   Tempos pensados para 2-4 anos: cada informacao chega sozinha, com pausa
+   suficiente para a crianca processar antes da proxima.
+   ========================================================================= */
+var RITMO = {
+  entradaCena:     700,   // a cena aparece e assenta antes de qualquer fala
+  pausaEntreBeats: 900,   // respiro entre uma informacao e outra
+  destaque:       1700,   // quanto tempo um caminho fica em evidencia
+  travaToque:      800,   // ignora toque logo apos comecar a espera (dedo parado na tela)
+  festejar:       3400,   // celebracao antes de oferecer o botao de novo
+  consolar:       3600,   // consolo antes de oferecer o botao de novo
+  minimoFala:     1400    // nenhuma fala e seguida por outra antes disso
+};
+
+var NIVEIS = [3, 5, 8, 12];   // segundos de espera, na ordem da progressao
+var CHAVE = 'reinoGelo.v2';
+
+var estado = {
+  nome:'Maricotta', foto:null,
+  nivel:0, doces:0, estrelas:0,
+  som:true, modoVoz:'tts', telaAcesa:true
+};
+
+function salvar(){ try{ localStorage.setItem(CHAVE, JSON.stringify(estado)); }catch(e){} }
+function carregar(){
+  try{
+    var b = localStorage.getItem(CHAVE);
+    if (b){ var d = JSON.parse(b); for (var k in estado) if (d[k] !== undefined) estado[k] = d[k]; }
+  }catch(e){}
+}
+
+function segundosDaVez(){ return NIVEIS[Math.min(estado.nivel, NIVEIS.length-1)]; }
+
+/* quantos pedacinhos a espera tem: a crianca precisa ver a espera em partes
+   contaveis, cada uma com sua recompensa sonora */
+function passosDaVez(){
+  var s = segundosDaVez();
+  return s <= 3 ? 3 : s <= 5 ? 4 : s <= 8 ? 5 : 6;
+}
+
+/* =========================================================================
+   2. SOM (WebAudio, sem arquivos externos)
+   ========================================================================= */
+var ctx = null, barramento = null;
+function audio(){
+  if (!estado.som) return null;
+  if (!ctx){
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    ctx = new AC();
+    barramento = ctx.createGain();
+    barramento.gain.value = 0.9;
+    /* um eco curtinho deixa o som mais "magico" e menos seco */
+    var atraso = ctx.createDelay(); atraso.delayTime.value = 0.18;
+    var retorno = ctx.createGain(); retorno.gain.value = 0.22;
+    barramento.connect(ctx.destination);
+    barramento.connect(atraso); atraso.connect(retorno);
+    retorno.connect(atraso); retorno.connect(ctx.destination);
+  }
+  if (ctx.state === 'suspended') ctx.resume();
+  return ctx;
+}
+
+/* nota com dois osciladores levemente desafinados: timbre mais doce */
+function nota(freq, atraso, dur, vol, tipo){
+  var c = audio(); if (!c) return;
+  var t = c.currentTime + atraso;
+  var g = c.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.03);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  g.connect(barramento);
+  [0, 4].forEach(function(desafina, i){
+    var o = c.createOscillator();
+    o.type = tipo || (i ? 'sine' : 'triangle');
+    o.frequency.setValueAtTime(freq + desafina, t);
+    o.connect(g); o.start(t); o.stop(t + dur + 0.06);
   });
-  document.addEventListener('touchmove', function(e){
-    if (e.touches.length > 1) e.preventDefault();
-  }, {passive:false});
+}
 
-  /* ================= estado ================= */
-  var NIVEIS = [3, 5, 8, 12];      // segundos de espera, em progressao
-  var CHAVE  = 'reinoGelo.v1';
+var PENTA = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.7, 1318.5];
 
-  var estado = {
-    nome: 'Maricotta',
-    foto: null,
-    nivel: 0,        // indice em NIVEIS
-    doces: 0,
-    esperas: 0,
-    som: true,
-    voz: true
-  };
+function somToque(){ nota(659.25, 0, 0.16, 0.16); }
+function somPasso(i, total){ nota(PENTA[Math.min(i, PENTA.length-1)], 0, 0.4, 0.16); }
+function somComecar(){ nota(523.25,0,0.25,0.16); nota(659.25,0.12,0.25,0.16); nota(783.99,0.24,0.4,0.18); }
+function somAponta(){ nota(880, 0, 0.22, 0.12); }
+function somDoce(){ nota(659.25,0,0.2,0.15); nota(523.25,0.14,0.4,0.13); }
+function somFesta(tamanho){
+  var qtd = Math.min(PENTA.length, 5 + tamanho);
+  for (var i=0;i<qtd;i++) nota(PENTA[i], i*0.12, 0.45, 0.17);
+  for (var j=0;j<4;j++) nota(1046.5*(1 + j*0.2), 0.95 + j*0.1, 0.6, 0.1, 'sine');
+  for (var k=0;k<3;k++) nota(PENTA[k]/2, 1.6 + k*0.16, 0.7, 0.12);
+}
 
-  function salvar(){
-    try { localStorage.setItem(CHAVE, JSON.stringify(estado)); } catch(e){}
-  }
-  function carregar(){
-    try {
-      var bruto = localStorage.getItem(CHAVE);
-      if (bruto) {
-        var d = JSON.parse(bruto);
-        for (var k in estado) if (d[k] !== undefined) estado[k] = d[k];
-      }
-    } catch(e){}
-  }
+/* =========================================================================
+   3. VOZ
+   Duas fontes: a voz gravada pelo adulto (melhor opcao para a crianca) e,
+   como reserva, a voz do aparelho — escolhida entre as melhores pt-BR
+   disponiveis, mais lenta e mais aguda que o padrao.
+   ========================================================================= */
+var FRASES = [
+  {id:'doce',      txt:'Olha o docinho! Você pode pegar ele agora.'},
+  {id:'festa',     txt:'Ou pode esperar... e ganhar dois doces e a festa mágica!'},
+  {id:'comecou',   txt:'A estrela começou a encher. Vamos esperar juntos!'},
+  {id:'meio1',     txt:'Isso! Continua esperando!'},
+  {id:'meio2',     txt:'Você consegue! A mágica está chegando!'},
+  {id:'meio3',     txt:'Só mais um pouquinho!'},
+  {id:'vitoria',   txt:'Você esperou! Ganhou dois doces e a festa mágica!'},
+  {id:'consolo',   txt:'Poxa... a festa foi embora dessa vez. Vamos tentar de novo?'}
+];
 
-  /* ================= som (WebAudio, sem arquivos) ================= */
-  var ctx = null;
-  function audio(){
-    if (!estado.som) return null;
-    if (!ctx) {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return null;
-      ctx = new AC();
-    }
-    if (ctx.state === 'suspended') ctx.resume();
-    return ctx;
-  }
-  function nota(freq, inicio, dur, vol, tipo){
-    var c = audio(); if (!c) return;
-    var t = c.currentTime + inicio;
-    var osc = c.createOscillator();
-    var g = c.createGain();
-    osc.type = tipo || 'triangle';
-    osc.frequency.setValueAtTime(freq, t);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol || 0.18, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    osc.connect(g); g.connect(c.destination);
-    osc.start(t); osc.stop(t + dur + 0.05);
-  }
-  function somTique(){ nota(880, 0, 0.09, 0.07, 'sine'); }
-  function somToque(){ nota(520, 0, 0.12, 0.14, 'square'); }
-  function somDocinho(){ nota(520, 0, 0.22, 0.14); nota(392, 0.16, 0.32, 0.12); }
-  function somFesta(tamanho){
-    var escala = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.7, 1318.5];
-    var qtd = Math.min(escala.length, 4 + tamanho * 2);
-    for (var i = 0; i < qtd; i++) nota(escala[i], i * 0.11, 0.35, 0.16);
-    for (var j = 0; j < 3; j++) nota(1046.5 * (1 + j * 0.25), 0.9 + j * 0.09, 0.5, 0.1, 'sine');
-  }
+var Voz = {
+  vozEscolhida:null,
+  clipes:{},          // id -> URL de audio gravado
+  tocando:null,
 
-  /* ================= voz ================= */
-  function falar(texto){
-    if (!estado.voz || !('speechSynthesis' in window)) return;
-    try {
-      window.speechSynthesis.cancel();
-      var f = new SpeechSynthesisUtterance(texto);
-      f.lang = 'pt-BR';
-      f.rate = 0.92;
-      f.pitch = 1.25;
-      window.speechSynthesis.speak(f);
-    } catch(e){}
-  }
-
-  /* ================= neve decorativa ================= */
-  (function neve(){
-    var alvo = $('neve');
-    for (var i = 0; i < 16; i++) {
-      var d = document.createElement('div');
-      d.className = 'floco';
-      var tam = 10 + Math.random() * 26;
-      d.style.left = (Math.random() * 100) + 'vw';
-      d.style.width = tam + 'px';
-      d.style.height = tam + 'px';
-      d.style.animationDuration = (9 + Math.random() * 12) + 's';
-      d.style.animationDelay = (-Math.random() * 15) + 's';
-      d.style.opacity = 0.25 + Math.random() * 0.5;
-      d.innerHTML = '<svg viewBox="0 0 100 100" width="100%" height="100%"><use href="#simFloco"/></svg>';
-      alvo.appendChild(d);
-    }
-  })();
-
-  /* ================= confete ================= */
-  var cv = $('confete'), cx2 = cv.getContext('2d');
-  var particulas = [], animandoConfete = false;
-
-  function redimensionar(){
-    var dpr = Math.min(window.devicePixelRatio || 1, 2);
-    cv.width = Math.floor(window.innerWidth * dpr);
-    cv.height = Math.floor(window.innerHeight * dpr);
-    cv.style.width = window.innerWidth + 'px';
-    cv.style.height = window.innerHeight + 'px';
-    cx2.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-  window.addEventListener('resize', redimensionar);
-  window.addEventListener('orientationchange', function(){ setTimeout(redimensionar, 250); });
-  redimensionar();
-
-  var CORES = ['#FFD400', '#E8112D', '#0B5FFF', '#FF6FB5', '#FFFFFF', '#4DA3FF'];
-
-  function soltarConfete(qtd){
-    var L = window.innerWidth, A = window.innerHeight;
-    for (var i = 0; i < qtd; i++) {
-      particulas.push({
-        x: L / 2 + (Math.random() - 0.5) * L * 0.5,
-        y: A * 0.45 + (Math.random() - 0.5) * 80,
-        vx: (Math.random() - 0.5) * 13,
-        vy: -6 - Math.random() * 12,
-        tam: 7 + Math.random() * 13,
-        cor: CORES[(Math.random() * CORES.length) | 0],
-        rot: Math.random() * Math.PI,
-        vrot: (Math.random() - 0.5) * 0.32,
-        vida: 1
-      });
-    }
-    if (!animandoConfete) { animandoConfete = true; requestAnimationFrame(passoConfete); }
-  }
-
-  function passoConfete(){
-    cx2.clearRect(0, 0, window.innerWidth, window.innerHeight);
-    for (var i = particulas.length - 1; i >= 0; i--) {
-      var p = particulas[i];
-      p.vy += 0.42; p.vx *= 0.995;
-      p.x += p.vx; p.y += p.vy; p.rot += p.vrot;
-      if (p.y > window.innerHeight + 60) { particulas.splice(i, 1); continue; }
-      cx2.save();
-      cx2.translate(p.x, p.y);
-      cx2.rotate(p.rot);
-      cx2.fillStyle = p.cor;
-      cx2.fillRect(-p.tam / 2, -p.tam / 2, p.tam, p.tam * 0.62);
-      cx2.restore();
-    }
-    if (particulas.length) requestAnimationFrame(passoConfete);
-    else { animandoConfete = false; cx2.clearRect(0, 0, window.innerWidth, window.innerHeight); }
-  }
-
-  /* ================= elementos ================= */
-  var telaAjustes = $('telaAjustes'), telaJogo = $('telaJogo');
-  var balao = $('balao'), barraFill = $('barraFill');
-  var estrelaFill = $('estrelaFill'), estrelaBrilho = $('estrelaBrilho');
-  var numeroEstrela = $('numeroEstrela'), estrelaBox = $('estrelaBox');
-  var caminhoAgora = $('caminhoAgora'), caminhoEsperar = $('caminhoEsperar');
-  var overlayFesta = $('overlayFesta'), overlayDocinho = $('overlayDocinho');
-  var festaFugindo = $('festaFugindo'), painelAdulto = $('painelAdulto');
-  var medalhao = $('medalhao'), fotoPreview = $('fotoPreview'), princesaBox = $('princesaBox');
-
-  /* ================= rodada ================= */
-  var rodando = false, raf = 0, timerIncentivo = 0, indiceIncentivo = 0;
-
-  function segundosDoNivel(){ return NIVEIS[Math.min(estado.nivel, NIVEIS.length - 1)]; }
-
-  function incentivos(){
-    var n = estado.nome;
-    return [
-      'Isso, ' + n + ', continua esperando!',
-      'Que legal, ' + n + '! A estrela está enchendo!',
-      'Você consegue, ' + n + '!',
-      'A mágica está chegando, ' + n + '!',
-      'Só mais um pouquinho, ' + n + '!',
-      'Que espera bonita, ' + n + '!'
-    ];
-  }
-
-  function dizer(texto, comVoz){
-    balao.textContent = texto;
-    if (comVoz) falar(texto);
-  }
-
-  function atualizarPlacar(){
-    $('placarDoces').textContent = estado.doces;
-    $('placarEsperas').textContent = estado.esperas;
-    $('infoNivel').textContent = 'Espera atual: ' + segundosDoNivel() + ' segundos';
-  }
-
-  function definirProgresso(p){
-    var y = 100 - (p * 100);
-    estrelaFill.setAttribute('y', y);
-    estrelaBrilho.setAttribute('y', Math.max(0, y - 4));
-    barraFill.style.width = (p * 100) + '%';
-  }
-
-  function iniciarRodada(){
-    overlayFesta.classList.remove('ativa');
-    overlayDocinho.classList.remove('ativa');
-    festaFugindo.classList.remove('rodando');
-    caminhoAgora.classList.remove('tremer');
-    estrelaBox.classList.add('pulsa');
-
-    var seg = segundosDoNivel();
-    definirProgresso(0);
-    numeroEstrela.textContent = seg;
-    atualizarPlacar();
-
-    var convite = estado.nome + ', você pode pegar 1 docinho agora... ou esperar a estrela encher e ganhar 2 doces!';
-    dizer(convite, true);
-
-    indiceIncentivo = 0;
-    rodando = true;
-
-    var inicio = performance.now();
-    var ultimoSeg = -1;
-
-    clearInterval(timerIncentivo);
-    timerIncentivo = setInterval(function(){
-      if (!rodando) return;
-      var lista = incentivos();
-      dizer(lista[indiceIncentivo % lista.length], true);
-      indiceIncentivo++;
-    }, Math.max(2200, (seg * 1000) / 3));
-
-    function quadro(agora){
-      if (!rodando) return;
-      var decorrido = (agora - inicio) / 1000;
-      var p = Math.min(1, decorrido / seg);
-      definirProgresso(p);
-
-      var restante = Math.max(0, Math.ceil(seg - decorrido));
-      if (restante !== ultimoSeg) {
-        ultimoSeg = restante;
-        numeroEstrela.textContent = restante;
-        if (restante > 0) somTique();
-      }
-
-      if (p >= 1) { venceuEspera(); return; }
-      raf = requestAnimationFrame(quadro);
-    }
-    raf = requestAnimationFrame(quadro);
-
-    // nos ultimos instantes o docinho "chama" a atencao (tentacao gentil)
-    setTimeout(function(){ if (rodando) caminhoAgora.classList.add('tremer'); }, seg * 1000 * 0.45);
-  }
-
-  function pararRodada(){
-    rodando = false;
-    cancelAnimationFrame(raf);
-    clearInterval(timerIncentivo);
-    estrelaBox.classList.remove('pulsa');
-    caminhoAgora.classList.remove('tremer');
-  }
-
-  /* --------- esperou ate o fim: FESTA --------- */
-  function venceuEspera(){
-    pararRodada();
-    definirProgresso(1);
-    numeroEstrela.textContent = '0';
-
-    var tamanho = Math.min(estado.nivel, NIVEIS.length - 1); // festa proporcional ao tempo
-    estado.doces += 2;
-    estado.esperas += 1;
-    if (estado.nivel < NIVEIS.length - 1) estado.nivel++;
-    salvar();
-    atualizarPlacar();
-
-    somFesta(tamanho);
-    soltarConfete(70 + tamanho * 60);
-    setTimeout(function(){ soltarConfete(50 + tamanho * 45); }, 420);
-    setTimeout(function(){ soltarConfete(40 + tamanho * 40); }, 900);
-
-    princesaBox.classList.add('acena');
-    setTimeout(function(){ princesaBox.classList.remove('acena'); }, 2600);
-
-    var mesa = $('mesaPremio');
-    mesa.style.width = 'min(' + (46 + tamanho * 6) + 'vw, ' + (340 + tamanho * 60) + 'px)';
-
-    $('tituloFesta').textContent = 'UAU! Você esperou, ' + estado.nome + '!';
-    $('subtituloFesta').textContent = 'Ganhou 2 doces e a festa mágica ficou ainda maior!';
-    overlayFesta.classList.add('ativa');
-    falar('Uau! Você esperou, ' + estado.nome + '! Ganhou dois doces e a festa mágica!');
-  }
-
-  /* --------- pegou o docinho antes: sem punicao --------- */
-  function pegouDocinho(){
-    if (!rodando) return;
-    pararRodada();
-
-    estado.doces += 1;
-    salvar();
-    atualizarPlacar();
-
-    somDocinho();
-
-    // a festa aparece rapidinho ao fundo e vai embora, gentilmente
-    festaFugindo.classList.remove('rodando');
-    void festaFugindo.offsetWidth;   // reinicia a animacao
-    festaFugindo.classList.add('rodando');
-
-    $('tituloDocinho').textContent = 'Você ganhou 1 docinho, ' + estado.nome + '!';
-    $('subtituloDocinho').textContent = 'Poxa, a festa foi embora dessa vez... quer tentar esperar de novo?';
-
-    setTimeout(function(){
-      overlayDocinho.classList.add('ativa');
-      falar('Você ganhou um docinho, ' + estado.nome + '. Poxa, a festa foi embora dessa vez. Vamos tentar esperar de novo?');
-    }, 1500);
-  }
-
-  /* ================= perfil (foto e nome) ================= */
-  function aplicarPerfil(){
-    var inicial = (estado.nome || 'M').trim().charAt(0).toUpperCase() || 'M';
-    [medalhao, fotoPreview].forEach(function(el){
-      if (estado.foto) {
-        el.style.backgroundImage = 'url(' + estado.foto + ')';
-        el.textContent = '';
-      } else {
-        el.style.backgroundImage = 'none';
-        el.textContent = inicial;
-      }
+  /* escolhe a melhor voz pt-BR do aparelho */
+  escolherVoz:function(){
+    if (!('speechSynthesis' in window)) return;
+    var vozes = window.speechSynthesis.getVoices().filter(function(v){
+      return /pt[-_]?BR/i.test(v.lang) || /portug/i.test(v.name);
     });
-    atualizarPlacar();
-  }
+    if (!vozes.length) return;
+    var preferidas = [/luciana/i, /joana/i, /francisca/i, /f[ée]lix/i, /google/i, /maria/i];
+    function nota(v){
+      var n = 0;
+      if (/premium|enhanced|aprimorad|siri/i.test(v.name)) n += 40;
+      if (v.localService) n += 10;
+      for (var i=0;i<preferidas.length;i++) if (preferidas[i].test(v.name)) n += (preferidas.length - i) * 4;
+      if (/pt[-_]?BR/i.test(v.lang)) n += 8;
+      return n;
+    }
+    vozes.sort(function(a,b){ return nota(b) - nota(a); });
+    this.vozEscolhida = vozes[0];
+    atualizarNotaVoz();
+  },
 
-  $('inputFoto').addEventListener('change', function(e){
-    var arq = e.target.files && e.target.files[0];
-    if (!arq) return;
-    var leitor = new FileReader();
-    leitor.onload = function(ev){
-      // reduz a imagem para caber no localStorage
-      var img = new Image();
-      img.onload = function(){
-        var lado = 320;
-        var c = document.createElement('canvas');
-        c.width = c.height = lado;
-        var g = c.getContext('2d');
-        var min = Math.min(img.width, img.height);
-        g.drawImage(img, (img.width - min) / 2, (img.height - min) / 2, min, min, 0, 0, lado, lado);
-        estado.foto = c.toDataURL('image/jpeg', 0.82);
-        salvar();
-        aplicarPerfil();
+  parar:function(){
+    if (this.tocando){ try{ this.tocando.pause(); }catch(e){} this.tocando = null; }
+    if ('speechSynthesis' in window){ try{ window.speechSynthesis.cancel(); }catch(e){} }
+  },
+
+  /* diz a frase e chama aoTerminar quando ela realmente acabou
+     (com prazo maximo, porque o Safari as vezes engole o evento) */
+  dizer:function(id, aoTerminar){
+    var frase = null;
+    for (var i=0;i<FRASES.length;i++) if (FRASES[i].id === id) frase = FRASES[i];
+    var texto = frase ? frase.txt.replace('!', ', ' + estado.nome + '!') : '';
+    var pronto = false, self = this, comecou = Date.now();
+    function terminar(){
+      if (pronto) return; pronto = true;
+      if (!aoTerminar) return;
+      /* piso de tempo: a crianca precisa desse respiro mesmo quando nao ha voz,
+         quando a voz falha ou quando o aparelho fala rapido demais */
+      var falta = RITMO.minimoFala - (Date.now() - comecou);
+      if (falta > 0) depois(falta, aoTerminar); else aoTerminar();
+    }
+
+    this.parar();
+
+    if (estado.modoVoz === 'off'){ depois(RITMO.minimoFala, terminar); return; }
+
+    /* 1) voz gravada pelo adulto */
+    if (estado.modoVoz === 'gravada' && this.clipes[id]){
+      try{
+        var a = new Audio(this.clipes[id]);
+        a.onended = terminar;
+        a.onerror = function(){ depois(RITMO.minimoFala, terminar); };
+        this.tocando = a;
+        var p = a.play();
+        if (p && p.catch) p.catch(function(){ depois(RITMO.minimoFala, terminar); });
+        depois(12000, terminar);
+        return;
+      }catch(e){}
+    }
+
+    /* 2) voz do aparelho */
+    if ('speechSynthesis' in window && texto){
+      try{
+        var f = new SpeechSynthesisUtterance(texto);
+        f.lang = 'pt-BR';
+        f.rate = 0.82;     // devagar: 2-4 anos precisam de tempo para decodificar
+        f.pitch = 1.15;    // um pouco mais agudo soa mais acolhedor
+        f.volume = 1;
+        if (this.vozEscolhida) f.voice = this.vozEscolhida;
+        f.onend = terminar;
+        f.onerror = function(){ terminar(); };
+        window.speechSynthesis.speak(f);
+        /* prazo de seguranca proporcional ao tamanho da frase */
+        depois(Math.max(RITMO.minimoFala, texto.length * 85 + 900), terminar);
+        return;
+      }catch(e){}
+    }
+
+    depois(RITMO.minimoFala, terminar);
+  }
+};
+
+if ('speechSynthesis' in window){
+  window.speechSynthesis.onvoiceschanged = function(){ Voz.escolherVoz(); };
+  Voz.escolherVoz();
+}
+
+/* ---- guarda das gravacoes (IndexedDB, porque audio nao cabe no localStorage) ---- */
+var DB = {
+  banco:null,
+  abrir:function(cb){
+    if (this.banco) { cb(this.banco); return; }
+    if (!window.indexedDB){ cb(null); return; }
+    var self = this;
+    try{
+      var r = indexedDB.open('reinoGelo', 1);
+      r.onupgradeneeded = function(){ r.result.createObjectStore('vozes'); };
+      r.onsuccess = function(){ self.banco = r.result; cb(self.banco); };
+      r.onerror = function(){ cb(null); };
+    }catch(e){ cb(null); }
+  },
+  salvar:function(id, blob, cb){
+    this.abrir(function(b){
+      if (!b){ cb(false); return; }
+      var t = b.transaction('vozes','readwrite');
+      t.objectStore('vozes').put(blob, id);
+      t.oncomplete = function(){ cb(true); };
+      t.onerror = function(){ cb(false); };
+    });
+  },
+  ler:function(cb){
+    this.abrir(function(b){
+      if (!b){ cb({}); return; }
+      var t = b.transaction('vozes','readonly'), loja = t.objectStore('vozes'), fora = {};
+      var cur = loja.openCursor();
+      cur.onsuccess = function(e){
+        var c = e.target.result;
+        if (c){ fora[c.key] = c.value; c.continue(); } else cb(fora);
       };
-      img.src = ev.target.result;
-    };
-    leitor.readAsDataURL(arq);
-  });
-
-  aoTocar($('btnEscolherFoto'), function(){ $('inputFoto').click(); });
-  aoTocar($('btnTirarFoto'), function(){ estado.foto = null; salvar(); aplicarPerfil(); });
-
-  $('inputNome').addEventListener('input', function(){
-    estado.nome = this.value.trim() || 'Maricotta';
-    salvar();
-    aplicarPerfil();
-  });
-
-  /* ================= navegacao ================= */
-  function mostrarJogo(){
-    telaAjustes.classList.remove('ativa');
-    telaJogo.classList.add('ativa');
-  }
-  function mostrarAjustes(){
-    pararRodada();
-    telaJogo.classList.remove('ativa');
-    telaAjustes.classList.add('ativa');
-  }
-
-  aoTocar($('btnComecar'), function(){
-    estado.nome = ($('inputNome').value || '').trim() || 'Maricotta';
-    salvar();
-    aplicarPerfil();
-    audio();              // desbloqueia o som no primeiro toque (exigencia do iOS)
-    somToque();
-    mostrarJogo();
-    iniciarRodada();
-  });
-
-  aoTocar(caminhoAgora, function(){ pegouDocinho(); });
-
-  aoTocar(caminhoEsperar, function(){
-    if (rodando) {
-      somTique();
-      dizer('Ainda não, ' + estado.nome + '! Espera a estrela encher!', true);
-    }
-  });
-
-  aoTocar($('btnDeNovoFesta'), function(){ somToque(); iniciarRodada(); });
-  aoTocar($('btnDeNovoDocinho'), function(){ somToque(); iniciarRodada(); });
-
-  /* ---- painel do adulto: precisa segurar o dedo 1,2s ---- */
-  (function(){
-    var alvo = $('btnAjustes'), t = 0;
-    function comeca(e){
-      if (e.cancelable) e.preventDefault();
-      clearTimeout(t);
-      t = setTimeout(function(){
-        pararRodada();
-        atualizarPlacar();
-        painelAdulto.classList.add('ativa');
-      }, 1200);
-    }
-    function cancela(){ clearTimeout(t); }
-    alvo.addEventListener('pointerdown', comeca, {passive:false});
-    ['pointerup','pointerleave','pointercancel'].forEach(function(ev){
-      alvo.addEventListener(ev, cancela);
+      cur.onerror = function(){ cb({}); };
     });
-  })();
+  }
+};
 
-  aoTocar($('btnFecharPainel'), function(){
-    painelAdulto.classList.remove('ativa');
-    iniciarRodada();
-  });
-  var btnSom = $('btnSom'), btnVoz = $('btnVoz');
-  aoTocar(btnSom, function(){
-    estado.som = !estado.som; salvar();
-    btnSom.textContent = 'Som: ' + (estado.som ? 'ligado' : 'desligado');
-    if (estado.som) { audio(); somToque(); }
-  });
-  aoTocar(btnVoz, function(){
-    estado.voz = !estado.voz; salvar();
-    btnVoz.textContent = 'Voz: ' + (estado.voz ? 'ligada' : 'desligada');
-  });
-  aoTocar($('btnEditarPerfil'), function(){
-    painelAdulto.classList.remove('ativa');
-    mostrarAjustes();
-  });
-  aoTocar($('btnZerar'), function(){
-    estado.nivel = 0; estado.doces = 0; estado.esperas = 0;
-    salvar(); atualizarPlacar();
-    dizer('Vamos começar do início!', false);
-  });
+/* =========================================================================
+   4. CENARIO: neve e confete
+   ========================================================================= */
+(function neve(){
+  var alvo = $('neve');
+  for (var i=0;i<14;i++){
+    var d = document.createElement('div');
+    d.className = 'floco';
+    var tam = 12 + Math.random()*26;
+    d.style.left = (Math.random()*100) + 'vw';
+    d.style.width = tam + 'px'; d.style.height = tam + 'px';
+    d.style.animationDuration = (11 + Math.random()*14) + 's';
+    d.style.animationDelay = (-Math.random()*18) + 's';
+    d.style.opacity = 0.2 + Math.random()*0.45;
+    d.innerHTML = '<svg viewBox="0 0 100 100" width="100%" height="100%"><use href="#simFloco"/></svg>';
+    alvo.appendChild(d);
+  }
+})();
 
-  /* ================= inicio ================= */
-  carregar();
-  $('inputNome').value = estado.nome;
-  $('btnSom').textContent = 'Som: ' + (estado.som ? 'ligado' : 'desligado');
-  $('btnVoz').textContent = 'Voz: ' + (estado.voz ? 'ligada' : 'desligada');
-  aplicarPerfil();
+var cv = $('confete'), cx2 = cv.getContext('2d'), particulas = [], animando = false;
+function medirConfete(){
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.floor(window.innerWidth*dpr);
+  cv.height = Math.floor(window.innerHeight*dpr);
+  cv.style.width = window.innerWidth+'px';
+  cv.style.height = window.innerHeight+'px';
+  cx2.setTransform(dpr,0,0,dpr,0,0);
+}
+medirConfete();
+window.addEventListener('resize', medirConfete);
+window.addEventListener('orientationchange', function(){ setTimeout(medirConfete, 300); });
+
+var CORES = ['#FFD400','#E8112D','#0B5FFF','#FF6FB5','#FFFFFF','#4DA3FF'];
+function soltarConfete(qtd){
+  var L = window.innerWidth, A = window.innerHeight;
+  for (var i=0;i<qtd;i++){
+    particulas.push({
+      x: L/2 + (Math.random()-0.5)*L*0.6,
+      y: A*0.45 + (Math.random()-0.5)*90,
+      vx:(Math.random()-0.5)*13, vy:-6-Math.random()*12,
+      tam:8+Math.random()*14, cor:CORES[(Math.random()*CORES.length)|0],
+      rot:Math.random()*Math.PI, vrot:(Math.random()-0.5)*0.3
+    });
+  }
+  if (!animando){ animando = true; requestAnimationFrame(passoConfete); }
+}
+function passoConfete(){
+  cx2.clearRect(0,0,window.innerWidth,window.innerHeight);
+  for (var i=particulas.length-1;i>=0;i--){
+    var p = particulas[i];
+    p.vy += 0.42; p.vx *= 0.995; p.x += p.vx; p.y += p.vy; p.rot += p.vrot;
+    if (p.y > window.innerHeight + 60){ particulas.splice(i,1); continue; }
+    cx2.save(); cx2.translate(p.x,p.y); cx2.rotate(p.rot);
+    cx2.fillStyle = p.cor; cx2.fillRect(-p.tam/2,-p.tam/2,p.tam,p.tam*0.6);
+    cx2.restore();
+  }
+  if (particulas.length) requestAnimationFrame(passoConfete);
+  else { animando = false; cx2.clearRect(0,0,window.innerWidth,window.innerHeight); }
+}
+
+/* =========================================================================
+   5. ELEMENTOS
+   ========================================================================= */
+var telaSetup = $('telaSetup'), telaPainel = $('telaPainel');
+var cenaInicio = $('cenaInicio'), cenaFesta = $('cenaFesta'), cenaConsolo = $('cenaConsolo');
+var festaEscapando = $('festaEscapando');
+var caminhoDoce = $('caminhoDoce'), caminhoFesta = $('caminhoFesta');
+var princesaCaixa = $('princesaCaixa'), retrato = $('retrato'), retratoPreview = $('retratoPreview');
+var blocoEspera = $('espera'), estrelaFill = $('estrelaFill'), estrelaBrilho = $('estrelaBrilho');
+var gemas = $('gemas'), mesaPremio = $('mesaPremio');
+var repetirFesta = $('repetirFesta'), repetirConsolo = $('repetirConsolo');
+
+/* =========================================================================
+   6. MAQUINA DE ESTADOS DO JOGO
+   repouso -> apresentacao -> espera -> (festa | consolo) -> repouso
+   ========================================================================= */
+var fase = 'repouso';
+var podePegarDoce = false;
+var raf = 0;
+/* a regra e ensinada por inteiro na primeira rodada da sessao e sempre que
+   o tempo de espera muda; nas repeticoes vai a versao curta, para nao cansar */
+var precisaApresentar = true;
+
+function limparTudo(){
+  limparAgenda();
+  Voz.parar();
+  cancelAnimationFrame(raf);
+  podePegarDoce = false;
+  caminhoDoce.classList.remove('destacado','apagado','chamando');
+  caminhoFesta.classList.remove('destacado','apagado','brilhando');
+  caminhoFesta.querySelector('svg').style.transform = '';
+  princesaCaixa.classList.remove('acena','pula');
+  blocoEspera.classList.remove('visivel','pulsa');
+  cenaFesta.classList.remove('ativa'); cenaConsolo.classList.remove('ativa');
+  festaEscapando.classList.remove('rodando');
+  repetirFesta.classList.remove('aparece'); repetirConsolo.classList.remove('aparece');
   definirProgresso(0);
-  numeroEstrela.textContent = segundosDoNivel();
+}
+
+/* ---------- repouso: nada acontece ate a crianca tocar ---------- */
+function irParaRepouso(){
+  bloquearToques();
+  limparTudo();
+  fase = 'repouso';
+  montarGemas(0);
+  caminhoDoce.classList.add('apagado');
+  caminhoFesta.classList.add('apagado');
+  princesaCaixa.classList.add('pula');
+  cenaInicio.classList.add('ativa');
+}
+
+/* ---------- apresentacao: a regra e mostrada, uma coisa de cada vez ---------- */
+function comecarRodada(){
+  bloquearToques();
+  cenaInicio.classList.remove('ativa');
+  limparTudo();
+  fase = 'apresentacao';
+  montarGemas(passosDaVez());
+  princesaCaixa.classList.add('pula');
+
+  caminhoDoce.classList.add('apagado');
+  caminhoFesta.classList.add('apagado');
+
+  somComecar();
+
+  if (!precisaApresentar){ apresentacaoCurta(); return; }
+  precisaApresentar = false;
+
+  /* beat 1: so o docinho */
+  depois(RITMO.entradaCena, function(){
+    caminhoDoce.classList.remove('apagado');
+    caminhoDoce.classList.add('destacado');
+    somAponta();
+    princesaCaixa.classList.add('acena');
+    Voz.dizer('doce', function(){
+      depois(RITMO.pausaEntreBeats, beat2);
+    });
+    depois(RITMO.destaque, function(){ caminhoDoce.classList.remove('destacado'); });
+  });
+
+  /* beat 2: so a festa */
+  function beat2(){
+    if (fase !== 'apresentacao') return;
+    podePegarDoce = true;                 /* a partir daqui a escolha existe de verdade */
+    caminhoDoce.classList.add('apagado');
+    caminhoFesta.classList.remove('apagado');
+    caminhoFesta.classList.add('destacado');
+    somAponta();
+    Voz.dizer('festa', function(){
+      depois(RITMO.pausaEntreBeats, beat3);
+    });
+    depois(RITMO.destaque, function(){ caminhoFesta.classList.remove('destacado'); });
+  }
+
+  /* beat 3: a estrela aparece e a espera comeca */
+  function beat3(){
+    if (fase !== 'apresentacao') return;
+    caminhoDoce.classList.remove('apagado');
+    caminhoFesta.classList.remove('apagado');
+    blocoEspera.classList.add('visivel');
+    depois(RITMO.entradaCena, function(){
+      Voz.dizer('comecou', function(){
+        depois(500, iniciarEspera);
+      });
+    });
+  }
+}
+
+/* versao curta: relembra a escolha em ~3,5 s, sem repetir a explicacao inteira */
+function apresentacaoCurta(){
+  depois(500, function(){
+    if (fase !== 'apresentacao') return;
+    caminhoDoce.classList.remove('apagado'); caminhoDoce.classList.add('destacado');
+    somAponta();
+    depois(900, function(){
+      if (fase !== 'apresentacao') return;
+      podePegarDoce = true;              /* a escolha ja existe assim que ela ve o doce */
+      caminhoDoce.classList.remove('destacado');
+      caminhoFesta.classList.remove('apagado'); caminhoFesta.classList.add('destacado');
+      somAponta();
+      depois(900, function(){
+        if (fase !== 'apresentacao') return;
+        caminhoFesta.classList.remove('destacado');
+        blocoEspera.classList.add('visivel');
+        princesaCaixa.classList.add('acena');
+        depois(600, function(){
+          if (fase !== 'apresentacao') return;
+          Voz.dizer('comecou', function(){ depois(400, iniciarEspera); });
+        });
+      });
+    });
+  });
+}
+
+/* ---------- espera: a barrinha da estrela enche em pedacos contaveis ---------- */
+function iniciarEspera(){
+  if (fase !== 'apresentacao') return;
+  fase = 'espera';
+
+  var segundos = segundosDaVez();
+  var passos = passosDaVez();
+  var passoAtual = 0;
+
+  podePegarDoce = false;                                 /* trava curta contra toque acidental */
+  depois(RITMO.travaToque, function(){ podePegarDoce = true; });
+
+  blocoEspera.classList.add('pulsa');
+  caminhoDoce.classList.add('chamando');
+  caminhoFesta.classList.add('brilhando','crescendo');
+  princesaCaixa.classList.add('acena');
+
+  var incentivos = ['meio1','meio2','meio3'];
+  var proximoIncentivo = 0;
+  var inicio = performance.now();
+
+  function quadro(agora){
+    if (fase !== 'espera') return;
+    var p = Math.min(1, (agora - inicio) / (segundos*1000));
+    definirProgresso(p);
+
+    var alcancado = Math.floor(p * passos);
+    while (passoAtual < alcancado){
+      acenderGema(passoAtual);
+      somPasso(passoAtual, passos);
+      /* a festa cresce um pouquinho a cada pedaco: a recompensa fica visivel */
+      caminhoFesta.querySelector('svg').style.transform = 'scale(' + (1 + (passoAtual+1) * 0.05) + ')';
+      passoAtual++;
+      /* incentivo falado nos intervalos, nunca sobreposto ao som do passo */
+      if (passoAtual < passos && passoAtual % 2 === 1){
+        (function(){
+          var qual = incentivos[proximoIncentivo % incentivos.length];
+          proximoIncentivo++;
+          depois(420, function(){ if (fase === 'espera') Voz.dizer(qual); });
+        })();
+      }
+    }
+
+    if (p >= 1){ venceu(); return; }
+    raf = requestAnimationFrame(quadro);
+  }
+  raf = requestAnimationFrame(quadro);
+}
+
+function definirProgresso(p){
+  var y = 100 - p*100;
+  estrelaFill.setAttribute('y', y);
+  estrelaBrilho.setAttribute('y', Math.max(0, y-3));
+}
+
+function montarGemas(n){
+  gemas.innerHTML = '';
+  for (var i=0;i<n;i++){
+    var g = document.createElement('div');
+    g.className = 'gema';
+    gemas.appendChild(g);
+  }
+}
+function acenderGema(i){
+  var g = gemas.children[i];
+  if (g) g.classList.add('aceso');
+}
+
+/* ---------- fim feliz ---------- */
+function venceu(){
+  bloquearToques();
+  var tamanho = Math.min(estado.nivel, NIVEIS.length-1);
+  fase = 'festa';
+  limparAgenda();
+  cancelAnimationFrame(raf);
+  podePegarDoce = false;
+  definirProgresso(1);
+  for (var i=0;i<gemas.children.length;i++) gemas.children[i].classList.add('aceso');
+
+  estado.doces += 2; estado.estrelas += 1;
+  if (estado.nivel < NIVEIS.length-1){ estado.nivel++; precisaApresentar = true; }
+  salvar(); desenharBandejas(true);
+
+  /* a festa fica maior conforme o tempo esperado */
+  mesaPremio.style.width = 'min(' + (50 + tamanho*6) + 'vw, ' + (330 + tamanho*60) + 'px)';
+
+  cenaFesta.classList.add('ativa');
+  somFesta(tamanho);
+  soltarConfete(80 + tamanho*60);
+  depois(500,  function(){ soltarConfete(60 + tamanho*45); });
+  depois(1000, function(){ soltarConfete(50 + tamanho*40); });
+  depois(900,  function(){ Voz.dizer('vitoria'); });
+
+  depois(RITMO.festejar, function(){ repetirFesta.classList.add('aparece'); });
+}
+
+/* ---------- pegou o docinho antes: sem punicao, com o vislumbre da festa ---------- */
+function pegouDoce(){
+  if (fase !== 'espera' && fase !== 'apresentacao') return;
+  if (!podePegarDoce) return;
+
+  fase = 'consolo';
+  bloquearToques();
+  limparAgenda();
+  Voz.parar();
+  cancelAnimationFrame(raf);
+  podePegarDoce = false;
+
+  somDoce();                                   /* resposta imediata ao dedo dela */
+  estado.doces += 1; salvar(); desenharBandejas(true);
+
+  caminhoDoce.classList.remove('chamando');
+  caminhoFesta.classList.remove('brilhando');
+  blocoEspera.classList.remove('pulsa');
+
+  /* a festa aparece grande e vai embora, devagar o bastante para ela ver */
+  festaEscapando.classList.remove('rodando');
+  void festaEscapando.offsetWidth;
+  festaEscapando.classList.add('rodando');
+
+  depois(2900, function(){
+    cenaConsolo.classList.add('ativa');
+    Voz.dizer('consolo');
+    depois(RITMO.consolar, function(){ repetirConsolo.classList.add('aparece'); });
+  });
+}
+
+/* =========================================================================
+   7. BANDEJAS (o placar sem numeros: ela ve os doces se acumulando)
+   ========================================================================= */
+function desenharBandejas(animarUltimo){
+  desenhar($('bandejaDoces'), '#simDoce', estado.doces, animarUltimo);
+  desenhar($('bandejaEstrelas'), '#simEstrelaCheia', estado.estrelas, animarUltimo);
+  function desenhar(caixa, simbolo, qtd, animar){
+    var mostrar = Math.min(qtd, 12);
+    caixa.innerHTML = '';
+    for (var i=0;i<mostrar;i++){
+      var s = document.createElementNS('http://www.w3.org/2000/svg','svg');
+      s.setAttribute('viewBox','0 0 100 100');
+      var u = document.createElementNS('http://www.w3.org/2000/svg','use');
+      u.setAttribute('href', simbolo);
+      s.appendChild(u);
+      if (animar && i === mostrar-1) s.classList.add('novo');
+      caixa.appendChild(s);
+    }
+    if (!mostrar){
+      var vazio = document.createElementNS('http://www.w3.org/2000/svg','svg');
+      vazio.setAttribute('viewBox','0 0 100 100');
+      vazio.style.opacity = '.3';
+      var u2 = document.createElementNS('http://www.w3.org/2000/svg','use');
+      u2.setAttribute('href', simbolo);
+      vazio.appendChild(u2);
+      caixa.appendChild(vazio);
+    }
+  }
+}
+
+/* =========================================================================
+   8. FOTO E NOME
+   ========================================================================= */
+function aplicarPerfil(){
+  var inicial = (estado.nome||'M').trim().charAt(0).toUpperCase() || 'M';
+  [retrato, retratoPreview].forEach(function(el){
+    if (estado.foto){ el.style.backgroundImage = 'url(' + estado.foto + ')'; el.textContent = ''; }
+    else { el.style.backgroundImage = 'none'; el.textContent = inicial; }
+  });
+}
+
+$('inputFoto').addEventListener('change', function(e){
+  var arq = e.target.files && e.target.files[0];
+  if (!arq) return;
+  var leitor = new FileReader();
+  leitor.onload = function(ev){
+    var img = new Image();
+    img.onload = function(){
+      var lado = 320, c = document.createElement('canvas');
+      c.width = c.height = lado;
+      var g = c.getContext('2d'), min = Math.min(img.width, img.height);
+      g.drawImage(img,(img.width-min)/2,(img.height-min)/2,min,min,0,0,lado,lado);
+      estado.foto = c.toDataURL('image/jpeg', 0.82);
+      salvar(); aplicarPerfil();
+    };
+    img.src = ev.target.result;
+  };
+  leitor.readAsDataURL(arq);
+});
+
+/* =========================================================================
+   9. GRAVACAO DA VOZ DO ADULTO
+   ========================================================================= */
+var gravador = null, gravandoId = null, pedacos = [];
+
+function montarListaFrases(){
+  var lista = $('listaFrases');
+  lista.innerHTML = '';
+  FRASES.forEach(function(f){
+    var linha = document.createElement('div');
+    linha.className = 'frase';
+
+    var marca = document.createElement('span');
+    marca.className = 'marca';
+    marca.id = 'marca-' + f.id;
+    marca.textContent = Voz.clipes[f.id] ? '✓' : '·';
+
+    var txt = document.createElement('span');
+    txt.className = 'txt';
+    txt.textContent = f.txt.replace('!', ', ' + estado.nome + '!');
+
+    var bGravar = document.createElement('button');
+    bGravar.className = 'botao pequeno';
+    bGravar.type = 'button';
+    bGravar.textContent = 'Gravar';
+    bGravar.id = 'grav-' + f.id;
+
+    var bOuvir = document.createElement('button');
+    bOuvir.className = 'botao pequeno amarelo';
+    bOuvir.type = 'button';
+    bOuvir.textContent = 'Ouvir';
+
+    aoTocar(bGravar, function(){ alternarGravacao(f.id, bGravar); });
+    aoTocar(bOuvir, function(){
+      if (Voz.clipes[f.id]){ var a = new Audio(Voz.clipes[f.id]); a.play(); }
+      else { var guardaModo = estado.modoVoz; estado.modoVoz = 'tts'; Voz.dizer(f.id, function(){ estado.modoVoz = guardaModo; }); }
+    });
+
+    linha.appendChild(marca); linha.appendChild(txt);
+    linha.appendChild(bGravar); linha.appendChild(bOuvir);
+    lista.appendChild(linha);
+  });
+}
+
+function alternarGravacao(id, botao){
+  if (gravador && gravandoId === id){ pararGravacao(); return; }
+  if (gravador) pararGravacao();
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){
+    $('notaGravacao').textContent = 'Este navegador não permite gravar áudio. Use a voz do aparelho.';
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(fluxo){
+    pedacos = [];
+    gravador = new MediaRecorder(fluxo);
+    gravandoId = id;
+    botao.textContent = 'Parar';
+    botao.classList.add('gravando');
+    $('notaGravacao').textContent = 'Gravando... fale a frase e toque em Parar.';
+    gravador.ondataavailable = function(e){ if (e.data && e.data.size) pedacos.push(e.data); };
+    gravador.onstop = function(){
+      fluxo.getTracks().forEach(function(t){ t.stop(); });
+      var blob = new Blob(pedacos, {type: pedacos.length && pedacos[0].type ? pedacos[0].type : 'audio/webm'});
+      DB.salvar(id, blob, function(ok){
+        if (ok){
+          if (Voz.clipes[id]) URL.revokeObjectURL(Voz.clipes[id]);
+          Voz.clipes[id] = URL.createObjectURL(blob);
+          var m = $('marca-' + id); if (m) m.textContent = '✓';
+          $('notaGravacao').textContent = 'Gravado! Toque em Ouvir para conferir.';
+          estado.modoVoz = 'gravada'; salvar(); marcarBotoesVoz();
+        } else {
+          $('notaGravacao').textContent = 'Não consegui guardar a gravação neste aparelho.';
+        }
+      });
+      gravador = null; gravandoId = null;
+      botao.textContent = 'Gravar'; botao.classList.remove('gravando');
+    };
+    gravador.start();
+    /* limite de seguranca: 15 s por frase */
+    depois(15000, function(){ if (gravador && gravandoId === id) pararGravacao(); });
+  }).catch(function(){
+    $('notaGravacao').textContent = 'Preciso da permissão do microfone para gravar.';
+  });
+}
+function pararGravacao(){ if (gravador && gravador.state !== 'inactive') gravador.stop(); }
+
+/* =========================================================================
+   10. TELAS DO ADULTO
+   ========================================================================= */
+function marcarBotoesVoz(){
+  var bs = $('escolhaVoz').querySelectorAll('button');
+  for (var i=0;i<bs.length;i++)
+    bs[i].setAttribute('aria-pressed', bs[i].getAttribute('data-voz') === estado.modoVoz ? 'true' : 'false');
+  atualizarNotaVoz();
+}
+function marcarBotoesTempo(){
+  var bs = $('escolhaTempo').querySelectorAll('button');
+  for (var i=0;i<bs.length;i++)
+    bs[i].setAttribute('aria-pressed', Number(bs[i].getAttribute('data-nivel')) === estado.nivel ? 'true' : 'false');
+}
+function atualizarNotaVoz(){
+  var n = $('notaVoz'); if (!n) return;
+  if (estado.modoVoz === 'gravada'){
+    var qtd = 0; for (var k in Voz.clipes) qtd++;
+    n.textContent = qtd
+      ? qtd + ' de ' + FRASES.length + ' frases gravadas. As que faltarem usam a voz do aparelho.'
+      : 'Nenhuma frase gravada ainda. Grave abaixo — enquanto isso, uso a voz do aparelho.';
+  } else if (estado.modoVoz === 'tts'){
+    n.textContent = Voz.vozEscolhida
+      ? 'Usando a voz "' + Voz.vozEscolhida.name + '". Para melhorar muito no iPad: Ajustes → Acessibilidade → Conteúdo Falado → Vozes → Português (Brasil) e baixe a versão Aprimorada ou Premium.'
+      : 'Nenhuma voz em português encontrada neste aparelho.';
+  } else {
+    n.textContent = 'A princesa fica em silêncio. Os sons do jogo continuam.';
+  }
+}
+function atualizarNotaProgresso(){
+  $('notaProgresso').textContent =
+    'Espera atual: ' + segundosDaVez() + ' segundos, em ' + passosDaVez() + ' pedacinhos.';
+}
+
+function irParaJogo(){
+  bloquearToques();
+  telaSetup.classList.remove('ativa');
+  telaPainel.classList.remove('ativa');
+  irParaRepouso();
+}
+function abrirSetup(){
+  bloquearToques();
+  limparTudo();
+  fase = 'repouso';
+  cenaInicio.classList.remove('ativa');
+  telaPainel.classList.remove('ativa');
+  telaSetup.classList.add('ativa');
+}
+function abrirPainel(){
+  bloquearToques();
+  limparTudo();
+  fase = 'repouso';
+  cenaInicio.classList.remove('ativa');
+  montarListaFrases();
+  marcarBotoesVoz(); atualizarNotaProgresso();
+  telaPainel.classList.add('ativa');
+}
+
+/* ---- tela cheia e tela acesa ---- */
+var travaTela = null;
+function pedirTelaCheia(){
+  var e = document.documentElement;
+  try{
+    if (!document.fullscreenElement && e.requestFullscreen) e.requestFullscreen().catch(function(){});
+  }catch(err){}
+}
+function manterTelaAcesa(){
+  if (!estado.telaAcesa || !navigator.wakeLock) return;
+  try{ navigator.wakeLock.request('screen').then(function(t){ travaTela = t; }).catch(function(){}); }catch(e){}
+}
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'visible') manterTelaAcesa();
+  else { limparAgenda(); Voz.parar(); }
+});
+
+/* =========================================================================
+   11. LIGACOES DE TOQUE
+   ========================================================================= */
+aoTocar($('botaoComecar'), function(){
+  audio(); somToque();          /* o primeiro toque tambem libera o audio no iOS */
+  pedirTelaCheia(); manterTelaAcesa();
+  comecarRodada();
+});
+aoTocar(repetirFesta,  function(){ somToque(); irParaRepouso(); depois(250, comecarRodada); });
+aoTocar(repetirConsolo,function(){ somToque(); irParaRepouso(); depois(250, comecarRodada); });
+
+aoTocar(caminhoDoce, function(){ pegouDoce(); });
+aoTocar(caminhoFesta, function(){
+  /* tocar na festa antes da hora nao premia nem pune: a princesa so pede calma */
+  if (fase === 'espera' || fase === 'apresentacao'){
+    somAponta();
+    princesaCaixa.classList.add('acena');
+    blocoEspera.classList.add('visivel');
+  }
+});
+
+/* engrenagem: precisa de toque longo, para a crianca nao abrir sem querer */
+(function(){
+  var alvo = $('btnAdulto'), t = 0;
+  function comeca(e){
+    if (e.cancelable) e.preventDefault();
+    clearTimeout(t);
+    t = setTimeout(abrirPainel, 1200);
+  }
+  function cancela(){ clearTimeout(t); }
+  alvo.addEventListener('pointerdown', comeca, {passive:false});
+  ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ alvo.addEventListener(ev, cancela); });
+})();
+
+aoTocar($('btnEscolherFoto'), function(){ $('inputFoto').click(); });
+aoTocar($('btnRemoverFoto'), function(){ estado.foto = null; salvar(); aplicarPerfil(); });
+$('inputNome').addEventListener('input', function(){
+  estado.nome = this.value.trim() || 'Maricotta';
+  salvar(); aplicarPerfil();
+});
+
+(function(){
+  var bs = $('escolhaTempo').querySelectorAll('button');
+  for (var i=0;i<bs.length;i++){
+    (function(b){
+      aoTocar(b, function(){
+        estado.nivel = Number(b.getAttribute('data-nivel'));
+        precisaApresentar = true;
+        salvar(); marcarBotoesTempo(); atualizarNotaProgresso();
+      });
+    })(bs[i]);
+  }
+})();
+
+(function(){
+  var bs = $('escolhaVoz').querySelectorAll('button');
+  for (var i=0;i<bs.length;i++){
+    (function(b){
+      aoTocar(b, function(){
+        estado.modoVoz = b.getAttribute('data-voz');
+        salvar(); marcarBotoesVoz();
+        if (estado.modoVoz !== 'off') Voz.dizer('meio1');
+      });
+    })(bs[i]);
+  }
+})();
+
+aoTocar($('btnIrParaJogo'), function(){ audio(); somToque(); irParaJogo(); });
+aoTocar($('btnAbrirVoz'), function(){ abrirPainel(); });
+aoTocar($('btnFecharPainel'), function(){ irParaJogo(); });
+aoTocar($('btnVoltarSetup'), function(){ abrirSetup(); });
+aoTocar($('btnZerar'), function(){
+  estado.nivel = 0; estado.doces = 0; estado.estrelas = 0;
+  precisaApresentar = true;
+  salvar(); desenharBandejas(false); marcarBotoesTempo(); atualizarNotaProgresso();
+});
+aoTocar($('btnSom'), function(){
+  estado.som = !estado.som; salvar();
+  $('btnSom').textContent = 'Som: ' + (estado.som ? 'ligado' : 'desligado');
+  if (estado.som){ audio(); somToque(); }
+});
+aoTocar($('btnTelaAcesa'), function(){
+  estado.telaAcesa = !estado.telaAcesa; salvar();
+  $('btnTelaAcesa').textContent = 'Manter tela acesa: ' + (estado.telaAcesa ? 'sim' : 'não');
+  if (estado.telaAcesa) manterTelaAcesa();
+  else if (travaTela){ try{ travaTela.release(); }catch(e){} travaTela = null; }
+});
+
+/* =========================================================================
+   12. PARTIDA
+   ========================================================================= */
+carregar();
+$('inputNome').value = estado.nome;
+$('btnSom').textContent = 'Som: ' + (estado.som ? 'ligado' : 'desligado');
+$('btnTelaAcesa').textContent = 'Manter tela acesa: ' + (estado.telaAcesa ? 'sim' : 'não');
+aplicarPerfil();
+desenharBandejas(false);
+montarGemas(0);
+definirProgresso(0);
+marcarBotoesTempo(); marcarBotoesVoz(); atualizarNotaProgresso();
+
+DB.ler(function(clipes){
+  for (var id in clipes) Voz.clipes[id] = URL.createObjectURL(clipes[id]);
+  atualizarNotaVoz();
+});
 
 })();
 </script>
