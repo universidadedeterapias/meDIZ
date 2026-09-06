@@ -1,0 +1,1027 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0B3FCC">
+<title>Reino do Gelo Cintilante - O Jogo da Espera</title>
+<style>
+  /* ===================================================================
+     REINO DO GELO CINTILANTE — jogo da gratificacao adiada (3 anos)
+     Versao 1: visualizacao funcional simples (formas + sons basicos)
+     =================================================================== */
+
+  :root{
+    --azul-escuro:#062A8C;
+    --azul:#0B5FFF;
+    --azul-claro:#4DA3FF;
+    --azul-gelo:#BFE4FF;
+    --amarelo:#FFD400;
+    --amarelo-forte:#FFB300;
+    --vermelho:#E8112D;
+    --rosa:#FF6FB5;
+    --branco:#FFFFFF;
+    --sombra:0 8px 0 rgba(6,42,140,.35);
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  html,body{
+    height:100%;
+    margin:0;
+    overflow:hidden;
+    overscroll-behavior:none;
+    touch-action:manipulation;
+    -webkit-user-select:none;
+    user-select:none;
+    font-family:"Baloo 2", "Trebuchet MS", "Verdana", system-ui, sans-serif;
+    background:var(--azul-escuro);
+    color:#fff;
+  }
+
+  body{
+    position:fixed;
+    inset:0;
+    background:
+      radial-gradient(circle at 20% 12%, #6FC5FF 0%, transparent 55%),
+      radial-gradient(circle at 82% 18%, #9BD9FF 0%, transparent 45%),
+      linear-gradient(180deg, #0B5FFF 0%, #0A46D6 55%, #062A8C 100%);
+  }
+
+  /* ---------- neve de fundo ---------- */
+  #neve{ position:absolute; inset:0; pointer-events:none; z-index:1; }
+  .floco{
+    position:absolute; top:-8vh; color:#fff; opacity:.75;
+    animation:cair linear infinite;
+  }
+  @keyframes cair{
+    0%{ transform:translateY(-10vh) rotate(0deg); }
+    100%{ transform:translateY(115vh) rotate(360deg); }
+  }
+
+  /* ---------- estrutura de telas ---------- */
+  .tela{
+    position:absolute; inset:0; z-index:5;
+    display:none;
+    flex-direction:column;
+    padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right))
+            calc(10px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
+  }
+  .tela.ativa{ display:flex; }
+
+  /* ===================== TELA DE AJUSTES ===================== */
+  #telaAjustes{ align-items:center; justify-content:flex-start; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+
+  .cartao{
+    margin:auto;
+    width:min(92vw, 640px);
+    background:rgba(255,255,255,.14);
+    border:4px solid rgba(255,255,255,.55);
+    border-radius:32px;
+    padding:22px 4vw;
+    text-align:center;
+    backdrop-filter:blur(6px);
+  }
+  .titulo{
+    font-size:clamp(26px, 5.2vw, 52px);
+    font-weight:900;
+    line-height:1.05;
+    margin:0 0 1vh;
+    color:var(--amarelo);
+    text-shadow:0 4px 0 #C98C00, 0 0 26px rgba(255,212,0,.55);
+  }
+  .subtitulo{ font-size:clamp(15px, 2.6vw, 24px); margin:0 0 2vh; color:#EAF5FF; font-weight:700; }
+
+  .campo{ display:block; width:100%; margin:1.4vh 0; }
+  .campo label{ display:block; font-size:clamp(14px,2.2vw,20px); font-weight:800; margin-bottom:6px; color:#fff; }
+  .campo input[type=text]{
+    width:100%; padding:16px 18px; font-size:clamp(20px,3.4vw,30px); font-weight:800;
+    text-align:center; border:4px solid var(--amarelo); border-radius:20px;
+    background:#fff; color:var(--azul-escuro); font-family:inherit;
+  }
+
+  .botao{
+    display:inline-flex; align-items:center; justify-content:center; gap:10px;
+    border:none; border-radius:999px; cursor:pointer;
+    font-family:inherit; font-weight:900; color:#fff;
+    padding:18px 34px; font-size:clamp(18px,3.2vw,30px);
+    background:linear-gradient(180deg,#33A0FF,#0B5FFF);
+    box-shadow:var(--sombra);
+    transition:transform .12s ease;
+  }
+  .botao:active{ transform:translateY(4px); box-shadow:0 4px 0 rgba(6,42,140,.35); }
+  .botao.amarelo{ background:linear-gradient(180deg,#FFE45C,#FFB300); color:#5A3B00; box-shadow:0 8px 0 #B37D00; }
+  .botao.rosa{ background:linear-gradient(180deg,#FF9ACF,#FF3F9E); box-shadow:0 8px 0 #B7156A; }
+  .botao.grande{ padding:22px 46px; font-size:clamp(22px,4.2vw,38px); }
+
+  .fotoAlvo{
+    width:min(34vw,150px); height:min(34vw,150px);
+    border-radius:50%; margin:0 auto;
+    border:6px solid var(--amarelo);
+    background:#fff center/cover no-repeat;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--azul); font-size:min(16vw,64px); font-weight:900;
+    box-shadow:0 0 0 6px rgba(255,255,255,.35), 0 10px 24px rgba(0,0,0,.3);
+  }
+  .linhaBotoes{ display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin-top:1.6vh; }
+  #inputFoto{ display:none; }
+
+  /* ===================== TELA DE JOGO ===================== */
+  #telaJogo{ gap:1vh; }
+
+  .topo{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .placar{
+    display:flex; align-items:center; gap:8px;
+    background:rgba(255,255,255,.16); border:3px solid rgba(255,255,255,.5);
+    border-radius:999px; padding:6px 16px;
+    font-weight:900; font-size:clamp(14px,2.4vw,22px);
+  }
+  .placar svg{ width:clamp(20px,3.4vw,32px); height:clamp(20px,3.4vw,32px); }
+  #btnAjustes{
+    width:44px; height:44px; border-radius:50%; border:3px solid rgba(255,255,255,.5);
+    background:rgba(255,255,255,.16); color:#fff; font-size:20px; line-height:1;
+    display:flex; align-items:center; justify-content:center; opacity:.55;
+  }
+
+  /* palco: princesa + estrela */
+  .palco{
+    display:flex; align-items:center; justify-content:center;
+    gap:2vw; flex:0 0 auto; min-height:0;
+  }
+  .princesaBox{ position:relative; display:flex; align-items:flex-end; }
+  .princesaBox svg.princesa{ width:min(26vw,190px); height:auto; filter:drop-shadow(0 8px 12px rgba(0,0,0,.3)); }
+  .princesaBox.acena svg.princesa{ animation:acenar .8s ease-in-out 3; transform-origin:50% 90%; }
+  @keyframes acenar{ 0%,100%{transform:rotate(0)} 30%{transform:rotate(-5deg)} 70%{transform:rotate(5deg)} }
+
+  #medalhao{
+    position:absolute; right:-12%; bottom:8%;
+    width:min(13vw,86px); height:min(13vw,86px);
+    border-radius:50%; border:5px solid var(--amarelo);
+    background:#fff center/cover no-repeat;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--azul); font-weight:900; font-size:min(6.5vw,38px);
+    box-shadow:0 0 18px rgba(255,212,0,.8);
+  }
+
+  .estrelaBox{ position:relative; width:min(30vw,210px); flex:0 0 auto; }
+  .estrelaBox svg{ width:100%; height:auto; display:block; }
+  #numeroEstrela{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:min(12vw,80px); font-weight:900; color:#fff; padding-top:6%;
+    text-shadow:
+      -4px -4px 0 #062A8C, 4px -4px 0 #062A8C, -4px 4px 0 #062A8C, 4px 4px 0 #062A8C,
+      0 -4px 0 #062A8C, 0 4px 0 #062A8C, -4px 0 0 #062A8C, 4px 0 0 #062A8C,
+      0 8px 14px rgba(0,0,0,.35);
+  }
+  .estrelaBox.pulsa{ animation:pulsar .9s ease-in-out infinite; }
+  @keyframes pulsar{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+
+  /* balao de fala */
+  #balao{
+    margin:0 auto; max-width:min(94vw,900px);
+    background:#fff; color:var(--azul-escuro);
+    border:5px solid var(--amarelo);
+    border-radius:26px; padding:12px 20px;
+    font-size:clamp(16px,3vw,30px); font-weight:900; text-align:center;
+    line-height:1.2; min-height:1.2em;
+    box-shadow:0 8px 0 rgba(0,0,0,.18);
+  }
+
+  /* barra de espera */
+  .barra{
+    width:min(92vw,900px); height:clamp(16px,2.6vh,26px); margin:0 auto;
+    background:rgba(255,255,255,.25); border:3px solid #fff; border-radius:999px; overflow:hidden;
+  }
+  #barraFill{ height:100%; width:0%; border-radius:999px; background:linear-gradient(90deg,#FFE45C,#FFB300); }
+
+  /* os dois caminhos */
+  .caminhos{
+    flex:1 1 auto; min-height:0;
+    display:flex; gap:2.4vw; align-items:stretch; padding:1vh 0 0;
+  }
+  .caminho{
+    flex:1 1 0; min-width:0;
+    border-radius:30px; padding:1.2vh 1.6vw;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.8vh;
+    border:5px solid rgba(255,255,255,.6);
+    position:relative; overflow:hidden;
+  }
+  .caminho .rotulo{
+    font-size:clamp(14px,2.5vw,26px); font-weight:900; text-align:center; line-height:1.1;
+    text-shadow:0 2px 0 rgba(0,0,0,.25);
+  }
+
+  #caminhoAgora{ background:linear-gradient(180deg, #FF5AA8 0%, #E8112D 100%); }
+  #caminhoAgora:active{ transform:scale(.97); }
+  #caminhoAgora .doceAgora{ width:min(30vw,190px); height:auto; filter:drop-shadow(0 6px 8px rgba(0,0,0,.35)); }
+  #caminhoAgora.tremer{ animation:tremer .5s ease-in-out infinite; }
+  @keyframes tremer{ 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+
+  #caminhoEsperar{
+    background:linear-gradient(180deg, #3A93FF 0%, #0A3AC0 100%);
+    border-color:var(--amarelo);
+    animation:brilhar 2s ease-in-out infinite;
+  }
+  @keyframes brilhar{
+    0%,100%{ box-shadow:inset 0 0 26px rgba(255,212,0,.45), 0 0 12px rgba(255,212,0,.5); }
+    50%{ box-shadow:inset 0 0 64px rgba(255,212,0,.95), 0 0 34px rgba(255,212,0,.9); }
+  }
+  .mesaFesta{ width:min(42vw,340px); height:auto; filter:drop-shadow(0 8px 10px rgba(0,0,0,.35)); }
+
+  /* ===================== OVERLAYS ===================== */
+  .overlay{
+    position:fixed; inset:0; z-index:30;
+    display:none; flex-direction:column; align-items:center; justify-content:center; gap:2vh;
+    padding:4vh 5vw; text-align:center;
+  }
+  .overlay.ativa{ display:flex; }
+
+  #overlayFesta{
+    background:
+      radial-gradient(circle at 50% 42%, rgba(255,212,0,.75) 0%, rgba(255,111,181,.35) 38%, transparent 62%),
+      linear-gradient(180deg,#0B5FFF 0%, #062A8C 100%);
+  }
+  #overlayDocinho{ background:linear-gradient(180deg,#0B5FFF 0%, #062A8C 100%); }
+
+  .mesaPremio{
+    width:min(58vw,440px); height:auto;
+    filter:drop-shadow(0 10px 14px rgba(0,0,0,.35));
+    animation:crescerFesta .8s ease-out;
+    transform-origin:50% 100%;
+  }
+  @keyframes crescerFesta{ 0%{transform:scale(.2)} 65%{transform:scale(1.12)} 100%{transform:scale(1)} }
+
+  .premio{ display:flex; gap:3vw; align-items:center; justify-content:center; }
+  .premio svg{ width:min(20vw,140px); height:auto; animation:saltar .7s ease-out; }
+  #overlayDocinho .premio svg{ width:min(36vw,230px); }
+  @keyframes saltar{ 0%{transform:scale(0) rotate(-25deg)} 60%{transform:scale(1.25) rotate(8deg)} 100%{transform:scale(1) rotate(0)} }
+
+  .mensagemGrande{
+    font-size:clamp(24px,5.6vw,58px); font-weight:900; color:#fff; line-height:1.1;
+    text-shadow:0 5px 0 rgba(0,0,0,.3), 0 0 30px rgba(255,212,0,.6);
+  }
+  .mensagemPequena{ font-size:clamp(16px,3vw,28px); font-weight:800; color:#EAF5FF; }
+
+  /* festa que "escapa" quando toca cedo */
+  #festaFugindo{
+    position:fixed; inset:0; z-index:20; display:none;
+    flex-direction:column; align-items:center; justify-content:center; gap:2vh;
+    pointer-events:none; text-align:center;
+    background:
+      radial-gradient(circle at 50% 44%, rgba(255,212,0,.85) 0%, rgba(255,111,181,.45) 40%, transparent 68%),
+      linear-gradient(180deg, rgba(11,95,255,.92), rgba(6,42,140,.94));
+  }
+  #festaFugindo.rodando{ display:flex; animation:festaEscapa 2.1s ease-in-out forwards; }
+  #festaFugindo svg{ width:min(64vw,480px); height:auto; }
+  .fugindoTexto{
+    font-size:clamp(20px,4.2vw,42px); font-weight:900; color:#fff;
+    text-shadow:0 4px 0 rgba(0,0,0,.3);
+  }
+  @keyframes festaEscapa{
+    0%{ opacity:0; transform:scale(.7); }
+    30%{ opacity:1; transform:scale(1); }
+    65%{ opacity:1; transform:scale(1.02); }
+    100%{ opacity:0; transform:scale(.75) translateY(-14vh); }
+  }
+
+  #confete{ position:absolute; inset:0; z-index:40; pointer-events:none; }
+
+  /* painel do adulto */
+  #painelAdulto{ background:rgba(6,42,140,.94); z-index:60; }
+
+  .dica{ font-size:clamp(12px,2vw,18px); color:#BFE4FF; font-weight:700; }
+
+  /* pouca altura (iPad deitado): compacta o cartao de ajustes */
+  @media (max-height: 820px){
+    .titulo{ font-size:clamp(22px,4vw,38px); }
+    .subtitulo{ font-size:clamp(13px,2vw,18px); margin-bottom:10px; }
+    .cartao{ padding:16px 4vw; }
+    .fotoAlvo{ width:min(22vw,110px); height:min(22vw,110px); font-size:min(11vw,44px); }
+    .botao{ padding:12px 24px; font-size:clamp(15px,2.4vw,22px); }
+    .botao.grande{ padding:16px 32px; font-size:clamp(18px,3vw,28px); }
+    .campo input[type=text]{ padding:10px 14px; font-size:clamp(18px,2.6vw,24px); }
+    .campo{ margin:10px 0; }
+  }
+
+  /* telas pequenas em pe: empilha melhor */
+  @media (max-aspect-ratio: 3/4){
+    .palco{ gap:1vw; }
+    .princesaBox svg.princesa{ width:min(34vw,170px); }
+    .estrelaBox{ width:min(38vw,190px); }
+    .caminhos{ gap:3vw; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ biblioteca de desenhos (SVG) ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="gVestido" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4DA3FF"/><stop offset="100%" stop-color="#0B3FCC"/>
+    </linearGradient>
+    <clipPath id="recorteEstrela">
+      <path d="M50 5 L62 36 L96 38 L69 59 L79 92 L50 73 L21 92 L31 59 L4 38 L38 36 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- docinho pequeno -->
+  <symbol id="simDoce" viewBox="0 0 100 100">
+    <polygon points="6,30 28,50 6,70" fill="#FF6FB5" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+    <polygon points="94,30 72,50 94,70" fill="#FF6FB5" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="50" cy="50" r="28" fill="#E8112D" stroke="#fff" stroke-width="4"/>
+    <path d="M50 26 A24 24 0 0 1 74 50" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M50 74 A24 24 0 0 1 26 50" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <circle cx="40" cy="39" r="6" fill="#fff" opacity=".9"/>
+  </symbol>
+
+  <!-- estrela cheia (placar) -->
+  <symbol id="simEstrela" viewBox="0 0 100 100">
+    <path d="M50 5 L62 36 L96 38 L69 59 L79 92 L50 73 L21 92 L31 59 L4 38 L38 36 Z"
+          fill="#FFD400" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
+  </symbol>
+
+  <!-- floco de neve -->
+  <symbol id="simFloco" viewBox="0 0 100 100">
+    <g stroke="#fff" stroke-width="8" stroke-linecap="round">
+      <line x1="50" y1="8" x2="50" y2="92"/>
+      <line x1="14" y1="29" x2="86" y2="71"/>
+      <line x1="14" y1="71" x2="86" y2="29"/>
+      <line x1="50" y1="24" x2="36" y2="14"/><line x1="50" y1="24" x2="64" y2="14"/>
+      <line x1="50" y1="76" x2="36" y2="86"/><line x1="50" y1="76" x2="64" y2="86"/>
+    </g>
+  </symbol>
+
+  <!-- princesa do gelo (personagem original: Princesa Lumi) -->
+  <symbol id="simPrincesa" viewBox="0 0 120 170">
+    <!-- vestido -->
+    <path d="M60 62 L96 158 Q60 168 24 158 Z" fill="url(#gVestido)" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M60 62 L78 158 Q60 162 42 158 Z" fill="#8FCBFF" opacity=".85"/>
+    <!-- capa de gelo -->
+    <path d="M46 66 Q22 110 30 156 Q40 150 44 120 Z" fill="#BFE4FF" opacity=".8"/>
+    <path d="M74 66 Q98 110 90 156 Q80 150 76 120 Z" fill="#BFE4FF" opacity=".8"/>
+    <!-- bracos -->
+    <path d="M46 70 Q28 84 30 104" stroke="#FFD9BE" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <path d="M74 70 Q92 82 92 100" stroke="#FFD9BE" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <!-- corpete -->
+    <path d="M60 46 Q46 50 46 68 Q60 74 74 68 Q74 50 60 46 Z" fill="#0B5FFF" stroke="#fff" stroke-width="3"/>
+    <circle cx="60" cy="60" r="5" fill="#FFD400"/>
+    <!-- cabelo atras -->
+    <path d="M60 8 Q28 12 30 52 Q34 70 44 74 Q36 44 46 30 Z" fill="#EAF6FF"/>
+    <path d="M60 8 Q92 12 90 52 Q86 70 76 74 Q84 44 74 30 Z" fill="#EAF6FF"/>
+    <!-- rosto -->
+    <circle cx="60" cy="34" r="21" fill="#FFD9BE"/>
+    <path d="M39 30 Q42 12 60 12 Q78 12 81 30 Q70 22 60 24 Q50 22 39 30 Z" fill="#EAF6FF"/>
+    <circle cx="52" cy="35" r="3.4" fill="#0B2B6B"/>
+    <circle cx="68" cy="35" r="3.4" fill="#0B2B6B"/>
+    <circle cx="53.2" cy="34" r="1.2" fill="#fff"/>
+    <circle cx="69.2" cy="34" r="1.2" fill="#fff"/>
+    <circle cx="45" cy="42" r="4.2" fill="#FF9ACF" opacity=".85"/>
+    <circle cx="75" cy="42" r="4.2" fill="#FF9ACF" opacity=".85"/>
+    <path d="M53 44 Q60 51 67 44" stroke="#C4324F" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+    <!-- coroa de gelo -->
+    <path d="M42 16 L48 6 L54 14 L60 2 L66 14 L72 6 L78 16 Z" fill="#FFD400" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/>
+    <circle cx="60" cy="12" r="2.6" fill="#4DA3FF"/>
+  </symbol>
+
+  <!-- mesa grande de festa de doces -->
+  <symbol id="simMesaFesta" viewBox="0 0 260 170">
+    <!-- brilho -->
+    <circle cx="130" cy="80" r="78" fill="#FFD400" opacity=".22"/>
+    <!-- mesa -->
+    <rect x="14" y="118" width="232" height="20" rx="10" fill="#FF6FB5" stroke="#fff" stroke-width="4"/>
+    <rect x="40" y="138" width="14" height="26" rx="6" fill="#0B3FCC"/>
+    <rect x="206" y="138" width="14" height="26" rx="6" fill="#0B3FCC"/>
+    <!-- bolo central -->
+    <rect x="96" y="66" width="68" height="26" rx="6" fill="#fff" stroke="#0B5FFF" stroke-width="3"/>
+    <rect x="86" y="92" width="88" height="26" rx="6" fill="#4DA3FF" stroke="#fff" stroke-width="3"/>
+    <rect x="96" y="60" width="68" height="10" rx="5" fill="#FF6FB5"/>
+    <rect x="126" y="40" width="8" height="20" rx="4" fill="#FFD400"/>
+    <path d="M130 30 Q124 38 130 42 Q136 38 130 30 Z" fill="#E8112D"/>
+    <!-- cupcakes -->
+    <g>
+      <path d="M30 96 L38 118 H58 L66 96 Z" fill="#FFD400" stroke="#fff" stroke-width="3"/>
+      <path d="M28 96 Q30 76 48 76 Q66 76 68 96 Z" fill="#FF6FB5" stroke="#fff" stroke-width="3"/>
+      <circle cx="48" cy="72" r="6" fill="#E8112D" stroke="#fff" stroke-width="2"/>
+    </g>
+    <g>
+      <path d="M194 96 L202 118 H222 L230 96 Z" fill="#FFD400" stroke="#fff" stroke-width="3"/>
+      <path d="M192 96 Q194 76 212 76 Q230 76 232 96 Z" fill="#FF6FB5" stroke="#fff" stroke-width="3"/>
+      <circle cx="212" cy="72" r="6" fill="#E8112D" stroke="#fff" stroke-width="2"/>
+    </g>
+    <!-- pirulitos -->
+    <g>
+      <rect x="80" y="86" width="5" height="34" rx="2.5" fill="#fff"/>
+      <circle cx="82.5" cy="80" r="16" fill="#E8112D" stroke="#fff" stroke-width="4"/>
+      <path d="M82.5 68 A12 12 0 0 1 94.5 80" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/>
+    </g>
+    <g>
+      <rect x="176" y="86" width="5" height="34" rx="2.5" fill="#fff"/>
+      <circle cx="178.5" cy="80" r="16" fill="#4DA3FF" stroke="#fff" stroke-width="4"/>
+      <path d="M178.5 68 A12 12 0 0 1 190.5 80" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/>
+    </g>
+    <!-- estrelinhas -->
+    <g fill="#FFD400">
+      <polygon points="20,30 24,42 36,42 26,49 30,61 20,54 10,61 14,49 4,42 16,42"/>
+      <polygon points="240,26 244,38 256,38 246,45 250,57 240,50 230,57 234,45 224,38 236,38"/>
+    </g>
+  </symbol>
+</svg>
+
+<!-- neve de fundo -->
+<div id="neve" aria-hidden="true"></div>
+
+<!-- ======================= TELA DE AJUSTES ======================= -->
+<section class="tela ativa" id="telaAjustes">
+  <div class="cartao">
+    <h1 class="titulo">Reino do Gelo Cintilante</h1>
+    <p class="subtitulo">O jogo de esperar a mágica<br><span class="dica">com a Princesa Lumi</span></p>
+
+    <div class="fotoAlvo" id="fotoPreview">M</div>
+
+    <div class="linhaBotoes">
+      <button class="botao" id="btnEscolherFoto" type="button">Escolher a foto</button>
+      <button class="botao rosa" id="btnTirarFoto" type="button">Remover a foto</button>
+    </div>
+    <input type="file" id="inputFoto" accept="image/*">
+
+    <div class="campo">
+      <label for="inputNome">Nome da criança</label>
+      <input type="text" id="inputNome" value="Maricotta" autocomplete="off" spellcheck="false">
+    </div>
+
+    <button class="botao amarelo grande" id="btnComecar" type="button">Começar a brincar</button>
+    <p class="dica" style="margin-top:14px">Toque com o dedo. Sem mouse, sem teclado, sem setas.</p>
+  </div>
+</section>
+
+<!-- ======================= TELA DE JOGO ======================= -->
+<section class="tela" id="telaJogo">
+
+  <div class="topo">
+    <div class="placar">
+      <svg viewBox="0 0 100 100"><use href="#simDoce"/></svg>
+      <span id="placarDoces">0</span>
+    </div>
+    <div class="placar">
+      <svg viewBox="0 0 100 100"><use href="#simEstrela"/></svg>
+      <span id="placarEsperas">0</span>
+    </div>
+    <button id="btnAjustes" type="button" aria-label="Ajustes do adulto">&#9881;</button>
+  </div>
+
+  <div class="palco">
+    <div class="princesaBox" id="princesaBox">
+      <svg class="princesa" viewBox="0 0 120 170"><use href="#simPrincesa"/></svg>
+      <div id="medalhao">M</div>
+    </div>
+
+    <div class="estrelaBox" id="estrelaBox">
+      <svg viewBox="0 0 100 100">
+        <path d="M50 5 L62 36 L96 38 L69 59 L79 92 L50 73 L21 92 L31 59 L4 38 L38 36 Z"
+              fill="#0B3FCC" opacity=".55"/>
+        <g clip-path="url(#recorteEstrela)">
+          <rect id="estrelaFill" x="0" y="100" width="100" height="100" fill="#FFD400"/>
+          <rect id="estrelaBrilho" x="0" y="100" width="100" height="8" fill="#FFF6B0"/>
+        </g>
+        <path d="M50 5 L62 36 L96 38 L69 59 L79 92 L50 73 L21 92 L31 59 L4 38 L38 36 Z"
+              fill="none" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
+      </svg>
+      <div id="numeroEstrela">3</div>
+    </div>
+  </div>
+
+  <div id="balao">Vamos brincar!</div>
+
+  <div class="barra"><div id="barraFill"></div></div>
+
+  <div class="caminhos">
+    <div class="caminho" id="caminhoAgora">
+      <svg class="doceAgora" viewBox="0 0 100 100"><use href="#simDoce"/></svg>
+      <div class="rotulo">1 docinho<br>agora</div>
+    </div>
+
+    <div class="caminho" id="caminhoEsperar">
+      <svg class="mesaFesta" viewBox="0 0 260 170"><use href="#simMesaFesta"/></svg>
+      <div class="rotulo">2 doces e a<br>festa mágica</div>
+    </div>
+  </div>
+
+  <!-- festa que aparece e escapa quando a crianca toca cedo -->
+  <div id="festaFugindo">
+    <svg viewBox="0 0 260 170"><use href="#simMesaFesta"/></svg>
+    <div class="fugindoTexto">Poxa... a festa foi embora</div>
+  </div>
+
+  <!-- premio: esperou ate o fim -->
+  <div class="overlay" id="overlayFesta">
+    <div class="mensagemGrande" id="tituloFesta">Você esperou!</div>
+    <svg class="mesaPremio" id="mesaPremio" viewBox="0 0 260 170"><use href="#simMesaFesta"/></svg>
+    <div class="premio">
+      <svg viewBox="0 0 100 100"><use href="#simDoce"/></svg>
+      <svg viewBox="0 0 100 100"><use href="#simDoce"/></svg>
+    </div>
+    <div class="mensagemPequena" id="subtituloFesta">Ganhou 2 doces e a festa mágica!</div>
+    <button class="botao amarelo grande" id="btnDeNovoFesta" type="button">Brincar de novo</button>
+  </div>
+
+  <!-- premio: pegou o docinho antes -->
+  <div class="overlay" id="overlayDocinho">
+    <div class="mensagemGrande" id="tituloDocinho">Você ganhou 1 docinho!</div>
+    <div class="premio"><svg viewBox="0 0 100 100"><use href="#simDoce"/></svg></div>
+    <div class="mensagemPequena" id="subtituloDocinho">A festa foi embora dessa vez... vamos tentar esperar?</div>
+    <button class="botao grande" id="btnDeNovoDocinho" type="button">Quero tentar de novo</button>
+  </div>
+
+  <!-- painel do adulto -->
+  <div class="overlay" id="painelAdulto">
+    <div class="mensagemGrande" style="font-size:clamp(20px,4vw,38px)">Cantinho do adulto</div>
+    <div class="linhaBotoes">
+      <button class="botao" id="btnSom" type="button">Som: ligado</button>
+      <button class="botao" id="btnVoz" type="button">Voz: ligada</button>
+    </div>
+    <div class="linhaBotoes">
+      <button class="botao rosa" id="btnEditarPerfil" type="button">Trocar foto / nome</button>
+      <button class="botao rosa" id="btnZerar" type="button">Começar do início</button>
+    </div>
+    <div class="mensagemPequena" id="infoNivel">Espera atual: 3 segundos</div>
+    <button class="botao amarelo grande" id="btnFecharPainel" type="button">Voltar ao jogo</button>
+  </div>
+
+</section>
+
+<canvas id="confete"></canvas>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ================= utilidades ================= */
+  var $ = function(id){ return document.getElementById(id); };
+
+  // toque unico e confiavel no iPad (pointerdown + fallback click, com anti-duplo)
+  function aoTocar(el, fn){
+    var ultimo = 0;
+    function h(e){
+      var agora = Date.now();
+      if (agora - ultimo < 450) return;
+      ultimo = agora;
+      if (e.cancelable) e.preventDefault();
+      fn(e);
+    }
+    el.addEventListener('pointerdown', h, {passive:false});
+    el.addEventListener('click', h, {passive:false});
+  }
+
+  // bloqueia zoom por gesto/duplo toque no Safari
+  ['gesturestart','gesturechange','gestureend'].forEach(function(ev){
+    document.addEventListener(ev, function(e){ e.preventDefault(); }, {passive:false});
+  });
+  document.addEventListener('touchmove', function(e){
+    if (e.touches.length > 1) e.preventDefault();
+  }, {passive:false});
+
+  /* ================= estado ================= */
+  var NIVEIS = [3, 5, 8, 12];      // segundos de espera, em progressao
+  var CHAVE  = 'reinoGelo.v1';
+
+  var estado = {
+    nome: 'Maricotta',
+    foto: null,
+    nivel: 0,        // indice em NIVEIS
+    doces: 0,
+    esperas: 0,
+    som: true,
+    voz: true
+  };
+
+  function salvar(){
+    try { localStorage.setItem(CHAVE, JSON.stringify(estado)); } catch(e){}
+  }
+  function carregar(){
+    try {
+      var bruto = localStorage.getItem(CHAVE);
+      if (bruto) {
+        var d = JSON.parse(bruto);
+        for (var k in estado) if (d[k] !== undefined) estado[k] = d[k];
+      }
+    } catch(e){}
+  }
+
+  /* ================= som (WebAudio, sem arquivos) ================= */
+  var ctx = null;
+  function audio(){
+    if (!estado.som) return null;
+    if (!ctx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC();
+    }
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  function nota(freq, inicio, dur, vol, tipo){
+    var c = audio(); if (!c) return;
+    var t = c.currentTime + inicio;
+    var osc = c.createOscillator();
+    var g = c.createGain();
+    osc.type = tipo || 'triangle';
+    osc.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol || 0.18, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(g); g.connect(c.destination);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  }
+  function somTique(){ nota(880, 0, 0.09, 0.07, 'sine'); }
+  function somToque(){ nota(520, 0, 0.12, 0.14, 'square'); }
+  function somDocinho(){ nota(520, 0, 0.22, 0.14); nota(392, 0.16, 0.32, 0.12); }
+  function somFesta(tamanho){
+    var escala = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.7, 1318.5];
+    var qtd = Math.min(escala.length, 4 + tamanho * 2);
+    for (var i = 0; i < qtd; i++) nota(escala[i], i * 0.11, 0.35, 0.16);
+    for (var j = 0; j < 3; j++) nota(1046.5 * (1 + j * 0.25), 0.9 + j * 0.09, 0.5, 0.1, 'sine');
+  }
+
+  /* ================= voz ================= */
+  function falar(texto){
+    if (!estado.voz || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      var f = new SpeechSynthesisUtterance(texto);
+      f.lang = 'pt-BR';
+      f.rate = 0.92;
+      f.pitch = 1.25;
+      window.speechSynthesis.speak(f);
+    } catch(e){}
+  }
+
+  /* ================= neve decorativa ================= */
+  (function neve(){
+    var alvo = $('neve');
+    for (var i = 0; i < 16; i++) {
+      var d = document.createElement('div');
+      d.className = 'floco';
+      var tam = 10 + Math.random() * 26;
+      d.style.left = (Math.random() * 100) + 'vw';
+      d.style.width = tam + 'px';
+      d.style.height = tam + 'px';
+      d.style.animationDuration = (9 + Math.random() * 12) + 's';
+      d.style.animationDelay = (-Math.random() * 15) + 's';
+      d.style.opacity = 0.25 + Math.random() * 0.5;
+      d.innerHTML = '<svg viewBox="0 0 100 100" width="100%" height="100%"><use href="#simFloco"/></svg>';
+      alvo.appendChild(d);
+    }
+  })();
+
+  /* ================= confete ================= */
+  var cv = $('confete'), cx2 = cv.getContext('2d');
+  var particulas = [], animandoConfete = false;
+
+  function redimensionar(){
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.floor(window.innerWidth * dpr);
+    cv.height = Math.floor(window.innerHeight * dpr);
+    cv.style.width = window.innerWidth + 'px';
+    cv.style.height = window.innerHeight + 'px';
+    cx2.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', redimensionar);
+  window.addEventListener('orientationchange', function(){ setTimeout(redimensionar, 250); });
+  redimensionar();
+
+  var CORES = ['#FFD400', '#E8112D', '#0B5FFF', '#FF6FB5', '#FFFFFF', '#4DA3FF'];
+
+  function soltarConfete(qtd){
+    var L = window.innerWidth, A = window.innerHeight;
+    for (var i = 0; i < qtd; i++) {
+      particulas.push({
+        x: L / 2 + (Math.random() - 0.5) * L * 0.5,
+        y: A * 0.45 + (Math.random() - 0.5) * 80,
+        vx: (Math.random() - 0.5) * 13,
+        vy: -6 - Math.random() * 12,
+        tam: 7 + Math.random() * 13,
+        cor: CORES[(Math.random() * CORES.length) | 0],
+        rot: Math.random() * Math.PI,
+        vrot: (Math.random() - 0.5) * 0.32,
+        vida: 1
+      });
+    }
+    if (!animandoConfete) { animandoConfete = true; requestAnimationFrame(passoConfete); }
+  }
+
+  function passoConfete(){
+    cx2.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    for (var i = particulas.length - 1; i >= 0; i--) {
+      var p = particulas[i];
+      p.vy += 0.42; p.vx *= 0.995;
+      p.x += p.vx; p.y += p.vy; p.rot += p.vrot;
+      if (p.y > window.innerHeight + 60) { particulas.splice(i, 1); continue; }
+      cx2.save();
+      cx2.translate(p.x, p.y);
+      cx2.rotate(p.rot);
+      cx2.fillStyle = p.cor;
+      cx2.fillRect(-p.tam / 2, -p.tam / 2, p.tam, p.tam * 0.62);
+      cx2.restore();
+    }
+    if (particulas.length) requestAnimationFrame(passoConfete);
+    else { animandoConfete = false; cx2.clearRect(0, 0, window.innerWidth, window.innerHeight); }
+  }
+
+  /* ================= elementos ================= */
+  var telaAjustes = $('telaAjustes'), telaJogo = $('telaJogo');
+  var balao = $('balao'), barraFill = $('barraFill');
+  var estrelaFill = $('estrelaFill'), estrelaBrilho = $('estrelaBrilho');
+  var numeroEstrela = $('numeroEstrela'), estrelaBox = $('estrelaBox');
+  var caminhoAgora = $('caminhoAgora'), caminhoEsperar = $('caminhoEsperar');
+  var overlayFesta = $('overlayFesta'), overlayDocinho = $('overlayDocinho');
+  var festaFugindo = $('festaFugindo'), painelAdulto = $('painelAdulto');
+  var medalhao = $('medalhao'), fotoPreview = $('fotoPreview'), princesaBox = $('princesaBox');
+
+  /* ================= rodada ================= */
+  var rodando = false, raf = 0, timerIncentivo = 0, indiceIncentivo = 0;
+
+  function segundosDoNivel(){ return NIVEIS[Math.min(estado.nivel, NIVEIS.length - 1)]; }
+
+  function incentivos(){
+    var n = estado.nome;
+    return [
+      'Isso, ' + n + ', continua esperando!',
+      'Que legal, ' + n + '! A estrela está enchendo!',
+      'Você consegue, ' + n + '!',
+      'A mágica está chegando, ' + n + '!',
+      'Só mais um pouquinho, ' + n + '!',
+      'Que espera bonita, ' + n + '!'
+    ];
+  }
+
+  function dizer(texto, comVoz){
+    balao.textContent = texto;
+    if (comVoz) falar(texto);
+  }
+
+  function atualizarPlacar(){
+    $('placarDoces').textContent = estado.doces;
+    $('placarEsperas').textContent = estado.esperas;
+    $('infoNivel').textContent = 'Espera atual: ' + segundosDoNivel() + ' segundos';
+  }
+
+  function definirProgresso(p){
+    var y = 100 - (p * 100);
+    estrelaFill.setAttribute('y', y);
+    estrelaBrilho.setAttribute('y', Math.max(0, y - 4));
+    barraFill.style.width = (p * 100) + '%';
+  }
+
+  function iniciarRodada(){
+    overlayFesta.classList.remove('ativa');
+    overlayDocinho.classList.remove('ativa');
+    festaFugindo.classList.remove('rodando');
+    caminhoAgora.classList.remove('tremer');
+    estrelaBox.classList.add('pulsa');
+
+    var seg = segundosDoNivel();
+    definirProgresso(0);
+    numeroEstrela.textContent = seg;
+    atualizarPlacar();
+
+    var convite = estado.nome + ', você pode pegar 1 docinho agora... ou esperar a estrela encher e ganhar 2 doces!';
+    dizer(convite, true);
+
+    indiceIncentivo = 0;
+    rodando = true;
+
+    var inicio = performance.now();
+    var ultimoSeg = -1;
+
+    clearInterval(timerIncentivo);
+    timerIncentivo = setInterval(function(){
+      if (!rodando) return;
+      var lista = incentivos();
+      dizer(lista[indiceIncentivo % lista.length], true);
+      indiceIncentivo++;
+    }, Math.max(2200, (seg * 1000) / 3));
+
+    function quadro(agora){
+      if (!rodando) return;
+      var decorrido = (agora - inicio) / 1000;
+      var p = Math.min(1, decorrido / seg);
+      definirProgresso(p);
+
+      var restante = Math.max(0, Math.ceil(seg - decorrido));
+      if (restante !== ultimoSeg) {
+        ultimoSeg = restante;
+        numeroEstrela.textContent = restante;
+        if (restante > 0) somTique();
+      }
+
+      if (p >= 1) { venceuEspera(); return; }
+      raf = requestAnimationFrame(quadro);
+    }
+    raf = requestAnimationFrame(quadro);
+
+    // nos ultimos instantes o docinho "chama" a atencao (tentacao gentil)
+    setTimeout(function(){ if (rodando) caminhoAgora.classList.add('tremer'); }, seg * 1000 * 0.45);
+  }
+
+  function pararRodada(){
+    rodando = false;
+    cancelAnimationFrame(raf);
+    clearInterval(timerIncentivo);
+    estrelaBox.classList.remove('pulsa');
+    caminhoAgora.classList.remove('tremer');
+  }
+
+  /* --------- esperou ate o fim: FESTA --------- */
+  function venceuEspera(){
+    pararRodada();
+    definirProgresso(1);
+    numeroEstrela.textContent = '0';
+
+    var tamanho = Math.min(estado.nivel, NIVEIS.length - 1); // festa proporcional ao tempo
+    estado.doces += 2;
+    estado.esperas += 1;
+    if (estado.nivel < NIVEIS.length - 1) estado.nivel++;
+    salvar();
+    atualizarPlacar();
+
+    somFesta(tamanho);
+    soltarConfete(70 + tamanho * 60);
+    setTimeout(function(){ soltarConfete(50 + tamanho * 45); }, 420);
+    setTimeout(function(){ soltarConfete(40 + tamanho * 40); }, 900);
+
+    princesaBox.classList.add('acena');
+    setTimeout(function(){ princesaBox.classList.remove('acena'); }, 2600);
+
+    var mesa = $('mesaPremio');
+    mesa.style.width = 'min(' + (46 + tamanho * 6) + 'vw, ' + (340 + tamanho * 60) + 'px)';
+
+    $('tituloFesta').textContent = 'UAU! Você esperou, ' + estado.nome + '!';
+    $('subtituloFesta').textContent = 'Ganhou 2 doces e a festa mágica ficou ainda maior!';
+    overlayFesta.classList.add('ativa');
+    falar('Uau! Você esperou, ' + estado.nome + '! Ganhou dois doces e a festa mágica!');
+  }
+
+  /* --------- pegou o docinho antes: sem punicao --------- */
+  function pegouDocinho(){
+    if (!rodando) return;
+    pararRodada();
+
+    estado.doces += 1;
+    salvar();
+    atualizarPlacar();
+
+    somDocinho();
+
+    // a festa aparece rapidinho ao fundo e vai embora, gentilmente
+    festaFugindo.classList.remove('rodando');
+    void festaFugindo.offsetWidth;   // reinicia a animacao
+    festaFugindo.classList.add('rodando');
+
+    $('tituloDocinho').textContent = 'Você ganhou 1 docinho, ' + estado.nome + '!';
+    $('subtituloDocinho').textContent = 'Poxa, a festa foi embora dessa vez... quer tentar esperar de novo?';
+
+    setTimeout(function(){
+      overlayDocinho.classList.add('ativa');
+      falar('Você ganhou um docinho, ' + estado.nome + '. Poxa, a festa foi embora dessa vez. Vamos tentar esperar de novo?');
+    }, 1500);
+  }
+
+  /* ================= perfil (foto e nome) ================= */
+  function aplicarPerfil(){
+    var inicial = (estado.nome || 'M').trim().charAt(0).toUpperCase() || 'M';
+    [medalhao, fotoPreview].forEach(function(el){
+      if (estado.foto) {
+        el.style.backgroundImage = 'url(' + estado.foto + ')';
+        el.textContent = '';
+      } else {
+        el.style.backgroundImage = 'none';
+        el.textContent = inicial;
+      }
+    });
+    atualizarPlacar();
+  }
+
+  $('inputFoto').addEventListener('change', function(e){
+    var arq = e.target.files && e.target.files[0];
+    if (!arq) return;
+    var leitor = new FileReader();
+    leitor.onload = function(ev){
+      // reduz a imagem para caber no localStorage
+      var img = new Image();
+      img.onload = function(){
+        var lado = 320;
+        var c = document.createElement('canvas');
+        c.width = c.height = lado;
+        var g = c.getContext('2d');
+        var min = Math.min(img.width, img.height);
+        g.drawImage(img, (img.width - min) / 2, (img.height - min) / 2, min, min, 0, 0, lado, lado);
+        estado.foto = c.toDataURL('image/jpeg', 0.82);
+        salvar();
+        aplicarPerfil();
+      };
+      img.src = ev.target.result;
+    };
+    leitor.readAsDataURL(arq);
+  });
+
+  aoTocar($('btnEscolherFoto'), function(){ $('inputFoto').click(); });
+  aoTocar($('btnTirarFoto'), function(){ estado.foto = null; salvar(); aplicarPerfil(); });
+
+  $('inputNome').addEventListener('input', function(){
+    estado.nome = this.value.trim() || 'Maricotta';
+    salvar();
+    aplicarPerfil();
+  });
+
+  /* ================= navegacao ================= */
+  function mostrarJogo(){
+    telaAjustes.classList.remove('ativa');
+    telaJogo.classList.add('ativa');
+  }
+  function mostrarAjustes(){
+    pararRodada();
+    telaJogo.classList.remove('ativa');
+    telaAjustes.classList.add('ativa');
+  }
+
+  aoTocar($('btnComecar'), function(){
+    estado.nome = ($('inputNome').value || '').trim() || 'Maricotta';
+    salvar();
+    aplicarPerfil();
+    audio();              // desbloqueia o som no primeiro toque (exigencia do iOS)
+    somToque();
+    mostrarJogo();
+    iniciarRodada();
+  });
+
+  aoTocar(caminhoAgora, function(){ pegouDocinho(); });
+
+  aoTocar(caminhoEsperar, function(){
+    if (rodando) {
+      somTique();
+      dizer('Ainda não, ' + estado.nome + '! Espera a estrela encher!', true);
+    }
+  });
+
+  aoTocar($('btnDeNovoFesta'), function(){ somToque(); iniciarRodada(); });
+  aoTocar($('btnDeNovoDocinho'), function(){ somToque(); iniciarRodada(); });
+
+  /* ---- painel do adulto: precisa segurar o dedo 1,2s ---- */
+  (function(){
+    var alvo = $('btnAjustes'), t = 0;
+    function comeca(e){
+      if (e.cancelable) e.preventDefault();
+      clearTimeout(t);
+      t = setTimeout(function(){
+        pararRodada();
+        atualizarPlacar();
+        painelAdulto.classList.add('ativa');
+      }, 1200);
+    }
+    function cancela(){ clearTimeout(t); }
+    alvo.addEventListener('pointerdown', comeca, {passive:false});
+    ['pointerup','pointerleave','pointercancel'].forEach(function(ev){
+      alvo.addEventListener(ev, cancela);
+    });
+  })();
+
+  aoTocar($('btnFecharPainel'), function(){
+    painelAdulto.classList.remove('ativa');
+    iniciarRodada();
+  });
+  var btnSom = $('btnSom'), btnVoz = $('btnVoz');
+  aoTocar(btnSom, function(){
+    estado.som = !estado.som; salvar();
+    btnSom.textContent = 'Som: ' + (estado.som ? 'ligado' : 'desligado');
+    if (estado.som) { audio(); somToque(); }
+  });
+  aoTocar(btnVoz, function(){
+    estado.voz = !estado.voz; salvar();
+    btnVoz.textContent = 'Voz: ' + (estado.voz ? 'ligada' : 'desligada');
+  });
+  aoTocar($('btnEditarPerfil'), function(){
+    painelAdulto.classList.remove('ativa');
+    mostrarAjustes();
+  });
+  aoTocar($('btnZerar'), function(){
+    estado.nivel = 0; estado.doces = 0; estado.esperas = 0;
+    salvar(); atualizarPlacar();
+    dizer('Vamos começar do início!', false);
+  });
+
+  /* ================= inicio ================= */
+  carregar();
+  $('inputNome').value = estado.nome;
+  $('btnSom').textContent = 'Som: ' + (estado.som ? 'ligado' : 'desligado');
+  $('btnVoz').textContent = 'Voz: ' + (estado.voz ? 'ligada' : 'desligada');
+  aplicarPerfil();
+  definirProgresso(0);
+  numeroEstrela.textContent = segundosDoNivel();
+
+})();
+</script>
+</body>
+</html>
