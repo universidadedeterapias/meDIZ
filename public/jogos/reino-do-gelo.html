@@ -123,6 +123,46 @@ html,body{
 #girafa > svg:first-child{ transition:opacity .3s, filter .3s; }
 #girafa.mudo > svg:first-child{ opacity:.6; filter:grayscale(.6); }
 
+/* --- maozinha: mostra onde tocar quando a crianca hesita --- */
+#maozinha{
+  position:fixed; z-index:58; pointer-events:none;
+  width:clamp(46px,9vmin,86px); height:clamp(46px,9vmin,86px);
+  opacity:0; transition:opacity .3s ease, left .4s ease, top .4s ease;
+  filter:drop-shadow(0 4px 6px rgba(0,0,0,.45));
+}
+#maozinha.visivel{ opacity:1; animation:tocarDica 1.15s ease-in-out infinite; }
+@keyframes tocarDica{
+  0%,100%{ transform:translate(-50%,0) scale(1); }
+  35%{ transform:translate(-50%,-22%) scale(1.06); }
+  55%{ transform:translate(-50%,4%) scale(.92); }
+}
+
+/* --- faisca em qualquer toque: nenhum dedo cai no vazio --- */
+.faisca{
+  position:fixed; z-index:57; pointer-events:none;
+  width:14px; height:14px; margin:-7px 0 0 -7px; border-radius:50%;
+  background:radial-gradient(circle, #fff 0%, #FFD400 55%, rgba(255,212,0,0) 70%);
+  animation:estourarFaisca .5s ease-out forwards;
+}
+@keyframes estourarFaisca{
+  0%{ transform:scale(.4); opacity:.95; }
+  100%{ transform:scale(4.2); opacity:0; }
+}
+
+/* --- a peca que chega esperando o dedo --- */
+#pecaChegando{ transform-box:view-box; transform-origin:center; }
+#caminhoFesta.temPeca{ animation:pedeToque 1.1s ease-in-out infinite; }
+#caminhoFesta.temPeca #aureola{ animation:aureolaPulsa 1.2s ease-in-out infinite; }
+@keyframes aureolaPulsa{
+  0%,100%{ opacity:.10; transform:scale(.86); }
+  50%{ opacity:.30; transform:scale(1.04); }
+}
+#aureola{ transform-box:view-box; transform-origin:130px 46px; }
+@keyframes pedeToque{
+  0%,100%{ box-shadow:inset 0 0 30px rgba(255,212,0,.5), 0 0 12px rgba(255,212,0,.6); }
+  50%{ box-shadow:inset 0 0 80px rgba(255,212,0,1), 0 0 40px rgba(255,212,0,1); }
+}
+
 /* --- premios que voam ate a bandeja: a regra explicada sem uma palavra --- */
 .voando{
   position:fixed; z-index:55; pointer-events:none;
@@ -416,6 +456,52 @@ html,body{
     <polygon points="49,36 88,60 49,84" fill="#E8112D" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
   </symbol>
 
+  <!-- pecas que a crianca coloca na mesa, uma de cada vez -->
+  <symbol id="pcBolo" viewBox="0 0 100 100">
+    <rect x="16" y="96" width="68" height="4" rx="2" fill="#0B3FCC" opacity=".25"/>
+    <rect x="14" y="62" width="72" height="34" rx="8" fill="#4DA3FF" stroke="#fff" stroke-width="4"/>
+    <rect x="24" y="34" width="52" height="30" rx="7" fill="#fff" stroke="#0B5FFF" stroke-width="4"/>
+    <rect x="24" y="28" width="52" height="10" rx="5" fill="#FF6FB5"/>
+    <rect x="46" y="8" width="8" height="20" rx="4" fill="#FFD400"/>
+    <path d="M50 0 Q43 8 50 13 Q57 8 50 0 Z" fill="#E8112D"/>
+  </symbol>
+  <symbol id="pcCupcakeA" viewBox="0 0 100 100">
+    <path d="M22 52 L32 96 H68 L78 52 Z" fill="#FFD400" stroke="#fff" stroke-width="4"/>
+    <path d="M20 52 Q22 20 50 20 Q78 20 80 52 Z" fill="#FF6FB5" stroke="#fff" stroke-width="4"/>
+    <circle cx="50" cy="14" r="9" fill="#E8112D" stroke="#fff" stroke-width="3"/>
+  </symbol>
+  <symbol id="pcCupcakeB" viewBox="0 0 100 100">
+    <path d="M22 52 L32 96 H68 L78 52 Z" fill="#FFD400" stroke="#fff" stroke-width="4"/>
+    <path d="M20 52 Q22 20 50 20 Q78 20 80 52 Z" fill="#4DA3FF" stroke="#fff" stroke-width="4"/>
+    <circle cx="50" cy="14" r="9" fill="#E8112D" stroke="#fff" stroke-width="3"/>
+  </symbol>
+  <symbol id="pcPirulitoA" viewBox="0 0 100 100">
+    <rect x="44" y="52" width="10" height="46" rx="5" fill="#fff" stroke="#BFE4FF" stroke-width="2"/>
+    <circle cx="49" cy="34" r="30" fill="#E8112D" stroke="#fff" stroke-width="6"/>
+    <path d="M49 12 A22 22 0 0 1 71 34" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="pcPirulitoB" viewBox="0 0 100 100">
+    <rect x="44" y="52" width="10" height="46" rx="5" fill="#fff" stroke="#BFE4FF" stroke-width="2"/>
+    <circle cx="49" cy="34" r="30" fill="#4DA3FF" stroke="#fff" stroke-width="6"/>
+    <path d="M49 12 A22 22 0 0 1 71 34" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="pcBaloes" viewBox="0 0 100 100">
+    <path d="M30 46 Q26 70 34 92" stroke="#fff" stroke-width="3" fill="none"/>
+    <path d="M70 44 Q74 70 66 92" stroke="#fff" stroke-width="3" fill="none"/>
+    <ellipse cx="30" cy="28" rx="20" ry="24" fill="#E8112D" stroke="#fff" stroke-width="4"/>
+    <ellipse cx="70" cy="26" rx="20" ry="24" fill="#FFD400" stroke="#fff" stroke-width="4"/>
+    <ellipse cx="24" cy="20" rx="5" ry="7" fill="#fff" opacity=".55"/>
+    <ellipse cx="64" cy="18" rx="5" ry="7" fill="#fff" opacity=".55"/>
+  </symbol>
+
+  <!-- maozinha que mostra onde tocar -->
+  <symbol id="simMao" viewBox="0 0 100 100">
+    <path d="M38 92 Q20 78 18 58 Q17 48 25 47 Q32 46 35 54 L37 60 V22 Q37 12 45 12 Q53 12 53 22 V46
+             Q53 38 61 38 Q69 38 69 46 V50 Q69 42 76 42 Q83 42 83 50 V62
+             Q83 84 66 92 Z"
+          fill="#FFE0C2" stroke="#0B2B6B" stroke-width="4.5" stroke-linejoin="round"/>
+  </symbol>
+
   <!-- girafa DJ: oculos escuros, brincos de argola e fone -->
   <symbol id="simGirafa" viewBox="0 0 100 100">
     <!-- pescoco -->
@@ -551,11 +637,21 @@ html,body{
       <button class="caminho" id="caminhoDoce" type="button" aria-label="pegar um docinho agora">
         <svg viewBox="0 0 100 100"><use href="#simDoce"/></svg>
       </button>
-      <button class="caminho" id="caminhoFesta" type="button" aria-label="esperar a festa">
-        <svg viewBox="0 0 260 176"><use href="#simMesaFesta"/></svg>
+      <button class="caminho" id="caminhoFesta" type="button" aria-label="montar a festa">
+        <svg id="mesaJogo" viewBox="0 0 260 200">
+          <circle cx="130" cy="112" r="74" fill="#FFD400" opacity=".07"/>
+          <circle id="aureola" cx="130" cy="46" r="52" fill="#FFD400" opacity="0"/>
+          <g id="pecasColocadas"></g>
+          <rect x="14" y="132" width="232" height="20" rx="10" fill="#FF6FB5" stroke="#fff" stroke-width="4"/>
+          <rect x="42" y="152" width="14" height="26" rx="6" fill="#0B3FCC"/>
+          <rect x="204" y="152" width="14" height="26" rx="6" fill="#0B3FCC"/>
+          <use id="pecaChegando" href="#pcBolo" x="92" y="6" width="76" height="76" style="display:none"/>
+        </svg>
       </button>
     </div>
   </div>
+
+  <svg id="maozinha" viewBox="0 0 100 100" aria-hidden="true"><use href="#simMao"/></svg>
 
   <button id="girafa" type="button" aria-label="Ligar e desligar a música">
     <svg viewBox="0 0 100 100"><use href="#simGirafa"/></svg>
@@ -624,14 +720,15 @@ html,body{
     </div>
 
     <div class="secao">
-      <h2>Tempo de espera para começar</h2>
+      <h2>Tamanho da festa para começar</h2>
       <div class="linha" id="escolhaTempo">
-        <button class="botao pequeno" data-nivel="0" type="button">3 s</button>
-        <button class="botao pequeno" data-nivel="1" type="button">5 s</button>
-        <button class="botao pequeno" data-nivel="2" type="button">8 s</button>
-        <button class="botao pequeno" data-nivel="3" type="button">12 s</button>
+        <button class="botao pequeno" data-nivel="0" type="button">3 peças</button>
+        <button class="botao pequeno" data-nivel="1" type="button">4 peças</button>
+        <button class="botao pequeno" data-nivel="2" type="button">5 peças</button>
+        <button class="botao pequeno" data-nivel="3" type="button">6 peças</button>
       </div>
-      <p class="nota">O tempo sobe sozinho a cada espera bem-sucedida. Comece sempre por 3 s nas primeiras sessões.</p>
+      <p class="nota">Enquanto espera, a criança monta a festa: cada peça chega e ela toca para colocar na mesa.
+        Quanto mais peças, mais longa a espera. A festa cresce sozinha a cada rodada bem-sucedida — comece com 3.</p>
     </div>
 
     <div class="linha" style="margin-top:18px">
@@ -676,7 +773,9 @@ html,body{
         <button class="botao pequeno" id="btnSom" type="button">Som: ligado</button>
         <button class="botao pequeno" id="btnMusica" type="button">Música: ligada</button>
         <button class="botao pequeno" id="btnTelaAcesa" type="button">Manter tela acesa: sim</button>
+        <button class="botao pequeno amarelo" id="btnTestarSom" type="button">Testar o som</button>
       </div>
+      <p class="nota" id="notaSom"></p>
       <p class="nota">A girafa DJ no canto da tela liga e desliga a música. É de propósito:
         a criança aprende sozinha que ela pode escolher o silêncio.</p>
     </div>
@@ -693,7 +792,9 @@ html,body{
     <div class="secao">
       <h2>Como usar</h2>
       <p class="nota" style="line-height:1.5">
-        Fique ao lado nas primeiras vezes e comemore junto quando ela esperar.<br>
+        A espera aqui não é ficar parada: enquanto o tempo passa, ela monta a festa peça por peça.
+        Ter o que fazer é justamente o que sustenta uma criança pequena numa espera.<br>
+        Fique ao lado nas primeiras vezes e comemore junto quando a festa ficar pronta.<br>
         Pegar o docinho na hora não é erro: é o que faz a diferença ficar clara na próxima.<br>
         Duas a quatro rodadas por sessão bastam nessa idade — pare enquanto ela ainda quer.<br>
         O jogo é inteiro compreensível sem som: a voz é só um extra.<br>
@@ -783,7 +884,7 @@ var RITMO = {
   minimoFala:     1600    // piso de cada etapa, mesmo sem voz nenhuma
 };
 
-var NIVEIS = [3, 5, 8, 12];   // segundos de espera, na ordem da progressao
+var NIVEIS = [3, 4, 5, 6];   // quantas pecas a festa tem, na ordem da progressao
 var CHAVE = 'reinoGelo.v2';
 
 var estado = {
@@ -806,13 +907,13 @@ function carregar(){
   }catch(e){}
 }
 
-function segundosDaVez(){ return NIVEIS[Math.min(estado.nivel, NIVEIS.length-1)]; }
+/* quantas pecas a crianca coloca nesta rodada */
+function passosDaVez(){ return NIVEIS[Math.min(estado.nivel, NIVEIS.length-1)]; }
 
-/* quantos pedacinhos a espera tem: a crianca precisa ver a espera em partes
-   contaveis, cada uma com sua recompensa sonora */
-function passosDaVez(){
-  var s = segundosDaVez();
-  return s <= 3 ? 3 : s <= 5 ? 4 : s <= 8 ? 5 : 6;
+/* estimativa de duracao, so para informar o adulto */
+function segundosDaVez(){
+  var pecas = passosDaVez();
+  return Math.round(pecas * (1.7 + estado.nivel*0.3) + 1);
 }
 
 /* =========================================================================
@@ -825,6 +926,7 @@ function audio(){
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
     ctx = new AC();
+    ctx.onstatechange = function(){ try{ marcarGirafa(); }catch(e){} };
     barramento = ctx.createGain();
     barramento.gain.value = 0.9;
     /* um eco curtinho deixa o som mais "magico" e menos seco */
@@ -836,6 +938,32 @@ function audio(){
   }
   if (ctx.state === 'suspended') ctx.resume();
   return ctx;
+}
+
+/* No iPhone e no iPad, a chavinha de silencioso cala o WebAudio. Manter um
+   audio comum tocando em silencio muda a categoria da sessao e libera o som.
+   Chamado a cada toque: barato e resolve tambem o bloqueio de autoplay. */
+var SILENCIO = 'data:audio/wav;base64,UklGRsQPAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YaAPAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA';
+var destravador = null;
+function destravarAudio(){
+  try{
+    if (!destravador){
+      destravador = new Audio(SILENCIO);
+      destravador.loop = true;
+      destravador.volume = 0.02;
+      destravador.setAttribute('playsinline','');
+      destravador.setAttribute('aria-hidden','true');
+      destravador.style.display = 'none';
+      document.body.appendChild(destravador);   /* no iOS, no DOM e mais confiavel */
+    }
+    if (destravador.paused){
+      var pr = destravador.play();
+      if (pr && pr.catch) pr.catch(function(){});
+    }
+  }catch(e){}
+  var c = audio();
+  if (c && c.state === 'suspended') c.resume();
+  return c;
 }
 
 /* nota com dois osciladores levemente desafinados: timbre mais doce */
@@ -990,12 +1118,12 @@ var Musica = {
    ========================================================================= */
 var FRASES = [
   {id:'doce',      txt:'Olha o docinho! Você pode pegar ele agora.'},
-  {id:'festa',     txt:'Ou pode esperar... e ganhar dois doces e a festa mágica!'},
-  {id:'comecou',   txt:'A estrela começou a encher. Vamos esperar juntos!'},
+  {id:'festa',     txt:'Ou pode montar a festa comigo... e ganhar dois doces!'},
+  {id:'comecou',   txt:'Vamos montar a festa! Toque em cada pedacinho que chegar.'},
   {id:'meio1',     txt:'Isso! Continua esperando!'},
   {id:'meio2',     txt:'Você consegue! A mágica está chegando!'},
   {id:'meio3',     txt:'Só mais um pouquinho!'},
-  {id:'vitoria',   txt:'Você esperou! Ganhou dois doces e a festa mágica!'},
+  {id:'vitoria',   txt:'A festa ficou pronta! Você esperou e ganhou dois doces!'},
   {id:'consolo',   txt:'Poxa... a festa foi embora dessa vez. Vamos tentar de novo?'}
 ];
 
@@ -1202,6 +1330,60 @@ var gemas = $('gemas'), mesaPremio = $('mesaPremio');
 var repetirFesta = $('repetirFesta'), repetirConsolo = $('repetirConsolo');
 
 /* =========================================================================
+   5a. MAOZINHA E FAISCAS
+   Nenhum toque cai no vazio, e quando a crianca hesita o jogo mostra
+   onde tocar — como fazem os joguinhos que ela ja sabe usar sozinha.
+   ========================================================================= */
+var Dica = {
+  timer:0, criadaEm:0,
+  mostrar:function(el){
+    if (!el) return;
+    var m = $('maozinha'), r = el.getBoundingClientRect();
+    if (!r.width) return;
+    m.style.left = (r.left + r.width/2) + 'px';
+    m.style.top  = (r.top + r.height*0.52) + 'px';
+    m.classList.add('visivel');
+  },
+  /* aponta a propria peca quando da para medi-la; senao, o painel inteiro */
+  alvoDaPeca:function(){
+    var u = $('pecaChegando');
+    try{ if (u.getBoundingClientRect().width > 8) return u; }catch(e){}
+    return $('caminhoFesta');
+  },
+
+  esconder:function(){
+    $('maozinha').classList.remove('visivel');
+    /* o par pointerdown+click de um mesmo toque nao pode cancelar a dica
+       que esse proprio toque acabou de agendar */
+    if (Date.now() - this.criadaEm < 500) return;
+    clearTimeout(this.timer);
+  },
+  agendar:function(el, ms){
+    var self = this;
+    clearTimeout(this.timer);
+    this.criadaEm = Date.now();
+    this.timer = setTimeout(function(){ self.mostrar(el); }, ms || 3000);
+  }
+};
+
+function faisca(x, y){
+  var d = document.createElement('div');
+  d.className = 'faisca';
+  d.style.left = x + 'px'; d.style.top = y + 'px';
+  document.body.appendChild(d);
+  setTimeout(function(){ if (d.parentNode) d.parentNode.removeChild(d); }, 520);
+}
+
+/* qualquer toque na tela do jogo responde: brilho, e um tilim se caiu no vazio */
+document.addEventListener('pointerdown', function(e){
+  destravarAudio();
+  Dica.esconder();
+  if (document.querySelector('.telaAdulto.ativa')) return;
+  faisca(e.clientX, e.clientY);
+  if (!(e.target.closest && e.target.closest('button'))) nota(1318.5, 0, 0.07, 0.05, 'sine');
+}, {passive:true, capture:true});
+
+/* =========================================================================
    5b. PREMIOS QUE VOAM
    O que cada caminho da e mostrado: o doce (ou os dois doces mais a
    estrela) sai do painel e voa ate a bandeja. E assim que a crianca
@@ -1260,7 +1442,8 @@ function limparTudo(){
   podePegarDoce = false;
   caminhoDoce.classList.remove('destacado','apagado','chamando');
   caminhoFesta.classList.remove('destacado','apagado','brilhando');
-  caminhoFesta.querySelector('svg').style.transform = '';
+  Festa.limpar();
+  Dica.esconder();
   princesaCaixa.classList.remove('acena','pula');
   blocoEspera.classList.remove('visivel','pulsa');
   cenaFesta.classList.remove('ativa'); cenaConsolo.classList.remove('ativa');
@@ -1272,6 +1455,7 @@ function limparTudo(){
 /* ---------- repouso: nada acontece ate a crianca tocar ---------- */
 function irParaRepouso(){
   bloquearToques();
+  Dica.agendar($('botaoComecar'), 3200);
   limparTudo();
   fase = 'repouso';
   montarGemas(0);
@@ -1320,6 +1504,7 @@ function comecarRodada(){
     caminhoFesta.classList.add('destacado');
     somAponta();
     mostrarPremio(caminhoFesta, 2, true);       /* este da 2 doces e a estrela */
+    Festa.previa(passosDaVez());                /* e mostra a festa que ela vai montar */
     Voz.dizer('festa', function(){
       depois(RITMO.pausaEntreBeats, beat3);
     });
@@ -1351,7 +1536,7 @@ function apresentacaoCurta(){
       podePegarDoce = true;              /* a escolha ja existe assim que ela ve o doce */
       caminhoDoce.classList.remove('destacado');
       caminhoFesta.classList.remove('apagado'); caminhoFesta.classList.add('destacado');
-      somAponta(); mostrarPremio(caminhoFesta, 2, true);
+      somAponta(); mostrarPremio(caminhoFesta, 2, true); Festa.previa(passosDaVez());
       depois(1900, function(){
         if (fase !== 'apresentacao') return;
         caminhoFesta.classList.remove('destacado');
@@ -1366,53 +1551,162 @@ function apresentacaoCurta(){
   });
 }
 
-/* ---------- espera: a barrinha da estrela enche em pedacos contaveis ---------- */
+/* ---------- a espera e uma tarefa: montar a festa peca por peca ----------
+   Uma crianca de 3 anos nao fica parada: ela toca ate acontecer alguma coisa.
+   Entao a espera deixa de ser "nao toque" e vira "monte a festa comigo".
+   Cada peca chega sozinha, espera o dedo dela, e so entao vem a proxima —
+   o tempo passa dentro da tarefa, e o docinho continua ali do lado, a um
+   toque de distancia. E a estrategia de distracao do teste do marshmallow,
+   que e justamente o que as criancas que conseguem esperar fazem.
+   ------------------------------------------------------------------------ */
+var PECAS = [
+  {sim:'#pcBolo',      x:95,  y:62, w:70, h:70},
+  {sim:'#pcCupcakeA',  x:26,  y:78, w:54, h:54},
+  {sim:'#pcCupcakeB',  x:180, y:78, w:54, h:54},
+  {sim:'#pcPirulitoA', x:74,  y:58, w:48, h:74},
+  {sim:'#pcPirulitoB', x:138, y:58, w:48, h:74},
+  {sim:'#pcBaloes',    x:90,  y:0,  w:80, h:62}
+];
+var POUSO = {x:92, y:6, w:76, h:76};   /* onde a peca fica esperando o toque */
+
+var Festa = {
+  total:0, colocadas:0, pendente:-1, raf:0, animacao:null, balanco:0,
+
+  limpar:function(){
+    cancelAnimationFrame(this.raf); this.raf = 0;
+    this.animacao = null; this.pendente = -1; this.colocadas = 0;
+    $('pecasColocadas').innerHTML = '';
+    $('pecaChegando').style.display = 'none';
+    caminhoFesta.classList.remove('temPeca');
+  },
+
+  /* previa: a festa inteira aparece por um instante, para a crianca ver
+     o que ela vai montar — e some, deixando a mesa vazia para ela */
+  previa:function(n){
+    var alvo = $('pecasColocadas');
+    alvo.innerHTML = '';
+    for (var i=0;i<n;i++) this.desenhar(PECAS[i], alvo, i*90);
+  },
+
+  desenhar:function(peca, alvo, atraso){
+    depois(atraso || 0, function(){
+      var u = document.createElementNS('http://www.w3.org/2000/svg','use');
+      u.setAttribute('href', peca.sim);
+      u.setAttribute('x', peca.x); u.setAttribute('y', peca.y);
+      u.setAttribute('width', peca.w); u.setAttribute('height', peca.h);
+      alvo.appendChild(u);
+    });
+  },
+
+  comecar:function(total){
+    this.limpar();
+    this.total = total;
+    depois(500, this.chamar.bind(this));
+    this.laco();
+  },
+
+  /* uma peca entra em cena e fica pulsando ate a crianca tocar */
+  chamar:function(){
+    if (fase !== 'espera') return;
+    var i = this.colocadas;
+    if (i >= this.total) return;
+
+    var el = $('pecaChegando');
+    el.setAttribute('href', PECAS[i].sim);
+    el.style.display = '';
+    this.pendente = i;
+
+    /* entra pela esquerda e pela direita, alternando */
+    var deX = (i % 2 ? 300 : -60);
+    this.animar({x:deX, y:POUSO.y, w:POUSO.w, h:POUSO.h}, POUSO, 750, function(){
+      caminhoFesta.classList.add('temPeca');
+      somAponta();
+      Dica.agendar(Dica.alvoDaPeca(), 2600);     /* se ela hesitar, a maozinha aparece */
+    });
+  },
+
+  /* o dedo dela coloca a peca na mesa */
+  colocar:function(){
+    if (this.pendente < 0 || this.animacao) return;
+    var i = this.pendente, self = this;
+    this.pendente = -1;
+    Dica.esconder();
+    caminhoFesta.classList.remove('temPeca');
+    somPasso(this.colocadas, this.total);
+    princesaCaixa.classList.add('acena');
+
+    var el = $('pecaChegando');
+    this.animar(this.atual(el), PECAS[i], 520, function(){
+      el.style.display = 'none';
+      self.desenhar(PECAS[i], $('pecasColocadas'), 0);
+      self.colocadas++;
+      acenderGema(self.colocadas - 1);
+      definirProgresso(self.colocadas / self.total);
+
+      if (self.colocadas >= self.total){
+        depois(700, venceu);
+        return;
+      }
+      /* incentivo falado de vez em quando, sem nunca atropelar o som da peca */
+      if (self.colocadas % 2 === 0){
+        depois(300, function(){ if (fase === 'espera') Voz.dizer(['meio1','meio2','meio3'][(self.colocadas/2 - 1) % 3]); });
+      }
+      depois(420 + estado.nivel*280, self.chamar.bind(self));
+    });
+  },
+
+  atual:function(el){
+    return {
+      x:parseFloat(el.getAttribute('x')), y:parseFloat(el.getAttribute('y')),
+      w:parseFloat(el.getAttribute('width')), h:parseFloat(el.getAttribute('height'))
+    };
+  },
+
+  animar:function(de, para, dur, aoFim){
+    this.animacao = {de:de, para:para, dur:dur, t0:performance.now(), aoFim:aoFim};
+    if (!this.raf) this.laco();
+  },
+
+  laco:function(){
+    var self = this;
+    function quadro(agora){
+      if (fase !== 'espera'){ self.raf = 0; return; }
+      var el = $('pecaChegando'), a = self.animacao;
+
+      if (a){
+        var t = Math.min(1, (agora - a.t0) / a.dur);
+        var e = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2)/2;   /* suave nas pontas */
+        el.setAttribute('x', a.de.x + (a.para.x - a.de.x)*e);
+        el.setAttribute('y', a.de.y + (a.para.y - a.de.y)*e);
+        el.setAttribute('width',  a.de.w + (a.para.w - a.de.w)*e);
+        el.setAttribute('height', a.de.h + (a.para.h - a.de.h)*e);
+        if (t >= 1){ self.animacao = null; if (a.aoFim) a.aoFim(); }
+      } else if (self.pendente >= 0){
+        /* pulsa parada, pedindo o dedo */
+        self.balanco += 0.06;
+        el.setAttribute('y', POUSO.y + Math.sin(self.balanco)*4);
+      }
+
+      self.raf = requestAnimationFrame(quadro);
+    }
+    this.raf = requestAnimationFrame(quadro);
+  }
+};
+
 function iniciarEspera(){
   if (fase !== 'apresentacao') return;
   fase = 'espera';
 
-  var segundos = segundosDaVez();
-  var passos = passosDaVez();
-  var passoAtual = 0;
-
-  podePegarDoce = false;                                 /* trava curta contra toque acidental */
+  podePegarDoce = false;
   depois(RITMO.travaToque, function(){ podePegarDoce = true; });
 
   blocoEspera.classList.add('pulsa');
   caminhoDoce.classList.add('chamando');
-  caminhoFesta.classList.add('brilhando','crescendo');
+  caminhoFesta.classList.add('brilhando');
   princesaCaixa.classList.add('acena');
 
-  var incentivos = ['meio1','meio2','meio3'];
-  var proximoIncentivo = 0;
-  var inicio = performance.now();
-
-  function quadro(agora){
-    if (fase !== 'espera') return;
-    var p = Math.min(1, (agora - inicio) / (segundos*1000));
-    definirProgresso(p);
-
-    var alcancado = Math.floor(p * passos);
-    while (passoAtual < alcancado){
-      acenderGema(passoAtual);
-      somPasso(passoAtual, passos);
-      /* a festa cresce um pouquinho a cada pedaco: a recompensa fica visivel */
-      caminhoFesta.querySelector('svg').style.transform = 'scale(' + (1 + (passoAtual+1) * 0.05) + ')';
-      passoAtual++;
-      /* incentivo falado nos intervalos, nunca sobreposto ao som do passo */
-      if (passoAtual < passos && passoAtual % 2 === 1){
-        (function(){
-          var qual = incentivos[proximoIncentivo % incentivos.length];
-          proximoIncentivo++;
-          depois(420, function(){ if (fase === 'espera') Voz.dizer(qual); });
-        })();
-      }
-    }
-
-    if (p >= 1){ venceu(); return; }
-    raf = requestAnimationFrame(quadro);
-  }
-  raf = requestAnimationFrame(quadro);
+  definirProgresso(0);
+  Festa.comecar(passosDaVez());
 }
 
 function definirProgresso(p){
@@ -1461,7 +1755,10 @@ function venceu(){
   depois(1000, function(){ soltarConfete(50 + tamanho*40); });
   depois(900,  function(){ Voz.dizer('vitoria'); });
 
-  depois(RITMO.festejar, function(){ repetirFesta.classList.add('aparece'); });
+  depois(RITMO.festejar, function(){
+    repetirFesta.classList.add('aparece');
+    Dica.agendar(repetirFesta, 2200);
+  });
 }
 
 /* ---------- pegou o docinho antes: sem punicao, com o vislumbre da festa ---------- */
@@ -1492,7 +1789,10 @@ function pegouDoce(){
   depois(2900, function(){
     cenaConsolo.classList.add('ativa');
     Voz.dizer('consolo');
-    depois(RITMO.consolar, function(){ repetirConsolo.classList.add('aparece'); });
+    depois(RITMO.consolar, function(){
+      repetirConsolo.classList.add('aparece');
+      Dica.agendar(repetirConsolo, 2200);
+    });
   });
 }
 
@@ -1676,7 +1976,7 @@ function atualizarNotaVoz(){
 }
 function atualizarNotaProgresso(){
   $('notaProgresso').textContent =
-    'Espera atual: ' + segundosDaVez() + ' segundos, em ' + passosDaVez() + ' pedacinhos.';
+    'Festa atual: ' + passosDaVez() + ' peças para montar, cerca de ' + segundosDaVez() + ' segundos de espera.';
 }
 
 function irParaJogo(){
@@ -1684,7 +1984,7 @@ function irParaJogo(){
   telaSetup.classList.remove('ativa');
   telaPainel.classList.remove('ativa');
   irParaRepouso();
-  audio(); Musica.tocar(); marcarGirafa();
+  destravarAudio(); Musica.tocar(); marcarGirafa();
 }
 function abrirSetup(){
   bloquearToques();
@@ -1731,7 +2031,8 @@ document.addEventListener('visibilitychange', function(){
 function marcarGirafa(){
   var g = $('girafa');
   var ligada = estado.musica && estado.som;
-  g.classList.toggle('tocando', !!(ligada && Musica.ligada));
+  var mesmoTocando = ligada && Musica.ligada && ctx && ctx.state === 'running';
+  g.classList.toggle('tocando', !!mesmoTocando);
   g.classList.toggle('mudo', !ligada);
 }
 
@@ -1750,12 +2051,13 @@ function alternarMusica(){
    ========================================================================= */
 aoTocar($('girafa'), function(){
   /* a girafa responde na hora, com um sinal claro de ligado/desligado */
-  audio();
+  destravarAudio();
   alternarMusica();
   if (estado.musica) nota(880, 0, 0.18, 0.14); else nota(392, 0, 0.22, 0.12);
 });
 aoTocar($('botaoComecar'), function(){
-  audio(); somToque();          /* o primeiro toque tambem libera o audio no iOS */
+  destravarAudio(); somToque();
+  if (estado.musica) Musica.tocar();          /* o primeiro toque tambem libera o audio no iOS */
   pedirTelaCheia(); manterTelaAcesa();
   comecarRodada();
 });
@@ -1764,12 +2066,13 @@ aoTocar(repetirConsolo,function(){ somToque(); irParaRepouso(); depois(250, come
 
 aoTocar(caminhoDoce, function(){ pegouDoce(); });
 aoTocar(caminhoFesta, function(){
-  /* tocar na festa antes da hora nao premia nem pune: a princesa so pede calma */
-  if (fase === 'espera' || fase === 'apresentacao'){
-    somAponta();
-    princesaCaixa.classList.add('acena');
-    blocoEspera.classList.add('visivel');
+  /* durante a espera, este e o botao da tarefa: coloca a peca na mesa */
+  if (fase === 'espera'){
+    if (Festa.pendente >= 0) Festa.colocar();
+    else { somAponta(); princesaCaixa.classList.add('acena'); }
+    return;
   }
+  if (fase === 'apresentacao'){ somAponta(); princesaCaixa.classList.add('acena'); }
 });
 
 /* engrenagem: precisa de toque longo, para a crianca nao abrir sem querer */
@@ -1818,11 +2121,20 @@ $('inputNome').addEventListener('input', function(){
   }
 })();
 
-aoTocar($('btnIrParaJogo'), function(){ audio(); somToque(); irParaJogo(); });
+aoTocar($('btnIrParaJogo'), function(){ destravarAudio(); somToque(); irParaJogo(); });
 aoTocar($('btnAbrirVoz'), function(){ abrirPainel(); });
 aoTocar($('btnFecharPainel'), function(){ irParaJogo(); });
 aoTocar($('btnVoltarSetup'), function(){ abrirSetup(); });
-aoTocar($('btnMusica'), function(){ audio(); alternarMusica(); });
+aoTocar($('btnMusica'), function(){ destravarAudio(); alternarMusica(); });
+aoTocar($('btnTestarSom'), function(){
+  var c = destravarAudio();
+  somFesta(1);
+  $('notaSom').textContent = !c
+    ? 'Este navegador não tem áudio disponível.'
+    : (c.state === 'running'
+        ? 'Som ligado. Se você não ouviu nada, veja o volume e a chavinha de silencioso na lateral do aparelho.'
+        : 'O aparelho ainda não liberou o áudio. Toque na tela uma vez e teste de novo.');
+});
 aoTocar($('btnZerar'), function(){
   estado.nivel = 0; estado.doces = 0; estado.estrelas = 0;
   precisaApresentar = true;
