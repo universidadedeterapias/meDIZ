@@ -1053,3 +1053,77 @@ model EmailTemplate {
   @@index([active, step])
   @@map("email_template")
 }
+
+/// Uma linha por venda que ficou no meio do caminho: PIX gerado e nao pago,
+/// boleto emitido e nao pago, cartao recusado.
+///
+/// A propria tabela e a fila, igual a `AccessDelivery`: `status = 'armado'` com
+/// `disparar_em` vencido e trabalho a fazer. Nao usamos os nos `Wait` do n8n
+/// porque um Wait em curso nao pode ser cancelado de fora — quem pagou voltaria
+/// da espera mesmo assim, e caberia ao fluxo lembrar de conferir na saida. Com a
+/// fila no banco, quem pagou simplesmente para de aparecer na consulta.
+///
+/// `disparar_em` e o campo que separa "pendente" de "abandonado". O evento de
+/// pagamento pendente chega no instante em que o QR e gerado, e todo comprador
+/// passa por esse estado — inclusive quem vai pagar em quarenta segundos. Por
+/// isso a chegada do webhook so agenda, e nunca fala com o cliente.
+///
+/// Quem consome e o n8n (workflow "Recuperacao de Vendas [meDIZ]"). Aqui e so o
+/// estado e o historico, para o admin enxergar por que fulano recebeu — ou nao
+/// recebeu — a mensagem.
+model SalesRecoveryLead {
+  id String @id @default(uuid())
+
+  /// pagarme | guru | hotmart — minusculo, mesmo vocabulario de PurchaseEvent.
+  provider              String  @db.VarChar(32)
+  externalTransactionId String  @map("external_transaction_id") @db.VarChar(120)
+  /// Nome do evento na origem (charge.pending, waiting_payment, ...).
+  eventType             String? @map("event_type") @db.VarChar(120)
+  /// pix | boleto | cartao — decide o template e o tempo de carencia.
+  metodo                String  @db.VarChar(16)
+
+  email    String? @db.VarChar(255)
+  /// Ja com DDI, montado como em src/lib/phone.ts.
+  telefone String? @db.VarChar(24)
+  nome     String? @db.VarChar(255)
+
+  externalProductId String? @map("external_product_id") @db.VarChar(120)
+  produtoNome       String? @map("produto_nome") @db.VarChar(255)
+  /// Em centavos.
+  valor             Int?
+  /// A cobranca desta pessoa, nao o link generico da oferta.
+  linkPagamento     String? @map("link_pagamento")
+
+  /// armado | disparado | recuperado
+  status String  @default("armado") @db.VarChar(24)
+  /// Por que saiu da fila, para o admin ler sem abrir log.
+  motivo String? @db.VarChar(255)
+
+  /// Conversa criada no Chatvolt no envio do template. So existe depois do toque.
+  conversationId String? @map("conversation_id") @db.VarChar(120)
+  toques         Int     @default(0)
+
+  /// A carencia, gravada na chegada do evento. O worker so olha quem ja venceu.
+  dispararEm DateTime  @map("disparar_em")
+  /// Reserva do worker, com validade de 15 min. Impede duas rodadas do relogio
+  /// de pegarem o mesmo lead e mandarem a mensagem duas vezes.
+  claimEm    DateTime? @map("claim_em")
+
+  ultimoToqueEm  DateTime? @map("ultimo_toque_em")
+  /// Quando o cupom de desconto fica elegivel — 24h depois do primeiro toque.
+  cupomEm        DateTime? @map("cupom_em")
+  cupomEnviadoEm DateTime? @map("cupom_enviado_em")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Uma compra gera varios eventos (order.created, charge.created,
+  /// charge.pending) e a plataforma reenvia quando nao recebe 200. Sem esta
+  /// trava o mesmo PIX armaria tres vezes.
+  @@unique([provider, externalTransactionId])
+  @@index([status, dispararEm])
+  @@index([status, cupomEm])
+  @@index([telefone, ultimoToqueEm])
+  @@index([email])
+  @@map("sales_recovery_leads")
+}
