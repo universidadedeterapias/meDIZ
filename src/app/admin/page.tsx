@@ -262,6 +262,12 @@ export default function ModernDashboard() {
               </a>
             </Button>
             <Button className="w-full justify-start" variant="outline" asChild>
+              <a href="/admin/reativacao">
+                <Users className="mr-2 h-4 w-4" />
+                Público da reativação
+              </a>
+            </Button>
+            <Button className="w-full justify-start" variant="outline" asChild>
               <a href="/admin/export-sintomas">
                 <FileText className="mr-2 h-4 w-4" />
                 Exportar Dados
