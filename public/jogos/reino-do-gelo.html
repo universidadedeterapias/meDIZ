@@ -163,6 +163,34 @@ html,body{
   50%{ box-shadow:inset 0 0 80px rgba(255,212,0,1), 0 0 40px rgba(255,212,0,1); }
 }
 
+/* --- redoma: a ferramenta de estrategia que a princesa oferece --- */
+#botaoRedoma{
+  position:absolute; left:-30%; bottom:16%;
+  width:clamp(52px,11vmin,104px); height:clamp(52px,11vmin,104px);
+  border:none; background:transparent; padding:0; cursor:pointer;
+  opacity:0; transform:scale(.4); pointer-events:none;
+  transition:opacity .45s ease, transform .45s cubic-bezier(.2,1.5,.4,1);
+  filter:drop-shadow(0 0 16px rgba(255,212,0,.9));
+}
+#botaoRedoma svg{ width:100%; height:100%; display:block; }
+#botaoRedoma.oferecida{ opacity:1; transform:scale(1); pointer-events:auto; animation:respirar 1.6s ease-in-out infinite; }
+
+/* o doce guardado para de chamar: e isso que a crianca aprende a fazer */
+#redomaGelo{ opacity:0; transition:opacity .45s ease; transform-box:view-box; transform-origin:50px 84px; }
+#caminhoDoce.coberto #redomaGelo{ opacity:1; animation:pousarRedoma .5s cubic-bezier(.2,1.4,.4,1); }
+@keyframes pousarRedoma{ 0%{ transform:translateY(-60px) scale(1.2); opacity:0; } 100%{ transform:none; opacity:1; } }
+#doceGrupo{ transition:opacity .45s ease; }
+#caminhoDoce.coberto #doceGrupo{ opacity:.4; }
+#caminhoDoce.coberto{ filter:saturate(.55) brightness(.85); animation:none !important; }
+
+/* --- a estrela do compromisso: ela toca para prometer que vai esperar --- */
+#espera.promessa{ cursor:pointer; }
+#espera.promessa #estrela{ animation:convidar 1.1s ease-in-out infinite; }
+@keyframes convidar{
+  0%,100%{ transform:scale(1); filter:drop-shadow(0 0 6px rgba(255,212,0,.6)); }
+  50%{ transform:scale(1.14); filter:drop-shadow(0 0 26px rgba(255,212,0,1)); }
+}
+
 /* --- premios que voam ate a bandeja: a regra explicada sem uma palavra --- */
 .voando{
   position:fixed; z-index:55; pointer-events:none;
@@ -297,7 +325,14 @@ html,body{
 
 /* consolo */
 #cenaConsolo{ background:linear-gradient(180deg,#0B5FFF,#062A8C); }
-#doceConsolo{ width:clamp(90px,30vmin,260px); height:auto; animation:saltar .7s ease-out; }
+#doceConsolo{ width:clamp(90px,26vmin,220px); height:auto; animation:saltar .7s ease-out; }
+/* a redoma reaparece no consolo: e a dica de estrategia para a proxima vez */
+#redomaConsolo{
+  width:clamp(70px,20vmin,170px); height:auto;
+  opacity:0; transform:scale(.4); transition:opacity .6s ease, transform .6s cubic-bezier(.2,1.5,.4,1);
+  filter:drop-shadow(0 0 20px rgba(255,212,0,.85));
+}
+#redomaConsolo.mostra{ opacity:1; transform:scale(1); animation:respirar 1.8s ease-in-out infinite 1s; }
 
 /* a festa que aparece e vai embora */
 #festaEscapando{
@@ -494,6 +529,14 @@ html,body{
     <ellipse cx="64" cy="18" rx="5" ry="7" fill="#fff" opacity=".55"/>
   </symbol>
 
+  <!-- redoma de gelo: a estrategia que a crianca aprende a usar -->
+  <symbol id="simRedoma" viewBox="0 0 100 100">
+    <path d="M10 80 Q10 20 50 20 Q90 20 90 80 Z" fill="#BFE4FF" opacity=".75" stroke="#fff" stroke-width="5"/>
+    <path d="M26 70 Q26 38 48 32" stroke="#fff" stroke-width="7" fill="none" opacity=".9" stroke-linecap="round"/>
+    <rect x="4" y="78" width="92" height="14" rx="7" fill="#4DA3FF" stroke="#fff" stroke-width="4"/>
+    <circle cx="50" cy="14" r="7" fill="#FFD400" stroke="#fff" stroke-width="3"/>
+  </symbol>
+
   <!-- maozinha que mostra onde tocar -->
   <symbol id="simMao" viewBox="0 0 100 100">
     <path d="M38 92 Q20 78 18 58 Q17 48 25 47 Q32 46 35 54 L37 60 V22 Q37 12 45 12 Q53 12 53 22 V46
@@ -617,6 +660,9 @@ html,body{
           <circle cx="60" cy="12" r="2.6" fill="#4DA3FF"/>
         </svg>
         <div id="retrato">M</div>
+        <button id="botaoRedoma" type="button" aria-label="Guardar o docinho">
+          <svg viewBox="0 0 100 100"><use href="#simRedoma"/></svg>
+        </button>
       </div>
 
       <div id="espera">
@@ -635,7 +681,14 @@ html,body{
 
     <div id="caminhos">
       <button class="caminho" id="caminhoDoce" type="button" aria-label="pegar um docinho agora">
-        <svg viewBox="0 0 100 100"><use href="#simDoce"/></svg>
+        <svg viewBox="0 0 100 100">
+          <g id="doceGrupo"><use href="#simDoce"/></g>
+          <g id="redomaGelo">
+            <path d="M6 84 Q6 24 50 24 Q94 24 94 84 Z" fill="#BFE4FF" opacity=".62" stroke="#fff" stroke-width="4"/>
+            <path d="M24 74 Q24 42 46 36" stroke="#fff" stroke-width="6" fill="none" opacity=".85" stroke-linecap="round"/>
+            <rect x="2" y="82" width="96" height="12" rx="6" fill="#4DA3FF" stroke="#fff" stroke-width="3"/>
+          </g>
+        </svg>
       </button>
       <button class="caminho" id="caminhoFesta" type="button" aria-label="montar a festa">
         <svg id="mesaJogo" viewBox="0 0 260 200">
@@ -645,7 +698,8 @@ html,body{
           <rect x="14" y="132" width="232" height="20" rx="10" fill="#FF6FB5" stroke="#fff" stroke-width="4"/>
           <rect x="42" y="152" width="14" height="26" rx="6" fill="#0B3FCC"/>
           <rect x="204" y="152" width="14" height="26" rx="6" fill="#0B3FCC"/>
-          <use id="pecaChegando" href="#pcBolo" x="92" y="6" width="76" height="76" style="display:none"/>
+          <use id="premio1" href="#simDoce" x="72"  y="2"  width="52" height="52" opacity="0"/>
+          <use id="premio2" href="#simDoce" x="155" y="21" width="14" height="14" opacity="0"/>
         </svg>
       </button>
     </div>
@@ -685,6 +739,7 @@ html,body{
 
   <div class="cena" id="cenaConsolo">
     <svg id="doceConsolo" viewBox="0 0 100 100"><use href="#simDoce"/></svg>
+    <svg id="redomaConsolo" viewBox="0 0 100 100"><use href="#simRedoma"/></svg>
     <button class="botaoRepetir" id="repetirConsolo" type="button" aria-label="Jogar de novo">
       <svg viewBox="0 0 120 120"><use href="#simBotaoPlay"/></svg>
     </button>
@@ -720,15 +775,15 @@ html,body{
     </div>
 
     <div class="secao">
-      <h2>Tamanho da festa para começar</h2>
+      <h2>Tempo de espera para começar</h2>
       <div class="linha" id="escolhaTempo">
-        <button class="botao pequeno" data-nivel="0" type="button">3 peças</button>
-        <button class="botao pequeno" data-nivel="1" type="button">4 peças</button>
-        <button class="botao pequeno" data-nivel="2" type="button">5 peças</button>
-        <button class="botao pequeno" data-nivel="3" type="button">6 peças</button>
+        <button class="botao pequeno" data-nivel="0" type="button">4 s</button>
+        <button class="botao pequeno" data-nivel="1" type="button">6 s</button>
+        <button class="botao pequeno" data-nivel="2" type="button">9 s</button>
+        <button class="botao pequeno" data-nivel="3" type="button">13 s</button>
       </div>
-      <p class="nota">Enquanto espera, a criança monta a festa: cada peça chega e ela toca para colocar na mesa.
-        Quanto mais peças, mais longa a espera. A festa cresce sozinha a cada rodada bem-sucedida — comece com 3.</p>
+      <p class="nota">Sobe sozinho a cada espera concluída e <strong>desce depois de duas escolhas seguidas
+        pelo docinho</strong>: a criança nunca fica presa num degrau alto demais. Comece por 4 s.</p>
     </div>
 
     <div class="linha" style="margin-top:18px">
@@ -792,8 +847,13 @@ html,body{
     <div class="secao">
       <h2>Como usar</h2>
       <p class="nota" style="line-height:1.5">
-        A espera aqui não é ficar parada: enquanto o tempo passa, ela monta a festa peça por peça.
-        Ter o que fazer é justamente o que sustenta uma criança pequena numa espera.<br>
+        <strong>O que o jogo ensina:</strong> só o tempo faz o prêmio crescer. A estrela enche sozinha,
+        a festa se monta sozinha e o segundo doce cresce sozinho — nada que ela toque acelera isso.
+        A cada dois segundos de espera, uma estrelinha vai para a bandeja dela: o esperar é premiado
+        enquanto acontece, não só no fim.<br>
+        <strong>A redoma de gelo</strong> é a parte mais importante. Guardar o doce é a única estratégia
+        que comprovadamente dobra o tempo de espera de uma criança. Quando ela usar, comemore: é isso
+        que ela vai levar para a vida, não o doce.<br>
         Fique ao lado nas primeiras vezes e comemore junto quando a festa ficar pronta.<br>
         Pegar o docinho na hora não é erro: é o que faz a diferença ficar clara na próxima.<br>
         Duas a quatro rodadas por sessão bastam nessa idade — pare enquanto ela ainda quer.<br>
@@ -884,12 +944,15 @@ var RITMO = {
   minimoFala:     1600    // piso de cada etapa, mesmo sem voz nenhuma
 };
 
-var NIVEIS = [3, 4, 5, 6];   // quantas pecas a festa tem, na ordem da progressao
+/* segundos de espera por nivel; a festa ganha uma peca a cada nivel.
+   Sobe a cada acerto e DESCE depois de duas escolhas seguidas pelo doce:
+   ninguem aprende preso num degrau alto demais (delay fading). */
+var NIVEIS = [4, 6, 9, 13];
 var CHAVE = 'reinoGelo.v2';
 
 var estado = {
   nome:'', foto:null,
-  nivel:0, doces:0, estrelas:0,
+  nivel:0, doces:0, estrelas:0, falhas:0,
   som:true, musica:true, modoVoz:'off', telaAcesa:true
 };
 
@@ -907,14 +970,9 @@ function carregar(){
   }catch(e){}
 }
 
-/* quantas pecas a crianca coloca nesta rodada */
-function passosDaVez(){ return NIVEIS[Math.min(estado.nivel, NIVEIS.length-1)]; }
-
-/* estimativa de duracao, so para informar o adulto */
-function segundosDaVez(){
-  var pecas = passosDaVez();
-  return Math.round(pecas * (1.7 + estado.nivel*0.3) + 1);
-}
+function segundosDaVez(){ return NIVEIS[Math.min(estado.nivel, NIVEIS.length-1)]; }
+function passosDaVez(){ return Math.min(PECAS.length, 3 + Math.min(estado.nivel, NIVEIS.length-1)); }
+/* o primeiro doce ja esta posto; o segundo e o que o tempo constroi */
 
 /* =========================================================================
    2. SOM (WebAudio, sem arquivos externos)
@@ -1119,7 +1177,12 @@ var Musica = {
 var FRASES = [
   {id:'doce',      txt:'Olha o docinho! Você pode pegar ele agora.'},
   {id:'festa',     txt:'Ou pode montar a festa comigo... e ganhar dois doces!'},
-  {id:'comecou',   txt:'Vamos montar a festa! Toque em cada pedacinho que chegar.'},
+  {id:'comecou',   txt:'Agora vem a parte da magia: esperar!'},
+  {id:'promessa',  txt:'Toque na estrela para prometer que vai esperar!'},
+  {id:'redoma',    txt:'Quer guardar o docinho? Assim fica mais fácil esperar!'},
+  {id:'guardou',   txt:'Que ideia boa! Agora é só esperar a festa ficar pronta.'},
+  {id:'esperando', txt:'Olha! Você está esperando, e o doce está crescendo!'},
+  {id:'dicaRedoma',txt:'Da próxima vez, guarda o docinho na redoma. Aí fica mais fácil esperar!'},
   {id:'meio1',     txt:'Isso! Continua esperando!'},
   {id:'meio2',     txt:'Você consegue! A mágica está chegando!'},
   {id:'meio3',     txt:'Só mais um pouquinho!'},
@@ -1442,7 +1505,7 @@ function limparTudo(){
   podePegarDoce = false;
   caminhoDoce.classList.remove('destacado','apagado','chamando');
   caminhoFesta.classList.remove('destacado','apagado','brilhando');
-  Festa.limpar();
+  Espera.limpar();
   Dica.esconder();
   princesaCaixa.classList.remove('acena','pula');
   blocoEspera.classList.remove('visivel','pulsa');
@@ -1504,7 +1567,7 @@ function comecarRodada(){
     caminhoFesta.classList.add('destacado');
     somAponta();
     mostrarPremio(caminhoFesta, 2, true);       /* este da 2 doces e a estrela */
-    Festa.previa(passosDaVez());                /* e mostra a festa que ela vai montar */
+    Espera.previa(passosDaVez());               /* e mostra a festa inteira que o tempo monta */
     Voz.dizer('festa', function(){
       depois(RITMO.pausaEntreBeats, beat3);
     });
@@ -1519,7 +1582,7 @@ function comecarRodada(){
     blocoEspera.classList.add('visivel');
     depois(RITMO.entradaCena, function(){
       Voz.dizer('comecou', function(){
-        depois(500, iniciarEspera);
+        depois(400, pedirPromessa);
       });
     });
   }
@@ -1536,7 +1599,7 @@ function apresentacaoCurta(){
       podePegarDoce = true;              /* a escolha ja existe assim que ela ve o doce */
       caminhoDoce.classList.remove('destacado');
       caminhoFesta.classList.remove('apagado'); caminhoFesta.classList.add('destacado');
-      somAponta(); mostrarPremio(caminhoFesta, 2, true); Festa.previa(passosDaVez());
+      somAponta(); mostrarPremio(caminhoFesta, 2, true); Espera.previa(passosDaVez());
       depois(1900, function(){
         if (fase !== 'apresentacao') return;
         caminhoFesta.classList.remove('destacado');
@@ -1544,51 +1607,74 @@ function apresentacaoCurta(){
         princesaCaixa.classList.add('acena');
         depois(600, function(){
           if (fase !== 'apresentacao') return;
-          Voz.dizer('comecou', function(){ depois(400, iniciarEspera); });
+          Voz.dizer('comecou', function(){ depois(300, pedirPromessa); });
         });
       });
     });
   });
 }
 
-/* ---------- a espera e uma tarefa: montar a festa peca por peca ----------
-   Uma crianca de 3 anos nao fica parada: ela toca ate acontecer alguma coisa.
-   Entao a espera deixa de ser "nao toque" e vira "monte a festa comigo".
-   Cada peca chega sozinha, espera o dedo dela, e so entao vem a proxima —
-   o tempo passa dentro da tarefa, e o docinho continua ali do lado, a um
-   toque de distancia. E a estrategia de distracao do teste do marshmallow,
-   que e justamente o que as criancas que conseguem esperar fazem.
-   ------------------------------------------------------------------------ */
-var PECAS = [
-  {sim:'#pcBolo',      x:95,  y:62, w:70, h:70},
-  {sim:'#pcCupcakeA',  x:26,  y:78, w:54, h:54},
-  {sim:'#pcCupcakeB',  x:180, y:78, w:54, h:54},
-  {sim:'#pcPirulitoA', x:74,  y:58, w:48, h:74},
-  {sim:'#pcPirulitoB', x:138, y:58, w:48, h:74},
-  {sim:'#pcBaloes',    x:90,  y:0,  w:80, h:62}
-];
-var POUSO = {x:92, y:6, w:76, h:76};   /* onde a peca fica esperando o toque */
+/* ============================================================================
+   A ESPERA E O JOGO — e a crianca precisa PERCEBER isso.
+   Quatro mecanismos, cada um vindo da literatura de 2 a 4 anos:
 
-var Festa = {
-  total:0, colocadas:0, pendente:-1, raf:0, animacao:null, balanco:0,
+   1) O TEMPO E O UNICO MOTOR VISIVEL. A estrela enche sozinha, a festa se
+      monta sozinha e o segundo doce CRESCE sozinho. Nada que a crianca toque
+      faz o premio crescer — assim ela nao pode aprender "eu toquei, ganhei".
+   2) O ESPERAR E PREMIADO ENQUANTO ACONTECE. A cada poucos segundos sem
+      pegar o doce, uma estrelinha salta e voa para a bandeja dela. O reforco
+      cai sobre o comportamento, nao so sobre o resultado (delay fading).
+   3) ELA ESCOLHE ESPERAR. Antes de comecar, toca na estrela e promete.
+      Compromisso explicito e papel assumido multiplicam o autocontrole
+      nessa idade (Vygotsky / Manuilenko; Tools of the Mind).
+   4) ELA APRENDE A ESTRATEGIA. A princesa oferece uma redoma de gelo para
+      guardar o doce. Cobrir a tentacao e o unico truque que dobra o tempo de
+      espera no teste do marshmallow (Mischel). Aqui isso vira verbo do jogo.
+   ========================================================================= */
+
+var PECAS = [
+  {sim:'#pcBolo',      x:95,  y:66, w:70, h:70},
+  {sim:'#pcCupcakeA',  x:26,  y:82, w:54, h:54},
+  {sim:'#pcCupcakeB',  x:180, y:82, w:54, h:54},
+  {sim:'#pcPirulitoA', x:74,  y:62, w:48, h:74},
+  {sim:'#pcPirulitoB', x:138, y:62, w:48, h:74}
+];
+
+/* premio 2: nasce pequenininho e cresce com o tempo, a vista da crianca */
+var P1 = {cx:98, cy:28, tam:52};
+var P2 = {cx:162, cy:28, min:14, max:52};
+
+var Espera = {
+  dur:0, t0:0, raf:0, pecas:0, colocadas:0,
+  faiscas:0, proximaFaisca:0, cobriu:false, ofereceu:false,
 
   limpar:function(){
     cancelAnimationFrame(this.raf); this.raf = 0;
-    this.animacao = null; this.pendente = -1; this.colocadas = 0;
+    this.colocadas = 0; this.faiscas = 0; this.proximaFaisca = 0;
+    this.cobriu = false; this.ofereceu = false;
     $('pecasColocadas').innerHTML = '';
-    $('pecaChegando').style.display = 'none';
-    caminhoFesta.classList.remove('temPeca');
+    $('premio1').setAttribute('opacity', 0);
+    $('premio2').setAttribute('opacity', 0);
+    guardarRedoma(false);
+    $('botaoRedoma').classList.remove('oferecida');
+    blocoEspera.classList.remove('promessa');
+    desenharBandejas(false);
   },
 
-  /* previa: a festa inteira aparece por um instante, para a crianca ver
-     o que ela vai montar — e some, deixando a mesa vazia para ela */
+  /* previa: a festa completa aparece um instante e some — ela ve o que vem */
   previa:function(n){
     var alvo = $('pecasColocadas');
     alvo.innerHTML = '';
-    for (var i=0;i<n;i++) this.desenhar(PECAS[i], alvo, i*90);
+    for (var i=0;i<n;i++) this.porPeca(i, alvo, i*90);
+    $('premio1').setAttribute('opacity', 1);
+    var p2 = $('premio2');
+    p2.setAttribute('opacity', 1);
+    p2.setAttribute('x', P2.cx - P2.max/2); p2.setAttribute('y', P2.cy - P2.max/2);
+    p2.setAttribute('width', P2.max); p2.setAttribute('height', P2.max);
   },
 
-  desenhar:function(peca, alvo, atraso){
+  porPeca:function(i, alvo, atraso){
+    var peca = PECAS[i];
     depois(atraso || 0, function(){
       var u = document.createElementNS('http://www.w3.org/2000/svg','use');
       u.setAttribute('href', peca.sim);
@@ -1598,104 +1684,123 @@ var Festa = {
     });
   },
 
-  comecar:function(total){
+  comecar:function(segundos, pecas){
     this.limpar();
-    this.total = total;
-    depois(500, this.chamar.bind(this));
+    this.dur = segundos * 1000;
+    this.pecas = pecas;
+    this.t0 = performance.now();
+    this.proximaFaisca = 1200;
+
+    $('premio1').setAttribute('opacity', 1);
+    $('premio2').setAttribute('opacity', .35);
+    this.crescerPremio(0);
+
+    /* a princesa oferece a redoma logo no comeco, quando a tentacao aperta */
+    depois(700, function(){
+      if (fase !== 'espera' || Espera.cobriu) return;
+      Espera.ofereceu = true;
+      $('botaoRedoma').classList.add('oferecida');
+      nota(1046.5, 0, 0.2, 0.12, 'sine');
+      Voz.dizer('redoma');
+      Dica.agendar($('botaoRedoma'), 2600);
+    });
+
     this.laco();
   },
 
-  /* uma peca entra em cena e fica pulsando ate a crianca tocar */
-  chamar:function(){
-    if (fase !== 'espera') return;
-    var i = this.colocadas;
-    if (i >= this.total) return;
-
-    var el = $('pecaChegando');
-    el.setAttribute('href', PECAS[i].sim);
-    el.style.display = '';
-    this.pendente = i;
-
-    /* entra pela esquerda e pela direita, alternando */
-    var deX = (i % 2 ? 300 : -60);
-    this.animar({x:deX, y:POUSO.y, w:POUSO.w, h:POUSO.h}, POUSO, 750, function(){
-      caminhoFesta.classList.add('temPeca');
-      somAponta();
-      Dica.agendar(Dica.alvoDaPeca(), 2600);     /* se ela hesitar, a maozinha aparece */
-    });
+  crescerPremio:function(p){
+    var s = P2.min + (P2.max - P2.min) * p;
+    var el = $('premio2');
+    el.setAttribute('x', P2.cx - s/2); el.setAttribute('y', P2.cy - s/2);
+    el.setAttribute('width', s); el.setAttribute('height', s);
+    el.setAttribute('opacity', 0.35 + 0.65*p);
   },
 
-  /* o dedo dela coloca a peca na mesa */
-  colocar:function(){
-    if (this.pendente < 0 || this.animacao) return;
-    var i = this.pendente, self = this;
-    this.pendente = -1;
-    Dica.esconder();
-    caminhoFesta.classList.remove('temPeca');
-    somPasso(this.colocadas, this.total);
+  /* a recompensa do proprio esperar, entregue durante a espera */
+  /* a recompensa do proprio esperar: a estrelinha voa e FICA na bandeja.
+     A bandeja de estrelas e do tempo esperado nesta rodada — ela ve o
+     tanto que ja esperou, e leva essas estrelas mesmo se desistir depois. */
+  faiscaDeEspera:function(){
+    var self = this;
+    voar(blocoEspera, $('bandejaEstrelas'), '#simEstrelaCheia', 0);
+    nota(880 + Math.min(this.faiscas,5)*80, 0, 0.3, 0.13);
     princesaCaixa.classList.add('acena');
-
-    var el = $('pecaChegando');
-    this.animar(this.atual(el), PECAS[i], 520, function(){
-      el.style.display = 'none';
-      self.desenhar(PECAS[i], $('pecasColocadas'), 0);
-      self.colocadas++;
-      acenderGema(self.colocadas - 1);
-      definirProgresso(self.colocadas / self.total);
-
-      if (self.colocadas >= self.total){
-        depois(700, venceu);
-        return;
-      }
-      /* incentivo falado de vez em quando, sem nunca atropelar o som da peca */
-      if (self.colocadas % 2 === 0){
-        depois(300, function(){ if (fase === 'espera') Voz.dizer(['meio1','meio2','meio3'][(self.colocadas/2 - 1) % 3]); });
-      }
-      depois(420 + estado.nivel*280, self.chamar.bind(self));
+    depois(900, function(){
+      self.faiscas++;
+      desenharBandejas(true);
     });
-  },
-
-  atual:function(el){
-    return {
-      x:parseFloat(el.getAttribute('x')), y:parseFloat(el.getAttribute('y')),
-      w:parseFloat(el.getAttribute('width')), h:parseFloat(el.getAttribute('height'))
-    };
-  },
-
-  animar:function(de, para, dur, aoFim){
-    this.animacao = {de:de, para:para, dur:dur, t0:performance.now(), aoFim:aoFim};
-    if (!this.raf) this.laco();
+    if (this.faiscas === 0) Voz.dizer('esperando');
   },
 
   laco:function(){
     var self = this;
     function quadro(agora){
       if (fase !== 'espera'){ self.raf = 0; return; }
-      var el = $('pecaChegando'), a = self.animacao;
+      var t = agora - self.t0;
+      var p = Math.min(1, t / self.dur);
 
-      if (a){
-        var t = Math.min(1, (agora - a.t0) / a.dur);
-        var e = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2)/2;   /* suave nas pontas */
-        el.setAttribute('x', a.de.x + (a.para.x - a.de.x)*e);
-        el.setAttribute('y', a.de.y + (a.para.y - a.de.y)*e);
-        el.setAttribute('width',  a.de.w + (a.para.w - a.de.w)*e);
-        el.setAttribute('height', a.de.h + (a.para.h - a.de.h)*e);
-        if (t >= 1){ self.animacao = null; if (a.aoFim) a.aoFim(); }
-      } else if (self.pendente >= 0){
-        /* pulsa parada, pedindo o dedo */
-        self.balanco += 0.06;
-        el.setAttribute('y', POUSO.y + Math.sin(self.balanco)*4);
+      definirProgresso(p);
+      self.crescerPremio(p);
+
+      /* a festa se monta com o tempo, nao com o dedo */
+      var devem = Math.floor(p * self.pecas);
+      while (self.colocadas < devem){
+        self.porPeca(self.colocadas, $('pecasColocadas'), 0);
+        acenderGema(self.colocadas);
+        somPasso(self.colocadas, self.pecas);
+        self.colocadas++;
       }
 
+      /* estrelinha de espera a cada ~2 s */
+      if (t >= self.proximaFaisca && p < 1){
+        self.proximaFaisca += 1500;
+        self.faiscaDeEspera();
+      }
+
+      if (p >= 1){ venceu(); return; }
       self.raf = requestAnimationFrame(quadro);
     }
     this.raf = requestAnimationFrame(quadro);
   }
 };
 
-function iniciarEspera(){
+/* ---------- a redoma de gelo ---------- */
+function guardarRedoma(cobrir){
+  caminhoDoce.classList.toggle('coberto', !!cobrir);
+  if (cobrir) caminhoDoce.classList.remove('chamando');
+}
+
+function usarRedoma(){
+  if (fase !== 'espera' || Espera.cobriu) return;
+  Espera.cobriu = true;
+  Dica.esconder();
+  $('botaoRedoma').classList.remove('oferecida');
+  voar($('botaoRedoma'), caminhoDoce, '#simRedoma', 0);
+  depois(320, function(){
+    guardarRedoma(true);
+    nota(523.25,0,0.25,0.14); nota(783.99,0.12,0.35,0.14);
+    princesaCaixa.classList.add('acena');
+    /* guardar o doce e uma conquista: vale uma estrelinha na hora */
+    Espera.faiscaDeEspera();
+    Voz.dizer('guardou');
+  });
+}
+
+/* ---------- o compromisso: ela toca na estrela e promete esperar ---------- */
+function pedirPromessa(){
   if (fase !== 'apresentacao') return;
+  fase = 'promessa';
+  blocoEspera.classList.add('visivel','promessa');
+  nota(659.25, 0, 0.22, 0.14);
+  Voz.dizer('promessa');
+  Dica.agendar(blocoEspera, 2200);
+}
+
+function iniciarEspera(){
+  if (fase !== 'promessa') return;
   fase = 'espera';
+  Dica.esconder();
+  blocoEspera.classList.remove('promessa');
 
   podePegarDoce = false;
   depois(RITMO.travaToque, function(){ podePegarDoce = true; });
@@ -1706,7 +1811,7 @@ function iniciarEspera(){
   princesaCaixa.classList.add('acena');
 
   definirProgresso(0);
-  Festa.comecar(passosDaVez());
+  Espera.comecar(segundosDaVez(), passosDaVez());
 }
 
 function definirProgresso(p){
@@ -1734,12 +1839,14 @@ function venceu(){
   var tamanho = Math.min(estado.nivel, NIVEIS.length-1);
   fase = 'festa';
   limparAgenda();
+  cancelAnimationFrame(Espera.raf);
   cancelAnimationFrame(raf);
   podePegarDoce = false;
   definirProgresso(1);
   for (var i=0;i<gemas.children.length;i++) gemas.children[i].classList.add('aceso');
 
   estado.doces += 2; estado.estrelas += 1;
+  estado.falhas = 0;
   if (estado.nivel < NIVEIS.length-1){ estado.nivel++; precisaApresentar = true; }
   salvar(); desenharBandejas(true);
 
@@ -1766,29 +1873,54 @@ function pegouDoce(){
   if (fase !== 'espera' && fase !== 'apresentacao') return;
   if (!podePegarDoce) return;
 
+  /* o doce guardado tem uma friccao de proposito: o primeiro toque so abre a
+     redoma. E o instante em que ela pode mudar de ideia — como na vida. */
+  if (caminhoDoce.classList.contains('coberto')){
+    guardarRedoma(false);
+    caminhoDoce.classList.add('chamando');
+    nota(392, 0, 0.2, 0.12);
+    /* ela abriu a redoma: a princesa oferece de novo, sem insistir demais */
+    Espera.cobriu = false;
+    depois(1600, function(){
+      if (fase !== 'espera' || Espera.cobriu) return;
+      $('botaoRedoma').classList.add('oferecida');
+    });
+    return;
+  }
+
   fase = 'consolo';
   bloquearToques();
   limparAgenda();
   Voz.parar();
+  cancelAnimationFrame(Espera.raf);
   cancelAnimationFrame(raf);
   podePegarDoce = false;
 
   somDoce();                                   /* resposta imediata ao dedo dela */
   mostrarPremio(caminhoDoce, 1, false);
-  estado.doces += 1; salvar(); desenharBandejas(true);
+  estado.doces += 1;
+  /* duas escolhas seguidas pelo doce: o desafio afrouxa em vez de endurecer */
+  estado.falhas++;
+  if (estado.falhas >= 2 && estado.nivel > 0){
+    estado.nivel--; estado.falhas = 0; precisaApresentar = true;
+  }
+  salvar(); desenharBandejas(true);
 
   caminhoDoce.classList.remove('chamando');
   caminhoFesta.classList.remove('brilhando');
   blocoEspera.classList.remove('pulsa');
 
   /* a festa aparece grande e vai embora, devagar o bastante para ela ver */
+  $('redomaConsolo').classList.remove('mostra');
   festaEscapando.classList.remove('rodando');
   void festaEscapando.offsetWidth;
   festaEscapando.classList.add('rodando');
 
+  var naoUsouRedoma = !Espera.cobriu;
   depois(2900, function(){
     cenaConsolo.classList.add('ativa');
-    Voz.dizer('consolo');
+    Voz.dizer(naoUsouRedoma ? 'dicaRedoma' : 'consolo');
+    if (naoUsouRedoma) $('redomaConsolo').classList.add('mostra');
     depois(RITMO.consolar, function(){
       repetirConsolo.classList.add('aparece');
       Dica.agendar(repetirConsolo, 2200);
@@ -1801,7 +1933,8 @@ function pegouDoce(){
    ========================================================================= */
 function desenharBandejas(animarUltimo){
   desenhar($('bandejaDoces'), '#simDoce', estado.doces, animarUltimo);
-  desenhar($('bandejaEstrelas'), '#simEstrelaCheia', estado.estrelas, animarUltimo);
+  /* estrelas = o tempo que ela esperou nesta rodada, enchendo ao vivo */
+  desenhar($('bandejaEstrelas'), '#simEstrelaCheia', Espera.faiscas, animarUltimo);
   function desenhar(caixa, simbolo, qtd, animar){
     var mostrar = Math.min(qtd, 12);
     caixa.innerHTML = '';
@@ -1976,7 +2109,8 @@ function atualizarNotaVoz(){
 }
 function atualizarNotaProgresso(){
   $('notaProgresso').textContent =
-    'Festa atual: ' + passosDaVez() + ' peças para montar, cerca de ' + segundosDaVez() + ' segundos de espera.';
+    'Espera atual: ' + segundosDaVez() + ' segundos, com ' + passosDaVez() +
+    ' peças de festa aparecendo sozinhas. Escolhas seguidas pelo docinho: ' + estado.falhas + '.';
 }
 
 function irParaJogo(){
@@ -2065,15 +2199,21 @@ aoTocar(repetirFesta,  function(){ somToque(); irParaRepouso(); depois(250, come
 aoTocar(repetirConsolo,function(){ somToque(); irParaRepouso(); depois(250, comecarRodada); });
 
 aoTocar(caminhoDoce, function(){ pegouDoce(); });
+/* tocar na festa nao adianta nada de proposito: so o tempo a constroi.
+   A princesa responde com carinho, e a estrela chama a atencao para si. */
 aoTocar(caminhoFesta, function(){
-  /* durante a espera, este e o botao da tarefa: coloca a peca na mesa */
-  if (fase === 'espera'){
-    if (Festa.pendente >= 0) Festa.colocar();
-    else { somAponta(); princesaCaixa.classList.add('acena'); }
-    return;
+  if (fase === 'espera' || fase === 'apresentacao' || fase === 'promessa'){
+    somAponta();
+    princesaCaixa.classList.add('acena');
+    blocoEspera.classList.add('visivel');
   }
-  if (fase === 'apresentacao'){ somAponta(); princesaCaixa.classList.add('acena'); }
 });
+
+/* a estrela do compromisso e a redoma */
+aoTocar(blocoEspera, function(){
+  if (fase === 'promessa') iniciarEspera();
+});
+aoTocar($('botaoRedoma'), function(){ usarRedoma(); });
 
 /* engrenagem: precisa de toque longo, para a crianca nao abrir sem querer */
 (function(){
