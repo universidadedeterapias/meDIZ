@@ -51,6 +51,8 @@ type Metricas = {
   enviado: number
   falhou: number
   descartado: number
+  semTelefone: number
+  telefoneInvalido: number
   clicou: number
   acessou: number
   acessouPorRastro: number
@@ -374,7 +376,16 @@ export default function CampanhasPage() {
                   <Metrica
                     rotulo="Descartado"
                     valor={m.descartado}
-                    nota="sem telefone"
+                    nota={
+                      // O resto do descartado (ex.: onda cancelada) nao tem
+                      // contador proprio — a nota so cobre o que se sabe.
+                      [
+                        m.semTelefone > 0 ? `${m.semTelefone} sem telefone` : null,
+                        m.telefoneInvalido > 0 ? `${m.telefoneInvalido} inválido` : null
+                      ]
+                        .filter(Boolean)
+                        .join(' · ') || undefined
+                    }
                   />
                 </div>
 
