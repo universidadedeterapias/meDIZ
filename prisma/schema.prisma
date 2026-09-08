@@ -1094,7 +1094,13 @@ model SalesRecoveryLead {
   /// A cobranca desta pessoa, nao o link generico da oferta.
   linkPagamento     String? @map("link_pagamento")
 
-  /// armado | disparado | recuperado
+  /// armado     — na fila, esperando a carencia vencer
+  /// disparado  — recebeu o toque; espera 24h pelo cupom
+  /// expirado   — o PIX/boleto venceu: sem toque, mas o cupom continua valendo
+  /// recuperado — pagou, por esta transacao ou por outra do mesmo e-mail/telefone
+  /// encerrado  — cancelada, reembolso ou chargeback: sai sem toque e sem cupom
+  /// descartado — outro produto da mesma compra ja recebeu a mensagem
+  /// falhou     — a Meta/Chatvolt recusaram o envio com 4xx; o motivo diz qual
   status String  @default("armado") @db.VarChar(24)
   /// Por que saiu da fila, para o admin ler sem abrir log.
   motivo String? @db.VarChar(255)
