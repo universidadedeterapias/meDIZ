@@ -1,13 +1,34 @@
 import { randomBytes } from 'crypto'
 import { prisma } from '@/lib/prisma'
+import { montarTelefone } from '@/lib/phone'
 import { montarFiltro, SQL_ESTADO } from './publico'
 import {
   ESTADOS_FORA_DA_REATIVACAO,
+  tamanhoAmostra,
+  type Amostragem,
   type Estado,
   type Filtros,
   type MapeamentoBotao,
   type MapeamentoVariavel
 } from './tipos'
+
+/**
+ * Sorteia `n` linhas de `linhas`, sem repetir.
+ *
+ * Fisher-Yates parcial: so embaralha o suficiente para tirar as `n` primeiras,
+ * o resto fica na ordem original e e descartado. Nao precisa ser
+ * criptografico — e so uma amostra de marketing, nao uma decisao de
+ * seguranca — entao Math.random() basta.
+ */
+function sorteiaSemReposicao<T>(linhas: T[], n: number): T[] {
+  const copia = linhas.slice()
+  const limite = Math.min(n, copia.length)
+  for (let i = 0; i < limite; i++) {
+    const j = i + Math.floor(Math.random() * (copia.length - i))
+    ;[copia[i], copia[j]] = [copia[j], copia[i]]
+  }
+  return copia.slice(0, limite)
+}
 
 /**
  * Ondas de reativacao: materializar, acompanhar, parar.
@@ -65,13 +86,17 @@ export type EntradaCampanha = {
   horaInicio: number
   horaFim: number
   filtros: Filtros
+  amostragem: Amostragem
   criadoPor: string
 }
 
 export type ResultadoCriacao = {
   id: string
+  totalRecorte: number
   totalDestinatarios: number
   semTelefone: number
+  /** Tinha algo em whatsapp, mas montarTelefone() nao conseguiu validar. */
+  telefoneInvalido: number
 }
 
 type LinhaSelecionada = {
@@ -116,7 +141,7 @@ export async function criarCampanha(
 
   const { args, whereCompleto } = montarFiltro(entrada.filtros)
 
-  const linhas = await prisma.$queryRawUnsafe<LinhaSelecionada[]>(
+  const doRecorte = await prisma.$queryRawUnsafe<LinhaSelecionada[]>(
     `SELECT f.user_id, f.email, f.nome, f.whatsapp, f.idioma,
             (${SQL_ESTADO}) AS estado
        FROM user_reactivation_facts f
@@ -125,8 +150,20 @@ export async function criarCampanha(
     ...args
   )
 
-  if (linhas.length === 0) {
+  if (doRecorte.length === 0) {
     throw new Error('Nenhuma pessoa bate nesse recorte.')
+  }
+
+  // `todos` mantem a ordem por recencia de sempre. `quantidade` e `percentual`
+  // sorteiam: manter a ordem por recencia faria ondas sucessivas do mesmo
+  // recorte martelarem sempre as MESMAS pessoas, porque a consulta acima
+  // sempre devolve na mesma ordem.
+  const n = tamanhoAmostra(entrada.amostragem, doRecorte.length)
+  const linhas =
+    entrada.amostragem.modo === 'todos' ? doRecorte : sorteiaSemReposicao(doRecorte, n)
+
+  if (linhas.length === 0) {
+    throw new Error('A amostragem escolhida não deixou ninguém — aumente a quantidade ou o percentual.')
   }
 
   const ids = linhas.map((l) => l.user_id)
@@ -150,10 +187,13 @@ export async function criarCampanha(
       botao: (entrada.botao ?? undefined) as unknown as object | undefined,
       filtros: entrada.filtros as unknown as object,
       corteDias: entrada.filtros.corte,
+      amostragemModo: entrada.amostragem.modo,
+      amostragemValor: entrada.amostragem.modo === 'todos' ? null : entrada.amostragem.valor,
       tetoDiario: entrada.tetoDiario,
       horaInicio: entrada.horaInicio,
       horaFim: entrada.horaFim,
       criadoPor: entrada.criadoPor,
+      totalRecorte: doRecorte.length,
       totalDestinatarios: linhas.length
     }
   })
@@ -161,21 +201,31 @@ export async function criarCampanha(
   // Quem nao tem telefone entra como `descartado`, e nao fica de fora em
   // silencio: o numero da lista tem que bater com o numero que o operador
   // aprovou, e a diferenca precisa ter nome.
+  //
+  // `User.whatsapp` e gravado cru em varios cadastros (signup, /api/user,
+  // edicao no admin) — nenhum deles passa por `montarTelefone`. Auditado em
+  // producao: 2.393 de 2.473 numeros (97%) estao como "(11) 93728-4567", sem
+  // o DDI. So os que vieram de um webhook de compra (Guru/Hotmart), que ja
+  // normaliza na entrada, escapam disso. Sem este passo, quase toda onda saia
+  // com `to` sem 55 — a Meta recusa ou entrega para o numero errado.
   let semTelefone = 0
+  let telefoneInvalido = 0
   const dados = linhas.map((l) => {
-    const temTelefone = Boolean(l.whatsapp && l.whatsapp.trim())
-    if (!temTelefone) semTelefone += 1
+    const bruto = l.whatsapp?.trim() || null
+    const telefone = bruto ? montarTelefone({ numero: bruto }) : null
+    if (!bruto) semTelefone += 1
+    else if (!telefone) telefoneInvalido += 1
     return {
       campaignId: campanha.id,
       userId: l.user_id,
       email: l.email,
       nome: l.nome,
-      telefone: l.whatsapp,
+      telefone,
       idioma: l.idioma,
       estado: l.estado,
       origens: porUsuario.get(l.user_id) ?? [],
-      status: temTelefone ? 'pendente' : 'descartado',
-      motivo: temTelefone ? null : 'sem telefone',
+      status: telefone ? 'pendente' : 'descartado',
+      motivo: telefone ? null : bruto ? 'telefone inválido' : 'sem telefone',
       trackToken: novoToken()
     }
   })
@@ -184,8 +234,10 @@ export async function criarCampanha(
 
   return {
     id: campanha.id,
+    totalRecorte: doRecorte.length,
     totalDestinatarios: linhas.length,
-    semTelefone
+    semTelefone,
+    telefoneInvalido
   }
 }
 
@@ -196,6 +248,12 @@ export type MetricasCampanha = {
   enviado: number
   falhou: number
   descartado: number
+  /** Dos descartados: motivo = 'sem telefone'. */
+  semTelefone: number
+  /** Dos descartados: motivo = 'telefone inválido' — tinha algo no campo mas
+   *  montarTelefone() nao validou. O resto do `descartado` (ex.: onda
+   *  cancelada) nao tem contador proprio. */
+  telefoneInvalido: number
   clicou: number
   acessou: number
   /** Acesso que nao veio pelo link: rastro de uso depois do envio. Conta como
@@ -214,6 +272,8 @@ export async function metricasDaCampanha(
       enviado: bigint
       falhou: bigint
       descartado: bigint
+      sem_telefone: bigint
+      telefone_invalido: bigint
       clicou: bigint
       acessou: bigint
       acessou_por_rastro: bigint
@@ -225,6 +285,8 @@ export async function metricasDaCampanha(
             count(*) FILTER (WHERE r.status = 'enviado')        AS enviado,
             count(*) FILTER (WHERE r.status = 'falhou')         AS falhou,
             count(*) FILTER (WHERE r.status = 'descartado')     AS descartado,
+            count(*) FILTER (WHERE r.motivo = 'sem telefone')      AS sem_telefone,
+            count(*) FILTER (WHERE r.motivo = 'telefone inválido') AS telefone_invalido,
             count(*) FILTER (WHERE r.clicou_em IS NOT NULL)     AS clicou,
             count(*) FILTER (WHERE r.acessou_em IS NOT NULL)    AS acessou,
             count(*) FILTER (WHERE r.acessou_em IS NULL
@@ -244,6 +306,8 @@ export async function metricasDaCampanha(
     enviado: n(l?.enviado ?? null),
     falhou: n(l?.falhou ?? null),
     descartado: n(l?.descartado ?? null),
+    semTelefone: n(l?.sem_telefone ?? null),
+    telefoneInvalido: n(l?.telefone_invalido ?? null),
     clicou: n(l?.clicou ?? null),
     acessou: n(l?.acessou ?? null),
     acessouPorRastro: n(l?.acessou_por_rastro ?? null)

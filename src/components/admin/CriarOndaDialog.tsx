@@ -25,13 +25,18 @@ import {
 import {
   ESTADOS_FORA_DA_REATIVACAO,
   FONTES_VARIAVEL,
+  MODOS_AMOSTRAGEM,
   ROTULO_ESTADO,
   ROTULO_FONTE_VARIAVEL,
+  ROTULO_MODO_AMOSTRAGEM,
   ROTULO_ORIGEM,
+  tamanhoAmostra,
+  type Amostragem,
   type Estado,
   type Filtros,
   type FonteVariavel,
   type MapeamentoVariavel,
+  type ModoAmostragem,
   type Origem
 } from '@/lib/reativacao/tipos'
 
@@ -75,6 +80,8 @@ export function CriarOndaDialog({
     { posicao: 1, fonte: 'primeiro_nome' }
   ])
   const [temBotao, setTemBotao] = useState(true)
+  const [amostragemModo, setAmostragemModo] = useState<ModoAmostragem>('todos')
+  const [amostragemValor, setAmostragemValor] = useState(100)
   const [crmScenarioId, setCrmScenarioId] = useState('')
   const [crmStepId, setCrmStepId] = useState('')
   const [tetoDiario, setTetoDiario] = useState(700)
@@ -87,7 +94,13 @@ export function CriarOndaDialog({
     ESTADOS_FORA_DA_REATIVACAO.includes(e)
   )
   const semEstado = filtros.estados.length === 0
-  const bloqueado = semEstado || estadosProibidos.length > 0
+  const amostragem: Amostragem = {
+    modo: amostragemModo,
+    valor: amostragemModo === 'todos' ? null : amostragemValor
+  }
+  const tamanhoOnda = tamanhoAmostra(amostragem, total)
+  const amostragemVazia = amostragemModo !== 'todos' && tamanhoOnda === 0
+  const bloqueado = semEstado || estadosProibidos.length > 0 || amostragemVazia
 
   const criar = async () => {
     setSalvando(true)
@@ -104,6 +117,7 @@ export function CriarOndaDialog({
           crmStepId: crmStepId || null,
           variaveis,
           botao: temBotao ? { tipo: 'url', fonte: 'token' } : null,
+          amostragem,
           tetoDiario,
           horaInicio,
           horaFim,
@@ -170,7 +184,64 @@ export function CriarOndaDialog({
             </div>
           </div>
 
-          {bloqueado && (
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-foreground">
+              Quantas pessoas entram nesta onda
+            </label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {MODOS_AMOSTRAGEM.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => {
+                    setAmostragemModo(m)
+                    if (m === 'percentual') setAmostragemValor(20)
+                    if (m === 'quantidade') setAmostragemValor(Math.min(500, total))
+                  }}
+                  className={`rounded-md border px-2 py-1.5 text-[11px] font-medium transition-colors ${
+                    amostragemModo === m
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-input text-muted-foreground hover:bg-muted/50'
+                  }`}
+                >
+                  {ROTULO_MODO_AMOSTRAGEM[m]}
+                </button>
+              ))}
+            </div>
+
+            {amostragemModo !== 'todos' && (
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={1}
+                  max={amostragemModo === 'percentual' ? 100 : undefined}
+                  value={amostragemValor}
+                  onChange={(e) => setAmostragemValor(Math.max(1, Number(e.target.value) || 1))}
+                  className="h-8 w-28 text-xs"
+                />
+                <span className="text-[11px] text-muted-foreground">
+                  {amostragemModo === 'percentual' ? '% do recorte, sorteado ao acaso' : 'pessoas, sorteadas ao acaso do recorte'}
+                </span>
+              </div>
+            )}
+
+            <p className="text-[11px] leading-snug text-muted-foreground">
+              {amostragemModo === 'todos' ? (
+                <>Todas as <strong>{total.toLocaleString('pt-BR')}</strong> pessoas do recorte recebem a onda.</>
+              ) : amostragemVazia ? (
+                'Esse valor não sorteia ninguém — aumente a quantidade ou o percentual.'
+              ) : (
+                <>
+                  Sorteio de <strong>{tamanhoOnda.toLocaleString('pt-BR')}</strong> de{' '}
+                  {total.toLocaleString('pt-BR')} pessoas
+                  {total > 0 && <> ({Math.round((tamanhoOnda / total) * 100)}%)</>}. Cada onda sorteia de
+                  novo — repetir o recorte não repete as mesmas pessoas.
+                </>
+              )}
+            </p>
+          </div>
+
+          {(semEstado || estadosProibidos.length > 0) && (
             <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span>

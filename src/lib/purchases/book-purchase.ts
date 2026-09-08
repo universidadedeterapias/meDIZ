@@ -54,11 +54,13 @@ export const STONE_PHYSICAL_BOOK_IDS = new Set([
  * voltar pela outra porta, porque o webhook do Guru manda os dois e o Pagar.me
  * so o UUID.
  *
- * Faltavam aqui, e o efeito era silencioso: 178 compras do digital brasileiro
- * pelo Guru nao eram reconhecidas como livro, entao nao entravam no onboarding
- * do livro nem na esteira que depende dele. Achado ao montar o filtro da
- * recuperacao de vendas, comparando os IDs desta lista com os produtos que de
- * fato aparecem em `purchase_events`.
+ * Nao corrigem defeito: sem eles, `isBookPurchase` ja reconhecia essas compras
+ * pelo produto de catalogo, que resolve para `LIVRO_DIGITAL`. O que muda e
+ * deixar de depender do catalogo para uma oferta que ja conhecemos —
+ * `isBookExternalId` responde sem ir ao banco, e o mapeamento no admin para de
+ * ser o unico fio entre a venda e o onboarding. Levantados ao montar o filtro
+ * da recuperacao de vendas, comparando esta lista com os produtos que de fato
+ * aparecem em `purchase_events`.
  *
  * 1780425821 = EL CUERPO HABLA, o digital em espanhol.
  */
