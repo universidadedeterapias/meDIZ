@@ -3,11 +3,31 @@ import { prisma } from '@/lib/prisma'
 import { montarFiltro, SQL_ESTADO } from './publico'
 import {
   ESTADOS_FORA_DA_REATIVACAO,
+  tamanhoAmostra,
+  type Amostragem,
   type Estado,
   type Filtros,
   type MapeamentoBotao,
   type MapeamentoVariavel
 } from './tipos'
+
+/**
+ * Sorteia `n` linhas de `linhas`, sem repetir.
+ *
+ * Fisher-Yates parcial: so embaralha o suficiente para tirar as `n` primeiras,
+ * o resto fica na ordem original e e descartado. Nao precisa ser
+ * criptografico — e so uma amostra de marketing, nao uma decisao de
+ * seguranca — entao Math.random() basta.
+ */
+function sorteiaSemReposicao<T>(linhas: T[], n: number): T[] {
+  const copia = linhas.slice()
+  const limite = Math.min(n, copia.length)
+  for (let i = 0; i < limite; i++) {
+    const j = i + Math.floor(Math.random() * (copia.length - i))
+    ;[copia[i], copia[j]] = [copia[j], copia[i]]
+  }
+  return copia.slice(0, limite)
+}
 
 /**
  * Ondas de reativacao: materializar, acompanhar, parar.
@@ -65,11 +85,13 @@ export type EntradaCampanha = {
   horaInicio: number
   horaFim: number
   filtros: Filtros
+  amostragem: Amostragem
   criadoPor: string
 }
 
 export type ResultadoCriacao = {
   id: string
+  totalRecorte: number
   totalDestinatarios: number
   semTelefone: number
 }
@@ -116,7 +138,7 @@ export async function criarCampanha(
 
   const { args, whereCompleto } = montarFiltro(entrada.filtros)
 
-  const linhas = await prisma.$queryRawUnsafe<LinhaSelecionada[]>(
+  const doRecorte = await prisma.$queryRawUnsafe<LinhaSelecionada[]>(
     `SELECT f.user_id, f.email, f.nome, f.whatsapp, f.idioma,
             (${SQL_ESTADO}) AS estado
        FROM user_reactivation_facts f
@@ -125,8 +147,20 @@ export async function criarCampanha(
     ...args
   )
 
-  if (linhas.length === 0) {
+  if (doRecorte.length === 0) {
     throw new Error('Nenhuma pessoa bate nesse recorte.')
+  }
+
+  // `todos` mantem a ordem por recencia de sempre. `quantidade` e `percentual`
+  // sorteiam: manter a ordem por recencia faria ondas sucessivas do mesmo
+  // recorte martelarem sempre as MESMAS pessoas, porque a consulta acima
+  // sempre devolve na mesma ordem.
+  const n = tamanhoAmostra(entrada.amostragem, doRecorte.length)
+  const linhas =
+    entrada.amostragem.modo === 'todos' ? doRecorte : sorteiaSemReposicao(doRecorte, n)
+
+  if (linhas.length === 0) {
+    throw new Error('A amostragem escolhida não deixou ninguém — aumente a quantidade ou o percentual.')
   }
 
   const ids = linhas.map((l) => l.user_id)
@@ -150,10 +184,13 @@ export async function criarCampanha(
       botao: (entrada.botao ?? undefined) as unknown as object | undefined,
       filtros: entrada.filtros as unknown as object,
       corteDias: entrada.filtros.corte,
+      amostragemModo: entrada.amostragem.modo,
+      amostragemValor: entrada.amostragem.modo === 'todos' ? null : entrada.amostragem.valor,
       tetoDiario: entrada.tetoDiario,
       horaInicio: entrada.horaInicio,
       horaFim: entrada.horaFim,
       criadoPor: entrada.criadoPor,
+      totalRecorte: doRecorte.length,
       totalDestinatarios: linhas.length
     }
   })
@@ -184,6 +221,7 @@ export async function criarCampanha(
 
   return {
     id: campanha.id,
+    totalRecorte: doRecorte.length,
     totalDestinatarios: linhas.length,
     semTelefone
   }

@@ -250,3 +250,41 @@ export const MAPEAMENTO_PADRAO: MapeamentoVariavel[] = [
   { posicao: 1, fonte: 'primeiro_nome' }
 ]
 export const BOTAO_PADRAO: MapeamentoBotao = { tipo: 'url', fonte: 'token' }
+
+/**
+ * Quantas pessoas do recorte entram na onda.
+ *
+ * `quantidade` e `percentual` sorteiam dentro do recorte — nunca pegam "os N
+ * mais recentes". Sem sorteio, ondas sucessivas do mesmo recorte martelariam
+ * sempre as mesmas pessoas, porque a consulta sempre ordena pelo mesmo
+ * criterio (ultimo sinal). O sorteio acontece uma vez, na criacao: a lista
+ * congelada e quem foi sorteado, nao uma regra que reroda.
+ */
+export const MODOS_AMOSTRAGEM = ['todos', 'quantidade', 'percentual'] as const
+export type ModoAmostragem = (typeof MODOS_AMOSTRAGEM)[number]
+
+export const ROTULO_MODO_AMOSTRAGEM: Record<ModoAmostragem, string> = {
+  todos: 'Todas as pessoas do recorte',
+  quantidade: 'Uma quantidade',
+  percentual: 'Um percentual'
+}
+
+export type Amostragem = {
+  modo: ModoAmostragem
+  /** Pessoas (quantidade) ou 1-100 (percentual). Null quando modo = todos. */
+  valor: number | null
+}
+
+export function amostragemPadrao(): Amostragem {
+  return { modo: 'todos', valor: null }
+}
+
+/** Quantas pessoas a amostragem tira de um recorte de `totalRecorte` pessoas. */
+export function tamanhoAmostra(a: Amostragem, totalRecorte: number): number {
+  if (a.modo === 'quantidade') return Math.max(0, Math.min(a.valor ?? 0, totalRecorte))
+  if (a.modo === 'percentual') {
+    const pct = Math.max(0, Math.min(a.valor ?? 0, 100))
+    return Math.round((totalRecorte * pct) / 100)
+  }
+  return totalRecorte
+}

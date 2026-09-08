@@ -1180,12 +1180,25 @@ model ReactivationCampaign {
   filtros   Json
   corteDias Int  @map("corte_dias")
 
+  /// todos | quantidade | percentual — como a lista final foi cortada do
+  /// recorte. `quantidade` e `percentual` sorteiam dentro do recorte, nunca
+  /// pegam "os N mais recentes": senao ondas sucessivas do mesmo recorte
+  /// martelariam sempre as mesmas pessoas.
+  amostragemModo  String @default("todos") @map("amostragem_modo") @db.VarChar(16)
+  /// Numero de pessoas quando o modo e `quantidade`; percentual 1-100 quando e
+  /// `percentual`. Null quando `todos`.
+  amostragemValor Int?   @map("amostragem_valor")
+
   /// Ritmo, que e regra da fila e nao disciplina do operador. O teto protege a
   /// reputacao do numero; a janela evita disparo as tres da manha.
   tetoDiario Int @default(700) @map("teto_diario")
   horaInicio Int @default(8) @map("hora_inicio")
   horaFim    Int @default(20) @map("hora_fim")
 
+  /// Quantas pessoas batiam no recorte, antes da amostragem. Com `todos` e
+  /// igual a totalDestinatarios; com sorteio, mostra a base que ele saiu — o
+  /// numero que faz "300 de 1.842 (16%)" fazer sentido na lista de ondas.
+  totalRecorte       Int    @default(0) @map("total_recorte")
   totalDestinatarios Int    @default(0) @map("total_destinatarios")
   criadoPor          String @map("criado_por") @db.VarChar(255)
 

@@ -5,14 +5,18 @@ import { criarCampanha, metricasDaCampanha } from '@/lib/reativacao/campanhas'
 import {
   ESTADOS,
   FONTES_VARIAVEL,
+  MODOS_AMOSTRAGEM,
   ORIGENS,
   filtrosPadrao,
+  amostragemPadrao,
   MAPEAMENTO_PADRAO,
   BOTAO_PADRAO,
+  type Amostragem,
   type Estado,
   type FonteVariavel,
   type MapeamentoBotao,
   type MapeamentoVariavel,
+  type ModoAmostragem,
   type Origem
 } from '@/lib/reativacao/tipos'
 
@@ -67,6 +71,27 @@ function botaoDe(v: unknown): MapeamentoBotao {
   return BOTAO_PADRAO
 }
 
+/**
+ * `todos` nao carrega valor. `quantidade` precisa de um inteiro >= 1;
+ * `percentual`, de um inteiro 1-100. Valor invalido ou fora da forma do modo
+ * cai no padrao (`todos`) — e nao um erro 400 — porque a onda ainda pode ser
+ * criada do jeito de sempre, so sem o corte.
+ */
+function amostragemDe(v: unknown): Amostragem {
+  const a = v as Record<string, unknown> | undefined
+  const modo = a?.modo as ModoAmostragem | undefined
+  if (!modo || !MODOS_AMOSTRAGEM.includes(modo) || modo === 'todos') return amostragemPadrao()
+
+  const valor = Number(a?.valor)
+  if (!Number.isFinite(valor)) return amostragemPadrao()
+
+  if (modo === 'quantidade') {
+    return { modo, valor: Math.max(1, Math.trunc(valor)) }
+  }
+  // percentual
+  return { modo, valor: Math.min(100, Math.max(1, Math.trunc(valor))) }
+}
+
 export async function GET() {
   const auth = await requireAdmin()
   if (auth.ok === false) return auth.response
@@ -84,9 +109,12 @@ export async function GET() {
       templateName: c.templateName,
       templateLang: c.templateLang,
       corteDias: c.corteDias,
+      amostragemModo: c.amostragemModo,
+      amostragemValor: c.amostragemValor,
       tetoDiario: c.tetoDiario,
       horaInicio: c.horaInicio,
       horaFim: c.horaFim,
+      totalRecorte: c.totalRecorte,
       totalDestinatarios: c.totalDestinatarios,
       criadoPor: c.criadoPor,
       criadoEm: c.criadoEm.toISOString(),
@@ -142,6 +170,7 @@ export async function POST(request: NextRequest) {
       crmStepId: b.crmStepId ? String(b.crmStepId).slice(0, 120) : null,
       variaveis: mapeamento(b.variaveis),
       botao: botaoDe(b.botao),
+      amostragem: amostragemDe(b.amostragem),
       tetoDiario: inteiro(b.tetoDiario, 700, 1, 5000),
       horaInicio: inteiro(b.horaInicio, 8, 0, 23),
       horaFim: inteiro(b.horaFim, 20, 0, 23),
