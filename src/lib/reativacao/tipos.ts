@@ -201,3 +201,52 @@ export function explicarEstado(l: LinhaPublico, corte: number): string[] {
 
   return fatos
 }
+
+/**
+ * De onde sai o valor de cada {{n}} do template.
+ *
+ * `literal` existe para o que nao vem do destinatario — nome do livro, valor do
+ * desconto, prazo. O resto sai da propria linha da fila.
+ */
+export const FONTES_VARIAVEL = [
+  'primeiro_nome',
+  'nome_completo',
+  'email',
+  'estado',
+  'idioma',
+  'literal'
+] as const
+export type FonteVariavel = (typeof FONTES_VARIAVEL)[number]
+
+export const ROTULO_FONTE_VARIAVEL: Record<FonteVariavel, string> = {
+  primeiro_nome: 'Primeiro nome',
+  nome_completo: 'Nome completo',
+  email: 'E-mail',
+  estado: 'Estado (dormente, frio…)',
+  idioma: 'Idioma',
+  literal: 'Texto fixo'
+}
+
+export type MapeamentoVariavel = {
+  /** 1 vira {{1}} no template. */
+  posicao: number
+  fonte: FonteVariavel
+  /** Só usado quando `fonte` é `literal`. */
+  valor?: string
+}
+
+/** Botão de URL do template, ou null quando o template não tem botão. */
+export type MapeamentoBotao = {
+  tipo: 'url'
+  /** `token` é o único que faz sentido hoje: é o que leva a pessoa ao /r. */
+  fonte: 'token'
+} | null
+
+/**
+ * O que vale quando a onda nao tras mapeamento — ondas criadas antes desta
+ * configuracao existir. E o comportamento que o n8n tinha fixo no codigo.
+ */
+export const MAPEAMENTO_PADRAO: MapeamentoVariavel[] = [
+  { posicao: 1, fonte: 'primeiro_nome' }
+]
+export const BOTAO_PADRAO: MapeamentoBotao = { tipo: 'url', fonte: 'token' }

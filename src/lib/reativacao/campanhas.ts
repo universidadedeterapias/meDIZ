@@ -1,7 +1,13 @@
 import { randomBytes } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { montarFiltro, SQL_ESTADO } from './publico'
-import { ESTADOS_FORA_DA_REATIVACAO, type Estado, type Filtros } from './tipos'
+import {
+  ESTADOS_FORA_DA_REATIVACAO,
+  type Estado,
+  type Filtros,
+  type MapeamentoBotao,
+  type MapeamentoVariavel
+} from './tipos'
 
 /**
  * Ondas de reativacao: materializar, acompanhar, parar.
@@ -53,6 +59,8 @@ export type EntradaCampanha = {
   templateLang: string
   crmScenarioId: string | null
   crmStepId: string | null
+  variaveis: MapeamentoVariavel[]
+  botao: MapeamentoBotao
   tetoDiario: number
   horaInicio: number
   horaFim: number
@@ -138,6 +146,8 @@ export async function criarCampanha(
       templateLang: entrada.templateLang,
       crmScenarioId: entrada.crmScenarioId,
       crmStepId: entrada.crmStepId,
+      variaveis: entrada.variaveis as unknown as object,
+      botao: (entrada.botao ?? undefined) as unknown as object | undefined,
       filtros: entrada.filtros as unknown as object,
       corteDias: entrada.filtros.corte,
       tetoDiario: entrada.tetoDiario,

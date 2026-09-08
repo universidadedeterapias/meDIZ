@@ -10,7 +10,7 @@
  */
 
 import { useState } from 'react'
-import { Loader2, Send, AlertTriangle } from 'lucide-react'
+import { Loader2, Send, AlertTriangle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
@@ -24,10 +24,14 @@ import {
 } from '@/components/ui/dialog'
 import {
   ESTADOS_FORA_DA_REATIVACAO,
+  FONTES_VARIAVEL,
   ROTULO_ESTADO,
+  ROTULO_FONTE_VARIAVEL,
   ROTULO_ORIGEM,
   type Estado,
   type Filtros,
+  type FonteVariavel,
+  type MapeamentoVariavel,
   type Origem
 } from '@/lib/reativacao/tipos'
 
@@ -67,6 +71,10 @@ export function CriarOndaDialog({
   const [nome, setNome] = useState('')
   const [templateName, setTemplateName] = useState('')
   const [templateLang, setTemplateLang] = useState('pt_BR')
+  const [variaveis, setVariaveis] = useState<MapeamentoVariavel[]>([
+    { posicao: 1, fonte: 'primeiro_nome' }
+  ])
+  const [temBotao, setTemBotao] = useState(true)
   const [crmScenarioId, setCrmScenarioId] = useState('')
   const [crmStepId, setCrmStepId] = useState('')
   const [tetoDiario, setTetoDiario] = useState(700)
@@ -94,6 +102,8 @@ export function CriarOndaDialog({
           templateLang,
           crmScenarioId: crmScenarioId || null,
           crmStepId: crmStepId || null,
+          variaveis,
+          botao: temBotao ? { tipo: 'url', fonte: 'token' } : null,
           tetoDiario,
           horaInicio,
           horaFim,
@@ -200,6 +210,100 @@ export function CriarOndaDialog({
               />
             </Campo>
           </div>
+
+          <div className="space-y-2">
+            <div className="flex items-baseline justify-between">
+              <label className="text-xs font-medium">Variáveis do template</label>
+              <button
+                type="button"
+                onClick={() =>
+                  setVariaveis((v) => [
+                    ...v,
+                    { posicao: v.length + 1, fonte: 'primeiro_nome' }
+                  ])
+                }
+                className="text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                + acrescentar
+              </button>
+            </div>
+
+            {variaveis.length === 0 && (
+              <p className="rounded-md border border-dashed p-2.5 text-[11px] text-muted-foreground">
+                Nenhuma. Use se o template não tiver <code>{'{{1}}'}</code>.
+              </p>
+            )}
+
+            {variaveis.map((v, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="w-9 shrink-0 rounded border bg-muted px-1.5 py-1 text-center text-[11px] font-medium tabular-nums">
+                  {`{{${v.posicao}}}`}
+                </span>
+                <select
+                  value={v.fonte}
+                  onChange={(e) =>
+                    setVariaveis((lista) =>
+                      lista.map((x, j) =>
+                        j === i ? { ...x, fonte: e.target.value as FonteVariavel } : x
+                      )
+                    )
+                  }
+                  className="h-8 flex-1 rounded-md border bg-background px-2 text-xs"
+                >
+                  {FONTES_VARIAVEL.map((f) => (
+                    <option key={f} value={f}>
+                      {ROTULO_FONTE_VARIAVEL[f]}
+                    </option>
+                  ))}
+                </select>
+                {v.fonte === 'literal' && (
+                  <Input
+                    value={v.valor ?? ''}
+                    onChange={(e) =>
+                      setVariaveis((lista) =>
+                        lista.map((x, j) => (j === i ? { ...x, valor: e.target.value } : x))
+                      )
+                    }
+                    placeholder="texto fixo"
+                    className="h-8 flex-1 text-xs"
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setVariaveis((lista) =>
+                      lista
+                        .filter((_, j) => j !== i)
+                        .map((x, j) => ({ ...x, posicao: j + 1 }))
+                    )
+                  }
+                  className="shrink-0 text-muted-foreground hover:text-destructive"
+                  aria-label="Remover variável"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+
+            <label className="flex cursor-pointer items-start gap-2 pt-1 text-xs">
+              <input
+                type="checkbox"
+                checked={temBotao}
+                onChange={(e) => setTemBotao(e.target.checked)}
+                className="mt-0.5 h-3.5 w-3.5"
+              />
+              <span>
+                O template tem botão de URL
+                <span className="block text-[11px] text-muted-foreground">
+                  A base do botão na Meta precisa ser <code>https://mediz.app/r/</code> —
+                  ela guarda a base e concatena só o token, que é o que registra o
+                  clique.
+                </span>
+              </span>
+            </label>
+          </div>
+
+          <Separator />
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Campo rotulo="Cenário no CRM" dica="Opcional. Para onde a conversa anda depois do envio.">

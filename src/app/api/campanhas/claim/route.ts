@@ -3,6 +3,14 @@ import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { validateWebhookBearer } from '@/lib/webhookAuth'
+import {
+  BOTAO_PADRAO,
+  MAPEAMENTO_PADRAO,
+  ROTULO_ESTADO,
+  type Estado,
+  type MapeamentoBotao,
+  type MapeamentoVariavel
+} from '@/lib/reativacao/tipos'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -52,6 +60,34 @@ type Reivindicado = {
   crm_scenario_id: string | null
   crm_step_id: string | null
   campanha_nome: string
+  variaveis: unknown
+  botao: unknown
+}
+
+/**
+ * Resolve os {{1}}, {{2}} do template com os dados de quem vai receber.
+ *
+ * Acontece aqui, e nao no n8n, porque so o app conhece o destinatario — e
+ * porque template novo nao pode exigir editar fluxo. O n8n recebe
+ * { var_1: 'Maria', var_2: '...' } pronto e so repassa.
+ */
+function resolverVariaveis(
+  mapa: MapeamentoVariavel[],
+  lead: { nome: string | null; email: string; estado: string; idioma: string | null },
+  primeiroNome: string
+): Record<string, string> {
+  const fora: Record<string, string> = {}
+  for (const m of mapa) {
+    let valor = ''
+    if (m.fonte === 'primeiro_nome') valor = primeiroNome
+    else if (m.fonte === 'nome_completo') valor = (lead.nome || '').trim()
+    else if (m.fonte === 'email') valor = lead.email
+    else if (m.fonte === 'estado') valor = ROTULO_ESTADO[lead.estado as Estado] ?? lead.estado
+    else if (m.fonte === 'idioma') valor = lead.idioma || ''
+    else if (m.fonte === 'literal') valor = m.valor || ''
+    fora[`var_${m.posicao}`] = valor
+  }
+  return fora
 }
 
 function baseUrl(): string {
@@ -90,7 +126,7 @@ export async function POST(request: NextRequest) {
     const linhas = await prisma.$queryRaw<Reivindicado[]>(Prisma.sql`
       WITH onda AS (
         SELECT c.id, c.teto_diario, c.template_name, c.template_lang,
-               c.crm_scenario_id, c.crm_step_id, c.nome,
+               c.crm_scenario_id, c.crm_step_id, c.nome, c.variaveis, c.botao,
                (SELECT count(*) FROM reactivation_recipients h
                  WHERE h.campaign_id = c.id
                    AND (h.enviado_em >= date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo')
@@ -128,7 +164,7 @@ export async function POST(request: NextRequest) {
       RETURNING r.id, r.campaign_id, r.user_id, r.email, r.nome, r.telefone,
                 r.idioma, r.estado, r.track_token, r.tentativas,
                 o.template_name, o.template_lang, o.crm_scenario_id,
-                o.crm_step_id, o.nome AS campanha_nome
+                o.crm_step_id, o.nome AS campanha_nome, o.variaveis, o.botao
     `)
 
     const base = baseUrl()
@@ -136,29 +172,48 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       status: 'ok',
       total: linhas.length,
-      itens: linhas.map((l) => ({
-        destinatarioId: l.id,
-        campanhaId: l.campaign_id,
-        campanha: l.campanha_nome,
-        userId: l.user_id,
-        email: l.email,
-        // Primeiro nome: e assim que a isca chama a pessoa, e o template so tem
-        // espaco para um.
-        primeiroNome: (l.nome || '').trim().split(/\s+/)[0] || 'tudo bem',
-        telefone: l.telefone,
-        idioma: l.idioma,
-        estado: l.estado,
-        tentativa: l.tentativas,
-        templateName: l.template_name,
-        templateLang: l.template_lang,
-        crmScenarioId: l.crm_scenario_id,
-        crmStepId: l.crm_step_id,
-        link: `${base}/r/${l.track_token}`,
-        // O botao de URL do template tem base fixa na Meta e so concatena o que
-        // vai no valor. Entao o n8n precisa do token puro, e nao da URL inteira:
-        // mandar o link completo produziria mediz.app/r/https://mediz.app/r/...
-        token: l.track_token
-      }))
+      itens: linhas.map((l) => {
+        const primeiroNome = (l.nome || '').trim().split(/\s+/)[0] || 'tudo bem'
+
+        // Onda criada antes de o mapeamento existir cai no padrao, que e
+        // exatamente o que o n8n tinha fixo no codigo: var_1 = primeiro nome,
+        // botao com o token.
+        const mapa = Array.isArray(l.variaveis)
+          ? (l.variaveis as MapeamentoVariavel[])
+          : MAPEAMENTO_PADRAO
+        const botao =
+          l.botao === null
+            ? null
+            : ((l.botao as MapeamentoBotao) ?? BOTAO_PADRAO)
+
+        return {
+          destinatarioId: l.id,
+          campanhaId: l.campaign_id,
+          campanha: l.campanha_nome,
+          userId: l.user_id,
+          email: l.email,
+          primeiroNome,
+          telefone: l.telefone,
+          idioma: l.idioma,
+          estado: l.estado,
+          tentativa: l.tentativas,
+          templateName: l.template_name,
+          templateLang: l.template_lang,
+          crmScenarioId: l.crm_scenario_id,
+          crmStepId: l.crm_step_id,
+          link: `${base}/r/${l.track_token}`,
+          // O botao de URL do template tem base fixa na Meta e so concatena o
+          // que vai no valor. Entao vai o token puro, e nao a URL inteira:
+          // mandar o link completo produziria mediz.app/r/https://mediz.app/r/…
+          token: l.track_token,
+          // Ja resolvidas: { var_1: 'Maria', var_2: 'O CORPO DIZ' }. O n8n so
+          // espalha isto no corpo do template.
+          variaveis: resolverVariaveis(mapa, l, primeiroNome),
+          // Pronto no formato que a Chatvolt espera, ou null quando o template
+          // nao tem botao.
+          botoes: botao ? [{ type: 'url', value: l.track_token, index: 0 }] : null
+        }
+      })
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'erro desconhecido'

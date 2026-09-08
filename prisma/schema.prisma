@@ -1154,6 +1154,18 @@ model ReactivationCampaign {
   templateLang String  @default("pt_BR") @map("template_lang") @db.VarChar(10)
   /// whatsapp_oficial hoje. E-mail e Z-API cabem aqui sem migration.
   canal        String  @default("whatsapp_oficial") @db.VarChar(24)
+  /// Como preencher os {{1}}, {{2}} do template, em ordem.
+  ///
+  /// `[{ posicao: 1, fonte: 'primeiro_nome' }, { posicao: 2, fonte: 'literal', valor: 'O CORPO DIZ' }]`
+  ///
+  /// Mora aqui e nao no n8n porque template novo nao pode exigir editar fluxo:
+  /// o claim ja devolve as variaveis resolvidas, e o n8n so repassa.
+  variaveis Json?
+  /// Botao de URL do template, ou null se o template nao tem botao.
+  ///
+  /// `{ tipo: 'url', fonte: 'token' }` — a Meta guarda a base fixa e concatena
+  /// so o valor, entao o que vai e o token puro do destinatario.
+  botao Json?
   /// Para onde a conversa anda no CRM depois do envio.
   crmScenarioId String? @map("crm_scenario_id") @db.VarChar(120)
   crmStepId     String? @map("crm_step_id") @db.VarChar(120)

@@ -4,9 +4,15 @@ import { requireAdmin } from '@/lib/requireAuth'
 import { criarCampanha, metricasDaCampanha } from '@/lib/reativacao/campanhas'
 import {
   ESTADOS,
+  FONTES_VARIAVEL,
   ORIGENS,
   filtrosPadrao,
+  MAPEAMENTO_PADRAO,
+  BOTAO_PADRAO,
   type Estado,
+  type FonteVariavel,
+  type MapeamentoBotao,
+  type MapeamentoVariavel,
   type Origem
 } from '@/lib/reativacao/tipos'
 
@@ -28,6 +34,37 @@ function lista<T extends string>(v: unknown, validos: readonly T[]): T[] {
 function inteiro(v: unknown, padrao: number, min: number, max: number): number {
   const n = Number(v)
   return Number.isFinite(n) ? Math.min(Math.max(Math.trunc(n), min), max) : padrao
+}
+
+/**
+ * O mapeamento das variaveis, validado.
+ *
+ * Posicao fora de ordem ou fonte inventada nao viram erro: viram descarte. O
+ * template ja e a parte fragil (nome errado volta 500 da Meta) e nao precisa de
+ * um segundo jeito de quebrar.
+ */
+function mapeamento(v: unknown): MapeamentoVariavel[] {
+  if (!Array.isArray(v)) return MAPEAMENTO_PADRAO
+  const fontes = new Set<string>(FONTES_VARIAVEL)
+  const limpo = v
+    .filter((x): x is Record<string, unknown> => Boolean(x) && typeof x === 'object')
+    .map((x) => ({
+      posicao: Number(x.posicao),
+      fonte: String(x.fonte) as FonteVariavel,
+      valor: typeof x.valor === 'string' ? x.valor.slice(0, 400) : undefined
+    }))
+    .filter(
+      (x) => Number.isInteger(x.posicao) && x.posicao >= 1 && x.posicao <= 10 && fontes.has(x.fonte)
+    )
+    .sort((a, b) => a.posicao - b.posicao)
+  return limpo
+}
+
+function botaoDe(v: unknown): MapeamentoBotao {
+  if (v === null) return null
+  const b = v as Record<string, unknown> | undefined
+  if (b?.tipo === 'url' && b?.fonte === 'token') return { tipo: 'url', fonte: 'token' }
+  return BOTAO_PADRAO
 }
 
 export async function GET() {
@@ -103,6 +140,8 @@ export async function POST(request: NextRequest) {
       templateLang: String(b.templateLang ?? 'pt_BR').slice(0, 10),
       crmScenarioId: b.crmScenarioId ? String(b.crmScenarioId).slice(0, 120) : null,
       crmStepId: b.crmStepId ? String(b.crmStepId).slice(0, 120) : null,
+      variaveis: mapeamento(b.variaveis),
+      botao: botaoDe(b.botao),
       tetoDiario: inteiro(b.tetoDiario, 700, 1, 5000),
       horaInicio: inteiro(b.horaInicio, 8, 0, 23),
       horaFim: inteiro(b.horaFim, 20, 0, 23),
