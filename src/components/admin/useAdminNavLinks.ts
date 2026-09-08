@@ -18,7 +18,10 @@ import {
   Bell,
   BellRing,
   Library,
-  Package
+  Package,
+  PackageCheck,
+  Send,
+  UserCheck
 } from 'lucide-react'
 
 export type AdminNavLink = {
@@ -63,6 +66,27 @@ export function useAdminNavLinks() {
         icon: Users,
         label: 'Usuários',
         active: pathname === '/admin/users'
+      },
+      {
+        href: '/admin/entregas',
+        icon: PackageCheck,
+        label: 'Compras e entregas',
+        active: pathname.startsWith('/admin/entregas')
+      },
+      {
+        href: '/admin/reativacao',
+        icon: UserCheck,
+        label: 'Público da reativação',
+        // Exato, e nao startsWith: /admin/reativacao/campanhas e outro item da
+        // lista, e marcar os dois como ativos ao mesmo tempo tira do sidebar a
+        // unica coisa que ele responde — onde eu estou.
+        active: pathname === '/admin/reativacao'
+      },
+      {
+        href: '/admin/reativacao/campanhas',
+        icon: Send,
+        label: 'Ondas de reativação',
+        active: pathname.startsWith('/admin/reativacao/campanhas')
       },
       {
         href: '/admin/catalogo/produtos',

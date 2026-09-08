@@ -30,12 +30,14 @@ import {
   RefreshCw,
   RotateCcw,
   Search,
+  Send,
   X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
+import { CriarOndaDialog } from '@/components/admin/CriarOndaDialog'
 import {
   Sheet,
   SheetContent,
@@ -184,6 +186,7 @@ export default function ReativacaoPage() {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [selecionada, setSelecionada] = useState<LinhaPublico | null>(null)
+  const [criando, setCriando] = useState(false)
 
   const incluir = useMemo(
     () => ORIGENS.filter((o) => origens[o] === 'incluir'),
@@ -260,6 +263,21 @@ export default function ReativacaoPage() {
     setBuscaAtiva('')
     setCorte(CORTE_PADRAO_DIAS)
   }
+
+  const filtrosAtuais = useMemo(
+    () => ({
+      corte,
+      estados,
+      incluirOrigens: incluir,
+      excluirOrigens: excluir,
+      idiomas: [] as string[],
+      semIdioma,
+      busca: buscaAtiva || null,
+      limit: POR_PAGINA,
+      offset: 0
+    }),
+    [corte, estados, incluir, excluir, semIdioma, buscaAtiva]
+  )
 
   const linhas = dados?.items ?? []
   const ultimaPagina = dados ? (pagina + 1) * POR_PAGINA >= dados.total : true
@@ -501,9 +519,24 @@ export default function ReativacaoPage() {
                     : 'pessoas'}
                 </span>
               </p>
-              <p className="text-xs text-muted-foreground">
-                corte de {dados?.corte ?? corte} dias
-              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  corte de {dados?.corte ?? corte} dias
+                </span>
+                <Button
+                  size="sm"
+                  disabled={!dados || dados.total === 0 || estados.length === 0}
+                  title={
+                    estados.length === 0
+                      ? 'Escolha ao menos um estado — uma onda sem recorte é a base inteira'
+                      : 'Congela esta lista numa onda de reativação'
+                  }
+                  onClick={() => setCriando(true)}
+                >
+                  <Send className="mr-1.5 h-3.5 w-3.5" />
+                  Criar onda
+                </Button>
+              </div>
             </div>
 
             <Table>
@@ -633,6 +666,17 @@ export default function ReativacaoPage() {
           </div>
         </div>
       </div>
+
+      <CriarOndaDialog
+        aberto={criando}
+        onClose={() => setCriando(false)}
+        filtros={filtrosAtuais}
+        total={dados?.total ?? 0}
+        onCriada={(id) => {
+          setCriando(false)
+          window.location.href = `/admin/reativacao/campanhas?nova=${id}`
+        }}
+      />
 
       <PainelPessoa
         linha={selecionada}

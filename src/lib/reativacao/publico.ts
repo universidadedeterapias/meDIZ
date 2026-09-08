@@ -63,7 +63,25 @@ function iso(d: Date | null): string | null {
   return d ? d.toISOString() : null
 }
 
-export async function buscarPublico(f: Filtros): Promise<ResultadoPublico> {
+export { SQL_ESTADO }
+
+export type ConsultaFiltrada = {
+  /** $1 e sempre o corte. */
+  args: unknown[]
+  /** Sem o filtro de estado: serve as contagens, que mostram o todo. */
+  whereSemEstado: string
+  /** Com tudo. E o recorte que autoriza um disparo. */
+  whereCompleto: string
+}
+
+/**
+ * Traduz os filtros em SQL, uma vez so.
+ *
+ * Exportado porque a campanha materializa a MESMA lista que a tela mostrou. Se a
+ * criacao da onda montasse o proprio WHERE, um dia os dois divergiriam e alguem
+ * aprovaria um numero para disparar outro.
+ */
+export function montarFiltro(f: Filtros): ConsultaFiltrada {
   // $1 e sempre o corte, porque SQL_ESTADO o usa nas duas consultas.
   const args: unknown[] = [f.corte]
   const condicoes: string[] = []
@@ -97,7 +115,6 @@ export async function buscarPublico(f: Filtros): Promise<ResultadoPublico> {
   }
 
   const whereSemEstado = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : ''
-  const argsSemEstado = [...args]
 
   let whereCompleto = whereSemEstado
   if (f.estados.length > 0) {
@@ -107,6 +124,15 @@ export async function buscarPublico(f: Filtros): Promise<ResultadoPublico> {
       ? `WHERE ${condicoes.join(' AND ')} AND (${SQL_ESTADO}) = ANY(${p}::text[])`
       : `WHERE (${SQL_ESTADO}) = ANY(${p}::text[])`
   }
+
+  return { args, whereSemEstado, whereCompleto }
+}
+
+export async function buscarPublico(f: Filtros): Promise<ResultadoPublico> {
+  const { args, whereSemEstado, whereCompleto } = montarFiltro(f)
+  // A contagem por estado ignora o filtro de estado, entao usa so os argumentos
+  // anteriores a ele — que e sempre o ultimo a entrar.
+  const argsSemEstado = f.estados.length > 0 ? args.slice(0, -1) : args
 
   const [contagensBrutas, linhas] = await Promise.all([
     prisma.$queryRawUnsafe<{ estado: Estado; total: bigint }[]>(

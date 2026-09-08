@@ -106,6 +106,26 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         })
         if (!user) return null
 
+        // Fecha o funil da reativacao: `/r/<token>` sabe do clique, e so aqui se
+        // sabe que a pessoa entrou de fato. Sem isto, quem travou na porta seria
+        // indistinguivel de quem entrou — e as duas coisas pedem correcoes
+        // opostas na proxima onda.
+        //
+        // Envolvido em try/catch e sem await no caminho critico de erro: metrica
+        // que falha nao pode impedir ninguem de entrar no app.
+        try {
+          await prisma.reactivationRecipient.updateMany({
+            where: {
+              userId: user.id,
+              acessouEm: null,
+              clicouEm: { not: null, gte: new Date(Date.now() - 7 * 24 * 60 * 60_000) }
+            },
+            data: { acessouEm: new Date() }
+          })
+        } catch {
+          // Silencio de proposito: o login continua.
+        }
+
         return { id: user.id, name: user.name, email: user.email }
       }
     }),

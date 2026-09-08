@@ -1127,3 +1127,109 @@ model SalesRecoveryLead {
   @@index([email])
   @@map("sales_recovery_leads")
 }
+
+/// Uma onda de reativacao: o recorte congelado, a isca, e o ritmo.
+///
+/// A lista de destinatarios e materializada na criacao e nunca recalculada. Um
+/// filtro salvo mudaria de publico sozinho entre o momento em que alguem aprovou
+/// e o momento em que a mensagem sai — e aqui isso significa mandar WhatsApp para
+/// gente que ninguem revisou. O que se guarda em `filtros` e o pedido original,
+/// para auditoria: "de onde saiu esta lista", nao "refaz a lista".
+///
+/// Quem envia e o n8n, que reivindica lotes em /api/campanhas/claim e responde em
+/// /api/campanhas/result. O app nao chama o Chatvolt: envio no meio de um request
+/// morre com o request, e onda pela metade nao se retoma sozinha.
+model ReactivationCampaign {
+  id   String @id @default(uuid())
+  nome String @db.VarChar(160)
+
+  /// rascunho | ativa | pausada | concluida | cancelada
+  ///
+  /// Nasce em rascunho de proposito: materializar a lista e apertar o botao sao
+  /// dois atos, e o segundo precisa de alguem olhando o numero do primeiro.
+  status String @default("rascunho") @db.VarChar(16)
+
+  /// A isca. Nome do template aprovado na Meta — nome que nao existe volta 500.
+  templateName String  @map("template_name") @db.VarChar(120)
+  templateLang String  @default("pt_BR") @map("template_lang") @db.VarChar(10)
+  /// whatsapp_oficial hoje. E-mail e Z-API cabem aqui sem migration.
+  canal        String  @default("whatsapp_oficial") @db.VarChar(24)
+  /// Para onde a conversa anda no CRM depois do envio.
+  crmScenarioId String? @map("crm_scenario_id") @db.VarChar(120)
+  crmStepId     String? @map("crm_step_id") @db.VarChar(120)
+
+  /// O recorte como foi pedido, para auditoria. Nunca reexecutado.
+  filtros   Json
+  corteDias Int  @map("corte_dias")
+
+  /// Ritmo, que e regra da fila e nao disciplina do operador. O teto protege a
+  /// reputacao do numero; a janela evita disparo as tres da manha.
+  tetoDiario Int @default(700) @map("teto_diario")
+  horaInicio Int @default(8) @map("hora_inicio")
+  horaFim    Int @default(20) @map("hora_fim")
+
+  totalDestinatarios Int    @default(0) @map("total_destinatarios")
+  criadoPor          String @map("criado_por") @db.VarChar(255)
+
+  iniciadaEm   DateTime? @map("iniciada_em")
+  concluidaEm  DateTime? @map("concluida_em")
+  criadoEm     DateTime  @default(now()) @map("criado_em")
+  atualizadoEm DateTime  @updatedAt @map("atualizado_em")
+
+  destinatarios ReactivationRecipient[]
+
+  @@index([status, criadoEm])
+  @@map("reactivation_campaigns")
+}
+
+/// Uma linha por pessoa por campanha. E a Regra 5 do plano: sem isto nao existe
+/// taxa de conversao por origem, e nao da para parar uma onda no meio.
+model ReactivationRecipient {
+  id         String @id @default(uuid())
+  campaignId String @map("campaign_id")
+  userId     String @map("user_id")
+
+  /// Copiados no momento do recorte, de proposito: o e-mail pode mudar, o estado
+  /// vai mudar (e a campanha existe justamente para muda-lo). O que interessa
+  /// depois e para quem se falou, e nao quem a pessoa virou.
+  email    String  @db.VarChar(255)
+  nome     String? @db.VarChar(255)
+  telefone String? @db.VarChar(24)
+  idioma   String? @db.VarChar(10)
+  estado   String  @db.VarChar(24)
+  origens  String[]
+
+  /// pendente | enviando | enviado | falhou | descartado
+  ///
+  /// `clicou` e `acessou` nao sao status: sao carimbos de tempo. Uma pessoa pode
+  /// clicar sem acessar, e o estado do envio continua sendo `enviado`.
+  status String  @default("pendente") @db.VarChar(16)
+  motivo String? @db.VarChar(255)
+
+  /// O que vai no link do WhatsApp. Curto, e nao e o token de acesso: assim o
+  /// token real nao viaja na previa do link nem no historico do navegador.
+  trackToken String @unique @map("track_token") @db.VarChar(32)
+
+  /// Reserva do worker, para dois lotes nunca pegarem a mesma pessoa.
+  claimEm    DateTime? @map("claim_em")
+  enviadoEm  DateTime? @map("enviado_em")
+  clicouEm   DateTime? @map("clicou_em")
+  /// Preenchido pelo proprio /r/<token> quando o acesso acontece na sequencia do
+  /// clique. Acesso sem clique e derivado na metrica, a partir do rastro de uso.
+  acessouEm  DateTime? @map("acessou_em")
+
+  conversationId String? @map("conversation_id") @db.VarChar(120)
+  tentativas     Int     @default(0)
+  ultimoErro     String? @map("ultimo_erro") @db.VarChar(500)
+
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  campaign ReactivationCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  /// A mesma pessoa nao entra duas vezes na mesma onda.
+  @@unique([campaignId, userId])
+  @@index([campaignId, status])
+  @@index([status, claimEm])
+  @@map("reactivation_recipients")
+}
