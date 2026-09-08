@@ -45,8 +45,26 @@ export const STONE_PHYSICAL_BOOK_IDS = new Set([
   ...idsDoAmbiente('STONE_PHYSICAL_BOOK_PRODUCT_IDS')
 ])
 
-/** Livro digital no checkout Guru. 1780425821 = EL CUERPO HABLA. */
+/**
+ * Livro digital no checkout Guru.
+ *
+ * Os dois primeiros sao "O CORPO DIZ - BR - LIVRO DIGITAL", o mesmo produto nos
+ * dois sistemas de ID do Guru: `marketplace_id` numerico e `internal_id` em
+ * UUID. Vale o mesmo que nos IDs do impresso — cobrir os dois evita o defeito
+ * voltar pela outra porta, porque o webhook do Guru manda os dois e o Pagar.me
+ * so o UUID.
+ *
+ * Faltavam aqui, e o efeito era silencioso: 178 compras do digital brasileiro
+ * pelo Guru nao eram reconhecidas como livro, entao nao entravam no onboarding
+ * do livro nem na esteira que depende dele. Achado ao montar o filtro da
+ * recuperacao de vendas, comparando os IDs desta lista com os produtos que de
+ * fato aparecem em `purchase_events`.
+ *
+ * 1780425821 = EL CUERPO HABLA, o digital em espanhol.
+ */
 export const STONE_DIGITAL_BOOK_IDS = new Set([
+  '1780089168',
+  'a1e5eea6-e1e1-4b0c-9feb-8e98cfba1d51',
   '1780425821',
   ...idsDoAmbiente('STONE_DIGITAL_BOOK_PRODUCT_IDS')
 ])
