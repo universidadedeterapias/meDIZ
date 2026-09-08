@@ -268,6 +268,12 @@ export default function ModernDashboard() {
               </a>
             </Button>
             <Button className="w-full justify-start" variant="outline" asChild>
+              <a href="/admin/reativacao/campanhas">
+                <Activity className="mr-2 h-4 w-4" />
+                Ondas de reativação
+              </a>
+            </Button>
+            <Button className="w-full justify-start" variant="outline" asChild>
               <a href="/admin/export-sintomas">
                 <FileText className="mr-2 h-4 w-4" />
                 Exportar Dados
