@@ -46,11 +46,14 @@ export async function POST(request: NextRequest) {
   const agora = new Date()
   let gravados = 0
   const campanhasTocadas = new Set<string>()
+  // Nome da tag "Enviado: <onda>" por campanha, resolvido uma vez por lote —
+  // nao uma query por item.
+  const tagPorCampanha = new Map<string, string>()
 
   for (const item of parsed.data.itens) {
     const linha = await prisma.reactivationRecipient.findUnique({
       where: { id: item.destinatarioId },
-      select: { id: true, campaignId: true, status: true }
+      select: { id: true, campaignId: true, status: true, userId: true }
     })
     if (!linha) continue
 
@@ -79,6 +82,33 @@ export async function POST(request: NextRequest) {
           }
     })
     gravados += 1
+
+    // A tag "Enviado" marca quem RECEBEU de fato, nao quem entrou na onda —
+    // carimbar na criacao marcaria gente que a onda nunca chegou a alcancar.
+    // Este e o unico ponto do codigo onde o n8n confirma o envio pessoa a
+    // pessoa, entao e aqui que a tag pertence.
+    if (item.ok) {
+      let tagId = tagPorCampanha.get(linha.campaignId)
+      if (!tagId) {
+        const campanha = await prisma.reactivationCampaign.findUnique({
+          where: { id: linha.campaignId },
+          select: { nome: true }
+        })
+        const nomeTag = `Enviado: ${campanha?.nome ?? linha.campaignId}`.slice(0, 80)
+        const tag = await prisma.tag.upsert({
+          where: { nome: nomeTag },
+          update: {},
+          create: { nome: nomeTag, criadoPor: 'sistema · onda de reativação' }
+        })
+        tagId = tag.id
+        tagPorCampanha.set(linha.campaignId, tagId)
+      }
+      await prisma.userTag.upsert({
+        where: { tagId_userId: { tagId, userId: linha.userId } },
+        update: {},
+        create: { tagId, userId: linha.userId, origem: 'onda', campanhaId: linha.campaignId }
+      })
+    }
   }
 
   // Fecha a onda que nao tem mais nada a enviar.

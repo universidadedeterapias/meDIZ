@@ -13,11 +13,13 @@ import {
   BOTAO_PADRAO,
   type Amostragem,
   type Estado,
+  type Filtros,
   type FonteVariavel,
   type MapeamentoBotao,
   type MapeamentoVariavel,
   type ModoAmostragem,
-  type Origem
+  type Origem,
+  type SelecaoPublico
 } from '@/lib/reativacao/tipos'
 
 export const dynamic = 'force-dynamic'
@@ -92,6 +94,63 @@ function amostragemDe(v: unknown): Amostragem {
   return { modo, valor: Math.min(100, Math.max(1, Math.trunc(valor))) }
 }
 
+/** Tag e vocabulario aberto — sem enum fechado para validar contra, so limpa
+ *  e deduplica. */
+function listaLivre(v: unknown, max = 50): string[] {
+  if (!Array.isArray(v)) return []
+  return [...new Set(v.filter((x): x is string => typeof x === 'string'))].slice(0, max)
+}
+
+function dataOuNull(v: unknown): string | null {
+  if (typeof v !== 'string' || !v) return null
+  return Number.isNaN(Date.parse(v)) ? null : v
+}
+
+function filtrosDe(f: Record<string, unknown> | undefined): Filtros {
+  return {
+    ...filtrosPadrao(),
+    corte: inteiro(f?.corte, 30, 1, 3650),
+    estados: lista<Estado>(f?.estados, ESTADOS),
+    incluirOrigens: lista<Origem>(f?.incluirOrigens, ORIGENS),
+    excluirOrigens: lista<Origem>(f?.excluirOrigens, ORIGENS),
+    incluirTags: listaLivre(f?.incluirTags),
+    excluirTags: listaLivre(f?.excluirTags),
+    idiomas: lista(f?.idiomas, ['pt-BR', 'pt', 'es', 'en'] as const),
+    semIdioma: f?.semIdioma === true,
+    atividadeDesde: dataOuNull(f?.atividadeDesde),
+    atividadeAte: dataOuNull(f?.atividadeAte),
+    compraDesde: dataOuNull(f?.compraDesde),
+    compraAte: dataOuNull(f?.compraAte),
+    busca: typeof f?.busca === 'string' && f.busca.trim() ? f.busca.trim() : null
+  }
+}
+
+/**
+ * Como a lista final de destinatarios foi apontada — filtro (com exclusoes
+ * pontuais) ou lista manual de IDs marcados na tela por checkbox.
+ *
+ * Corpo malformado ou ausente cai em `filtro` com o recorte vazio de
+ * `filtrosPadrao()`, que `criarCampanha` recusa por nao ter ninguem — em vez
+ * de um 400 aqui, o erro sai mais claro la ("Nenhuma pessoa selecionada").
+ */
+function selecaoDe(v: unknown): SelecaoPublico {
+  const s = v as Record<string, unknown> | undefined
+
+  if (s?.modo === 'lista') {
+    return {
+      modo: 'lista',
+      userIds: listaLivre(s.userIds, 50_000),
+      corte: inteiro(s.corte, 30, 1, 3650)
+    }
+  }
+
+  return {
+    modo: 'filtro',
+    filtros: filtrosDe(s?.filtros as Record<string, unknown> | undefined),
+    excluidos: listaLivre(s?.excluidos, 50_000)
+  }
+}
+
 export async function GET() {
   const auth = await requireAdmin()
   if (auth.ok === false) return auth.response
@@ -109,6 +168,7 @@ export async function GET() {
       templateName: c.templateName,
       templateLang: c.templateLang,
       corteDias: c.corteDias,
+      selecaoModo: c.selecaoModo,
       amostragemModo: c.amostragemModo,
       amostragemValor: c.amostragemValor,
       tetoDiario: c.tetoDiario,
@@ -149,16 +209,8 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const f = b.filtros as Record<string, unknown> | undefined
-  const filtros = {
-    ...filtrosPadrao(),
-    corte: inteiro(f?.corte, 30, 1, 3650),
-    estados: lista<Estado>(f?.estados, ESTADOS),
-    incluirOrigens: lista<Origem>(f?.incluirOrigens, ORIGENS),
-    excluirOrigens: lista<Origem>(f?.excluirOrigens, ORIGENS),
-    idiomas: lista(f?.idiomas, ['pt-BR', 'pt', 'es', 'en'] as const),
-    semIdioma: f?.semIdioma === true,
-    busca: typeof f?.busca === 'string' && f.busca.trim() ? f.busca.trim() : null
+  if (!b.selecao) {
+    return NextResponse.json({ error: 'Selecione ao menos uma pessoa.' }, { status: 400 })
   }
 
   try {
@@ -174,7 +226,7 @@ export async function POST(request: NextRequest) {
       tetoDiario: inteiro(b.tetoDiario, 700, 1, 5000),
       horaInicio: inteiro(b.horaInicio, 8, 0, 23),
       horaFim: inteiro(b.horaFim, 20, 0, 23),
-      filtros,
+      selecao: selecaoDe(b.selecao),
       criadoPor: auth.user.email
     })
     return NextResponse.json(resultado, { status: 201 })

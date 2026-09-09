@@ -6,7 +6,8 @@ import {
   type Filtros,
   type LinhaPublico,
   type Origem,
-  type ResultadoPublico
+  type ResultadoPublico,
+  type TagResumo
 } from './tipos'
 
 /**
@@ -113,6 +114,45 @@ export function montarFiltro(f: Filtros): ConsultaFiltrada {
     )
     args.push(f.excluirOrigens)
   }
+  if (f.incluirTags.length > 0) {
+    condicoes.push(
+      `EXISTS (SELECT 1 FROM user_tags ut
+                WHERE ut.user_id = f.user_id AND ut.tag_id = ANY(${proximo()}::text[]))`
+    )
+    args.push(f.incluirTags)
+  }
+  if (f.excluirTags.length > 0) {
+    condicoes.push(
+      `NOT EXISTS (SELECT 1 FROM user_tags ut
+                    WHERE ut.user_id = f.user_id AND ut.tag_id = ANY(${proximo()}::text[]))`
+    )
+    args.push(f.excluirTags)
+  }
+  // Atividade e sobre ultimo_sinal_em — nao confundir com o corte de dias, que
+  // classifica estado. Aqui a pessoa escolhe uma janela de calendario de
+  // proposito, ex.: "quem sumiu entre janeiro e marco".
+  if (f.atividadeDesde) {
+    condicoes.push(`f.ultimo_sinal_em >= ${proximo()}::timestamptz`)
+    args.push(new Date(f.atividadeDesde))
+  }
+  if (f.atividadeAte) {
+    condicoes.push(`f.ultimo_sinal_em <= ${proximo()}::timestamptz`)
+    args.push(new Date(f.atividadeAte))
+  }
+  // Compra e sobre user_origins.em (data da compra ou liberacao), nao sobre
+  // ultimo_sinal_em — uma compra de 2023 nao e "atividade recente".
+  if (f.compraDesde || f.compraAte) {
+    const sub: string[] = []
+    if (f.compraDesde) {
+      sub.push(`o.em >= ${proximo()}::timestamptz`)
+      args.push(new Date(f.compraDesde))
+    }
+    if (f.compraAte) {
+      sub.push(`o.em <= ${proximo()}::timestamptz`)
+      args.push(new Date(f.compraAte))
+    }
+    condicoes.push(`EXISTS (SELECT 1 FROM user_origins o WHERE o.user_id = f.user_id AND ${sub.join(' AND ')})`)
+  }
 
   const whereSemEstado = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : ''
 
@@ -187,11 +227,31 @@ export async function buscarPublico(f: Filtros): Promise<ResultadoPublico> {
       )
     : []
 
+  const tagsBrutas = ids.length
+    ? await prisma.$queryRawUnsafe<
+        { user_id: string; tag_id: string; nome: string; cor: string | null }[]
+      >(
+        `SELECT ut.user_id, t.id AS tag_id, t.nome, t.cor
+           FROM user_tags ut
+           JOIN tags t ON t.id = ut.tag_id
+          WHERE ut.user_id = ANY($1::text[])
+          ORDER BY t.nome`,
+        ids
+      )
+    : []
+
   const porUsuario = new Map<string, Evidencia[]>()
   for (const e of evidencias) {
     const lista = porUsuario.get(e.user_id) ?? []
     lista.push({ origem: e.origem, produto: e.produto, fonte: e.fonte, em: iso(e.em) })
     porUsuario.set(e.user_id, lista)
+  }
+
+  const tagsPorUsuario = new Map<string, TagResumo[]>()
+  for (const t of tagsBrutas) {
+    const lista = tagsPorUsuario.get(t.user_id) ?? []
+    lista.push({ id: t.tag_id, nome: t.nome, cor: t.cor })
+    tagsPorUsuario.set(t.user_id, lista)
   }
 
   const items: LinhaPublico[] = linhas.map((l) => {
@@ -211,7 +271,8 @@ export async function buscarPublico(f: Filtros): Promise<ResultadoPublico> {
       ultimaFonte: l.ultima_fonte,
       diasSemSinal: l.dias_sem_sinal,
       origens: [...new Set(evs.map((e) => e.origem))],
-      evidencias: evs
+      evidencias: evs,
+      tags: tagsPorUsuario.get(l.user_id) ?? []
     }
   })
 

@@ -15,7 +15,7 @@ export type GrantPurchaseAccessInput = {
   email: string
   sourceCatalogProductId: string
   externalTransactionId: string
-  source: 'hotmart' | 'stone' | 'manual'
+  source: 'hotmart' | 'stone' | 'manual' | 'importacao'
   nome?: string | null
   cpf?: string | null
   /**
