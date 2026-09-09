@@ -61,6 +61,8 @@ export const ROTULO_FONTE: Record<string, string> = {
  * nascer com o vocabulario certo, e aparecem zeradas ate a importacao existir.
  */
 export const ORIGENS = [
+  'livro_fisico',
+  'livro_digital',
   'livro_corpo_diz',
   'guia_sentido_biologico',
   'audioterapia',
@@ -73,7 +75,12 @@ export const ORIGENS = [
 export type Origem = (typeof ORIGENS)[number]
 
 export const ROTULO_ORIGEM: Record<Origem, string> = {
-  livro_corpo_diz: 'Livro O Corpo Diz',
+  livro_fisico: 'Livro (físico)',
+  livro_digital: 'Livro (digital)',
+  // So sobra aqui quem a view nao conseguiu dividir: veio so de
+  // product_entitlements, que nao guarda qual SKU foi comprado — a maioria e
+  // gente anterior a 17/08/2026, antes de purchase_events existir.
+  livro_corpo_diz: 'Livro (formato não confirmado)',
   guia_sentido_biologico: 'Guia Sentido Biológico',
   audioterapia: 'Audioterapia',
   assinatura: 'Assinatura meDIZ',
@@ -93,6 +100,13 @@ export type Evidencia = {
   em: string | null
 }
 
+/** Tag livre aplicada a uma pessoa, como aparece nos filtros e no painel. */
+export type TagResumo = {
+  id: string
+  nome: string
+  cor: string | null
+}
+
 export type LinhaPublico = {
   userId: string
   email: string
@@ -109,6 +123,7 @@ export type LinhaPublico = {
   diasSemSinal: number | null
   origens: Origem[]
   evidencias: Evidencia[]
+  tags: TagResumo[]
 }
 
 export type Filtros = {
@@ -116,9 +131,20 @@ export type Filtros = {
   estados: Estado[]
   incluirOrigens: Origem[]
   excluirOrigens: Origem[]
+  /** ids de Tag. Vocabulário aberto — ao contrário de origem, tag não tem
+   *  lista fechada, então não há um enum `TAGS` para validar contra. */
+  incluirTags: string[]
+  excluirTags: string[]
   idiomas: string[]
   /** true = só quem não tem idioma marcado. O campo existe e está 91% vazio. */
   semIdioma: boolean
+  /** Sobre `ultimo_sinal_em` — quando a pessoa foi vista pela última vez,
+   *  não confundir com o corte de dias que classifica o estado. */
+  atividadeDesde: string | null
+  atividadeAte: string | null
+  /** Sobre `user_origins.em` — quando a compra (ou liberação) aconteceu. */
+  compraDesde: string | null
+  compraAte: string | null
   busca: string | null
   limit: number
   offset: number
@@ -130,13 +156,38 @@ export function filtrosPadrao(): Filtros {
     estados: [],
     incluirOrigens: [],
     excluirOrigens: [],
+    incluirTags: [],
+    excluirTags: [],
     idiomas: [],
     semIdioma: false,
+    atividadeDesde: null,
+    atividadeAte: null,
+    compraDesde: null,
+    compraAte: null,
     busca: null,
     limit: 50,
     offset: 0
   }
 }
+
+export const MODOS_SELECAO = ['filtro', 'lista'] as const
+export type ModoSelecao = (typeof MODOS_SELECAO)[number]
+
+/**
+ * Como a lista final de destinatários foi apontada.
+ *
+ * `filtro` reaproveita o recorte da tela, com exceções pontuais — é o "marcar
+ * todos os N do filtro, menos estes que eu desmarquei". `lista` é seleção
+ * manual, linha a linha, sem filtro nenhum por trás — a pessoa marcou só quem
+ * quis, de páginas ou recortes diferentes.
+ *
+ * O servidor sempre resolve esta seleção de novo no momento de criar a onda
+ * (`resolverSelecao`, em `selecao.ts`) — nunca confia numa contagem ou lista
+ * pronta vinda do client além do que este descritor permite recalcular.
+ */
+export type SelecaoPublico =
+  | { modo: 'filtro'; filtros: Filtros; excluidos: string[] }
+  | { modo: 'lista'; userIds: string[]; corte: number }
 
 export type ResultadoPublico = {
   /** Quantos batem em TODOS os filtros, inclusive estado. É este que autoriza disparo. */

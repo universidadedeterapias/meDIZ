@@ -1177,8 +1177,17 @@ model ReactivationCampaign {
   crmStepId     String? @map("crm_step_id") @db.VarChar(120)
 
   /// O recorte como foi pedido, para auditoria. Nunca reexecutado.
+  ///
+  /// Guarda o `SelecaoPublico` inteiro (filtro+exclusões, ou lista manual), nao
+  /// so um `Filtros` puro — nenhum consumidor le este JSON de volta tipado, so
+  /// `corteDias` (coluna propria), entao a forma interna pode mudar sem
+  /// migration de dado.
   filtros   Json
   corteDias Int  @map("corte_dias")
+  /// filtro | lista — como a selecao que virou esta onda foi expressa. Onda
+  /// anterior a esta coluna cai no default, que e exatamente o que ela sempre
+  /// foi: um filtro.
+  selecaoModo String @default("filtro") @map("selecao_modo") @db.VarChar(16)
 
   /// todos | quantidade | percentual — como a lista final foi cortada do
   /// recorte. `quantidade` e `percentual` sorteiam dentro do recorte, nunca
@@ -1263,4 +1272,72 @@ model ReactivationRecipient {
   @@index([campaignId, status])
   @@index([status, claimEm])
   @@map("reactivation_recipients")
+}
+
+/// Tag livre para segmentar publico/leads. Nao presa a reativacao: importacao,
+/// marcacao manual no painel e "Enviado: <onda>" usam a mesma tabela.
+model Tag {
+  id        String    @id @default(uuid())
+  nome      String    @unique @db.VarChar(80)
+  cor       String?   @db.VarChar(16)
+  criadoPor String    @map("criado_por") @db.VarChar(255)
+  criadoEm  DateTime  @default(now()) @map("criado_em")
+  usuarios  UserTag[]
+
+  @@map("tags")
+}
+
+/// Uma linha por (tag, pessoa). `origem` diz quem ou o que aplicou.
+///
+/// `userId` e sempre um User.id real, sem @relation de proposito — mesmo
+/// padrao de ReactivationRecipient.userId: quem cruza com as views de
+/// reativacao e SQL raw, e a tabela nao precisa de FK para isso funcionar.
+model UserTag {
+  id         String   @id @default(uuid())
+  tagId      String   @map("tag_id")
+  userId     String   @map("user_id")
+  /// manual | importacao | onda
+  origem     String   @db.VarChar(16)
+  /// Preenchido quando origem = 'onda': qual onda carimbou "Enviado: ...".
+  campanhaId String?  @map("campanha_id")
+  criadoPor  String?  @map("criado_por") @db.VarChar(255)
+  criadoEm   DateTime @default(now()) @map("criado_em")
+
+  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  /// A mesma pessoa nao recebe a mesma tag duas vezes.
+  @@unique([tagId, userId])
+  @@index([userId])
+  @@index([tagId])
+  @@map("user_tags")
+}
+
+/// Registro de auditoria de um lote de importacao de planilha — quantas
+/// linhas, quantas viraram conta nova, quantas casaram com conta existente,
+/// quantas ficaram ambiguas. Nao guarda a planilha em si, so o resultado.
+///
+/// Sem FK obrigatoria para catalog_products/tags, mesmo padrao de tabela de
+/// auditoria/historico ja usado no projeto — o registro sobrevive mesmo se o
+/// produto ou a tag forem removidos depois.
+model ImportacaoPlanilha {
+  id               String    @id @default(uuid())
+  nomeArquivo      String    @map("nome_arquivo") @db.VarChar(255)
+  /// Produto do catalogo escolhido para o lote inteiro — MVP e um produto por
+  /// importacao, nao por linha da planilha.
+  catalogProductId String    @map("catalog_product_id")
+  /// Se true, o lote chamou grantPurchaseAccess com o produto; se false, so
+  /// criou/casou a conta e registrou a compra, sem liberar entitlement.
+  concedeAcesso    Boolean   @default(false) @map("concede_acesso")
+  tagId            String?   @map("tag_id")
+  totalLinhas      Int       @default(0) @map("total_linhas")
+  totalCriados     Int       @default(0) @map("total_criados")
+  totalCasados     Int       @default(0) @map("total_casados")
+  totalAmbiguos    Int       @default(0) @map("total_ambiguos")
+  totalIgnorados   Int       @default(0) @map("total_ignorados")
+  criadoPor        String    @map("criado_por") @db.VarChar(255)
+  criadoEm         DateTime  @default(now()) @map("criado_em")
+  concluidoEm      DateTime? @map("concluido_em")
+
+  @@index([criadoEm])
+  @@map("importacoes_planilha")
 }

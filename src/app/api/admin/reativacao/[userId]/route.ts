@@ -57,7 +57,7 @@ export async function GET(
   }
 
   try {
-    const [atividade, acessos, avisos] = await Promise.all([
+    const [atividade, acessos, avisos, tags] = await Promise.all([
       // Uma linha por acao, e nao o maximo: e a sequencia que informa.
       prisma.$queryRawUnsafe<Atividade[]>(
         `SELECT 'conversa' AS tipo, "createdAt" AS em,
@@ -106,7 +106,12 @@ export async function GET(
           ORDER BY created_at DESC
           LIMIT 10`,
         usuario.email
-      )
+      ),
+      prisma.userTag.findMany({
+        where: { userId },
+        include: { tag: true },
+        orderBy: { criadoEm: 'desc' }
+      })
     ])
 
     return NextResponse.json({
@@ -133,6 +138,13 @@ export async function GET(
         provider: a.provider,
         criadoEm: a.created_at ? a.created_at.toISOString() : null,
         enviadoEm: a.sent_at ? a.sent_at.toISOString() : null
+      })),
+      tags: tags.map((t) => ({
+        id: t.tag.id,
+        nome: t.tag.nome,
+        cor: t.tag.cor,
+        origem: t.origem,
+        aplicadaEm: t.criadoEm.toISOString()
       })),
       truncado: atividade.length === TETO_ATIVIDADE
     })

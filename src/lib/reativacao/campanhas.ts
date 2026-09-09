@@ -1,15 +1,14 @@
 import { randomBytes } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { montarTelefone } from '@/lib/phone'
-import { montarFiltro, SQL_ESTADO } from './publico'
+import { resolverSelecao } from './selecao'
 import {
   ESTADOS_FORA_DA_REATIVACAO,
   tamanhoAmostra,
   type Amostragem,
-  type Estado,
-  type Filtros,
   type MapeamentoBotao,
-  type MapeamentoVariavel
+  type MapeamentoVariavel,
+  type SelecaoPublico
 } from './tipos'
 
 /**
@@ -85,7 +84,7 @@ export type EntradaCampanha = {
   tetoDiario: number
   horaInicio: number
   horaFim: number
-  filtros: Filtros
+  selecao: SelecaoPublico
   amostragem: Amostragem
   criadoPor: string
 }
@@ -97,15 +96,6 @@ export type ResultadoCriacao = {
   semTelefone: number
   /** Tinha algo em whatsapp, mas montarTelefone() nao conseguiu validar. */
   telefoneInvalido: number
-}
-
-type LinhaSelecionada = {
-  user_id: string
-  email: string
-  nome: string | null
-  whatsapp: string | null
-  idioma: string | null
-  estado: Estado
 }
 
 /** Curto porque vai num link de WhatsApp, e o link e lido por gente. */
@@ -122,36 +112,25 @@ function novoToken(): string {
 export async function criarCampanha(
   entrada: EntradaCampanha
 ): Promise<ResultadoCriacao> {
-  // A regra absoluta do plano: quem usou o app ontem nao pode receber "volta pro
-  // app". Bloquear na criacao, e nao na tela, porque a tela nao e o unico
-  // caminho ate aqui.
-  const proibidos = entrada.filtros.estados.filter((e) =>
-    ESTADOS_FORA_DA_REATIVACAO.includes(e)
-  )
-  if (proibidos.length > 0) {
-    throw new Error(
-      `Estado ${proibidos.join(', ')} não entra em reativação — mandar "volta pro app" para quem já usa destrói credibilidade.`
-    )
-  }
-  if (entrada.filtros.estados.length === 0) {
-    throw new Error(
-      'Escolha ao menos um estado. Uma onda sem recorte é a base inteira.'
-    )
-  }
-
-  const { args, whereCompleto } = montarFiltro(entrada.filtros)
-
-  const doRecorte = await prisma.$queryRawUnsafe<LinhaSelecionada[]>(
-    `SELECT f.user_id, f.email, f.nome, f.whatsapp, f.idioma,
-            (${SQL_ESTADO}) AS estado
-       FROM user_reactivation_facts f
-       ${whereCompleto}
-      ORDER BY f.ultimo_sinal_em DESC NULLS LAST, f.email`,
-    ...args
-  )
+  const doRecorte = await resolverSelecao(entrada.selecao)
 
   if (doRecorte.length === 0) {
-    throw new Error('Nenhuma pessoa bate nesse recorte.')
+    throw new Error('Nenhuma pessoa selecionada.')
+  }
+
+  // A regra absoluta do plano: quem usou o app ontem nao pode receber "volta
+  // pro app". Verificada aqui, no CONJUNTO RESOLVIDO — e nao no filtro
+  // declarado — porque selecao manual (modo 'lista') nem passa perto de
+  // `filtros.estados`. Travar so ali deixaria 'ativo' entrar numa onda
+  // marcada a mao.
+  const proibidos = doRecorte.filter((l) => ESTADOS_FORA_DA_REATIVACAO.includes(l.estado))
+  if (proibidos.length > 0) {
+    const emails = proibidos.slice(0, 5).map((p) => p.email).join(', ')
+    throw new Error(
+      `${proibidos.length} pessoa(s) selecionada(s) está(ão) em estado ativo — ` +
+      `mandar "volta pro app" para quem já usa destrói credibilidade: ${emails}` +
+      `${proibidos.length > 5 ? '…' : ''}`
+    )
   }
 
   // `todos` mantem a ordem por recencia de sempre. `quantidade` e `percentual`
@@ -176,6 +155,10 @@ export async function criarCampanha(
   )
   const porUsuario = new Map(origens.map((o) => [o.user_id, o.origens]))
 
+  // O estado sempre e recalculado, nunca armazenado — mesmo na selecao manual
+  // (modo 'lista'), onde nao existe um `filtros.corte` por tras.
+  const corteUsado = entrada.selecao.modo === 'filtro' ? entrada.selecao.filtros.corte : entrada.selecao.corte
+
   const campanha = await prisma.reactivationCampaign.create({
     data: {
       nome: entrada.nome,
@@ -185,8 +168,9 @@ export async function criarCampanha(
       crmStepId: entrada.crmStepId,
       variaveis: entrada.variaveis as unknown as object,
       botao: (entrada.botao ?? undefined) as unknown as object | undefined,
-      filtros: entrada.filtros as unknown as object,
-      corteDias: entrada.filtros.corte,
+      filtros: entrada.selecao as unknown as object,
+      corteDias: corteUsado,
+      selecaoModo: entrada.selecao.modo,
       amostragemModo: entrada.amostragem.modo,
       amostragemValor: entrada.amostragem.modo === 'todos' ? null : entrada.amostragem.valor,
       tetoDiario: entrada.tetoDiario,

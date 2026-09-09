@@ -31,6 +31,20 @@ function lista<T extends string>(
   )
 }
 
+/** Tag é vocabulário aberto (não tem enum fechado como Estado/Origem), então
+ *  não valida contra lista nenhuma — só limpa e deduplica. */
+function listaLivre(valor: string | null, max = 50): string[] {
+  if (!valor) return []
+  return [...new Set(valor.split(',').map((v) => v.trim()).filter(Boolean))].slice(0, max)
+}
+
+/** `null` para data ausente ou que não parseia — filtro de data ruim não deve
+ *  derrubar a consulta inteira, só ser ignorado. */
+function dataOuNull(valor: string | null): string | null {
+  if (!valor) return null
+  return Number.isNaN(Date.parse(valor)) ? null : valor
+}
+
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.ok === false) return auth.response
@@ -44,8 +58,14 @@ export async function GET(request: NextRequest) {
   filtros.estados = lista<Estado>(p.get('estado'), ESTADOS)
   filtros.incluirOrigens = lista<Origem>(p.get('incluir'), ORIGENS)
   filtros.excluirOrigens = lista<Origem>(p.get('excluir'), ORIGENS)
+  filtros.incluirTags = listaLivre(p.get('incluirTags'))
+  filtros.excluirTags = listaLivre(p.get('excluirTags'))
   filtros.idiomas = lista(p.get('idioma'), ['pt-BR', 'pt', 'es', 'en'] as const)
   filtros.semIdioma = p.get('semIdioma') === '1'
+  filtros.atividadeDesde = dataOuNull(p.get('atividadeDesde'))
+  filtros.atividadeAte = dataOuNull(p.get('atividadeAte'))
+  filtros.compraDesde = dataOuNull(p.get('compraDesde'))
+  filtros.compraAte = dataOuNull(p.get('compraAte'))
 
   const busca = p.get('busca')?.trim()
   filtros.busca = busca ? busca.slice(0, 120) : null
