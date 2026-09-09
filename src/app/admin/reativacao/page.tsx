@@ -31,9 +31,11 @@ import {
   RotateCcw,
   Search,
   Send,
+  Upload,
   X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
@@ -67,7 +69,9 @@ import {
   type Estado,
   type LinhaPublico,
   type Origem,
-  type ResultadoPublico
+  type ResultadoPublico,
+  type SelecaoPublico,
+  type TagResumo
 } from '@/lib/reativacao/tipos'
 
 const POR_PAGINA = 50
@@ -111,7 +115,11 @@ const CORES_ESTADO: Record<Estado, { pill: string; ponto: string; texto: string 
 /** Cor por origem. Cinza para as duas que ainda nao tem fonte: elas precisam
  *  parecer diferentes das reais, e nao competir por atencao. */
 const CORES_ORIGEM: Record<Origem, string> = {
-  livro_corpo_diz: 'border-indigo-200 bg-indigo-50 text-indigo-800',
+  livro_fisico: 'border-indigo-200 bg-indigo-50 text-indigo-800',
+  livro_digital: 'border-blue-200 bg-blue-50 text-blue-800',
+  // Balde do que nao deu pra dividir — tom neutro de proposito, para nao
+  // competir visualmente com os dois que tem certeza de formato.
+  livro_corpo_diz: 'border-slate-200 bg-slate-50 text-slate-600',
   guia_sentido_biologico: 'border-amber-200 bg-amber-50 text-amber-800',
   audioterapia: 'border-violet-200 bg-violet-50 text-violet-800',
   curso: 'border-cyan-200 bg-cyan-50 text-cyan-800',
@@ -122,7 +130,9 @@ const CORES_ORIGEM: Record<Origem, string> = {
 }
 
 const CORES_ORIGEM_CHEIA: Record<Origem, string> = {
-  livro_corpo_diz: 'border-indigo-600 bg-indigo-600 text-white',
+  livro_fisico: 'border-indigo-600 bg-indigo-600 text-white',
+  livro_digital: 'border-blue-600 bg-blue-600 text-white',
+  livro_corpo_diz: 'border-slate-500 bg-slate-500 text-white',
   guia_sentido_biologico: 'border-amber-600 bg-amber-600 text-white',
   audioterapia: 'border-violet-600 bg-violet-600 text-white',
   curso: 'border-cyan-600 bg-cyan-600 text-white',
@@ -155,6 +165,7 @@ type Historico = {
     criadoEm: string | null
     enviadoEm: string | null
   }[]
+  tags: { id: string; nome: string; cor: string | null; origem: string; aplicadaEm: string }[]
   truncado: boolean
 }
 
@@ -176,7 +187,12 @@ export default function ReativacaoPage() {
   const [corte, setCorte] = useState(CORTE_PADRAO_DIAS)
   const [estados, setEstados] = useState<Estado[]>([])
   const [origens, setOrigens] = useState<Record<string, EstadoDoFiltro>>({})
+  const [tagsFiltro, setTagsFiltro] = useState<Record<string, EstadoDoFiltro>>({})
   const [semIdioma, setSemIdioma] = useState(false)
+  const [atividadeDesde, setAtividadeDesde] = useState('')
+  const [atividadeAte, setAtividadeAte] = useState('')
+  const [compraDesde, setCompraDesde] = useState('')
+  const [compraAte, setCompraAte] = useState('')
   const [busca, setBusca] = useState('')
   const [buscaAtiva, setBuscaAtiva] = useState('')
   const [pagina, setPagina] = useState(0)
@@ -188,6 +204,31 @@ export default function ReativacaoPage() {
   const [selecionada, setSelecionada] = useState<LinhaPublico | null>(null)
   const [criando, setCriando] = useState(false)
 
+  // Seleção para a onda — dois modos, mesmo padrão do Gmail/Mailchimp:
+  // `selecaoTodos=false` → selecaoManual guarda quem foi INCLUÍDO (modo lista);
+  // `selecaoTodos=true`  → selecaoManual guarda quem foi EXCLUÍDO depois de
+  // "marcar todos do filtro" (modo filtro). O Set persiste entre páginas — só
+  // muda quando o próprio filtro muda ou a pessoa limpa a seleção.
+  const [selecaoTodos, setSelecaoTodos] = useState(false)
+  const [selecaoManual, setSelecaoManual] = useState<Set<string>>(new Set())
+
+  const [tags, setTags] = useState<(TagResumo & { totalPessoas: number })[]>([])
+
+  useEffect(() => {
+    fetch('/api/admin/tags')
+      .then((r) => r.json())
+      .then((j) => setTags(j.tags ?? []))
+      .catch(() => setTags([]))
+  }, [])
+
+  // Vindo do wizard de importação (`?incluirTags=<id>`), pré-marca o filtro de
+  // tag na chegada. So no primeiro carregamento — nao interfere depois.
+  useEffect(() => {
+    const idTag = new URLSearchParams(window.location.search).get('incluirTags')
+    if (idTag) setTagsFiltro((s) => ({ ...s, [idTag]: 'incluir' }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const incluir = useMemo(
     () => ORIGENS.filter((o) => origens[o] === 'incluir'),
     [origens]
@@ -195,6 +236,14 @@ export default function ReativacaoPage() {
   const excluir = useMemo(
     () => ORIGENS.filter((o) => origens[o] === 'excluir'),
     [origens]
+  )
+  const incluirTags = useMemo(
+    () => tags.filter((t) => tagsFiltro[t.id] === 'incluir').map((t) => t.id),
+    [tags, tagsFiltro]
+  )
+  const excluirTags = useMemo(
+    () => tags.filter((t) => tagsFiltro[t.id] === 'excluir').map((t) => t.id),
+    [tags, tagsFiltro]
   )
 
   // Busca sem botao: digitar e esperar e menos trabalho que digitar e confirmar.
@@ -214,7 +263,13 @@ export default function ReativacaoPage() {
     if (estados.length) p.set('estado', estados.join(','))
     if (incluir.length) p.set('incluir', incluir.join(','))
     if (excluir.length) p.set('excluir', excluir.join(','))
+    if (incluirTags.length) p.set('incluirTags', incluirTags.join(','))
+    if (excluirTags.length) p.set('excluirTags', excluirTags.join(','))
     if (semIdioma) p.set('semIdioma', '1')
+    if (atividadeDesde) p.set('atividadeDesde', atividadeDesde)
+    if (atividadeAte) p.set('atividadeAte', atividadeAte)
+    if (compraDesde) p.set('compraDesde', compraDesde)
+    if (compraAte) p.set('compraAte', compraAte)
     if (buscaAtiva) p.set('busca', buscaAtiva)
 
     try {
@@ -232,7 +287,21 @@ export default function ReativacaoPage() {
     } finally {
       setCarregando(false)
     }
-  }, [corte, estados, incluir, excluir, semIdioma, buscaAtiva, pagina])
+  }, [
+    corte,
+    estados,
+    incluir,
+    excluir,
+    incluirTags,
+    excluirTags,
+    semIdioma,
+    atividadeDesde,
+    atividadeAte,
+    compraDesde,
+    compraAte,
+    buscaAtiva,
+    pagina
+  ])
 
   useEffect(() => {
     carregar()
@@ -242,7 +311,20 @@ export default function ReativacaoPage() {
   // explicacao. Volta para a primeira sempre que o filtro muda.
   useEffect(() => {
     setPagina(0)
-  }, [corte, estados, incluir, excluir, semIdioma, buscaAtiva])
+  }, [
+    corte,
+    estados,
+    incluir,
+    excluir,
+    incluirTags,
+    excluirTags,
+    semIdioma,
+    atividadeDesde,
+    atividadeAte,
+    compraDesde,
+    compraAte,
+    buscaAtiva
+  ])
 
   const totalGeral = dados
     ? ESTADOS.reduce((s, e) => s + (dados.contagens[e] ?? 0), 0)
@@ -252,13 +334,24 @@ export default function ReativacaoPage() {
     estados.length > 0 ||
     incluir.length > 0 ||
     excluir.length > 0 ||
+    incluirTags.length > 0 ||
+    excluirTags.length > 0 ||
     semIdioma ||
+    Boolean(atividadeDesde) ||
+    Boolean(atividadeAte) ||
+    Boolean(compraDesde) ||
+    Boolean(compraAte) ||
     Boolean(buscaAtiva)
 
   const limpar = () => {
     setEstados([])
     setOrigens({})
+    setTagsFiltro({})
     setSemIdioma(false)
+    setAtividadeDesde('')
+    setAtividadeAte('')
+    setCompraDesde('')
+    setCompraAte('')
     setBusca('')
     setBuscaAtiva('')
     setCorte(CORTE_PADRAO_DIAS)
@@ -270,14 +363,83 @@ export default function ReativacaoPage() {
       estados,
       incluirOrigens: incluir,
       excluirOrigens: excluir,
+      incluirTags,
+      excluirTags,
       idiomas: [] as string[],
       semIdioma,
+      atividadeDesde: atividadeDesde || null,
+      atividadeAte: atividadeAte || null,
+      compraDesde: compraDesde || null,
+      compraAte: compraAte || null,
       busca: buscaAtiva || null,
       limit: POR_PAGINA,
       offset: 0
     }),
-    [corte, estados, incluir, excluir, semIdioma, buscaAtiva]
+    [
+      corte,
+      estados,
+      incluir,
+      excluir,
+      incluirTags,
+      excluirTags,
+      semIdioma,
+      atividadeDesde,
+      atividadeAte,
+      compraDesde,
+      compraAte,
+      buscaAtiva
+    ]
   )
+
+  // Trocar qualquer filtro invalida a seleção — "todos do filtro" ou uma
+  // lista manual feita sobre outro recorte deixam de fazer sentido. Paginar
+  // não entra aqui de propósito: o Set precisa sobreviver entre páginas.
+  useEffect(() => {
+    setSelecaoTodos(false)
+    setSelecaoManual(new Set())
+  }, [
+    corte,
+    estados,
+    incluir,
+    excluir,
+    incluirTags,
+    excluirTags,
+    semIdioma,
+    atividadeDesde,
+    atividadeAte,
+    compraDesde,
+    compraAte,
+    buscaAtiva
+  ])
+
+  const selecaoAtual: SelecaoPublico = useMemo(
+    () =>
+      selecaoTodos
+        ? { modo: 'filtro', filtros: filtrosAtuais, excluidos: [...selecaoManual] }
+        : { modo: 'lista', userIds: [...selecaoManual], corte },
+    [selecaoTodos, selecaoManual, filtrosAtuais, corte]
+  )
+
+  const totalSelecionado = selecaoTodos
+    ? Math.max(0, (dados?.total ?? 0) - selecaoManual.size)
+    : selecaoManual.size
+
+  const estaSelecionado = (id: string) =>
+    selecaoTodos ? !selecaoManual.has(id) : selecaoManual.has(id)
+
+  function alternar(id: string) {
+    setSelecaoManual((s) => {
+      const novo = new Set(s)
+      if (novo.has(id)) novo.delete(id)
+      else novo.add(id)
+      return novo
+    })
+  }
+
+  function limparSelecao() {
+    setSelecaoTodos(false)
+    setSelecaoManual(new Set())
+  }
 
   const linhas = dados?.items ?? []
   const ultimaPagina = dados ? (pagina + 1) * POR_PAGINA >= dados.total : true
@@ -306,6 +468,18 @@ export default function ReativacaoPage() {
             <Info className="h-3.5 w-3.5" />
             O estado vem de rastro de uso
           </button>
+          <Link href="/admin/reativacao/campanhas">
+            <Button variant="outline" size="sm">
+              <Send className="mr-1.5 h-3.5 w-3.5" />
+              Ondas
+            </Button>
+          </Link>
+          <Link href="/admin/reativacao/importar">
+            <Button variant="outline" size="sm">
+              <Upload className="mr-1.5 h-3.5 w-3.5" />
+              Importar planilha
+            </Button>
+          </Link>
           <Button variant="outline" size="sm" onClick={carregar} disabled={carregando}>
             {carregando ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -332,11 +506,12 @@ export default function ReativacaoPage() {
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[248px_1fr]">
-        {/* ---------- rail de filtros ---------- */}
-        <aside className="space-y-5 lg:sticky lg:top-4 lg:self-start">
-          <div className="space-y-2">
-            <div className="relative">
+      <div className="space-y-4">
+        {/* ---------- cabecalho de filtros ---------- */}
+        <div className="space-y-4 rounded-lg border bg-card p-4">
+          {/* linha 1 — busca, corte, idioma, limpar */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative w-full max-w-[280px]">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={busca}
@@ -355,13 +530,9 @@ export default function ReativacaoPage() {
                 </button>
               )}
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Corte de inatividade
-            </p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Inativo há</span>
               {CORTES_RAPIDOS.map((d) => (
                 <button
                   key={d}
@@ -385,128 +556,296 @@ export default function ReativacaoPage() {
                 aria-label="Corte personalizado em dias"
               />
             </div>
+
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={semIdioma}
+                onChange={(e) => setSemIdioma(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-border"
+              />
+              Sem idioma marcado
+            </label>
+
+            {temFiltro && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto shrink-0"
+                onClick={limpar}
+              >
+                <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                Limpar tudo
+              </Button>
+            )}
           </div>
 
           <Separator />
 
-          <div className="space-y-2">
-            <div className="flex items-baseline justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Origem
-              </p>
-              {(incluir.length > 0 || excluir.length > 0) && (
-                <button
-                  type="button"
-                  onClick={() => setOrigens({})}
-                  className="text-[11px] text-muted-foreground hover:text-foreground"
-                >
-                  limpar
-                </button>
-              )}
-            </div>
-            <div className="flex flex-col gap-1">
-              {ORIGENS.map((o) => {
-                const modo = origens[o] ?? 'neutro'
-                const semFonte = ORIGENS_SEM_FONTE.includes(o)
-                return (
+          {/* linha 2 — origem e tags, lado a lado, pills horizontais */}
+          <div className="flex flex-wrap items-start gap-x-8 gap-y-3">
+            <div className="min-w-[260px] flex-1 space-y-1.5">
+              <div className="flex items-baseline justify-between">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Origem
+                </p>
+                {(incluir.length > 0 || excluir.length > 0) && (
                   <button
-                    key={o}
                     type="button"
-                    title={
-                      modo === 'neutro'
-                        ? 'Clique para incluir'
-                        : modo === 'incluir'
-                          ? 'Incluindo · clique para excluir'
-                          : 'Excluindo · clique para limpar'
-                    }
-                    onClick={() =>
-                      setOrigens((s) => ({ ...s, [o]: PROXIMO[s[o] ?? 'neutro'] }))
-                    }
-                    className={`flex items-center justify-between rounded-md border px-2.5 py-1.5 text-xs font-medium transition-all ${
-                      modo === 'incluir'
-                        ? CORES_ORIGEM_CHEIA[o]
-                        : modo === 'excluir'
-                          ? 'border-destructive/50 bg-destructive/5 text-destructive line-through'
-                          : `${CORES_ORIGEM[o]} opacity-80 hover:opacity-100`
-                    }`}
+                    onClick={() => setOrigens({})}
+                    className="text-[11px] text-muted-foreground hover:text-foreground"
                   >
-                    <span>{ROTULO_ORIGEM[o]}</span>
-                    <span className="ml-2 text-[10px] font-normal opacity-70">
-                      {modo === 'incluir' ? 'incluir' : modo === 'excluir' ? 'excluir' : semFonte ? 'sem fonte' : ''}
-                    </span>
+                    limpar
                   </button>
-                )
-              })}
+                )}
+              </div>
+
+              {(incluir.length > 0 || excluir.length > 0) && (
+                <div className="flex flex-wrap gap-1.5">
+                  {incluir.map((o) => (
+                    <span
+                      key={`i-${o}`}
+                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${CORES_ORIGEM_CHEIA[o]}`}
+                    >
+                      {ROTULO_ORIGEM[o]}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOrigens((s) => {
+                            const novo = { ...s }
+                            delete novo[o]
+                            return novo
+                          })
+                        }
+                        aria-label={`Remover ${ROTULO_ORIGEM[o]}`}
+                        className="opacity-80 hover:opacity-100"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                  {excluir.map((o) => (
+                    <span
+                      key={`e-${o}`}
+                      className="inline-flex items-center gap-1 rounded-full border border-destructive/50 bg-destructive/5 px-2.5 py-1 text-xs font-medium text-destructive line-through"
+                    >
+                      {ROTULO_ORIGEM[o]}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOrigens((s) => {
+                            const novo = { ...s }
+                            delete novo[o]
+                            return novo
+                          })
+                        }
+                        aria-label={`Remover ${ROTULO_ORIGEM[o]}`}
+                        className="opacity-80 hover:opacity-100"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-1.5">
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const o = e.target.value
+                    if (o) setOrigens((s) => ({ ...s, [o]: 'incluir' }))
+                  }}
+                  className="h-8 flex-1 rounded-md border bg-background px-2 text-xs"
+                >
+                  <option value="">+ incluir…</option>
+                  {ORIGENS.filter((o) => (origens[o] ?? 'neutro') === 'neutro').map((o) => (
+                    <option key={o} value={o}>
+                      {ROTULO_ORIGEM[o]}
+                      {ORIGENS_SEM_FONTE.includes(o) ? ' (sem fonte)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const o = e.target.value
+                    if (o) setOrigens((s) => ({ ...s, [o]: 'excluir' }))
+                  }}
+                  className="h-8 flex-1 rounded-md border bg-background px-2 text-xs text-muted-foreground"
+                >
+                  <option value="">+ excluir…</option>
+                  {ORIGENS.filter((o) => (origens[o] ?? 'neutro') === 'neutro').map((o) => (
+                    <option key={o} value={o}>
+                      {ROTULO_ORIGEM[o]}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <p className="pt-0.5 text-[11px] leading-snug text-muted-foreground">
-              Um clique inclui, dois excluem, três limpam.{' '}
-              <strong className="font-medium">Aluno</strong> e{' '}
-              <strong className="font-medium">ex-aluno</strong> devolvem zero: a
-              formação vive em outra plataforma e nunca foi importada.
-            </p>
+
+            {tags.length > 0 && (
+              <div className="min-w-[240px] flex-1 space-y-1.5">
+                <div className="flex items-baseline justify-between">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Tags
+                  </p>
+                  {(incluirTags.length > 0 || excluirTags.length > 0) && (
+                    <button
+                      type="button"
+                      onClick={() => setTagsFiltro({})}
+                      className="text-[11px] text-muted-foreground hover:text-foreground"
+                    >
+                      limpar
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {tags.map((t) => {
+                    const modo = tagsFiltro[t.id] ?? 'neutro'
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        title={
+                          modo === 'neutro'
+                            ? 'Clique para incluir'
+                            : modo === 'incluir'
+                              ? 'Incluindo · clique para excluir'
+                              : 'Excluindo · clique para limpar'
+                        }
+                        onClick={() =>
+                          setTagsFiltro((s) => ({ ...s, [t.id]: PROXIMO[s[t.id] ?? 'neutro'] }))
+                        }
+                        className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
+                          modo === 'incluir'
+                            ? 'border-foreground bg-foreground text-background'
+                            : modo === 'excluir'
+                              ? 'border-destructive/50 bg-destructive/5 text-destructive line-through'
+                              : 'border-border bg-background opacity-80 hover:opacity-100'
+                        }`}
+                      >
+                        {t.nome}
+                        <span className="tabular-nums opacity-60">{t.totalPessoas}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
+
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            Um clique inclui, dois excluem, três limpam.{' '}
+            <strong className="font-medium">Aluno</strong> e{' '}
+            <strong className="font-medium">ex-aluno</strong> devolvem zero: a formação
+            vive em outra plataforma e nunca foi importada.
+          </p>
 
           <Separator />
 
-          <label className="flex cursor-pointer items-center gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={semIdioma}
-              onChange={(e) => setSemIdioma(e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-border"
-            />
-            Sem idioma marcado
-          </label>
+          {/* linha 3 — intervalos de data, lado a lado */}
+          <div className="flex flex-wrap gap-x-8 gap-y-3">
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Última atividade
+              </p>
+              <div className="flex items-center gap-1.5">
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  de
+                  <Input
+                    type="date"
+                    value={atividadeDesde}
+                    onChange={(e) => setAtividadeDesde(e.target.value)}
+                    className="h-8 w-[150px] text-xs"
+                    aria-label="Atividade desde"
+                  />
+                </label>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  até
+                  <Input
+                    type="date"
+                    value={atividadeAte}
+                    onChange={(e) => setAtividadeAte(e.target.value)}
+                    className="h-8 w-[150px] text-xs"
+                    aria-label="Atividade até"
+                  />
+                </label>
+              </div>
+            </div>
 
-          {temFiltro && (
-            <Button variant="ghost" size="sm" className="w-full" onClick={limpar}>
-              <RotateCcw className="mr-2 h-3.5 w-3.5" />
-              Limpar tudo
-            </Button>
-          )}
-        </aside>
-
-        {/* ---------- conteudo ---------- */}
-        <div className="min-w-0 space-y-4">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
-            {ESTADOS.map((e) => {
-              const ativo = estados.includes(e)
-              const cor = CORES_ESTADO[e]
-              return (
-                <button
-                  key={e}
-                  type="button"
-                  title={DESCRICAO_ESTADO[e]}
-                  onClick={() =>
-                    setEstados((s) =>
-                      s.includes(e) ? s.filter((x) => x !== e) : [...s, e]
-                    )
-                  }
-                  className={`rounded-lg border p-2.5 text-left transition-all ${
-                    ativo
-                      ? `${cor.pill} ring-2 ring-offset-1 ring-current`
-                      : 'border-border bg-card hover:border-foreground/30'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span className={`h-2 w-2 rounded-full ${cor.ponto}`} />
-                    <span className="truncate text-[11px] font-medium">
-                      {ROTULO_ESTADO[e]}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xl font-semibold tabular-nums">
-                    {dados ? (dados.contagens[e] ?? 0).toLocaleString('pt-BR') : '—'}
-                  </p>
-                  {ESTADOS_FORA_DA_REATIVACAO.includes(e) && (
-                    <p className="text-[10px] leading-tight text-muted-foreground">
-                      sempre exclusão
-                    </p>
-                  )}
-                </button>
-              )
-            })}
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Data da compra
+              </p>
+              <div className="flex items-center gap-1.5">
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  de
+                  <Input
+                    type="date"
+                    value={compraDesde}
+                    onChange={(e) => setCompraDesde(e.target.value)}
+                    className="h-8 w-[150px] text-xs"
+                    aria-label="Compra desde"
+                  />
+                </label>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  até
+                  <Input
+                    type="date"
+                    value={compraAte}
+                    onChange={(e) => setCompraAte(e.target.value)}
+                    className="h-8 w-[150px] text-xs"
+                    aria-label="Compra até"
+                  />
+                </label>
+              </div>
+            </div>
           </div>
+        </div>
 
+        {/* ---------- estados, largura total ---------- */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+          {ESTADOS.map((e) => {
+            const ativo = estados.includes(e)
+            const cor = CORES_ESTADO[e]
+            return (
+              <button
+                key={e}
+                type="button"
+                title={DESCRICAO_ESTADO[e]}
+                onClick={() =>
+                  setEstados((s) =>
+                    s.includes(e) ? s.filter((x) => x !== e) : [...s, e]
+                  )
+                }
+                className={`rounded-lg border p-2.5 text-left transition-all ${
+                  ativo
+                    ? `${cor.pill} ring-2 ring-offset-1 ring-current`
+                    : 'border-border bg-card hover:border-foreground/30'
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className={`h-2 w-2 rounded-full ${cor.ponto}`} />
+                  <span className="truncate text-[11px] font-medium">
+                    {ROTULO_ESTADO[e]}
+                  </span>
+                </div>
+                <p className="mt-1 text-xl font-semibold tabular-nums">
+                  {dados ? (dados.contagens[e] ?? 0).toLocaleString('pt-BR') : '—'}
+                </p>
+                {ESTADOS_FORA_DA_REATIVACAO.includes(e) && (
+                  <p className="text-[10px] leading-tight text-muted-foreground">
+                    sempre exclusão
+                  </p>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* ---------- tabela, largura total ---------- */}
+        <div>
           <div className="overflow-hidden rounded-lg border bg-card">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2.5">
               <p className="text-sm">
@@ -525,10 +864,10 @@ export default function ReativacaoPage() {
                 </span>
                 <Button
                   size="sm"
-                  disabled={!dados || dados.total === 0 || estados.length === 0}
+                  disabled={totalSelecionado === 0}
                   title={
-                    estados.length === 0
-                      ? 'Escolha ao menos um estado — uma onda sem recorte é a base inteira'
+                    totalSelecionado === 0
+                      ? 'Marque ao menos uma pessoa antes de criar a onda'
                       : 'Congela esta lista numa onda de reativação'
                   }
                   onClick={() => setCriando(true)}
@@ -539,13 +878,76 @@ export default function ReativacaoPage() {
               </div>
             </div>
 
+            {(totalSelecionado > 0 || (dados && dados.total > 0)) && (
+              <div className="flex flex-wrap items-center gap-3 border-b bg-muted/30 px-4 py-2 text-xs">
+                <span className="font-medium tabular-nums">
+                  {totalSelecionado.toLocaleString('pt-BR')} selecionado(s)
+                </span>
+                {!selecaoTodos && dados && dados.total > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelecaoTodos(true)
+                      setSelecaoManual(new Set())
+                    }}
+                    className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                  >
+                    Marcar todos os {dados.total.toLocaleString('pt-BR')} do filtro
+                  </button>
+                )}
+                {totalSelecionado > 0 && (
+                  <button
+                    type="button"
+                    onClick={limparSelecao}
+                    className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                  >
+                    Limpar seleção
+                  </button>
+                )}
+              </div>
+            )}
+
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-9 w-9">
+                    <Checkbox
+                      aria-label="Selecionar todos os desta página"
+                      checked={
+                        selecaoTodos
+                          ? selecaoManual.size === 0
+                            ? true
+                            : 'indeterminate'
+                          : linhas.length > 0 && linhas.every((l) => selecaoManual.has(l.userId))
+                            ? true
+                            : linhas.some((l) => selecaoManual.has(l.userId))
+                              ? 'indeterminate'
+                              : false
+                      }
+                      onCheckedChange={() => {
+                        if (selecaoTodos) {
+                          setSelecaoTodos(false)
+                          setSelecaoManual(new Set())
+                          return
+                        }
+                        const todasMarcadas =
+                          linhas.length > 0 && linhas.every((l) => selecaoManual.has(l.userId))
+                        setSelecaoManual((s) => {
+                          const novo = new Set(s)
+                          for (const l of linhas) {
+                            if (todasMarcadas) novo.delete(l.userId)
+                            else novo.add(l.userId)
+                          }
+                          return novo
+                        })
+                      }}
+                    />
+                  </TableHead>
                   <TableHead className="h-9 text-xs">Pessoa</TableHead>
                   <TableHead className="h-9 w-36 text-xs">Estado</TableHead>
                   <TableHead className="h-9 w-40 text-xs">Último rastro</TableHead>
                   <TableHead className="h-9 text-xs">Origens</TableHead>
+                  <TableHead className="h-9 text-xs">Tags</TableHead>
                   <TableHead className="h-9 w-20 text-xs">Idioma</TableHead>
                 </TableRow>
               </TableHeader>
@@ -553,7 +955,7 @@ export default function ReativacaoPage() {
                 {carregando &&
                   Array.from({ length: 8 }).map((_, i) => (
                     <TableRow key={`s${i}`}>
-                      <TableCell colSpan={5} className="py-2.5">
+                      <TableCell colSpan={7} className="py-2.5">
                         <Skeleton className="h-6 w-full" />
                       </TableCell>
                     </TableRow>
@@ -562,7 +964,7 @@ export default function ReativacaoPage() {
                 {!carregando && linhas.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={7}
                       className="py-14 text-center text-sm text-muted-foreground"
                     >
                       Ninguém bate nesse recorte.
@@ -588,6 +990,13 @@ export default function ReativacaoPage() {
                         onClick={() => setSelecionada(l)}
                         className="cursor-pointer"
                       >
+                        <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            aria-label={`Selecionar ${l.nome || l.email}`}
+                            checked={estaSelecionado(l.userId)}
+                            onCheckedChange={() => alternar(l.userId)}
+                          />
+                        </TableCell>
                         <TableCell className="py-2">
                           <div className="truncate text-sm font-medium">
                             {l.nome || '(sem nome)'}
@@ -623,6 +1032,21 @@ export default function ReativacaoPage() {
                                 className={`rounded border px-1.5 py-0.5 text-[11px] font-medium ${CORES_ORIGEM[o]}`}
                               >
                                 {ROTULO_ORIGEM[o]}
+                              </span>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <div className="flex flex-wrap gap-1">
+                            {l.tags.length === 0 && (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                            {l.tags.map((t) => (
+                              <span
+                                key={t.id}
+                                className="rounded border border-border bg-muted px-1.5 py-0.5 text-[11px] font-medium"
+                              >
+                                {t.nome}
                               </span>
                             ))}
                           </div>
@@ -670,9 +1094,10 @@ export default function ReativacaoPage() {
       <CriarOndaDialog
         aberto={criando}
         onClose={() => setCriando(false)}
-        filtros={filtrosAtuais}
-        total={dados?.total ?? 0}
+        selecao={selecaoAtual}
+        totalSelecionado={totalSelecionado}
         onCriada={(id) => {
+          limparSelecao()
           setCriando(false)
           window.location.href = `/admin/reativacao/campanhas?nova=${id}`
         }}
@@ -681,6 +1106,7 @@ export default function ReativacaoPage() {
       <PainelPessoa
         linha={selecionada}
         corte={dados?.corte ?? corte}
+        tagsDisponiveis={tags}
         onClose={() => setSelecionada(null)}
       />
     </div>
@@ -696,35 +1122,59 @@ export default function ReativacaoPage() {
 function PainelPessoa({
   linha,
   corte,
+  tagsDisponiveis,
   onClose
 }: {
   linha: LinhaPublico | null
   corte: number
+  tagsDisponiveis: TagResumo[]
   onClose: () => void
 }) {
   const [historico, setHistorico] = useState<Historico | null>(null)
   const [carregando, setCarregando] = useState(false)
+  const [tagEscolhida, setTagEscolhida] = useState('')
+  const [aplicandoTag, setAplicandoTag] = useState(false)
 
-  useEffect(() => {
+  const recarregar = useCallback(() => {
     if (!linha) return
-    setHistorico(null)
     setCarregando(true)
-    let cancelado = false
     fetch(`/api/admin/reativacao/${linha.userId}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => {
-        if (!cancelado) setHistorico(j)
-      })
-      .catch(() => {
-        if (!cancelado) setHistorico(null)
-      })
-      .finally(() => {
-        if (!cancelado) setCarregando(false)
-      })
-    return () => {
-      cancelado = true
-    }
+      .then((j) => setHistorico(j))
+      .catch(() => setHistorico(null))
+      .finally(() => setCarregando(false))
   }, [linha])
+
+  useEffect(() => {
+    setHistorico(null)
+    recarregar()
+  }, [linha, recarregar])
+
+  async function aplicarTag() {
+    if (!linha || !tagEscolhida) return
+    setAplicandoTag(true)
+    try {
+      await fetch(`/api/admin/tags/${tagEscolhida}/aplicar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds: [linha.userId] })
+      })
+      setTagEscolhida('')
+      recarregar()
+    } finally {
+      setAplicandoTag(false)
+    }
+  }
+
+  async function removerTag(tagId: string) {
+    if (!linha) return
+    await fetch(`/api/admin/tags/${tagId}/remover`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userIds: [linha.userId] })
+    })
+    recarregar()
+  }
 
   if (!linha) return null
 
@@ -789,6 +1239,56 @@ function PainelPessoa({
                 <dd className="inline">{linha.idioma || 'não marcado'}</dd>
               </div>
             </dl>
+          </Secao>
+
+          <Secao titulo="Tags">
+            <div className="flex flex-wrap gap-1.5">
+              {(!historico || historico.tags.length === 0) && (
+                <span className="text-xs text-muted-foreground">Nenhuma tag ainda.</span>
+              )}
+              {historico?.tags.map((t) => (
+                <span
+                  key={t.id}
+                  className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-[11px] font-medium"
+                >
+                  {t.nome}
+                  <button
+                    type="button"
+                    onClick={() => removerTag(t.id)}
+                    aria-label={`Remover tag ${t.nome}`}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+            {tagsDisponiveis.length > 0 && (
+              <div className="mt-2 flex items-center gap-1.5">
+                <select
+                  value={tagEscolhida}
+                  onChange={(e) => setTagEscolhida(e.target.value)}
+                  className="h-8 flex-1 rounded-md border bg-background px-2 text-xs"
+                >
+                  <option value="">Aplicar tag…</option>
+                  {tagsDisponiveis
+                    .filter((t) => !historico?.tags.some((h) => h.id === t.id))
+                    .map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.nome}
+                      </option>
+                    ))}
+                </select>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!tagEscolhida || aplicandoTag}
+                  onClick={aplicarTag}
+                >
+                  {aplicandoTag ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Aplicar'}
+                </Button>
+              </div>
+            )}
           </Secao>
 
           {carregando && (

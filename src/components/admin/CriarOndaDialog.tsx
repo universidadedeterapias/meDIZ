@@ -23,7 +23,6 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import {
-  ESTADOS_FORA_DA_REATIVACAO,
   FONTES_VARIAVEL,
   MODOS_AMOSTRAGEM,
   ROTULO_ESTADO,
@@ -33,18 +32,18 @@ import {
   tamanhoAmostra,
   type Amostragem,
   type Estado,
-  type Filtros,
   type FonteVariavel,
   type MapeamentoVariavel,
   type ModoAmostragem,
-  type Origem
+  type Origem,
+  type SelecaoPublico
 } from '@/lib/reativacao/tipos'
 
 type Props = {
   aberto: boolean
   onClose: () => void
-  filtros: Filtros
-  total: number
+  selecao: SelecaoPublico
+  totalSelecionado: number
   onCriada: (id: string) => void
 }
 
@@ -69,8 +68,8 @@ function Campo({
 export function CriarOndaDialog({
   aberto,
   onClose,
-  filtros,
-  total,
+  selecao,
+  totalSelecionado,
   onCriada
 }: Props) {
   const [nome, setNome] = useState('')
@@ -90,17 +89,13 @@ export function CriarOndaDialog({
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
-  const estadosProibidos = filtros.estados.filter((e) =>
-    ESTADOS_FORA_DA_REATIVACAO.includes(e)
-  )
-  const semEstado = filtros.estados.length === 0
   const amostragem: Amostragem = {
     modo: amostragemModo,
     valor: amostragemModo === 'todos' ? null : amostragemValor
   }
-  const tamanhoOnda = tamanhoAmostra(amostragem, total)
+  const tamanhoOnda = tamanhoAmostra(amostragem, totalSelecionado)
   const amostragemVazia = amostragemModo !== 'todos' && tamanhoOnda === 0
-  const bloqueado = semEstado || estadosProibidos.length > 0 || amostragemVazia
+  const bloqueado = totalSelecionado === 0 || amostragemVazia
 
   const criar = async () => {
     setSalvando(true)
@@ -121,7 +116,7 @@ export function CriarOndaDialog({
           tetoDiario,
           horaInicio,
           horaFim,
-          filtros
+          selecao
         })
       })
       const json = await res.json()
@@ -152,36 +147,49 @@ export function CriarOndaDialog({
           <div className="rounded-lg border bg-muted/40 p-3">
             <p className="text-sm">
               <span className="text-2xl font-semibold tabular-nums">
-                {total.toLocaleString('pt-BR')}
+                {totalSelecionado.toLocaleString('pt-BR')}
               </span>
-              <span className="ml-1.5 text-muted-foreground">pessoas no recorte</span>
+              <span className="ml-1.5 text-muted-foreground">
+                {selecao.modo === 'lista' ? 'pessoas selecionadas' : 'pessoas no recorte'}
+              </span>
             </p>
-            <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
-              {filtros.estados.map((e: Estado) => (
-                <span key={e} className="rounded border bg-background px-1.5 py-0.5">
-                  {ROTULO_ESTADO[e]}
+            {selecao.modo === 'filtro' ? (
+              <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+                {selecao.filtros.estados.map((e: Estado) => (
+                  <span key={e} className="rounded border bg-background px-1.5 py-0.5">
+                    {ROTULO_ESTADO[e]}
+                  </span>
+                ))}
+                {selecao.filtros.incluirOrigens.map((o: Origem) => (
+                  <span
+                    key={`i${o}`}
+                    className="rounded border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-emerald-800"
+                  >
+                    + {ROTULO_ORIGEM[o]}
+                  </span>
+                ))}
+                {selecao.filtros.excluirOrigens.map((o: Origem) => (
+                  <span
+                    key={`e${o}`}
+                    className="rounded border border-destructive/40 bg-destructive/5 px-1.5 py-0.5 text-destructive"
+                  >
+                    − {ROTULO_ORIGEM[o]}
+                  </span>
+                ))}
+                <span className="rounded border bg-background px-1.5 py-0.5">
+                  corte {selecao.filtros.corte}d
                 </span>
-              ))}
-              {filtros.incluirOrigens.map((o: Origem) => (
-                <span
-                  key={`i${o}`}
-                  className="rounded border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-emerald-800"
-                >
-                  + {ROTULO_ORIGEM[o]}
-                </span>
-              ))}
-              {filtros.excluirOrigens.map((o: Origem) => (
-                <span
-                  key={`e${o}`}
-                  className="rounded border border-destructive/40 bg-destructive/5 px-1.5 py-0.5 text-destructive"
-                >
-                  − {ROTULO_ORIGEM[o]}
-                </span>
-              ))}
-              <span className="rounded border bg-background px-1.5 py-0.5">
-                corte {filtros.corte}d
-              </span>
-            </div>
+                {selecao.excluidos.length > 0 && (
+                  <span className="rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-amber-900">
+                    − {selecao.excluidos.length} excluído(s) manualmente
+                  </span>
+                )}
+              </div>
+            ) : (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Seleção manual, marcada uma a uma na tela — sem filtro por trás.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -196,7 +204,7 @@ export function CriarOndaDialog({
                   onClick={() => {
                     setAmostragemModo(m)
                     if (m === 'percentual') setAmostragemValor(20)
-                    if (m === 'quantidade') setAmostragemValor(Math.min(500, total))
+                    if (m === 'quantidade') setAmostragemValor(Math.min(500, totalSelecionado))
                   }}
                   className={`rounded-md border px-2 py-1.5 text-[11px] font-medium transition-colors ${
                     amostragemModo === m
@@ -227,29 +235,36 @@ export function CriarOndaDialog({
 
             <p className="text-[11px] leading-snug text-muted-foreground">
               {amostragemModo === 'todos' ? (
-                <>Todas as <strong>{total.toLocaleString('pt-BR')}</strong> pessoas do recorte recebem a onda.</>
+                <>Todas as <strong>{totalSelecionado.toLocaleString('pt-BR')}</strong> pessoas selecionadas recebem a onda.</>
               ) : amostragemVazia ? (
                 'Esse valor não sorteia ninguém — aumente a quantidade ou o percentual.'
               ) : (
                 <>
                   Sorteio de <strong>{tamanhoOnda.toLocaleString('pt-BR')}</strong> de{' '}
-                  {total.toLocaleString('pt-BR')} pessoas
-                  {total > 0 && <> ({Math.round((tamanhoOnda / total) * 100)}%)</>}. Cada onda sorteia de
-                  novo — repetir o recorte não repete as mesmas pessoas.
+                  {totalSelecionado.toLocaleString('pt-BR')} pessoas
+                  {totalSelecionado > 0 && <> ({Math.round((tamanhoOnda / totalSelecionado) * 100)}%)</>}. Cada onda
+                  sorteia de novo — repetir a seleção não repete as mesmas pessoas.
                 </>
               )}
             </p>
           </div>
 
-          {(semEstado || estadosProibidos.length > 0) && (
+          {totalSelecionado === 0 ? (
             <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span>
-                {semEstado
-                  ? 'Escolha ao menos um estado na tela antes de criar. Uma onda sem recorte é a base inteira.'
-                  : `${estadosProibidos.map((e) => ROTULO_ESTADO[e]).join(', ')} não entra em reativação — mandar "volta pro app" para quem já usa destrói credibilidade.`}
+                Marque ao menos uma pessoa na tela antes de criar — pelo checkbox de cada
+                linha, ou "marcar todos do filtro".
               </span>
             </div>
+          ) : (
+            <p className="flex items-start gap-2 rounded-md border border-border bg-muted/30 p-3 text-[11px] leading-snug text-muted-foreground">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              Quem estiver em estado <strong>Ativo</strong> é bloqueado pelo servidor na hora
+              de criar, mesmo que tenha sido selecionado — mandar "volta pro app" para quem
+              já usa destrói credibilidade. A tabela mostra o estado de cada linha antes de
+              você marcar.
+            </p>
           )}
 
           <Campo rotulo="Nome da onda" dica="Só para você achar depois. Ex.: “Dormentes · setembro”.">
