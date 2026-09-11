@@ -9,14 +9,18 @@
  *
  * Tres decisoes de desenho que valem explicacao:
  *
- * 1. Origem e tri-state (neutro -> incluir -> excluir). A versao anterior tinha
- *    duas listas com os mesmos oito rotulos, uma para incluir e outra para
- *    excluir: dezesseis controles para oito conceitos, e nada indicando que as
- *    listas eram exclusivas entre si.
+ * 1. Produto e tri-state (neutro -> incluir -> excluir). A versao anterior
+ *    filtrava por "origem" — nove baldes fixos e heuristicos (`livro_corpo_diz`
+ *    = "formato nao confirmado"), em vez do produto de catalogo de verdade.
+ *    Produto e vocabulario aberto, como tag: as opcoes vem de
+ *    `/api/admin/catalog-products`, com um balde sintetico so para "compra sem
+ *    produto resolvido" — sem ele, quem so tem esse tipo de evidencia
+ *    desaparecia do filtro sem explicacao.
  * 2. O detalhe abre em painel lateral, e nao expandindo a linha. Expandir
  *    empurrava as demais para fora da tela justamente quando se esta comparando.
- * 3. Cor por tag existe para varredura, nao decoracao: a coluna de origens so
- *    informa de relance se cada origem tiver a mesma cor toda vez.
+ * 3. Cor por tag existe para varredura, nao decoracao — mas produto, por ser
+ *    vocabulario aberto (a lista de catalogo muda com o tempo), usa uma cor so
+ *    para todos: uma paleta fixa por item so faz sentido para um enum fechado.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -60,15 +64,13 @@ import {
   DESCRICAO_ESTADO,
   ESTADOS,
   ESTADOS_FORA_DA_REATIVACAO,
-  ORIGENS,
-  ORIGENS_SEM_FONTE,
+  PRODUTO_NAO_IDENTIFICADO,
   ROTULO_ESTADO,
   ROTULO_FONTE,
-  ROTULO_ORIGEM,
+  ROTULO_PRODUTO_NAO_IDENTIFICADO,
   explicarEstado,
   type Estado,
   type LinhaPublico,
-  type Origem,
   type ResultadoPublico,
   type SelecaoPublico,
   type TagResumo
@@ -112,35 +114,11 @@ const CORES_ESTADO: Record<Estado, { pill: string; ponto: string; texto: string 
   }
 }
 
-/** Cor por origem. Cinza para as duas que ainda nao tem fonte: elas precisam
- *  parecer diferentes das reais, e nao competir por atencao. */
-const CORES_ORIGEM: Record<Origem, string> = {
-  livro_fisico: 'border-indigo-200 bg-indigo-50 text-indigo-800',
-  livro_digital: 'border-blue-200 bg-blue-50 text-blue-800',
-  // Balde do que nao deu pra dividir — tom neutro de proposito, para nao
-  // competir visualmente com os dois que tem certeza de formato.
-  livro_corpo_diz: 'border-slate-200 bg-slate-50 text-slate-600',
-  guia_sentido_biologico: 'border-amber-200 bg-amber-50 text-amber-800',
-  audioterapia: 'border-violet-200 bg-violet-50 text-violet-800',
-  curso: 'border-cyan-200 bg-cyan-50 text-cyan-800',
-  assinatura: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  aluno: 'border-zinc-200 bg-zinc-50 text-zinc-500',
-  ex_aluno: 'border-zinc-200 bg-zinc-50 text-zinc-500',
-  outro: 'border-zinc-200 bg-zinc-100 text-zinc-700'
-}
-
-const CORES_ORIGEM_CHEIA: Record<Origem, string> = {
-  livro_fisico: 'border-indigo-600 bg-indigo-600 text-white',
-  livro_digital: 'border-blue-600 bg-blue-600 text-white',
-  livro_corpo_diz: 'border-slate-500 bg-slate-500 text-white',
-  guia_sentido_biologico: 'border-amber-600 bg-amber-600 text-white',
-  audioterapia: 'border-violet-600 bg-violet-600 text-white',
-  curso: 'border-cyan-600 bg-cyan-600 text-white',
-  assinatura: 'border-emerald-600 bg-emerald-600 text-white',
-  aluno: 'border-zinc-500 bg-zinc-500 text-white',
-  ex_aluno: 'border-zinc-500 bg-zinc-500 text-white',
-  outro: 'border-zinc-600 bg-zinc-600 text-white'
-}
+/** Produto e vocabulario aberto (a lista de catalogo muda com o tempo) —
+ *  uma cor por item, como Origem tinha, exigiria manter um mapa fixo em
+ *  sincronia com o catalogo. Uma cor so para todos os produtos. */
+const COR_PRODUTO = 'border-indigo-200 bg-indigo-50 text-indigo-800'
+const COR_PRODUTO_CHEIA = 'border-indigo-600 bg-indigo-600 text-white'
 
 type EstadoDoFiltro = 'neutro' | 'incluir' | 'excluir'
 
@@ -186,8 +164,9 @@ function haQuantoTempo(dias: number | null): string {
 export default function ReativacaoPage() {
   const [corte, setCorte] = useState(CORTE_PADRAO_DIAS)
   const [estados, setEstados] = useState<Estado[]>([])
-  const [origens, setOrigens] = useState<Record<string, EstadoDoFiltro>>({})
+  const [produtosFiltro, setProdutosFiltro] = useState<Record<string, EstadoDoFiltro>>({})
   const [tagsFiltro, setTagsFiltro] = useState<Record<string, EstadoDoFiltro>>({})
+  const [idiomasFiltro, setIdiomasFiltro] = useState<Set<string>>(new Set())
   const [semIdioma, setSemIdioma] = useState(false)
   const [atividadeDesde, setAtividadeDesde] = useState('')
   const [atividadeAte, setAtividadeAte] = useState('')
@@ -213,12 +192,34 @@ export default function ReativacaoPage() {
   const [selecaoManual, setSelecaoManual] = useState<Set<string>>(new Set())
 
   const [tags, setTags] = useState<(TagResumo & { totalPessoas: number })[]>([])
+  const [idiomasDisponiveis, setIdiomasDisponiveis] = useState<
+    { valor: string; totalPessoas: number }[]
+  >([])
+  const [produtosDisponiveis, setProdutosDisponiveis] = useState<
+    { id: string; title: string }[]
+  >([])
 
   useEffect(() => {
     fetch('/api/admin/tags')
       .then((r) => r.json())
       .then((j) => setTags(j.tags ?? []))
       .catch(() => setTags([]))
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/admin/reativacao/idiomas')
+      .then((r) => r.json())
+      .then((j) => setIdiomasDisponiveis(j.idiomas ?? []))
+      .catch(() => setIdiomasDisponiveis([]))
+  }, [])
+
+  // Mesma lista que o wizard de importação usa — produto é vocabulário
+  // aberto, então as opções do filtro vêm do catálogo real, não de um enum.
+  useEffect(() => {
+    fetch('/api/admin/catalog-products')
+      .then((r) => r.json())
+      .then((j) => setProdutosDisponiveis((j.products ?? []).filter((p: { active: boolean }) => p.active)))
+      .catch(() => setProdutosDisponiveis([]))
   }, [])
 
   // Vindo do wizard de importação (`?incluirTags=<id>`), pré-marca o filtro de
@@ -229,13 +230,23 @@ export default function ReativacaoPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const incluir = useMemo(
-    () => ORIGENS.filter((o) => origens[o] === 'incluir'),
-    [origens]
+  // Opções do filtro de produto: o catálogo real + o balde sintético de
+  // "sem produto identificado" — mesma forma para os dois, pra popular os
+  // <select> de incluir/excluir sem tratar o sintético como caso especial.
+  const opcoesProduto = useMemo(
+    () => [
+      ...produtosDisponiveis,
+      { id: PRODUTO_NAO_IDENTIFICADO, title: ROTULO_PRODUTO_NAO_IDENTIFICADO }
+    ],
+    [produtosDisponiveis]
   )
-  const excluir = useMemo(
-    () => ORIGENS.filter((o) => origens[o] === 'excluir'),
-    [origens]
+  const incluirProdutos = useMemo(
+    () => opcoesProduto.filter((p) => produtosFiltro[p.id] === 'incluir').map((p) => p.id),
+    [opcoesProduto, produtosFiltro]
+  )
+  const excluirProdutos = useMemo(
+    () => opcoesProduto.filter((p) => produtosFiltro[p.id] === 'excluir').map((p) => p.id),
+    [opcoesProduto, produtosFiltro]
   )
   const incluirTags = useMemo(
     () => tags.filter((t) => tagsFiltro[t.id] === 'incluir').map((t) => t.id),
@@ -245,6 +256,25 @@ export default function ReativacaoPage() {
     () => tags.filter((t) => tagsFiltro[t.id] === 'excluir').map((t) => t.id),
     [tags, tagsFiltro]
   )
+  const idiomas = useMemo(() => [...idiomasFiltro], [idiomasFiltro])
+
+  /** Idioma específico e "sem idioma marcado" são mutuamente exclusivos no SQL
+   *  (`idioma = ANY(...) AND idioma IS NULL` nunca bate com ninguém) — marcar
+   *  um limpa o outro, em vez de deixar a combinação impossível acontecer. */
+  function alternarIdioma(valor: string) {
+    setSemIdioma(false)
+    setIdiomasFiltro((s) => {
+      const novo = new Set(s)
+      if (novo.has(valor)) novo.delete(valor)
+      else novo.add(valor)
+      return novo
+    })
+  }
+
+  function marcarSemIdioma(marcado: boolean) {
+    setSemIdioma(marcado)
+    if (marcado) setIdiomasFiltro(new Set())
+  }
 
   // Busca sem botao: digitar e esperar e menos trabalho que digitar e confirmar.
   useEffect(() => {
@@ -261,10 +291,11 @@ export default function ReativacaoPage() {
       offset: String(pagina * POR_PAGINA)
     })
     if (estados.length) p.set('estado', estados.join(','))
-    if (incluir.length) p.set('incluir', incluir.join(','))
-    if (excluir.length) p.set('excluir', excluir.join(','))
+    if (incluirProdutos.length) p.set('incluirProdutos', incluirProdutos.join(','))
+    if (excluirProdutos.length) p.set('excluirProdutos', excluirProdutos.join(','))
     if (incluirTags.length) p.set('incluirTags', incluirTags.join(','))
     if (excluirTags.length) p.set('excluirTags', excluirTags.join(','))
+    if (idiomas.length) p.set('idioma', idiomas.join(','))
     if (semIdioma) p.set('semIdioma', '1')
     if (atividadeDesde) p.set('atividadeDesde', atividadeDesde)
     if (atividadeAte) p.set('atividadeAte', atividadeAte)
@@ -290,10 +321,11 @@ export default function ReativacaoPage() {
   }, [
     corte,
     estados,
-    incluir,
-    excluir,
+    incluirProdutos,
+    excluirProdutos,
     incluirTags,
     excluirTags,
+    idiomas,
     semIdioma,
     atividadeDesde,
     atividadeAte,
@@ -314,10 +346,11 @@ export default function ReativacaoPage() {
   }, [
     corte,
     estados,
-    incluir,
-    excluir,
+    incluirProdutos,
+    excluirProdutos,
     incluirTags,
     excluirTags,
+    idiomas,
     semIdioma,
     atividadeDesde,
     atividadeAte,
@@ -332,10 +365,11 @@ export default function ReativacaoPage() {
 
   const temFiltro =
     estados.length > 0 ||
-    incluir.length > 0 ||
-    excluir.length > 0 ||
+    incluirProdutos.length > 0 ||
+    excluirProdutos.length > 0 ||
     incluirTags.length > 0 ||
     excluirTags.length > 0 ||
+    idiomas.length > 0 ||
     semIdioma ||
     Boolean(atividadeDesde) ||
     Boolean(atividadeAte) ||
@@ -345,8 +379,9 @@ export default function ReativacaoPage() {
 
   const limpar = () => {
     setEstados([])
-    setOrigens({})
+    setProdutosFiltro({})
     setTagsFiltro({})
+    setIdiomasFiltro(new Set())
     setSemIdioma(false)
     setAtividadeDesde('')
     setAtividadeAte('')
@@ -361,11 +396,11 @@ export default function ReativacaoPage() {
     () => ({
       corte,
       estados,
-      incluirOrigens: incluir,
-      excluirOrigens: excluir,
+      incluirProdutos,
+      excluirProdutos,
       incluirTags,
       excluirTags,
-      idiomas: [] as string[],
+      idiomas,
       semIdioma,
       atividadeDesde: atividadeDesde || null,
       atividadeAte: atividadeAte || null,
@@ -378,10 +413,11 @@ export default function ReativacaoPage() {
     [
       corte,
       estados,
-      incluir,
-      excluir,
+      incluirProdutos,
+      excluirProdutos,
       incluirTags,
       excluirTags,
+      idiomas,
       semIdioma,
       atividadeDesde,
       atividadeAte,
@@ -400,10 +436,11 @@ export default function ReativacaoPage() {
   }, [
     corte,
     estados,
-    incluir,
-    excluir,
+    incluirProdutos,
+    excluirProdutos,
     incluirTags,
     excluirTags,
+    idiomas,
     semIdioma,
     atividadeDesde,
     atividadeAte,
@@ -561,7 +598,7 @@ export default function ReativacaoPage() {
               <input
                 type="checkbox"
                 checked={semIdioma}
-                onChange={(e) => setSemIdioma(e.target.checked)}
+                onChange={(e) => marcarSemIdioma(e.target.checked)}
                 className="h-3.5 w-3.5 rounded border-border"
               />
               Sem idioma marcado
@@ -582,17 +619,17 @@ export default function ReativacaoPage() {
 
           <Separator />
 
-          {/* linha 2 — origem e tags, lado a lado, pills horizontais */}
+          {/* linha 2 — produto e tags, lado a lado, pills horizontais */}
           <div className="flex flex-wrap items-start gap-x-8 gap-y-3">
             <div className="min-w-[260px] flex-1 space-y-1.5">
               <div className="flex items-baseline justify-between">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Origem
+                  Produto
                 </p>
-                {(incluir.length > 0 || excluir.length > 0) && (
+                {(incluirProdutos.length > 0 || excluirProdutos.length > 0) && (
                   <button
                     type="button"
-                    onClick={() => setOrigens({})}
+                    onClick={() => setProdutosFiltro({})}
                     className="text-[11px] text-muted-foreground hover:text-foreground"
                   >
                     limpar
@@ -600,52 +637,56 @@ export default function ReativacaoPage() {
                 )}
               </div>
 
-              {(incluir.length > 0 || excluir.length > 0) && (
+              {(incluirProdutos.length > 0 || excluirProdutos.length > 0) && (
                 <div className="flex flex-wrap gap-1.5">
-                  {incluir.map((o) => (
-                    <span
-                      key={`i-${o}`}
-                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${CORES_ORIGEM_CHEIA[o]}`}
-                    >
-                      {ROTULO_ORIGEM[o]}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setOrigens((s) => {
-                            const novo = { ...s }
-                            delete novo[o]
-                            return novo
-                          })
-                        }
-                        aria-label={`Remover ${ROTULO_ORIGEM[o]}`}
-                        className="opacity-80 hover:opacity-100"
+                  {opcoesProduto
+                    .filter((p) => incluirProdutos.includes(p.id))
+                    .map((p) => (
+                      <span
+                        key={`i-${p.id}`}
+                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${COR_PRODUTO_CHEIA}`}
                       >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                  {excluir.map((o) => (
-                    <span
-                      key={`e-${o}`}
-                      className="inline-flex items-center gap-1 rounded-full border border-destructive/50 bg-destructive/5 px-2.5 py-1 text-xs font-medium text-destructive line-through"
-                    >
-                      {ROTULO_ORIGEM[o]}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setOrigens((s) => {
-                            const novo = { ...s }
-                            delete novo[o]
-                            return novo
-                          })
-                        }
-                        aria-label={`Remover ${ROTULO_ORIGEM[o]}`}
-                        className="opacity-80 hover:opacity-100"
+                        {p.title}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setProdutosFiltro((s) => {
+                              const novo = { ...s }
+                              delete novo[p.id]
+                              return novo
+                            })
+                          }
+                          aria-label={`Remover ${p.title}`}
+                          className="opacity-80 hover:opacity-100"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  {opcoesProduto
+                    .filter((p) => excluirProdutos.includes(p.id))
+                    .map((p) => (
+                      <span
+                        key={`e-${p.id}`}
+                        className="inline-flex items-center gap-1 rounded-full border border-destructive/50 bg-destructive/5 px-2.5 py-1 text-xs font-medium text-destructive line-through"
                       >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
+                        {p.title}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setProdutosFiltro((s) => {
+                              const novo = { ...s }
+                              delete novo[p.id]
+                              return novo
+                            })
+                          }
+                          aria-label={`Remover ${p.title}`}
+                          className="opacity-80 hover:opacity-100"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
                 </div>
               )}
 
@@ -653,33 +694,36 @@ export default function ReativacaoPage() {
                 <select
                   value=""
                   onChange={(e) => {
-                    const o = e.target.value
-                    if (o) setOrigens((s) => ({ ...s, [o]: 'incluir' }))
+                    const id = e.target.value
+                    if (id) setProdutosFiltro((s) => ({ ...s, [id]: 'incluir' }))
                   }}
                   className="h-8 flex-1 rounded-md border bg-background px-2 text-xs"
                 >
                   <option value="">+ incluir…</option>
-                  {ORIGENS.filter((o) => (origens[o] ?? 'neutro') === 'neutro').map((o) => (
-                    <option key={o} value={o}>
-                      {ROTULO_ORIGEM[o]}
-                      {ORIGENS_SEM_FONTE.includes(o) ? ' (sem fonte)' : ''}
-                    </option>
-                  ))}
+                  {opcoesProduto
+                    .filter((p) => (produtosFiltro[p.id] ?? 'neutro') === 'neutro')
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title}
+                      </option>
+                    ))}
                 </select>
                 <select
                   value=""
                   onChange={(e) => {
-                    const o = e.target.value
-                    if (o) setOrigens((s) => ({ ...s, [o]: 'excluir' }))
+                    const id = e.target.value
+                    if (id) setProdutosFiltro((s) => ({ ...s, [id]: 'excluir' }))
                   }}
                   className="h-8 flex-1 rounded-md border bg-background px-2 text-xs text-muted-foreground"
                 >
                   <option value="">+ excluir…</option>
-                  {ORIGENS.filter((o) => (origens[o] ?? 'neutro') === 'neutro').map((o) => (
-                    <option key={o} value={o}>
-                      {ROTULO_ORIGEM[o]}
-                    </option>
-                  ))}
+                  {opcoesProduto
+                    .filter((p) => (produtosFiltro[p.id] ?? 'neutro') === 'neutro')
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title}
+                      </option>
+                    ))}
                 </select>
               </div>
             </div>
@@ -733,13 +777,54 @@ export default function ReativacaoPage() {
                 </div>
               </div>
             )}
+
+            {idiomasDisponiveis.length > 0 && (
+              <div className="min-w-[200px] flex-1 space-y-1.5">
+                <div className="flex items-baseline justify-between">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Idioma
+                  </p>
+                  {idiomasFiltro.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setIdiomasFiltro(new Set())}
+                      className="text-[11px] text-muted-foreground hover:text-foreground"
+                    >
+                      limpar
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {idiomasDisponiveis.map((i) => {
+                    const ativo = idiomasFiltro.has(i.valor)
+                    return (
+                      <button
+                        key={i.valor}
+                        type="button"
+                        title={ativo ? 'Clique para remover' : 'Clique para incluir'}
+                        onClick={() => alternarIdioma(i.valor)}
+                        className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
+                          ativo
+                            ? 'border-foreground bg-foreground text-background'
+                            : 'border-border bg-background opacity-80 hover:opacity-100'
+                        }`}
+                      >
+                        {i.valor}
+                        <span className="tabular-nums opacity-60">{i.totalPessoas}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           <p className="text-[11px] leading-snug text-muted-foreground">
-            Um clique inclui, dois excluem, três limpam.{' '}
-            <strong className="font-medium">Aluno</strong> e{' '}
-            <strong className="font-medium">ex-aluno</strong> devolvem zero: a formação
-            vive em outra plataforma e nunca foi importada.
+            Um clique inclui, dois excluem, três limpam — produto e tags.{' '}
+            <strong className="font-medium">{ROTULO_PRODUTO_NAO_IDENTIFICADO}</strong>{' '}
+            é quem tem compra registrada sem bater com nenhum produto do catálogo —
+            nome cru vindo direto da plataforma. Idioma é só incluir — um clique liga,
+            outro desliga.
           </p>
 
           <Separator />
@@ -946,7 +1031,7 @@ export default function ReativacaoPage() {
                   <TableHead className="h-9 text-xs">Pessoa</TableHead>
                   <TableHead className="h-9 w-36 text-xs">Estado</TableHead>
                   <TableHead className="h-9 w-40 text-xs">Último rastro</TableHead>
-                  <TableHead className="h-9 text-xs">Origens</TableHead>
+                  <TableHead className="h-9 text-xs">Produtos</TableHead>
                   <TableHead className="h-9 text-xs">Tags</TableHead>
                   <TableHead className="h-9 w-20 text-xs">Idioma</TableHead>
                 </TableRow>
@@ -1023,15 +1108,15 @@ export default function ReativacaoPage() {
                         </TableCell>
                         <TableCell className="py-2">
                           <div className="flex flex-wrap gap-1">
-                            {l.origens.length === 0 && (
+                            {l.produtos.length === 0 && (
                               <span className="text-xs text-muted-foreground">—</span>
                             )}
-                            {l.origens.map((o) => (
+                            {l.produtos.map((p) => (
                               <span
-                                key={o}
-                                className={`rounded border px-1.5 py-0.5 text-[11px] font-medium ${CORES_ORIGEM[o]}`}
+                                key={p.id ?? p.nome}
+                                className={`rounded border px-1.5 py-0.5 text-[11px] font-medium ${COR_PRODUTO}`}
                               >
-                                {ROTULO_ORIGEM[o]}
+                                {p.nome}
                               </span>
                             ))}
                           </div>
@@ -1194,12 +1279,12 @@ function PainelPessoa({
               <span className={`h-1.5 w-1.5 rounded-full ${cor.ponto}`} />
               {ROTULO_ESTADO[linha.estado]}
             </span>
-            {linha.origens.map((o) => (
+            {linha.produtos.map((p) => (
               <span
-                key={o}
-                className={`rounded border px-1.5 py-0.5 text-[11px] font-medium ${CORES_ORIGEM[o]}`}
+                key={p.id ?? p.nome}
+                className={`rounded border px-1.5 py-0.5 text-[11px] font-medium ${COR_PRODUTO}`}
               >
-                {ROTULO_ORIGEM[o]}
+                {p.nome}
               </span>
             ))}
           </div>

@@ -9,7 +9,7 @@
  * chance de conferir no meio.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Loader2, Send, AlertTriangle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,17 +25,17 @@ import {
 import {
   FONTES_VARIAVEL,
   MODOS_AMOSTRAGEM,
+  PRODUTO_NAO_IDENTIFICADO,
   ROTULO_ESTADO,
   ROTULO_FONTE_VARIAVEL,
   ROTULO_MODO_AMOSTRAGEM,
-  ROTULO_ORIGEM,
+  ROTULO_PRODUTO_NAO_IDENTIFICADO,
   tamanhoAmostra,
   type Amostragem,
   type Estado,
   type FonteVariavel,
   type MapeamentoVariavel,
   type ModoAmostragem,
-  type Origem,
   type SelecaoPublico
 } from '@/lib/reativacao/tipos'
 
@@ -88,6 +88,21 @@ export function CriarOndaDialog({
   const [horaFim, setHoraFim] = useState(20)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  // Só pro resumo abaixo mostrar o nome do produto em vez do id cru — a
+  // mesma lista que a tela de reativação e o wizard de importação já usam.
+  const [produtos, setProdutos] = useState<{ id: string; title: string }[]>([])
+
+  useEffect(() => {
+    fetch('/api/admin/catalog-products')
+      .then((r) => r.json())
+      .then((j) => setProdutos(j.products ?? []))
+      .catch(() => setProdutos([]))
+  }, [])
+
+  const nomeProduto = (id: string) =>
+    id === PRODUTO_NAO_IDENTIFICADO
+      ? ROTULO_PRODUTO_NAO_IDENTIFICADO
+      : (produtos.find((p) => p.id === id)?.title ?? id)
 
   const amostragem: Amostragem = {
     modo: amostragemModo,
@@ -160,20 +175,20 @@ export function CriarOndaDialog({
                     {ROTULO_ESTADO[e]}
                   </span>
                 ))}
-                {selecao.filtros.incluirOrigens.map((o: Origem) => (
+                {selecao.filtros.incluirProdutos.map((id: string) => (
                   <span
-                    key={`i${o}`}
+                    key={`i${id}`}
                     className="rounded border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-emerald-800"
                   >
-                    + {ROTULO_ORIGEM[o]}
+                    + {nomeProduto(id)}
                   </span>
                 ))}
-                {selecao.filtros.excluirOrigens.map((o: Origem) => (
+                {selecao.filtros.excluirProdutos.map((id: string) => (
                   <span
-                    key={`e${o}`}
+                    key={`e${id}`}
                     className="rounded border border-destructive/40 bg-destructive/5 px-1.5 py-0.5 text-destructive"
                   >
-                    − {ROTULO_ORIGEM[o]}
+                    − {nomeProduto(id)}
                   </span>
                 ))}
                 <span className="rounded border bg-background px-1.5 py-0.5">

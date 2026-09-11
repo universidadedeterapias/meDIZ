@@ -1,6 +1,6 @@
 /**
- * Vocabulario da reativacao: estados, origens, rotulos e a explicacao de por que
- * alguem foi classificado do jeito que foi.
+ * Vocabulario da reativacao: estados, produtos, rotulos e a explicacao de por
+ * que alguem foi classificado do jeito que foi.
  *
  * Nao importa `prisma` de proposito. A pagina do admin e client component e
  * consome estes rotulos e `explicarEstado`; a consulta mora em `publico.ts`, que
@@ -54,47 +54,24 @@ export const ROTULO_FONTE: Record<string, string> = {
 }
 
 /**
- * Tags de origem. Os valores tem que casar com o CASE da view `user_origins`.
+ * Produto do catálogo por trás de uma compra — substitui o antigo filtro de
+ * "origem" (nove baldes fixos, tipo `livro_corpo_diz` para "formato não
+ * confirmado"). Produto é vocabulário aberto, igual tag: os valores válidos
+ * são os `catalogProduct.id` de verdade, consultados em
+ * `/api/admin/catalog-products`, e não uma lista fechada mantida aqui.
  *
- * `aluno` e `ex_aluno` existem no plano e nao existem no banco: a formacao vive
- * em outra plataforma e nunca foi importada. Ficam declaradas para o filtro ja
- * nascer com o vocabulario certo, e aparecem zeradas ate a importacao existir.
+ * `PRODUTO_NAO_IDENTIFICADO` é o único valor sintético: representa a compra
+ * que não bateu com nenhum produto do catálogo (nome cru vindo direto da
+ * plataforma) — sem este balde, quem tem só esse tipo de evidência some do
+ * filtro de produto sem explicação.
  */
-export const ORIGENS = [
-  'livro_fisico',
-  'livro_digital',
-  'livro_corpo_diz',
-  'guia_sentido_biologico',
-  'audioterapia',
-  'assinatura',
-  'curso',
-  'aluno',
-  'ex_aluno',
-  'outro'
-] as const
-export type Origem = (typeof ORIGENS)[number]
-
-export const ROTULO_ORIGEM: Record<Origem, string> = {
-  livro_fisico: 'Livro (físico)',
-  livro_digital: 'Livro (digital)',
-  // So sobra aqui quem a view nao conseguiu dividir: veio so de
-  // product_entitlements, que nao guarda qual SKU foi comprado — a maioria e
-  // gente anterior a 17/08/2026, antes de purchase_events existir.
-  livro_corpo_diz: 'Livro (formato não confirmado)',
-  guia_sentido_biologico: 'Guia Sentido Biológico',
-  audioterapia: 'Audioterapia',
-  assinatura: 'Assinatura meDIZ',
-  curso: 'Curso',
-  aluno: 'Aluno',
-  ex_aluno: 'Ex-aluno',
-  outro: 'Outro'
-}
-
-/** Origens que o plano prevê e o banco ainda não tem fonte para preencher. */
-export const ORIGENS_SEM_FONTE: Origem[] = ['aluno', 'ex_aluno']
+export const PRODUTO_NAO_IDENTIFICADO = '__sem_produto__'
+export const ROTULO_PRODUTO_NAO_IDENTIFICADO = '(produto não identificado)'
 
 export type Evidencia = {
-  origem: Origem
+  /** Id de `catalog_products`, ou `null` quando a compra não resolveu para
+   *  nenhum produto do catálogo (sobra o nome cru em `produto`). */
+  catalogProductId: string | null
   produto: string
   fonte: string
   em: string | null
@@ -121,7 +98,9 @@ export type LinhaPublico = {
   ultimoSinalEm: string | null
   ultimaFonte: string | null
   diasSemSinal: number | null
-  origens: Origem[]
+  /** Deduplicado por `catalogProductId` (ou pelo texto, quando não resolveu
+   *  produto nenhum) — é o que a tabela e o painel lateral mostram. */
+  produtos: { id: string | null; nome: string }[]
   evidencias: Evidencia[]
   tags: TagResumo[]
 }
@@ -129,10 +108,12 @@ export type LinhaPublico = {
 export type Filtros = {
   corte: number
   estados: Estado[]
-  incluirOrigens: Origem[]
-  excluirOrigens: Origem[]
-  /** ids de Tag. Vocabulário aberto — ao contrário de origem, tag não tem
-   *  lista fechada, então não há um enum `TAGS` para validar contra. */
+  /** `catalogProduct.id`, ou `PRODUTO_NAO_IDENTIFICADO` para quem só tem
+   *  compra sem produto resolvido. Vocabulário aberto, como tag. */
+  incluirProdutos: string[]
+  excluirProdutos: string[]
+  /** ids de Tag. Vocabulário aberto — ao contrário do antigo enum de origem,
+   *  tag não tem lista fechada para validar contra. */
   incluirTags: string[]
   excluirTags: string[]
   idiomas: string[]
@@ -154,8 +135,8 @@ export function filtrosPadrao(): Filtros {
   return {
     corte: CORTE_PADRAO_DIAS,
     estados: [],
-    incluirOrigens: [],
-    excluirOrigens: [],
+    incluirProdutos: [],
+    excluirProdutos: [],
     incluirTags: [],
     excluirTags: [],
     idiomas: [],
@@ -246,7 +227,7 @@ export function explicarEstado(l: LinhaPublico, corte: number): string[] {
     fatos.push('Este é o ponto cego da medição — 72 pessoas na base inteira.')
   }
 
-  if (l.origens.length === 0) {
+  if (l.produtos.length === 0) {
     fatos.push('Nenhuma compra conhecida: só existe como conta no app.')
   }
 

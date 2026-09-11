@@ -6,7 +6,6 @@ import {
   ESTADOS,
   FONTES_VARIAVEL,
   MODOS_AMOSTRAGEM,
-  ORIGENS,
   filtrosPadrao,
   amostragemPadrao,
   MAPEAMENTO_PADRAO,
@@ -18,7 +17,6 @@ import {
   type MapeamentoBotao,
   type MapeamentoVariavel,
   type ModoAmostragem,
-  type Origem,
   type SelecaoPublico
 } from '@/lib/reativacao/tipos'
 
@@ -111,11 +109,13 @@ function filtrosDe(f: Record<string, unknown> | undefined): Filtros {
     ...filtrosPadrao(),
     corte: inteiro(f?.corte, 30, 1, 3650),
     estados: lista<Estado>(f?.estados, ESTADOS),
-    incluirOrigens: lista<Origem>(f?.incluirOrigens, ORIGENS),
-    excluirOrigens: lista<Origem>(f?.excluirOrigens, ORIGENS),
+    // Produto e idioma são vocabulário aberto — sem enum fechado pra validar
+    // contra, mesmo tratamento que tag já tinha.
+    incluirProdutos: listaLivre(f?.incluirProdutos),
+    excluirProdutos: listaLivre(f?.excluirProdutos),
     incluirTags: listaLivre(f?.incluirTags),
     excluirTags: listaLivre(f?.excluirTags),
-    idiomas: lista(f?.idiomas, ['pt-BR', 'pt', 'es', 'en'] as const),
+    idiomas: listaLivre(f?.idiomas, 10),
     semIdioma: f?.semIdioma === true,
     atividadeDesde: dataOuNull(f?.atividadeDesde),
     atividadeAte: dataOuNull(f?.atividadeAte),

@@ -1,11 +1,11 @@
 import { prisma } from '@/lib/prisma'
 import {
   ESTADOS,
+  PRODUTO_NAO_IDENTIFICADO,
   type Estado,
   type Evidencia,
   type Filtros,
   type LinhaPublico,
-  type Origem,
   type ResultadoPublico,
   type TagResumo
 } from './tipos'
@@ -13,10 +13,12 @@ import {
 /**
  * A consulta do publico da reativacao. So servidor.
  *
- * A classificacao de ORIGEM nao mora aqui: mora na view `user_origins`. Duas
- * copias da mesma regra divergem, e o filtro de origem precisa rodar no banco
- * para a contagem sair certa ANTES da paginacao — e a contagem e o unico numero
- * que impede disparo acidental em volume.
+ * A classificacao de PRODUTO nao mora aqui: mora na view `user_origins`
+ * (`catalog_product_id`, resolvido direto de `purchase_events`/
+ * `product_entitlements`). Duas copias da mesma regra divergem, e o filtro de
+ * produto precisa rodar no banco para a contagem sair certa ANTES da
+ * paginacao — e a contagem e o unico numero que impede disparo acidental em
+ * volume.
  *
  * O ESTADO mora aqui, em SQL, e a explicacao dele em `tipos.ts`. As duas dizem a
  * mesma coisa em linguas diferentes; mudar uma sem a outra faz o painel mentir
@@ -100,19 +102,41 @@ export function montarFiltro(f: Filtros): ConsultaFiltrada {
   if (f.semIdioma) {
     condicoes.push('f.idioma IS NULL')
   }
-  if (f.incluirOrigens.length > 0) {
-    condicoes.push(
-      `EXISTS (SELECT 1 FROM user_origins o
-                WHERE o.user_id = f.user_id AND o.origem = ANY(${proximo()}::text[]))`
-    )
-    args.push(f.incluirOrigens)
+  // Produto e catalog_product_id (texto), com um valor sintetico
+  // (PRODUTO_NAO_IDENTIFICADO) para "compra sem produto resolvido" —
+  // catalog_product_id fica NULL nesses casos, e "= ANY(...)" nunca bate com
+  // NULL, entao esse balde precisa da propria clausula IS NULL.
+  if (f.incluirProdutos.length > 0) {
+    const semProduto = f.incluirProdutos.includes(PRODUTO_NAO_IDENTIFICADO)
+    const ids = f.incluirProdutos.filter((p) => p !== PRODUTO_NAO_IDENTIFICADO)
+    const clausulas: string[] = []
+    if (ids.length > 0) {
+      clausulas.push(`o.catalog_product_id = ANY(${proximo()}::text[])`)
+      args.push(ids)
+    }
+    if (semProduto) clausulas.push('o.catalog_product_id IS NULL')
+    if (clausulas.length > 0) {
+      condicoes.push(
+        `EXISTS (SELECT 1 FROM user_origins o
+                  WHERE o.user_id = f.user_id AND (${clausulas.join(' OR ')}))`
+      )
+    }
   }
-  if (f.excluirOrigens.length > 0) {
-    condicoes.push(
-      `NOT EXISTS (SELECT 1 FROM user_origins o
-                    WHERE o.user_id = f.user_id AND o.origem = ANY(${proximo()}::text[]))`
-    )
-    args.push(f.excluirOrigens)
+  if (f.excluirProdutos.length > 0) {
+    const semProduto = f.excluirProdutos.includes(PRODUTO_NAO_IDENTIFICADO)
+    const ids = f.excluirProdutos.filter((p) => p !== PRODUTO_NAO_IDENTIFICADO)
+    const clausulas: string[] = []
+    if (ids.length > 0) {
+      clausulas.push(`o.catalog_product_id = ANY(${proximo()}::text[])`)
+      args.push(ids)
+    }
+    if (semProduto) clausulas.push('o.catalog_product_id IS NULL')
+    if (clausulas.length > 0) {
+      condicoes.push(
+        `NOT EXISTS (SELECT 1 FROM user_origins o
+                      WHERE o.user_id = f.user_id AND (${clausulas.join(' OR ')}))`
+      )
+    }
   }
   if (f.incluirTags.length > 0) {
     condicoes.push(
@@ -213,13 +237,13 @@ export async function buscarPublico(f: Filtros): Promise<ResultadoPublico> {
     ? await prisma.$queryRawUnsafe<
         {
           user_id: string
-          origem: Origem
+          catalog_product_id: string | null
           produto: string
           fonte: string
           em: Date | null
         }[]
       >(
-        `SELECT user_id, origem, produto, fonte, em
+        `SELECT user_id, catalog_product_id, produto, fonte, em
            FROM user_origins
           WHERE user_id = ANY($1::text[])
           ORDER BY em DESC NULLS LAST`,
@@ -243,7 +267,12 @@ export async function buscarPublico(f: Filtros): Promise<ResultadoPublico> {
   const porUsuario = new Map<string, Evidencia[]>()
   for (const e of evidencias) {
     const lista = porUsuario.get(e.user_id) ?? []
-    lista.push({ origem: e.origem, produto: e.produto, fonte: e.fonte, em: iso(e.em) })
+    lista.push({
+      catalogProductId: e.catalog_product_id,
+      produto: e.produto,
+      fonte: e.fonte,
+      em: iso(e.em)
+    })
     porUsuario.set(e.user_id, lista)
   }
 
@@ -256,6 +285,21 @@ export async function buscarPublico(f: Filtros): Promise<ResultadoPublico> {
 
   const items: LinhaPublico[] = linhas.map((l) => {
     const evs = porUsuario.get(l.user_id) ?? []
+
+    // Dedup por catalogProductId — ou pelo texto, quando a compra nao
+    // resolveu produto nenhum, porque nesse caso o id e sempre null e varias
+    // evidencias sem produto nao podem colapsar numa so se os nomes crus
+    // forem diferentes (duas plataformas, dois nomes, duas compras de fato).
+    const produtosVistos = new Map<string, string>()
+    for (const e of evs) {
+      const chave = e.catalogProductId ?? `texto:${e.produto}`
+      if (!produtosVistos.has(chave)) produtosVistos.set(chave, e.produto)
+    }
+    const produtos = [...produtosVistos.entries()].map(([chave, nome]) => ({
+      id: chave.startsWith('texto:') ? null : chave,
+      nome
+    }))
+
     return {
       userId: l.user_id,
       email: l.email,
@@ -270,7 +314,7 @@ export async function buscarPublico(f: Filtros): Promise<ResultadoPublico> {
       ultimoSinalEm: iso(l.ultimo_sinal_em),
       ultimaFonte: l.ultima_fonte,
       diasSemSinal: l.dias_sem_sinal,
-      origens: [...new Set(evs.map((e) => e.origem))],
+      produtos,
       evidencias: evs,
       tags: tagsPorUsuario.get(l.user_id) ?? []
     }
