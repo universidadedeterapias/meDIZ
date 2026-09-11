@@ -120,8 +120,13 @@ classificado AS (
            END AS origem
       FROM bruto b
 )
+-- `catalog_product_id` vai por ULTIMO na lista de saida de proposito:
+-- CREATE OR REPLACE VIEW só aceita coluna nova se ela for acrescentada no
+-- FINAL — mesmo nome/ordem/tipo das colunas existentes (user_id, origem,
+-- produto, fonte, em), senão o Postgres recusa a troca. A ordem dentro do
+-- DISTINCT ON/ORDER BY não tem essa restrição — só o SELECT final.
 SELECT DISTINCT ON (u.id, c.origem, c.produto, c.catalog_product_id)
-       u.id AS user_id, c.origem, c.produto, c.catalog_product_id, c.fonte, c.em
+       u.id AS user_id, c.origem, c.produto, c.fonte, c.em, c.catalog_product_id
   FROM classificado c
   JOIN "User" u ON lower(u.email) = c.email
  ORDER BY u.id, c.origem, c.produto, c.catalog_product_id, c.em DESC;
