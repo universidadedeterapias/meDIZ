@@ -2,6 +2,7 @@ import { lookupCustomer } from '@/lib/customer/lookup'
 import { normalizeLibraryEmail } from '@/lib/library/email'
 import { normalizeCpf } from '@/lib/cpf'
 import { montarTelefone } from '@/lib/phone'
+import { phoneVariants } from '@/lib/customer/phone-match'
 import type { LinhaBruta } from './planilha'
 
 /**
@@ -72,7 +73,7 @@ export async function montarPreview(
   linhas: LinhaBruta[],
   mapeamento: MapeamentoColunas
 ): Promise<LinhaPreview[]> {
-  return emLotes(linhas, 20, async (bruta, indice) => {
+  const resultado = await emLotes(linhas, 20, async (bruta, indice) => {
     const nome = mapeamento.nome ? textoOuNull(bruta[mapeamento.nome]) : null
     const emailBruto = mapeamento.email ? textoOuNull(bruta[mapeamento.email]) : null
     const email = emailBruto ? normalizeLibraryEmail(emailBruto) : null
@@ -90,19 +91,80 @@ export async function montarPreview(
       return { ...base, classificacao: 'erro' as const, motivoErro: 'sem e-mail', incluida: false }
     }
 
-    const resultado = await lookupCustomer({ email, cpf, whatsapp })
+    const encontrado = await lookupCustomer({ email, cpf, whatsapp })
 
-    if (resultado.ambiguous) {
+    if (encontrado.ambiguous) {
       return { ...base, classificacao: 'ambiguo' as const, incluida: false }
     }
-    if (resultado.found && resultado.customer) {
+    if (encontrado.found && encontrado.customer) {
       return {
         ...base,
         classificacao: 'existente' as const,
-        userIdExistente: resultado.customer.id,
+        userIdExistente: encontrado.customer.id,
         incluida: true
       }
     }
     return { ...base, classificacao: 'novo' as const, incluida: true }
   })
+
+  marcarDuplicidadeCruzada(resultado)
+  return resultado
+}
+
+/**
+ * Duas linhas 'novo' da MESMA planilha com o mesmo CPF ou telefone, mas
+ * e-mails diferentes, são a mesma pessoa — só que nenhuma das duas está no
+ * banco ainda, então `lookupCustomer` não tem como perceber a coincidência
+ * sozinho (ele só compara contra o banco, nunca contra as outras linhas do
+ * arquivo). Sem esta checagem, confirmar a importação criaria duas contas
+ * para a mesma pessoa. A comparação só entra em linhas ainda 'novo': se uma
+ * das duas já bateu com uma conta existente, o caminho normal (CPF/telefone
+ * dentro de `lookupCustomer`) já resolve as duas para a mesma conta.
+ *
+ * Mutação in-place de propósito — evita recriar o array só para trocar
+ * `classificacao` de algumas posições.
+ */
+function marcarDuplicidadeCruzada(linhas: LinhaPreview[]): void {
+  const porCpf = new Map<string, number[]>()
+  const porTelefone = new Map<string, number[]>()
+
+  for (const l of linhas) {
+    if (l.classificacao !== 'novo') continue
+    if (l.cpf) {
+      const grupo = porCpf.get(l.cpf) ?? []
+      grupo.push(l.indice)
+      porCpf.set(l.cpf, grupo)
+    }
+    for (const variante of phoneVariants(l.whatsapp)) {
+      const grupo = porTelefone.get(variante) ?? []
+      grupo.push(l.indice)
+      porTelefone.set(variante, grupo)
+    }
+  }
+
+  const marcar = (indices: number[], motivo: (outraLinha: number) => string) => {
+    if (indices.length < 2) return
+    const emails = new Set(indices.map((i) => linhas[i].email))
+    // Mesmo e-mail nas duas linhas: já é tratado pelo caminho normal (a
+    // segunda linha casa com a conta que a primeira acabou de criar).
+    if (emails.size < 2) return
+
+    for (const i of indices) {
+      if (linhas[i].classificacao === 'ambiguo') continue // primeiro motivo encontrado prevalece
+      const outraLinha = indices.find((j) => j !== i)!
+      linhas[i] = {
+        ...linhas[i],
+        classificacao: 'ambiguo',
+        motivoErro: motivo(outraLinha),
+        incluida: false
+      }
+    }
+  }
+
+  for (const grupo of porCpf.values()) {
+    marcar(grupo, (outraLinha) => `Mesmo CPF que a linha ${outraLinha + 1}, e-mails diferentes.`)
+  }
+  for (const grupo of porTelefone.values()) {
+    marcar(grupo, (outraLinha) => `Mesmo telefone que a linha ${outraLinha + 1}, e-mails diferentes.`)
+  }
 }

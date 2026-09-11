@@ -5,9 +5,7 @@ import {
   filtrosPadrao,
   CORTE_PADRAO_DIAS,
   ESTADOS,
-  ORIGENS,
-  type Estado,
-  type Origem
+  type Estado
 } from '@/lib/reativacao/publico'
 
 export const dynamic = 'force-dynamic'
@@ -31,8 +29,8 @@ function lista<T extends string>(
   )
 }
 
-/** Tag é vocabulário aberto (não tem enum fechado como Estado/Origem), então
- *  não valida contra lista nenhuma — só limpa e deduplica. */
+/** Tag e produto são vocabulário aberto (não têm enum fechado como Estado),
+ *  então não validam contra lista nenhuma — só limpa e deduplica. */
 function listaLivre(valor: string | null, max = 50): string[] {
   if (!valor) return []
   return [...new Set(valor.split(',').map((v) => v.trim()).filter(Boolean))].slice(0, max)
@@ -56,11 +54,13 @@ export async function GET(request: NextRequest) {
   filtros.corte = Number.isFinite(corte) && corte > 0 ? Math.min(corte, 3650) : CORTE_PADRAO_DIAS
 
   filtros.estados = lista<Estado>(p.get('estado'), ESTADOS)
-  filtros.incluirOrigens = lista<Origem>(p.get('incluir'), ORIGENS)
-  filtros.excluirOrigens = lista<Origem>(p.get('excluir'), ORIGENS)
+  filtros.incluirProdutos = listaLivre(p.get('incluirProdutos'))
+  filtros.excluirProdutos = listaLivre(p.get('excluirProdutos'))
   filtros.incluirTags = listaLivre(p.get('incluirTags'))
   filtros.excluirTags = listaLivre(p.get('excluirTags'))
-  filtros.idiomas = lista(p.get('idioma'), ['pt-BR', 'pt', 'es', 'en'] as const)
+  // Vocabulário aberto, como tag: `preferredLanguage` é texto livre no schema,
+  // não enum — uma lista fixa aqui ficaria cega a um idioma novo que apareça.
+  filtros.idiomas = listaLivre(p.get('idioma'), 10)
   filtros.semIdioma = p.get('semIdioma') === '1'
   filtros.atividadeDesde = dataOuNull(p.get('atividadeDesde'))
   filtros.atividadeAte = dataOuNull(p.get('atividadeAte'))

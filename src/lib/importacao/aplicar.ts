@@ -26,6 +26,9 @@ export type AplicarImportacaoResultado = {
   totalLinhas: number
   criados: number
   casados: number
+  /** Dentro de `casados`: quantas vezes a conta foi achada por CPF ou telefone
+   *  (não pelo e-mail da própria linha) — é a contagem de duplicidade evitada. */
+  casadosPorCpfOuTelefone: number
   ignorados: number
   erros: { indice: number; email: string | null; motivo: string }[]
 }
@@ -60,6 +63,7 @@ export async function aplicarImportacao(
 
   let criados = 0
   let casados = 0
+  let casadosPorCpfOuTelefone = 0
   let ignorados = 0
   const erros: AplicarImportacaoResultado['erros'] = []
 
@@ -72,6 +76,9 @@ export async function aplicarImportacao(
     const externalTransactionId = `importacao_${importacao.id}_${linha.indice}`
 
     try {
+      // O registro de auditoria guarda o e-mail EXATAMENTE como veio na
+      // planilha, mesmo que a linha já tenha sido casada por CPF/telefone com
+      // uma conta de e-mail diferente — é o que a linha realmente dizia.
       await prisma.purchaseEvent.create({
         data: {
           provider: 'importacao_planilha',
@@ -94,8 +101,26 @@ export async function aplicarImportacao(
         }
       })
 
+      // A revisão já pode ter descoberto, por CPF ou telefone, que esta linha
+      // é de alguém que já tem conta sob OUTRO e-mail. `grantPurchaseAccess`
+      // só sabe procurar por e-mail exato — passar o e-mail da linha aqui
+      // não acharia essa conta e criaria uma segunda, idêntica. Por isso
+      // resolve para o e-mail cadastrado de verdade sempre que
+      // `userIdExistente` veio preenchido da revisão.
+      let emailParaGrant = linha.email
+      if (linha.userIdExistente) {
+        const contaExistente = await prisma.user.findUnique({
+          where: { id: linha.userIdExistente },
+          select: { email: true }
+        })
+        if (contaExistente && contaExistente.email !== linha.email) {
+          emailParaGrant = contaExistente.email
+          casadosPorCpfOuTelefone += 1
+        }
+      }
+
       const resultado = await grantPurchaseAccess({
-        email: linha.email,
+        email: emailParaGrant,
         sourceCatalogProductId: input.catalogProductId,
         externalTransactionId,
         source: 'importacao',
@@ -143,6 +168,7 @@ export async function aplicarImportacao(
     totalLinhas: input.linhas.length,
     criados,
     casados,
+    casadosPorCpfOuTelefone,
     ignorados,
     erros
   }
