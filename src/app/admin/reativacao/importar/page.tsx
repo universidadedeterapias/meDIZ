@@ -138,6 +138,7 @@ export default function ImportarPlanilhaPage() {
     tagId: string
     criados: number
     casados: number
+    casadosPorCpfOuTelefone: number
     ignorados: number
   } | null>(null)
 
@@ -436,9 +437,11 @@ export default function ImportarPlanilhaPage() {
             <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span>
-                Ambíguo significa mais de uma conta bateu com o telefone da linha —
-                esta importação não escolhe sozinha. Ficam desmarcadas por padrão;
-                revise à mão se quiser incluir.
+                Ambíguo significa que a linha bate com mais de uma pessoa possível —
+                seja porque mais de uma conta no banco tem o mesmo telefone, seja
+                porque outra linha desta própria planilha tem o mesmo CPF ou telefone
+                com um e-mail diferente. Esta importação não escolhe sozinha. Ficam
+                desmarcadas por padrão; revise à mão se quiser incluir.
               </span>
             </div>
           )}
@@ -471,6 +474,9 @@ export default function ImportarPlanilhaPage() {
                       <div className="truncate text-xs text-muted-foreground">
                         {l.email || l.motivoErro}
                       </div>
+                      {l.email && l.motivoErro && (
+                        <div className="truncate text-[11px] text-amber-700">{l.motivoErro}</div>
+                      )}
                     </TableCell>
                     <TableCell className="py-2">
                       <span
@@ -505,7 +511,7 @@ export default function ImportarPlanilhaPage() {
         <div className="space-y-4 rounded-lg border bg-card p-5 text-center">
           <Check className="mx-auto h-10 w-10 text-emerald-500" />
           <p className="text-lg font-semibold">Importação concluída</p>
-          <div className="flex justify-center gap-4 text-sm">
+          <div className="flex flex-wrap justify-center gap-4 text-sm">
             <span>
               <strong className="tabular-nums">{resultado.criados}</strong> conta(s) nova(s)
             </span>
@@ -518,6 +524,13 @@ export default function ImportarPlanilhaPage() {
               </span>
             )}
           </div>
+          {resultado.casadosPorCpfOuTelefone > 0 && (
+            <p className="mx-auto max-w-sm text-xs text-muted-foreground">
+              <strong className="tabular-nums">{resultado.casadosPorCpfOuTelefone}</strong> dessas
+              já tinham conta sob outro e-mail — achadas por CPF ou telefone, sem
+              criar duplicata.
+            </p>
+          )}
           <Link href={`/admin/reativacao?incluirTags=${resultado.tagId}`}>
             <Button>
               <ArrowRight className="mr-2 h-4 w-4" />
