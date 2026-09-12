@@ -31,6 +31,14 @@ export const runtime = 'nodejs'
  * derivar so daqui — precisa saber se a conversa segue ativa agora, nao so que
  * ela respondeu uma vez. Sistema 1 esta completo (qualquer `respondido` mata a
  * regua, ver NOT EXISTS abaixo).
+ *
+ * Ativa so daqui pra frente (decisao do Edgar, 12/09/2026): as duas queries
+ * ignoram ancora mais velha que `JANELA_MAXIMA_HORAS`. Sem esse corte, no dia
+ * de ligar o envio de verdade, todo mundo que comprou o livro antes da feature
+ * existir apareceria como "devendo o toque 1" ao mesmo tempo — mandaria pra
+ * uma base velha inteira de uma vez, nao so pra quem esta genuinamente dentro
+ * da janela das 48h. Nao e so um filtro de lancamento: como a regua nunca
+ * passa de 48h mesmo, ele fica valendo pra sempre.
  */
 
 const corpo = z.object({
@@ -40,6 +48,14 @@ const corpo = z.object({
 /** Em horas desde a ancora de cada sistema — bate com o doc, nao inventar. */
 const LIMIARES_SISTEMA1 = [2, 12, 24, 48] as const
 const LIMIARES_SISTEMA2 = [6, 12, 24, 48] as const
+
+/**
+ * Maior limiar (48h) mais folga para o toque 4 nao morrer na borda e para
+ * absorver o job atrasando por algum motivo. Nao pode ser exatamente 48h: quem
+ * esta genuinamente no toque 4 SO fica elegivel quando ja passou das 48h
+ * completas, entao um corte cravado ali excluiria justamente o ultimo toque.
+ */
+const JANELA_MAXIMA_HORAS = 60
 
 /** Ate onde o tempo decorrido ja autoriza avancar, ignorando o que ja foi enviado. */
 function toquePermitidoPeloTempo(
@@ -130,6 +146,9 @@ export async function POST(request: NextRequest) {
         FROM "User" u
        WHERE u.access_message_at IS NOT NULL
          AND u.access_message_at <= now() - INTERVAL '2 hours'
+         -- So quem comprou "recentemente" (ver JANELA_MAXIMA_HORAS acima) — nao
+         -- reativa a base toda que se acumulou antes desta feature existir.
+         AND u.access_message_at >= now() - make_interval(hours => ${JANELA_MAXIMA_HORAS}::int)
          AND NOT EXISTS (
            SELECT 1 FROM journey_events je
             WHERE je.user_id = u.id AND je.event_name = 'trial_inicio'
@@ -163,6 +182,8 @@ export async function POST(request: NextRequest) {
         JOIN journey_events acesso
           ON acesso.user_id = u.id AND acesso.event_name = 'trial_inicio'
        WHERE acesso.created_at <= now() - INTERVAL '6 hours'
+         -- Mesmo corte do Sistema 1: so quem acessou "recentemente".
+         AND acesso.created_at >= now() - make_interval(hours => ${JANELA_MAXIMA_HORAS}::int)
          AND NOT EXISTS (
            SELECT 1 FROM journey_events pesquisa
             WHERE pesquisa.user_id = u.id AND pesquisa.event_name = 'primeira_pesquisa'
