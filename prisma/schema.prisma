@@ -64,6 +64,7 @@ model User {
   userFacts                UserFact[]
   emailSequenceEnrollments EmailSequenceEnrollment[]
   journeyEvents            JourneyEvent[]
+  journeyWakeupTouches     JourneyWakeupTouch[]
 
   @@index([mensagem_enviada])
   @@index([status_verificacao])
@@ -957,6 +958,41 @@ model JourneyEvent {
   @@unique([userId, eventName])
   @@index([availableAt, status])
   @@map("journey_events")
+}
+
+/// Log de cada toque enviado pelas reguas de 48h ("Os Dois Despertadores"),
+/// com o conversationId do Chatvolt devolvido no envio.
+///
+/// Existe pra achar quem respondeu sem depender de telefone: casar por numero
+/// exige normalizar dos dois lados e ainda assim pode falhar (ver User.whatsapp
+/// cru). conversationId nao tem esse problema, e e o mesmo id que o webhook de
+/// mensagem recebida do Chatvolt devolve.
+///
+/// O contador de quantos toques ja foram mandados por regua mora no Chatvolt
+/// (tag), nao aqui — esta tabela e o log de auditoria e o alvo do UPDATE quando
+/// chega uma resposta, nao a fonte de verdade de "quantos toques faltam".
+model JourneyWakeupTouch {
+  id             String    @id @default(uuid())
+  userId         String    @map("user_id")
+  /// 'acesso' (Sistema 1) | 'pesquisa' (Sistema 2).
+  sistema        String    @db.VarChar(16)
+  /// 1 a 4, na ordem da regua (A1..A4 ou P1..P4).
+  toque          Int
+  conversationId String    @map("conversation_id") @db.VarChar(64)
+  /// Nome do template do Chatvolt mandado, para auditoria.
+  template       String?   @db.VarChar(40)
+  /// 'enviado' | 'respondido'. Vira 'respondido' quando o webhook de mensagem
+  /// recebida do Chatvolt encontra este conversationId.
+  status         String    @default("enviado") @db.VarChar(16)
+  enviadoEm      DateTime  @default(now()) @map("enviado_em")
+  respondidoEm   DateTime? @map("respondido_em")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sistema, toque])
+  @@index([conversationId])
+  @@map("journey_wakeup_touches")
 }
 
 /// ID Vida (Story 4.2): fatos de vida extraidos das conversas — duas naturezas (marker/ongoing).
