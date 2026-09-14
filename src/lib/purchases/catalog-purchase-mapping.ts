@@ -54,13 +54,15 @@ export const HOTMART_PURCHASE_RULES: HotmartPurchaseRule[] = [
       permissionKey: 'LIVRO_DIGITAL',
       locale: 'es'
     },
-    // Ainda não existe um PDF bônus dedicado em espanhol — libera o mesmo PDF em
-    // português que o livro PT/EN já concedem, até termos a versão localizada.
+    // So documentacao: LIVRO_DIGITAL nao tem o grant sincronizado por este
+    // script (ver manageGrants em sync-catalog-purchase-mapping.ts) — quem
+    // decide de verdade e hotmart-grant-rules.ts (Hotmart) ou o
+    // CatalogProductGrant cadastrado manualmente (Stone/Guru).
     alsoGrant: [
       {
         section: 'BIBLIOTECA',
         permissionKey: 'PDF',
-        locale: 'pt',
+        locale: 'es',
         titleIncludes: 'Sentido Biológico'
       }
     ]

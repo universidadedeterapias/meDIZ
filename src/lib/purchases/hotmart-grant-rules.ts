@@ -7,6 +7,13 @@ export const HOTMART_PHYSICAL_BOOK_IDS = new Set(['6667092'])
 /** Livro digital. */
 export const HOTMART_DIGITAL_BOOK_IDS = new Set(['6652189', '6649928', '7377949'])
 
+/**
+ * Qual dos livros digitais é o em espanhol — ganha o PDF bônus em espanhol,
+ * não o em português que os demais (PT, e o EN que hoje ainda cai no mesmo
+ * produto do PT) recebem.
+ */
+const HOTMART_SPANISH_DIGITAL_BOOK_IDS = new Set(['6649928'])
+
 /** PDF avulso — libera só o PDF comprado. */
 export const HOTMART_PDF_PRODUCT_IDS = new Set(['5136292', '6294155', '5831214'])
 
@@ -31,15 +38,22 @@ export function isHotmartBookProduct(hotmartProductId: string): boolean {
  * que aceita a compra que não libera nada.
  */
 export async function resolvePhysicalBookGrantProductIds(): Promise<string[]> {
-  const pdfId = await resolvePdfBonusProductId()
+  const pdfId = await resolvePdfBonusProductId('pt')
   return pdfId ? [pdfId] : []
 }
 
-async function resolvePdfBonusProductId(): Promise<string | null> {
+/**
+ * PDF bônus no idioma do livro comprado. `pt` é o padrão histórico — o único
+ * que existia até o bônus em espanhol ser cadastrado — e continua valendo
+ * pro impresso e pro inglês, que ainda não têm PDF dedicado.
+ */
+async function resolvePdfBonusProductId(
+  locale: 'pt' | 'es'
+): Promise<string | null> {
   const pdf = await resolveCatalogProductByRef({
     section: 'BIBLIOTECA',
     permissionKey: 'PDF',
-    locale: 'pt',
+    locale,
     titleIncludes: 'Sentido Biológico'
   })
   return pdf?.id ?? null
@@ -73,7 +87,8 @@ export async function resolveHotmartGrantProductIds(
   }
 
   if (HOTMART_DIGITAL_BOOK_IDS.has(id)) {
-    const pdfId = await resolvePdfBonusProductId()
+    const locale = HOTMART_SPANISH_DIGITAL_BOOK_IDS.has(id) ? 'es' : 'pt'
+    const pdfId = await resolvePdfBonusProductId(locale)
     const ids = new Set<string>([resolvedCatalogProductId])
     if (pdfId) ids.add(pdfId)
     return [...ids]
