@@ -379,17 +379,19 @@ export async function deliverAccess(
         physicalShipment: input.physicalShipment ?? false
       }))
 
-    // So a compra com despacho precisa disso: nas outras, listar tudo que foi
-    // liberado e exatamente o que a pessoa quer ler.
+    // Sempre so o nome do livro, nunca os bonus — fisico ou digital. A mensagem
+    // fala do livro que a pessoa comprou, nao da lista inteira do que foi
+    // liberado: quem compra o digital tambem recebe PDF bonus junto (ex.: Guia
+    // Sentido Biologico), e sem este corte a mensagem virava "Guia Sentido
+    // Biologico e O CORPO DIZ" em vez de so "O CORPO DIZ".
     //
-    // O impresso nao libera o digital, entao o nome do livro nao esta mais entre
-    // os produtos liberados — a unica coisa que sai por ali e o PDF bonus, e uma
-    // mensagem anunciando "seu Sentido Biologico esta a caminho" descreveria a
-    // compra errada. Por isso o nome vem de quem resolveu a venda.
-    const mainProductTitle = input.physicalShipment
-      ? input.mainProductTitle?.trim() ||
-        (await resolveMainProductTitle(input.productsGranted.map((p) => p.id)))
-      : null
+    // No impresso o nome vem de quem resolveu a venda (`input.mainProductTitle`)
+    // porque o impresso nao libera o digital — o livro nao esta mais entre os
+    // produtos liberados, so o PDF bonus. No digital, `resolveMainProductTitle`
+    // acha o livro direto na lista de liberados, pela permissionKey.
+    const mainProductTitle =
+      input.mainProductTitle?.trim() ||
+      (await resolveMainProductTitle(input.productsGranted.map((p) => p.id)))
 
     // O link so existe para quem esta entrando pela primeira vez. Quem ja tem
     // conta usa a senha que definiu — mandar link para essa pessoa seria criar
@@ -406,8 +408,9 @@ export async function deliverAccess(
       nome: input.nome ?? null,
       telefone: input.telefone ?? null,
       products_granted: input.productsGranted,
-      // O nome que vai na mensagem quando ha despacho. Null nas demais compras,
-      // e ai quem avisa lista tudo que foi liberado.
+      // O nome do livro, sempre — e a unica coisa que a mensagem cita. Null so
+      // no caso raro de nao achar o livro nem no que foi passado nem no que foi
+      // liberado; ai quem avisa cai na lista completa como rede de seguranca.
       main_product_title: mainProductTitle,
       access_link: accessLink?.url ?? null,
       access_link_expires_at: accessLink?.expiresAt.toISOString() ?? null,
