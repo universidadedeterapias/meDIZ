@@ -37,7 +37,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       status: 'ok',
       url: link.url,
-      expiresAt: link.expiresAt.toISOString()
+      expiresAt: link.expiresAt.toISOString(),
+      // Valor do botao de URL do template oficial. A Meta so aceita o sufixo
+      // que ela concatena a base cadastrada no template (`.../acesso`), nunca
+      // a URL inteira — mesmo campo que `deliver-access.ts` ja manda como
+      // `access_link_button_value`.
+      buttonValue: new URL(link.url).search
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'erro desconhecido'
