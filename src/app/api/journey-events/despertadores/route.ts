@@ -26,11 +26,22 @@ export const runtime = 'nodejs'
  * faria sentido como espelho visual pro atendimento, nunca como fonte de
  * verdade.
  *
- * Cobertura ainda parcial: a saida por CONVERSA viva (resposta congela o
- * Sistema 2 e depois retoma de onde parou, se silenciar de novo) nao da pra
- * derivar so daqui — precisa saber se a conversa segue ativa agora, nao so que
- * ela respondeu uma vez. Sistema 1 esta completo (qualquer `respondido` mata a
- * regua, ver NOT EXISTS abaixo).
+ * Decisao de 16/09/2026: a saida por RESPOSTA (Sistema 1 mata a regua na hora,
+ * Sistema 2 congela e retoma) foi abandonada, e nao e uma pendencia — e
+ * definitivo. O webhook do Chatvolt que devolveria "essa conversa recebeu
+ * resposta" nunca funcionou de forma confiavel, e depender dele deixaria a
+ * regua inteira refem de uma integracao instavel.
+ *
+ * O que sobrou e SUFICIENTE: as duas queries abaixo ja excluem quem realmente
+ * agiu (`trial_inicio`/`primeira_pesquisa` em journey_events), ao vivo, a cada
+ * chamada — nao e um status que fica velho, e a pergunta refeita toda vez. O
+ * preco aceito conscientemente: quem responde no WhatsApp mas ainda nao
+ * completou a acao continua recebendo os proximos toques (Sistema 1), e nao
+ * ha como pausar a regua so porque a conversa esta ativa agora (Sistema 2) —
+ * nenhum sinal hoje distingue "esta conversando" de "sumiu de novo" sem o
+ * webhook. `journey_wakeup_touches.status = 'respondido'` continua existindo
+ * no schema e no endpoint /despertadores/respostas, mas hoje e um caminho
+ * morto: nada mais chama esse endpoint automaticamente.
  *
  * Ativa so daqui pra frente (decisao do Edgar, 12/09/2026): as duas queries
  * ignoram ancora mais velha que `JANELA_MAXIMA_HORAS`. Sem esse corte, no dia
@@ -153,10 +164,11 @@ export async function POST(request: NextRequest) {
            SELECT 1 FROM journey_events je
             WHERE je.user_id = u.id AND je.event_name = 'trial_inicio'
          )
-         -- Qualquer resposta mata a regua na hora (regra do doc). So pega quem
-         -- ja tem toque registrado — resposta a uma mensagem anterior ao
-         -- primeiro toque desta regua ainda nao tem onde pousar, ver
-         -- /despertadores/respostas.
+         -- Morto na pratica desde 16/09/2026: nada chama /despertadores/respostas
+         -- automaticamente mais (webhook do Chatvolt abandonado, ver comentario
+         -- do topo do arquivo), entao nenhuma linha chega a status='respondido'
+         -- sozinha. Mantido por nao custar nada e continuar valendo se um dia
+         -- outro caminho (um botao no admin, por exemplo) vier a marcar isso.
          AND NOT EXISTS (
            SELECT 1 FROM journey_wakeup_touches t
             WHERE t.user_id = u.id AND t.sistema = 'acesso' AND t.status = 'respondido'
