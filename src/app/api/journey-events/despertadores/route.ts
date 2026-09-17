@@ -95,8 +95,22 @@ type LinhaSistema2 = LinhaSistema1
 
 /**
  * Cruza tempo decorrido com o que ja foi mandado (via `ultimo_toque`, vindo de
- * `journey_wakeup_touches`) e devolve o proximo toque a mandar — ou `null`
+ * `journey_wakeup_touches`) e devolve o toque a mandar agora — ou `null`
  * quando ainda nao chegou a hora, ou quando a regua ja esgotou os 4 toques.
+ *
+ * Devolve o MAIOR toque que o tempo ja autoriza, nao o proximo depois do
+ * ultimo enviado — de proposito. Achado em 17/09/2026: quem so foi descoberto
+ * pelo job muito depois da ancora (o proprio lancamento da feature encontrando
+ * gente com dias de atraso, ou o job ficando fora do ar por um tempo) tinha os
+ * 4 toques enviados em sequencia rapida, um por rodada de 30min, porque
+ * `horas` ja autorizava todos eles de uma vez e o codigo andava so +1 por
+ * chamada. A regua representa "quanto tempo faz que a pessoa ficou muda", nao
+ * uma fila que precisa ser esvaziada — quem esta atrasado recebe so o toque
+ * mais recente que cabe agora, os toques que passou por cima ficam pra tras
+ * sem nunca sair. Em operacao normal (job rodando a cada 30min, limiares
+ * espacados por horas) isso nunca pula nada: o maior toque autorizado e
+ * sempre exatamente ultimoToque+1 no momento em que a pessoa cruza o proximo
+ * limiar.
  */
 function proximoToqueDevido(
   horas: number,
@@ -105,10 +119,8 @@ function proximoToqueDevido(
 ): number | null {
   const permitido = toquePermitidoPeloTempo(horas, limiares)
   if (permitido === null) return null
-
-  const proximo = (ultimoToque ?? 0) + 1
-  if (proximo > 4 || proximo > permitido) return null
-  return proximo
+  if (permitido <= (ultimoToque ?? 0)) return null
+  return permitido
 }
 
 function formataCandidato(l: LinhaSistema1 | LinhaSistema2, limiares: readonly number[]) {
