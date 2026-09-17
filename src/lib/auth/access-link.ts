@@ -70,6 +70,41 @@ export async function createAccessLink(
   return { token, url: url.toString(), expiresAt }
 }
 
+async function comEspera<T>(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function resolverAccessLink(
+  trimmed: string
+): Promise<{ userId: string } | null> {
+  const record = await prisma.verificationToken.findUnique({
+    where: { token: trimmed }
+  })
+
+  if (!record || !record.identifier.startsWith(IDENTIFIER_PREFIX)) {
+    return null
+  }
+
+  const userId = record.identifier.slice(IDENTIFIER_PREFIX.length)
+
+  // Expirado morre na hora: a tela de "link nao vale mais" passa a ser verdade
+  // so nos dois casos que a justificam — ja entrou, ou passou da validade.
+  if (record.expires.getTime() < Date.now()) {
+    await prisma.verificationToken
+      .delete({ where: { token: trimmed } })
+      .catch(() => undefined)
+    return null
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true }
+  })
+  if (!user) return null
+
+  return { userId: user.id }
+}
+
 /**
  * Valida o token e devolve o id do usuario. Nao apaga nada.
  *
@@ -85,6 +120,12 @@ export async function createAccessLink(
  *
  * Quem queima e `burnAccessLinks`, chamado quando a pessoa define a propria
  * senha. Ate la vale a validade de sete dias.
+ *
+ * Uma retentativa (com uma pequena espera) antes de desistir: banco atras do
+ * Accelerate pode falhar a primeira query por conexao fria, e isso nao e "link
+ * invalido" — e um tropeco de infra que a segunda tentativa resolve sozinha. Sem
+ * isso a pessoa via "link nao vale mais" no primeiro clique e so entrava no
+ * "Tentar de novo", com o mesmo token que era valido o tempo todo.
  */
 export async function validateAccessLink(
   token: string
@@ -93,39 +134,25 @@ export async function validateAccessLink(
   if (!trimmed) return null
 
   try {
-    const record = await prisma.verificationToken.findUnique({
-      where: { token: trimmed }
-    })
-
-    if (!record || !record.identifier.startsWith(IDENTIFIER_PREFIX)) {
-      return null
-    }
-
-    const userId = record.identifier.slice(IDENTIFIER_PREFIX.length)
-
-    // Expirado morre na hora: a tela de "link nao vale mais" passa a ser verdade
-    // so nos dois casos que a justificam — ja entrou, ou passou da validade.
-    if (record.expires.getTime() < Date.now()) {
-      await prisma.verificationToken
-        .delete({ where: { token: trimmed } })
-        .catch(() => undefined)
-      return null
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true }
-    })
-    if (!user) return null
-
-    return { userId: user.id }
-  } catch (error) {
+    return await resolverAccessLink(trimmed)
+  } catch (primeiroErro) {
     logger.error(
-      'Falha ao validar link de acesso',
-      error instanceof Error ? error : undefined,
+      'Falha ao validar link de acesso (tentando de novo)',
+      primeiroErro instanceof Error ? primeiroErro : undefined,
       '[auth/access-link]'
     )
-    return null
+
+    try {
+      await comEspera(300)
+      return await resolverAccessLink(trimmed)
+    } catch (segundoErro) {
+      logger.error(
+        'Falha ao validar link de acesso (retentativa tambem falhou)',
+        segundoErro instanceof Error ? segundoErro : undefined,
+        '[auth/access-link]'
+      )
+      return null
+    }
   }
 }
 
