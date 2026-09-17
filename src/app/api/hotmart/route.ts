@@ -500,6 +500,7 @@ export async function POST(req: NextRequest) {
           email,
           nome: getBuyerName(parsed),
           cpf: getBuyerCpf(parsed),
+          telefone: getBuyerPhone(parsed),
           sourceCatalogProductId: catalogProduct.id,
           externalTransactionId: transactionId,
           source: 'hotmart',

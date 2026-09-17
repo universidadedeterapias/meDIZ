@@ -19,6 +19,14 @@ export type GrantPurchaseAccessInput = {
   nome?: string | null
   cpf?: string | null
   /**
+   * Ja normalizado (DDI + numero) por quem resolveu a venda — `getBuyerPhone`
+   * (Hotmart) ou `parseStoneWebhook` (Stone) ja passam por `montarTelefone`.
+   * Sem isso aqui, o telefone so era usado de passagem pro aviso da compra e
+   * pro despacho, e nunca sobrevivia na conta — todo comprador criado por
+   * aqui ficava com `User.whatsapp` nulo para sempre.
+   */
+  telefone?: string | null
+  /**
    * Quando definido, ignora grants automáticos do catálogo e libera só estes
    * produtos.
    *
@@ -58,6 +66,7 @@ export async function grantPurchaseAccess(
   const email = normalizeLibraryEmail(input.email)
   const nome = input.nome?.trim() || null
   const cpfDigits = input.cpf?.trim() || null
+  const telefone = input.telefone?.trim() || null
   // `undefined` e `[]` querem dizer coisas opostas, entao a checagem e pela
   // presenca, e nao pelo tamanho.
   const grantExplicito = input.grantProductIds !== undefined
@@ -79,7 +88,7 @@ export async function grantPurchaseAccess(
 
   let existingUser = await prisma.user.findUnique({
     where: { email },
-    select: { id: true, cpf: true, temporaryPasswordPlain: true }
+    select: { id: true, cpf: true, whatsapp: true, temporaryPasswordPlain: true }
   })
 
   let userCreated = false
@@ -97,6 +106,7 @@ export async function grantPurchaseAccess(
           name: nome,
           fullName: nome,
           cpf: cpfDigits,
+          whatsapp: telefone,
           passwordHash,
           temporaryPasswordPlain: temporaryPassword,
           mustResetPassword: true,
@@ -121,7 +131,7 @@ export async function grantPurchaseAccess(
 
       const encontrado = await prisma.user.findUnique({
         where: { email },
-        select: { id: true, cpf: true, temporaryPasswordPlain: true }
+        select: { id: true, cpf: true, whatsapp: true, temporaryPasswordPlain: true }
       })
       if (!encontrado) throw error
 
@@ -137,12 +147,16 @@ export async function grantPurchaseAccess(
 
   if (existingUser) {
     userId = existingUser.id
-    if (cpfDigits || nome) {
+    // So preenche o que estava vazio — recompra de quem ja tem conta nao pode
+    // sobrescrever um numero que a propria pessoa corrigiu depois (myAccount,
+    // admin). Mesmo criterio ja usado pro cpf logo abaixo.
+    if (cpfDigits || nome || (telefone && !existingUser.whatsapp)) {
       await prisma.user.update({
         where: { id: existingUser.id },
         data: {
           ...(nome ? { name: nome, fullName: nome } : {}),
-          ...(cpfDigits && !existingUser.cpf ? { cpf: cpfDigits } : {})
+          ...(cpfDigits && !existingUser.cpf ? { cpf: cpfDigits } : {}),
+          ...(telefone && !existingUser.whatsapp ? { whatsapp: telefone } : {})
         }
       })
     }

@@ -126,6 +126,7 @@ export async function aplicarImportacao(
         source: 'importacao',
         nome: linha.nome,
         cpf: linha.cpf,
+        telefone: linha.whatsapp,
         // Explicito sempre: concedeAcesso=false ainda cria/casa a conta, so
         // sem entitlement nenhum — e o mesmo caminho que o livro fisico ja
         // usa para "compra sem liberar nada na tela".
