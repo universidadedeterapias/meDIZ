@@ -139,6 +139,7 @@ export async function POST(request: NextRequest) {
       email: parsed.email,
       nome: parsed.nome,
       cpf: parsed.cpf,
+      telefone: parsed.telefone,
       sourceCatalogProductId: catalogProductId,
       externalTransactionId: parsed.transactionId,
       source: 'stone',

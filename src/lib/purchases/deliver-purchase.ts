@@ -249,6 +249,7 @@ export async function deliverFromPurchaseEvent(
       email: resolved.email,
       nome: resolved.nome,
       cpf: resolved.cpf,
+      telefone: resolved.telefone,
       sourceCatalogProductId: resolved.catalogProductId,
       externalTransactionId: resolved.transactionId,
       source: resolved.source,
