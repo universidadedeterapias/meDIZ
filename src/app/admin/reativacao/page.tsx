@@ -697,7 +697,7 @@ export default function ReativacaoPage() {
                     const id = e.target.value
                     if (id) setProdutosFiltro((s) => ({ ...s, [id]: 'incluir' }))
                   }}
-                  className="h-8 flex-1 rounded-md border bg-background px-2 text-xs"
+                  className="h-8 min-w-0 flex-1 rounded-md border bg-background px-2 text-xs"
                 >
                   <option value="">+ incluir…</option>
                   {opcoesProduto
@@ -714,7 +714,7 @@ export default function ReativacaoPage() {
                     const id = e.target.value
                     if (id) setProdutosFiltro((s) => ({ ...s, [id]: 'excluir' }))
                   }}
-                  className="h-8 flex-1 rounded-md border bg-background px-2 text-xs text-muted-foreground"
+                  className="h-8 min-w-0 flex-1 rounded-md border bg-background px-2 text-xs text-muted-foreground"
                 >
                   <option value="">+ excluir…</option>
                   {opcoesProduto
