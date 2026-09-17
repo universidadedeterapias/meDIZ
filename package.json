@@ -30,6 +30,7 @@
     "sync:hotmart-catalog": "tsx src/scripts/sync-all-hotmart-catalog.ts",
     "migrate:library-permissions": "tsx src/scripts/migrate-library-permissions-to-entitlements.ts",
     "backfill:book-shipments": "tsx src/scripts/backfill-book-shipments.ts",
+    "backfill:whatsapp-from-purchase-events": "tsx src/scripts/backfill-whatsapp-from-purchase-events.ts",
     "ensure-admin": "node src/scripts/ensure-admin.js",
     "seed-popup": "tsx src/scripts/seed-popup-data.ts",
     "sync-hotmart-plans": "tsx src/scripts/sync-hotmart-plans.ts",
