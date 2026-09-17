@@ -47,6 +47,16 @@ type Props = {
   onCriada: (id: string) => void
 }
 
+type ChatvoltTemplateOpc = {
+  id: string
+  name: string
+  language: string
+  status: string
+  category: string
+}
+type ChatvoltScenarioOpc = { id: string; name: string; description: string | null }
+type ChatvoltStepOpc = { id: string; name: string; scenarioId: string }
+
 function Campo({
   rotulo,
   dica,
@@ -92,12 +102,70 @@ export function CriarOndaDialog({
   // mesma lista que a tela de reativação e o wizard de importação já usam.
   const [produtos, setProdutos] = useState<{ id: string; title: string }[]>([])
 
+  // Templates, cenários e etapas vêm do Chatvolt — digitar à mão fica só como
+  // fallback (Chatvolt fora do ar, ou item recém-criado que ainda não apareceu
+  // na lista). Falha ou lista vazia já cai no manual sozinho.
+  const [templates, setTemplates] = useState<ChatvoltTemplateOpc[]>([])
+  const [templateId, setTemplateId] = useState('')
+  const [templateManual, setTemplateManual] = useState(false)
+
+  const [scenarios, setScenarios] = useState<ChatvoltScenarioOpc[]>([])
+  const [scenarioManual, setScenarioManual] = useState(false)
+
+  const [steps, setSteps] = useState<ChatvoltStepOpc[]>([])
+  const [stepsCarregando, setStepsCarregando] = useState(false)
+  const [stepManual, setStepManual] = useState(false)
+
   useEffect(() => {
     fetch('/api/admin/catalog-products')
       .then((r) => r.json())
       .then((j) => setProdutos(j.products ?? []))
       .catch(() => setProdutos([]))
   }, [])
+
+  useEffect(() => {
+    fetch('/api/admin/chatvolt/templates')
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((j) => {
+        const lista: ChatvoltTemplateOpc[] = j.templates ?? []
+        setTemplates(lista)
+        if (lista.length === 0) setTemplateManual(true)
+      })
+      .catch(() => setTemplateManual(true))
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/admin/chatvolt/scenarios')
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((j) => {
+        const lista: ChatvoltScenarioOpc[] = j.scenarios ?? []
+        setScenarios(lista)
+        if (lista.length === 0) setScenarioManual(true)
+      })
+      .catch(() => setScenarioManual(true))
+  }, [])
+
+  useEffect(() => {
+    if (!crmScenarioId || scenarioManual) {
+      setSteps([])
+      return
+    }
+    setStepsCarregando(true)
+    fetch(`/api/admin/chatvolt/steps?scenarioId=${encodeURIComponent(crmScenarioId)}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((j) => setSteps(j.steps ?? []))
+      .catch(() => setStepManual(true))
+      .finally(() => setStepsCarregando(false))
+  }, [crmScenarioId, scenarioManual])
+
+  function escolherTemplate(id: string) {
+    setTemplateId(id)
+    const t = templates.find((x) => x.id === id)
+    if (t) {
+      setTemplateName(t.name)
+      setTemplateLang(t.language)
+    }
+  }
 
   const nomeProduto = (id: string) =>
     id === PRODUTO_NAO_IDENTIFICADO
@@ -292,25 +360,52 @@ export function CriarOndaDialog({
 
           <Separator />
 
-          <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
-            <Campo
-              rotulo="Template aprovado na Meta"
-              dica="Nome exato. Template que não existe volta erro 500 no envio."
-            >
-              <Input
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="reativacao_dormente"
-              />
-            </Campo>
-            <Campo rotulo="Idioma">
-              <Input
-                value={templateLang}
-                onChange={(e) => setTemplateLang(e.target.value)}
-                placeholder="pt_BR"
-              />
-            </Campo>
-          </div>
+          <Campo
+            rotulo="Template aprovado na Meta"
+            dica={
+              templateManual
+                ? 'Nome exato. Template que não existe volta erro 500 no envio.'
+                : 'Lista vem do Chatvolt. Cinza = ainda não aprovado, não pode ser usado.'
+            }
+          >
+            {templateManual ? (
+              <div className="grid gap-2 sm:grid-cols-[1fr_120px]">
+                <Input
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder="reativacao_dormente"
+                />
+                <Input
+                  value={templateLang}
+                  onChange={(e) => setTemplateLang(e.target.value)}
+                  placeholder="pt_BR"
+                />
+              </div>
+            ) : (
+              <select
+                value={templateId}
+                onChange={(e) => escolherTemplate(e.target.value)}
+                className="h-9 w-full rounded-md border bg-background px-2 text-xs"
+              >
+                <option value="">Selecione…</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id} disabled={t.status !== 'APPROVED'}>
+                    {t.name} · {t.language}
+                    {t.status !== 'APPROVED' ? ` · ${t.status}` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+            {!templateManual && (
+              <button
+                type="button"
+                onClick={() => setTemplateManual(true)}
+                className="text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                digitar manualmente
+              </button>
+            )}
+          </Campo>
 
           <div className="space-y-2">
             <div className="flex items-baseline justify-between">
@@ -408,18 +503,77 @@ export function CriarOndaDialog({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Campo rotulo="Cenário no CRM" dica="Opcional. Para onde a conversa anda depois do envio.">
-              <Input
-                value={crmScenarioId}
-                onChange={(e) => setCrmScenarioId(e.target.value)}
-                placeholder="cmr..."
-              />
+              {scenarioManual ? (
+                <Input
+                  value={crmScenarioId}
+                  onChange={(e) => setCrmScenarioId(e.target.value)}
+                  placeholder="cmr..."
+                />
+              ) : (
+                <select
+                  value={crmScenarioId}
+                  onChange={(e) => {
+                    setCrmScenarioId(e.target.value)
+                    setCrmStepId('')
+                  }}
+                  className="h-9 w-full rounded-md border bg-background px-2 text-xs"
+                >
+                  <option value="">Nenhum</option>
+                  {scenarios.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {!scenarioManual && (
+                <button
+                  type="button"
+                  onClick={() => setScenarioManual(true)}
+                  className="mt-1 text-[11px] text-muted-foreground hover:text-foreground"
+                >
+                  digitar manualmente
+                </button>
+              )}
             </Campo>
             <Campo rotulo="Etapa no CRM" dica="Opcional.">
-              <Input
-                value={crmStepId}
-                onChange={(e) => setCrmStepId(e.target.value)}
-                placeholder="cmr..."
-              />
+              {stepManual || scenarioManual ? (
+                <Input
+                  value={crmStepId}
+                  onChange={(e) => setCrmStepId(e.target.value)}
+                  placeholder="cmr..."
+                />
+              ) : !crmScenarioId ? (
+                <select
+                  disabled
+                  className="h-9 w-full rounded-md border bg-muted px-2 text-xs text-muted-foreground"
+                >
+                  <option>Escolha o cenário primeiro</option>
+                </select>
+              ) : (
+                <select
+                  value={crmStepId}
+                  onChange={(e) => setCrmStepId(e.target.value)}
+                  disabled={stepsCarregando}
+                  className="h-9 w-full rounded-md border bg-background px-2 text-xs"
+                >
+                  <option value="">{stepsCarregando ? 'Carregando…' : 'Nenhuma'}</option>
+                  {steps.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {!stepManual && !scenarioManual && (
+                <button
+                  type="button"
+                  onClick={() => setStepManual(true)}
+                  className="mt-1 text-[11px] text-muted-foreground hover:text-foreground"
+                >
+                  digitar manualmente
+                </button>
+              )}
             </Campo>
           </div>
 
