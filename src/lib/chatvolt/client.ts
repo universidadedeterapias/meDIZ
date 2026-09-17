@@ -63,7 +63,11 @@ export async function listScenarios(): Promise<ChatvoltScenario[]> {
 }
 
 export async function listSteps(scenarioId: string): Promise<ChatvoltStep[]> {
-  return chatvoltGet<ChatvoltStep[]>('/crm/step', { scenarioId, agentId: agentId() })
+  // Sem agentId de proposito: é opcional na doc, mas passar ele aqui volta
+  // [] pra alguns cenarios que tem etapa de verdade (confirmado comparando
+  // com/sem o parametro no mesmo scenarioId) — parece um filtro instavel do
+  // lado do Chatvolt. scenarioId sozinho ja restringe o suficiente.
+  return chatvoltGet<ChatvoltStep[]>('/crm/step', { scenarioId })
 }
 
 export async function listTemplates(): Promise<ChatvoltTemplate[]> {
