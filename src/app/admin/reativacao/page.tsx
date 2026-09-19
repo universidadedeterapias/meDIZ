@@ -122,12 +122,6 @@ const COR_PRODUTO_CHEIA = 'border-indigo-600 bg-indigo-600 text-white'
 
 type EstadoDoFiltro = 'neutro' | 'incluir' | 'excluir'
 
-const PROXIMO: Record<EstadoDoFiltro, EstadoDoFiltro> = {
-  neutro: 'incluir',
-  incluir: 'excluir',
-  excluir: 'neutro'
-}
-
 type Historico = {
   atividade: { tipo: string; em: string | null; detalhe: string | null }[]
   acessos: {
@@ -744,36 +738,94 @@ export default function ReativacaoPage() {
                     </button>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {tags.map((t) => {
-                    const modo = tagsFiltro[t.id] ?? 'neutro'
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        title={
-                          modo === 'neutro'
-                            ? 'Clique para incluir'
-                            : modo === 'incluir'
-                              ? 'Incluindo · clique para excluir'
-                              : 'Excluindo · clique para limpar'
-                        }
-                        onClick={() =>
-                          setTagsFiltro((s) => ({ ...s, [t.id]: PROXIMO[s[t.id] ?? 'neutro'] }))
-                        }
-                        className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
-                          modo === 'incluir'
-                            ? 'border-foreground bg-foreground text-background'
-                            : modo === 'excluir'
-                              ? 'border-destructive/50 bg-destructive/5 text-destructive line-through'
-                              : 'border-border bg-background opacity-80 hover:opacity-100'
-                        }`}
-                      >
-                        {t.nome}
-                        <span className="tabular-nums opacity-60">{t.totalPessoas}</span>
-                      </button>
-                    )
-                  })}
+                {(incluirTags.length > 0 || excluirTags.length > 0) && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {tags
+                      .filter((t) => incluirTags.includes(t.id))
+                      .map((t) => (
+                        <span
+                          key={`i-${t.id}`}
+                          className="inline-flex items-center gap-1 rounded-full border border-foreground bg-foreground px-2.5 py-1 text-xs font-medium text-background"
+                        >
+                          {t.nome}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setTagsFiltro((s) => {
+                                const novo = { ...s }
+                                delete novo[t.id]
+                                return novo
+                              })
+                            }
+                            aria-label={`Remover ${t.nome}`}
+                            className="opacity-80 hover:opacity-100"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    {tags
+                      .filter((t) => excluirTags.includes(t.id))
+                      .map((t) => (
+                        <span
+                          key={`e-${t.id}`}
+                          className="inline-flex items-center gap-1 rounded-full border border-destructive/50 bg-destructive/5 px-2.5 py-1 text-xs font-medium text-destructive line-through"
+                        >
+                          {t.nome}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setTagsFiltro((s) => {
+                                const novo = { ...s }
+                                delete novo[t.id]
+                                return novo
+                              })
+                            }
+                            aria-label={`Remover ${t.nome}`}
+                            className="opacity-80 hover:opacity-100"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                  </div>
+                )}
+
+                <div className="flex gap-1.5">
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      const id = e.target.value
+                      if (id) setTagsFiltro((s) => ({ ...s, [id]: 'incluir' }))
+                    }}
+                    className="h-8 min-w-0 flex-1 rounded-md border bg-background px-2 text-xs"
+                  >
+                    <option value="">+ incluir…</option>
+                    {tags
+                      .filter((t) => (tagsFiltro[t.id] ?? 'neutro') === 'neutro')
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nome} · {t.totalPessoas}
+                        </option>
+                      ))}
+                  </select>
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      const id = e.target.value
+                      if (id) setTagsFiltro((s) => ({ ...s, [id]: 'excluir' }))
+                    }}
+                    className="h-8 min-w-0 flex-1 rounded-md border bg-background px-2 text-xs text-muted-foreground"
+                  >
+                    <option value="">+ excluir…</option>
+                    {tags
+                      .filter((t) => (tagsFiltro[t.id] ?? 'neutro') === 'neutro')
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nome} · {t.totalPessoas}
+                        </option>
+                      ))}
+                  </select>
                 </div>
               </div>
             )}
@@ -820,7 +872,7 @@ export default function ReativacaoPage() {
           </div>
 
           <p className="text-[11px] leading-snug text-muted-foreground">
-            Um clique inclui, dois excluem, três limpam — produto e tags.{' '}
+Produto e tags: escolha em "+ incluir…" ou "+ excluir…" — o × no chip tira do filtro.{' '}
             <strong className="font-medium">{ROTULO_PRODUTO_NAO_IDENTIFICADO}</strong>{' '}
             é quem tem compra registrada sem bater com nenhum produto do catálogo —
             nome cru vindo direto da plataforma. Idioma é só incluir — um clique liga,
