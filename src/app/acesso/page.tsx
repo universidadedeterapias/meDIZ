@@ -12,6 +12,21 @@ import { cn } from '@/lib/utils'
 /** Onde a pessoa cai depois de entrar: o que ela comprou, nao o chat. */
 const DEFAULT_DESTINATION = '/biblioteca'
 
+/**
+ * O primeiro `signIn` às vezes falha sozinho num token que era valido o tempo
+ * todo — conexao fria com o banco atras do Prisma Accelerate, confirmado
+ * comparando logs de um clique que falhou com o "Tentar de novo" logo em
+ * seguida, mesmo token. Por isso a tela de erro so aparece depois de esgotar
+ * as tentativas: mostrar "link invalido" de cara pra maioria dos casos que se
+ * resolvem sozinhos em segundos e um alarme falso.
+ */
+const TENTATIVAS_LOGIN = 5
+const INTERVALO_TENTATIVA_MS = 2000
+
+function esperar(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 type State = 'entrando' | 'erro'
 
 /**
@@ -47,27 +62,33 @@ function AcessoInner() {
       return
     }
 
-    try {
-      const res = await signIn('magic-link', { token, redirect: false })
+    for (let tentativa = 1; tentativa <= TENTATIVAS_LOGIN; tentativa++) {
+      try {
+        const res = await signIn('magic-link', { token, redirect: false })
 
-      if (!res || res.error) {
-        startedRef.current = false
-        setState('erro')
-        return
+        if (res && !res.error) {
+          // Navegacao dura de proposito. O cookie de sessao nasce nesta resposta,
+          // e `router.replace` faz navegacao suave: o destino era renderizado a
+          // partir do cache do router, ainda sem sessao, e a pessoa ficava no
+          // "Entrando..." para sempre. Recarregar a URL inteira garante que o
+          // servidor veja o cookie — este e o unico ponto do app que loga e
+          // navega no mesmo gesto.
+          window.location.replace(destination)
+          return
+        }
+      } catch {
+        // Segue pra proxima tentativa — so desiste depois da ultima.
       }
 
-      // Navegacao dura de proposito. O cookie de sessao nasce nesta resposta, e
-      // `router.replace` faz navegacao suave: o destino era renderizado a partir
-      // do cache do router, ainda sem sessao, e a pessoa ficava no "Entrando..."
-      // para sempre. Recarregar a URL inteira garante que o servidor veja o
-      // cookie — este e o unico ponto do app que loga e navega no mesmo gesto.
-      window.location.replace(destination)
-    } catch {
-      // Sem este catch, qualquer rejeicao do signIn deixava o spinner girando e
-      // o botao "Tentar de novo" inerte, porque `startedRef` nunca era liberado.
-      startedRef.current = false
-      setState('erro')
+      if (tentativa < TENTATIVAS_LOGIN) {
+        await esperar(INTERVALO_TENTATIVA_MS)
+      }
     }
+
+    // Sem isto, uma falha real deixava o spinner girando e o botao "Tentar de
+    // novo" inerte, porque `startedRef` nunca era liberado.
+    startedRef.current = false
+    setState('erro')
   }, [destination, router, token])
 
   useEffect(() => {
