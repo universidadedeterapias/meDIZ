@@ -21,7 +21,8 @@ const DEFAULT_DESTINATION = '/biblioteca'
  * resolvem sozinhos em segundos e um alarme falso.
  */
 const TENTATIVAS_LOGIN = 5
-const INTERVALO_TENTATIVA_MS = 2000
+/** As 5 tentativas cabem em 2s no total — 4 intervalos entre elas. */
+const INTERVALO_TENTATIVA_MS = 500
 
 function esperar(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
