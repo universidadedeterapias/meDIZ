@@ -1,6 +1,6 @@
 import { randomBytes } from 'crypto'
 import { prisma } from '@/lib/prisma'
-import { montarTelefone } from '@/lib/phone'
+import { telefoneDoCadastro } from '@/lib/phone'
 import { resolverSelecao } from './selecao'
 import {
   ESTADOS_FORA_DA_REATIVACAO,
@@ -94,7 +94,7 @@ export type ResultadoCriacao = {
   totalRecorte: number
   totalDestinatarios: number
   semTelefone: number
-  /** Tinha algo em whatsapp, mas montarTelefone() nao conseguiu validar. */
+  /** Tinha algo em whatsapp, mas telefoneDoCadastro() nao conseguiu validar. */
   telefoneInvalido: number
 }
 
@@ -192,11 +192,15 @@ export async function criarCampanha(
   // o DDI. So os que vieram de um webhook de compra (Guru/Hotmart), que ja
   // normaliza na entrada, escapam disso. Sem este passo, quase toda onda saia
   // com `to` sem 55 — a Meta recusa ou entrega para o numero errado.
+  //
+  // O inverso tambem acontece: estrangeiro importado de planilha ja vem com o
+  // DDI de fora, marcado com `+`. `telefoneDoCadastro` respeita a marca em vez
+  // de tratar todo mundo como brasileiro.
   let semTelefone = 0
   let telefoneInvalido = 0
   const dados = linhas.map((l) => {
     const bruto = l.whatsapp?.trim() || null
-    const telefone = bruto ? montarTelefone({ numero: bruto }) : null
+    const telefone = bruto ? telefoneDoCadastro(bruto) : null
     if (!bruto) semTelefone += 1
     else if (!telefone) telefoneInvalido += 1
     return {
@@ -235,7 +239,7 @@ export type MetricasCampanha = {
   /** Dos descartados: motivo = 'sem telefone'. */
   semTelefone: number
   /** Dos descartados: motivo = 'telefone inválido' — tinha algo no campo mas
-   *  montarTelefone() nao validou. O resto do `descartado` (ex.: onda
+   *  telefoneDoCadastro() nao validou. O resto do `descartado` (ex.: onda
    *  cancelada) nao tem contador proprio. */
   telefoneInvalido: number
   clicou: number

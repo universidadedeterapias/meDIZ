@@ -1,7 +1,7 @@
 import { lookupCustomer } from '@/lib/customer/lookup'
 import { normalizeLibraryEmail } from '@/lib/library/email'
 import { normalizeCpf } from '@/lib/cpf'
-import { montarTelefone } from '@/lib/phone'
+import { telefoneParaCadastro } from '@/lib/phone'
 import { phoneVariants } from '@/lib/customer/phone-match'
 import type { LinhaBruta } from './planilha'
 
@@ -13,6 +13,11 @@ export type MapeamentoColunas = {
   nome?: string
   email?: string
   whatsapp?: string
+  /** Opcionais: exportações como a da Hotmart trazem o DDD e o país em
+   *  colunas separadas do telefone. Sem o país, o número é tratado como
+   *  brasileiro — e o estrangeiro sem DDI ganharia 55. */
+  ddd?: string
+  pais?: string
   cpf?: string
   dataCompra?: string
 }
@@ -78,7 +83,13 @@ export async function montarPreview(
     const emailBruto = mapeamento.email ? textoOuNull(bruta[mapeamento.email]) : null
     const email = emailBruto ? normalizeLibraryEmail(emailBruto) : null
     const whatsappBruto = mapeamento.whatsapp ? textoOuNull(bruta[mapeamento.whatsapp]) : null
-    const whatsapp = whatsappBruto ? montarTelefone({ numero: whatsappBruto }) : null
+    const whatsapp = whatsappBruto
+      ? telefoneParaCadastro({
+          numero: whatsappBruto,
+          ddd: mapeamento.ddd ? bruta[mapeamento.ddd] : null,
+          paisIso: mapeamento.pais ? bruta[mapeamento.pais] : null
+        })
+      : null
     const cpfBruto = mapeamento.cpf ? textoOuNull(bruta[mapeamento.cpf]) : null
     const cpf = cpfBruto ? normalizeCpf(cpfBruto) : null
     const dataCompra = mapeamento.dataCompra ? dataOuNull(bruta[mapeamento.dataCompra]) : null

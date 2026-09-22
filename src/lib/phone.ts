@@ -58,8 +58,72 @@ const DDI_POR_PAIS: Record<string, string> = {
   MZ: '258',
   CV: '238',
   JP: '81',
-  AU: '61'
+  AU: '61',
+  LU: '352'
 }
+
+/**
+ * Nome do pais, como as planilhas exportadas trazem (`Portugal`, `Estados
+ * Unidos`, `Suíça`), para o ISO de `DDI_POR_PAIS`. Chave ja sem acento e em
+ * maiusculas — ver `isoDoPais`.
+ */
+const ISO_POR_NOME: Record<string, string> = {
+  BRASIL: 'BR',
+  BRAZIL: 'BR',
+  PORTUGAL: 'PT',
+  'ESTADOS UNIDOS': 'US',
+  'UNITED STATES': 'US',
+  EUA: 'US',
+  CANADA: 'CA',
+  'REINO UNIDO': 'GB',
+  'UNITED KINGDOM': 'GB',
+  IRLANDA: 'IE',
+  ESPANHA: 'ES',
+  MEXICO: 'MX',
+  ARGENTINA: 'AR',
+  CHILE: 'CL',
+  COLOMBIA: 'CO',
+  PERU: 'PE',
+  URUGUAI: 'UY',
+  PARAGUAI: 'PY',
+  BOLIVIA: 'BO',
+  EQUADOR: 'EC',
+  VENEZUELA: 'VE',
+  'COSTA RICA': 'CR',
+  PANAMA: 'PA',
+  'REPUBLICA DOMINICANA': 'DO',
+  ITALIA: 'IT',
+  FRANCA: 'FR',
+  ALEMANHA: 'DE',
+  SUICA: 'CH',
+  AUSTRIA: 'AT',
+  HOLANDA: 'NL',
+  'PAISES BAIXOS': 'NL',
+  BELGICA: 'BE',
+  ANGOLA: 'AO',
+  MOCAMBIQUE: 'MZ',
+  'CABO VERDE': 'CV',
+  JAPAO: 'JP',
+  AUSTRALIA: 'AU',
+  LUXEMBURGO: 'LU'
+}
+
+/** Aceita o ISO (`PT`) ou o nome do pais (`Portugal`, `Suíça`). */
+function isoDoPais(v: unknown): string {
+  const texto = String(v ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toUpperCase()
+  return ISO_POR_NOME[texto] ?? texto
+}
+
+/**
+ * Italia e a excecao: o `0` do fixo faz parte do numero internacional
+ * (+39 06...). Nos outros paises daqui, o `0` inicial e so o prefixo de
+ * discagem nacional (`090-...` no Japao, `0401...` na Australia) e sai.
+ */
+const DDI_MANTEM_ZERO = new Set(['39'])
 
 /** Sem contar o DDI. Larga de proposito: numero nacional varia muito por pais. */
 const MIN_DIGITOS_LOCAIS = 6
@@ -98,9 +162,7 @@ export function montarTelefone(partes: PartesTelefone): string | null {
   const numero = apenasDigitos(partes.numero)
   if (!numero) return null
 
-  const pais = String(partes.paisIso ?? '')
-    .trim()
-    .toUpperCase()
+  const pais = isoDoPais(partes.paisIso)
   const ddi =
     apenasDigitos(partes.ddi) || DDI_POR_PAIS[pais] || DDI_PADRAO
 
@@ -112,9 +174,8 @@ export function montarTelefone(partes: PartesTelefone): string | null {
 /**
  * Brasil: DDI + DDD + numero, com DDD obrigatorio e tamanho fixo.
  *
- * Continua exatamente como era. O telefone brasileiro tem formato fechado (10
- * digitos no fixo, 11 no movel), entao aqui da para ser rigoroso — e vale ser,
- * porque e de longe o volume maior.
+ * O telefone brasileiro tem formato fechado (10 digitos no fixo, 11 no movel),
+ * entao aqui da para ser rigoroso — e vale ser, porque e de longe o volume maior.
  */
 function montarBrasil(ddd: string, numeroBruto: string): string | null {
   let numero = numeroBruto
@@ -133,6 +194,13 @@ function montarBrasil(ddd: string, numeroBruto: string): string | null {
   // Sem DDD separado, o numero precisa carrega-lo: 10 digitos (fixo) ou 11 (movel).
   const comDdd = ddd ? `${ddd}${numero}` : numero
   if (comDdd.length !== 10 && comDdd.length !== 11) return null
+
+  // Nenhum DDD comeca com 0, e todo numero de 11 digitos e celular, que comeca
+  // com 9. Sem estas duas checagens, um estrangeiro cadastrado como Brasil
+  // (`17347540202`, dos EUA; `07388 839482`, do Reino Unido) ganhava 55 e ia
+  // para o numero de outra pessoa.
+  if (comDdd.startsWith('0')) return null
+  if (comDdd.length === 11 && comDdd[2] !== '9') return null
 
   return `${DDI_PADRAO}${comDdd}`
 }
@@ -166,12 +234,62 @@ function montarExterior(
   // `ddd` que na verdade e o codigo do pais nao entra de novo.
   const ddd = dddBruto === ddi ? '' : dddBruto
 
-  const local =
+  const comDdd =
     ddd && !numeroBruto.startsWith(ddd) ? `${ddd}${numeroBruto}` : numeroBruto
+  const local = DDI_MANTEM_ZERO.has(ddi) ? comDdd : comDdd.replace(/^0+/, '')
 
   if (local.length < MIN_DIGITOS_LOCAIS || local.length > MAX_DIGITOS_LOCAIS) {
     return null
   }
 
   return `${ddi}${local}`
+}
+
+/**
+ * Como o telefone e gravado em `User.whatsapp`: brasileiro so com digitos
+ * (`5511987654321`), estrangeiro com `+` na frente (`+12035263231`).
+ *
+ * O `+` e o que permite reler o numero sem adivinhar. Um americano sem ele,
+ * `12035263231`, tem os mesmos 11 digitos de um celular de Sao Paulo sem DDI, e
+ * quem le a coluna depois (a onda de reativacao, que normaliza de novo o que
+ * esta gravado) acrescentaria 55 e mandaria para o numero de outra pessoa.
+ */
+export function telefoneParaCadastro(partes: PartesTelefone): string | null {
+  const telefone = montarTelefone(partes)
+  if (!telefone) return null
+  // Nenhum DDI alem do brasileiro comeca com 55, entao o prefixo basta para
+  // saber de onde o numero e.
+  return telefone.startsWith(DDI_PADRAO) ? telefone : `+${telefone}`
+}
+
+/**
+ * Le de volta um `User.whatsapp` e devolve DDI + numero, so digitos.
+ *
+ * A coluna mistura o que cada cadastro gravou: mascarado sem DDI (`(11)
+ * 93728-4567`, a maioria), ja normalizado (`5511...`), estrangeiro marcado por
+ * `telefoneParaCadastro` (`+351...`) ou digitado com `00`. Na duvida continua
+ * Brasil, que e o padrao de quem nao informa nada.
+ */
+export function telefoneDoCadastro(gravado: unknown): string | null {
+  const texto = String(gravado ?? '').trim()
+  const digitos = apenasDigitos(texto)
+  if (!digitos) return null
+
+  const internacional = texto.startsWith('+') || digitos.startsWith('00')
+  const semPrefixo = digitos.replace(/^00/, '')
+
+  // Mais de 11 digitos sem 55 nao pode ser brasileiro (sem DDI sao 10 ou 11),
+  // entao ja veio com o DDI de fora — e o que os webhooks de compra gravavam
+  // antes do `+` existir.
+  const estrangeiroSemMarca =
+    /^\d+$/.test(texto) && semPrefixo.length > 11 && !semPrefixo.startsWith(DDI_PADRAO)
+
+  if ((internacional || estrangeiroSemMarca) && !semPrefixo.startsWith(DDI_PADRAO)) {
+    const tamanhoOk =
+      semPrefixo.length >= MIN_DIGITOS_LOCAIS + 1 &&
+      semPrefixo.length <= MAX_DIGITOS_LOCAIS + 1
+    return tamanhoOk ? semPrefixo : null
+  }
+
+  return montarTelefone({ numero: semPrefixo })
 }
