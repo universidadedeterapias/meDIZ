@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { validateWebhookBearer } from '@/lib/webhookAuth'
-import { montarTelefone } from '@/lib/phone'
+import { telefoneDoCadastro } from '@/lib/phone'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -145,7 +145,7 @@ function formataCandidato(l: LinhaSistema1 | LinhaSistema2, limiares: readonly n
     // null quando o numero que temos nao tem cara de telefone (ver
     // reativacao_telefone_sem_ddi): quem consome trata como "sem WhatsApp",
     // nao descarta o candidato em silencio.
-    whatsapp: montarTelefone({ numero: l.whatsapp }),
+    whatsapp: telefoneDoCadastro(l.whatsapp),
     produto: l.produto,
     ancoraEm: l.ancora_em.toISOString(),
     horasDesdeAncora: Math.round(l.horas * 10) / 10,

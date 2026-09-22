@@ -39,11 +39,13 @@ import {
 type ColunaDetectada = { chave: string; amostra: string[] }
 type LinhaBruta = Record<string, unknown>
 
-type CampoMapeavel = 'nome' | 'email' | 'whatsapp' | 'cpf' | 'dataCompra'
+type CampoMapeavel = 'nome' | 'email' | 'whatsapp' | 'ddd' | 'pais' | 'cpf' | 'dataCompra'
 const CAMPOS_MAPEAVEIS: { valor: CampoMapeavel; rotulo: string }[] = [
   { valor: 'nome', rotulo: 'Nome' },
   { valor: 'email', rotulo: 'E-mail' },
   { valor: 'whatsapp', rotulo: 'WhatsApp' },
+  { valor: 'ddd', rotulo: 'DDD' },
+  { valor: 'pais', rotulo: 'País' },
   { valor: 'cpf', rotulo: 'CPF' },
   { valor: 'dataCompra', rotulo: 'Data da compra' }
 ]
@@ -181,6 +183,8 @@ export default function ImportarPlanilhaPage() {
         const chave = c.chave.toLowerCase()
         if (!chute.email && /e-?mail/.test(chave)) chute.email = c.chave
         else if (!chute.nome && /nome/.test(chave)) chute.nome = c.chave
+        else if (!chute.ddd && /^ddd$/.test(chave)) chute.ddd = c.chave
+        else if (!chute.pais && /^pa[ií]s$/.test(chave)) chute.pais = c.chave
         else if (!chute.whatsapp && /(whats|telefone|celular|fone)/.test(chave)) chute.whatsapp = c.chave
         else if (!chute.cpf && /cpf/.test(chave)) chute.cpf = c.chave
         else if (!chute.dataCompra && /(data|compra)/.test(chave)) chute.dataCompra = c.chave
