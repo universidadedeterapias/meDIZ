@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { grantPurchaseAccess } from '@/lib/purchases/grant-purchase'
+import { emLotes } from './lotes'
 import type { LinhaPreview } from './preview'
 
 /**
@@ -61,16 +62,19 @@ export async function aplicarImportacao(
     create: { nome: nomeTag, criadoPor: input.criadoPor }
   })
 
-  let criados = 0
-  let casados = 0
-  let casadosPorCpfOuTelefone = 0
-  let ignorados = 0
-  const erros: AplicarImportacaoResultado['erros'] = []
+  type ResultadoLinha =
+    | { tipo: 'ignorado' }
+    | { tipo: 'criado' }
+    | { tipo: 'casado'; casadoPorCpfOuTelefone: boolean }
+    | { tipo: 'erro'; indice: number; email: string | null; motivo: string }
 
-  for (const linha of input.linhas) {
+  // Em lotes de 10, nunca uma linha por vez: uma planilha de milhares de
+  // compradores sequenciais estourava o tempo da request (cada linha faz
+  // varios round-trips ao banco) bem antes de terminar — era exatamente o
+  // "erro de servidor" ao confirmar uma importação grande.
+  const resultados = await emLotes<LinhaPreview, ResultadoLinha>(input.linhas, 10, async (linha) => {
     if (!linha.incluida || !linha.email) {
-      ignorados += 1
-      continue
+      return { tipo: 'ignorado' }
     }
 
     const externalTransactionId = `importacao_${importacao.id}_${linha.indice}`
@@ -108,6 +112,7 @@ export async function aplicarImportacao(
       // resolve para o e-mail cadastrado de verdade sempre que
       // `userIdExistente` veio preenchido da revisão.
       let emailParaGrant = linha.email
+      let casadoPorCpfOuTelefone = false
       if (linha.userIdExistente) {
         const contaExistente = await prisma.user.findUnique({
           where: { id: linha.userIdExistente },
@@ -115,7 +120,7 @@ export async function aplicarImportacao(
         })
         if (contaExistente && contaExistente.email !== linha.email) {
           emailParaGrant = contaExistente.email
-          casadosPorCpfOuTelefone += 1
+          casadoPorCpfOuTelefone = true
         }
       }
 
@@ -133,21 +138,40 @@ export async function aplicarImportacao(
         grantProductIds: input.concedeAcesso ? [input.catalogProductId] : []
       })
 
-      if (resultado.userCreated) criados += 1
-      else casados += 1
-
       await prisma.userTag.upsert({
         where: { tagId_userId: { tagId: tag.id, userId: resultado.userId } },
         update: {},
         create: { tagId: tag.id, userId: resultado.userId, origem: 'importacao', criadoPor: input.criadoPor }
       })
+
+      return resultado.userCreated
+        ? { tipo: 'criado' }
+        : { tipo: 'casado', casadoPorCpfOuTelefone }
     } catch (e) {
-      ignorados += 1
-      erros.push({
+      return {
+        tipo: 'erro',
         indice: linha.indice,
         email: linha.email,
         motivo: e instanceof Error ? e.message : 'erro desconhecido'
-      })
+      }
+    }
+  })
+
+  let criados = 0
+  let casados = 0
+  let casadosPorCpfOuTelefone = 0
+  let ignorados = 0
+  const erros: AplicarImportacaoResultado['erros'] = []
+
+  for (const r of resultados) {
+    if (r.tipo === 'criado') criados += 1
+    else if (r.tipo === 'casado') {
+      casados += 1
+      if (r.casadoPorCpfOuTelefone) casadosPorCpfOuTelefone += 1
+    } else if (r.tipo === 'ignorado') ignorados += 1
+    else {
+      ignorados += 1
+      erros.push({ indice: r.indice, email: r.email, motivo: r.motivo })
     }
   }
 
