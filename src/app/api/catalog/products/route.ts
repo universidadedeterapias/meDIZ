@@ -7,7 +7,10 @@ import {
 } from '@/lib/catalog/sections'
 import { listCatalogProducts } from '@/lib/catalog/products'
 import { getProductEntitlementIdsForUser } from '@/lib/purchases/entitlements'
-import { getLibraryPermissionsForUser } from '@/lib/library/permissions'
+import {
+  getLegacyCategoryPermissionsForUser,
+  getLibraryPermissionsForUser
+} from '@/lib/library/permissions'
 import { mapProductsToOffers } from '@/lib/catalog/products'
 import { enrichVideoCourseOffers } from '@/lib/catalog/course-modules'
 import { requireUser } from '@/lib/requireAuth'
@@ -46,6 +49,9 @@ export async function GET(request: NextRequest) {
     section
   )
   const permissoes = await getLibraryPermissionsForUser(auth.user)
+  // O cadeado de cada produto nao olha a categoria derivada das compras: comprar
+  // uma audioterapia nao destrava as outras. Ver getLegacyCategoryPermissionsForUser.
+  const permissoesPorProduto = await getLegacyCategoryPermissionsForUser(auth.user)
   const productEntitlements = await getProductEntitlementIdsForUser(auth.user)
 
   const lockedLabel = 'Desbloquear acesso'
@@ -53,7 +59,7 @@ export async function GET(request: NextRequest) {
   const offers = await enrichVideoCourseOffers(
     mapProductsToOffers(
       products,
-      permissoes,
+      permissoesPorProduto,
       lockedLabel,
       undefined,
       productEntitlements
