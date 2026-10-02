@@ -54,6 +54,10 @@ model User {
   /// banco: a tabela de avisos ja nasceu com varias linhas por pessoa, entao um
   /// indice unico la nem subiria. Reenvio do atendimento nao passa por aqui.
   accessMessageAt          DateTime?                 @map("access_message_at")
+  /// Admin zerou a cota diaria de pesquisas do plano gratuito neste instante: so
+  /// contam as pesquisas feitas depois dele (e depois da meia-noite). Ver
+  /// src/lib/search-quota.ts.
+  searchQuotaResetAt       DateTime?                 @map("search_quota_reset_at")
   cpf                      String?                   @db.VarChar(14)
   pdfDownloads             PdfDownload[]
   pdfDownloadTokens        PdfDownloadToken[]
