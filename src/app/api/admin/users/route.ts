@@ -125,18 +125,31 @@ export async function GET(req: NextRequest) {
     }
 
     // Busca todos os usuários ordenados por data de criação (mais recentes primeiro)
+    //
+    // `select` e `_count`, e nunca `include`: a consulta traz a base inteira (a
+    // paginação vem depois dos filtros), e o Accelerate recusa resposta acima de
+    // 5MB (P6009). Com `include` vinham todas as colunas do usuário e a lista
+    // completa de sessões de chat só para contá-las — 8,4MB em out/2026, e a lista
+    // de usuários do admin dava 500.
     const allUsers = await prisma.user.findMany({
       where: whereClause,
       orderBy: { createdAt: 'desc' },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        fullName: true,
+        email: true,
+        createdAt: true,
         subscriptions: {
-          include: {
+          select: {
+            id: true,
+            status: true,
+            currentPeriodStart: true,
+            currentPeriodEnd: true,
             plan: {
               select: {
-                id: true,
                 name: true,
                 interval: true,
-                intervalCount: true,
                 stripePriceId: true,
                 hotmartOfferKey: true,
                 hotmartId: true,
@@ -150,8 +163,7 @@ export async function GET(req: NextRequest) {
         },
         accounts: {
           select: {
-            provider: true,
-            providerAccountId: true
+            provider: true
           }
         },
         sessions: {
@@ -163,14 +175,8 @@ export async function GET(req: NextRequest) {
           },
           take: 1
         },
-        chatSessions: {
-          select: {
-            id: true,
-            createdAt: true
-          },
-          orderBy: {
-            createdAt: 'desc'
-          }
+        _count: {
+          select: { chatSessions: true }
         }
       }
     })
@@ -200,7 +206,7 @@ export async function GET(req: NextRequest) {
       const isAdmin = user.email.includes('@mediz.com')
 
       // Conta pesquisas (chat sessions)
-      const totalSearches = user.chatSessions.length
+      const totalSearches = user._count.chatSessions
 
       // Último login (baseado na sessão mais recente)
       const lastLogin = user.sessions[0]?.expires || null
