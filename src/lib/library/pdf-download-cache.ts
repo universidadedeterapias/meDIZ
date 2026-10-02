@@ -25,12 +25,14 @@ function cacheRoot(): string {
  * funcionado. Subir a versao aqui, no mesmo deploy da troca, resolve na hora.
  *
  * v2: livros reprocessados (O CORPO DIZ saiu de 147 MB para 21 MB).
+ * v3: perfis ICC vazios trocados na geracao — as copias v2 perdiam as imagens
+ *     no celular.
  */
 export function cacheKeyFor(
   userId: string,
   productId: string,
   mediaId?: string | null,
-  watermarkVersion = 'v2'
+  watermarkVersion = 'v3'
 ): string {
   const month = new Date().toISOString().slice(0, 7)
   const raw = `${userId}:${productId}:${mediaId ?? ''}:${watermarkVersion}:${month}`

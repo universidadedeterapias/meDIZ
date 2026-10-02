@@ -1,4 +1,16 @@
-import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib'
+import {
+  PDFArray,
+  PDFDict,
+  PDFDocument,
+  PDFName,
+  PDFNumber,
+  PDFObject,
+  PDFRawStream,
+  PDFRef,
+  StandardFonts,
+  rgb,
+  degrees
+} from 'pdf-lib'
 
 export type WatermarkUserInfo = {
   fullName: string
@@ -215,6 +227,91 @@ function stampPage(
   }
 }
 
+/** Todo perfil ICC comeca com um cabecalho fixo de 128 bytes. */
+const ICC_HEADER_BYTES = 128
+
+const DEVICE_SPACE_BY_COMPONENTS: Record<number, string> = {
+  1: 'DeviceGray',
+  3: 'DeviceRGB',
+  4: 'DeviceCMYK'
+}
+
+/**
+ * Espaco de cor que substitui um `[/ICCBased <perfil>]` cujo perfil nao existe,
+ * ou null se o perfil e valido.
+ */
+function replacementForBrokenIcc(pdfDoc: PDFDocument, value: PDFObject): PDFName | null {
+  const array = pdfDoc.context.lookup(value)
+  if (!(array instanceof PDFArray) || array.size() !== 2) return null
+  if (pdfDoc.context.lookup(array.get(0)) !== PDFName.of('ICCBased')) return null
+
+  const profile = pdfDoc.context.lookup(array.get(1))
+  if (!(profile instanceof PDFRawStream)) return null
+  const length = profile.contents.length
+  const compressed = profile.dict.has(PDFName.of('Filter'))
+  if (length > 0 && (compressed || length >= ICC_HEADER_BYTES)) return null
+
+  const alternate = pdfDoc.context.lookup(profile.dict.get(PDFName.of('Alternate')))
+  if (alternate instanceof PDFName) return alternate
+  const components = pdfDoc.context.lookup(profile.dict.get(PDFName.of('N')))
+  const device =
+    components instanceof PDFNumber ? DEVICE_SPACE_BY_COMPONENTS[components.asNumber()] : undefined
+  return PDFName.of(device ?? 'DeviceRGB')
+}
+
+/**
+ * Troca perfis ICC vazios pelo espaco de cor de dispositivo equivalente.
+ *
+ * A otimizacao pelo Ghostscript (publicar-pdfs-otimizados.ts) juntou os 178
+ * perfis ICC v4 do "O CORPO DIZ" num so e o gravou com 0 bytes. Ghostscript e
+ * MuPDF ignoram o perfil quebrado e desenham em RGB, entao a conferencia visual
+ * passou; os leitores de PDF do celular descartam a imagem inteira — 175 das
+ * ilustracoes sumiam. Sem perfil, `N` diz quantos componentes a imagem tem, que
+ * e exatamente o que o espaco de dispositivo precisa.
+ *
+ * Corrige na geracao, e nao so na origem, para que nenhum PDF ja publicado
+ * (ou publicado no futuro com o mesmo defeito) chegue quebrado ao cliente.
+ */
+export function repairEmptyIccProfiles(pdfDoc: PDFDocument): number {
+  let repaired = 0
+
+  const visit = (container: PDFDict | PDFArray): void => {
+    const entries: [PDFName | number, PDFObject][] =
+      container instanceof PDFDict
+        ? container.entries()
+        : container.asArray().map((value, index) => [index, value])
+
+    for (const [key, value] of entries) {
+      // Referencias ficam para o laco de baixo, que trata cada objeto indireto.
+      if (value instanceof PDFRef) continue
+      const replacement = replacementForBrokenIcc(pdfDoc, value)
+      if (replacement) {
+        if (container instanceof PDFDict) container.set(key as PDFName, replacement)
+        else container.set(key as number, replacement)
+        repaired++
+      } else if (value instanceof PDFDict || value instanceof PDFArray) {
+        visit(value)
+      }
+    }
+  }
+
+  for (const [ref, object] of pdfDoc.context.enumerateIndirectObjects()) {
+    // Espaco de cor declarado como objeto proprio: troca o objeto, e todo mundo
+    // que aponta para ele passa a ver o espaco de dispositivo.
+    const replacement = replacementForBrokenIcc(pdfDoc, object)
+    if (replacement) {
+      pdfDoc.context.assign(ref, replacement)
+      repaired++
+    } else if (object instanceof PDFRawStream) {
+      visit(object.dict)
+    } else if (object instanceof PDFDict || object instanceof PDFArray) {
+      visit(object)
+    }
+  }
+
+  return repaired
+}
+
 /**
  * Aplica marca d'água embutida no conteúdo (não anotação removível) + página de licença.
  */
@@ -233,6 +330,7 @@ export async function applyPdfWatermark(
   const safeTitle = toWinAnsiSafe(documentTitle)
 
   const pdfDoc = await PDFDocument.load(originalBytes, { ignoreEncryption: true })
+  repairEmptyIccProfiles(pdfDoc)
   await drawLicensePage(pdfDoc, safeUser, safeTitle)
 
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
