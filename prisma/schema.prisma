@@ -978,7 +978,7 @@ model JourneyEvent {
 model JourneyWakeupTouch {
   id             String    @id @default(uuid())
   userId         String    @map("user_id")
-  /// 'acesso' (Sistema 1) | 'pesquisa' (Sistema 2).
+  /// 'acesso' (Sistema 1) | 'pesquisa' (Sistema 2) | 'trial_fim' (aviso de fim do trial).
   sistema        String    @db.VarChar(16)
   /// 1 a 4, na ordem da regua (A1..A4 ou P1..P4).
   toque          Int
