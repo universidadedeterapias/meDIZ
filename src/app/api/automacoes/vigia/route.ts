@@ -19,10 +19,12 @@ export const maxDuration = 120
  */
 export async function GET(request: NextRequest) {
   const segredo = process.env.CRON_SECRET?.trim()
+  // O CRON_SECRET da Vercel e base64 e tem `+`, que na URL chega como espaco
+  // quando nao vem codificado (%2B). Mesma correcao de /api/push/check-reminders.
+  const doQuery = request.nextUrl.searchParams.get('secret')?.replace(/ /g, '+')
   const autorizado =
     !!segredo &&
-    (request.headers.get('authorization') === `Bearer ${segredo}` ||
-      request.nextUrl.searchParams.get('secret') === segredo)
+    (request.headers.get('authorization') === `Bearer ${segredo}` || doQuery === segredo)
   if (!autorizado) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

@@ -256,6 +256,12 @@ export default function ModernDashboard() {
               </a>
             </Button>
             <Button className="w-full justify-start" variant="outline" asChild>
+              <a href="/admin/automacoes">
+                <Activity className="mr-2 h-4 w-4" />
+                Automações e alertas
+              </a>
+            </Button>
+            <Button className="w-full justify-start" variant="outline" asChild>
               <a href="/admin/users">
                 <Users className="mr-2 h-4 w-4" />
                 Gerenciar Usuários
