@@ -107,6 +107,7 @@
     "build:safe": "npm run check:deploy && npm run build",
     "build:clean": "npm run clean && npm run build",
     "test:2fa": "node scripts/test-2fa-local.js",
+    "test:portao": "tsx src/scripts/test-portao-envio.ts",
     "generate-vapid-keys": "tsx src/scripts/generate-vapid-keys.ts",
     "debug-reminders": "tsx src/scripts/debug-reminders.ts",
     "test-check-reminders": "tsx src/scripts/test-check-reminders.ts",
