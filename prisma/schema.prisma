@@ -1377,3 +1377,97 @@ model ImportacaoPlanilha {
   @@index([criadoEm])
   @@map("importacoes_planilha")
 }
+
+/// Portao de envio (Story 6.1): uma linha por mensagem paga (template do
+/// WhatsApp) que algum fluxo pediu para mandar.
+///
+/// `chave` e a trava contra reenvio: o fluxo diz o que esta mandando
+/// ("trial_fim:<userId>:1") e o portao grava a chave ANTES de chamar o
+/// Chatvolt. A segunda tentativa com a mesma chave volta `ja_enviado` sem
+/// enviar nada — foi a falta disso que fez o fim do trial mandar mais de mil
+/// templates repetidos em 05/10/2026.
+///
+/// status: 'reservado' (chave gravada, envio em andamento) | 'enviado' |
+/// 'barrado' (fluxo desligado, teto do dia, limite da pessoa) | 'falhou'
+/// (Chatvolt recusou ou caiu — pode tentar de novo) | 'incerto' (o Chatvolt
+/// nao respondeu a tempo: pode ter enviado, entao NAO se tenta de novo).
+model MensagemEnviada {
+  id             String    @id @default(uuid())
+  chave          String    @unique @db.VarChar(160)
+  fluxo          String    @db.VarChar(40)
+  userId         String?   @map("user_id")
+  telefone       String    @db.VarChar(24)
+  template       String    @db.VarChar(80)
+  idioma         String?   @db.VarChar(16)
+  /// MARKETING | UTILITY | AUTHENTICATION, como o Chatvolt devolve. Null
+  /// quando a consulta de templates falhou — nao segura o envio por isso.
+  categoria      String?   @db.VarChar(16)
+  status         String    @db.VarChar(16)
+  motivo         String?   @db.VarChar(255)
+  tentativas     Int       @default(1)
+  /// Corpo mandado ao Chatvolt, para auditoria ("o que exatamente saiu").
+  corpo          Json?
+  httpStatus     Int?      @map("http_status")
+  /// Resposta do Chatvolt, cortada.
+  resposta       Json?
+  conversationId String?   @map("conversation_id") @db.VarChar(64)
+  n8nWorkflowId  String?   @map("n8n_workflow_id") @db.VarChar(40)
+  n8nExecucaoId  String?   @map("n8n_execucao_id") @db.VarChar(40)
+  /// Momento da ultima tentativa: e por ele que o teto do dia e o limite de
+  /// 24h contam, e nao pelo criado_em, porque uma chave que falhou ontem e
+  /// tenta de novo hoje conta como envio de hoje.
+  tentativaEm    DateTime  @default(now()) @map("tentativa_em")
+  enviadoEm      DateTime? @map("enviado_em")
+  criadoEm       DateTime  @default(now()) @map("criado_em")
+  atualizadoEm   DateTime  @updatedAt @map("atualizado_em")
+
+  @@index([telefone, tentativaEm])
+  @@index([fluxo, tentativaEm])
+  @@index([status, tentativaEm])
+  @@index([userId])
+  @@map("mensagens_enviadas")
+}
+
+/// Interruptor e tetos de cada fluxo que manda mensagem paga (Story 6.1).
+/// Fluxo que nao tem linha aqui e barrado pelo portao: fluxo novo precisa ser
+/// cadastrado de proposito, com teto.
+model FluxoAutomacao {
+  fluxo               String   @id @db.VarChar(40)
+  nome                String   @db.VarChar(120)
+  ligado              Boolean  @default(true)
+  /// Maximo de mensagens por dia (horario de Brasilia). Ao bater, o resto do
+  /// dia e barrado.
+  tetoDiario          Int      @map("teto_diario")
+  /// false para mensagem que a pessoa pediu (acesso, rastreio): nao conta no
+  /// limite por pessoa e nao e barrada por ele.
+  contaNoLimitePessoa Boolean  @default(true) @map("conta_no_limite_pessoa")
+  /// Este fluxo nao manda se a pessoa ja recebeu esta quantidade de mensagens
+  /// (de fluxos que contam no limite) nas ultimas 24h.
+  limitePessoa24h     Int      @default(3) @map("limite_pessoa_24h")
+  observacao          String?  @db.VarChar(255)
+  atualizadoPor       String?  @map("atualizado_por") @db.VarChar(120)
+  criadoEm            DateTime @default(now()) @map("criado_em")
+  atualizadoEm        DateTime @updatedAt @map("atualizado_em")
+
+  @@map("fluxos_automacao")
+}
+
+/// Uma linha por rodada de fluxo agendado (Story 6.1 cria a tabela; quem grava
+/// e o alerta de "fluxo parado" vem na fase de alertas). Serve para ver o
+/// fluxo que deixou de rodar e o que rodou com volume fora do normal.
+model ExecucaoAutomacao {
+  id            String    @id @default(uuid())
+  fluxo         String    @db.VarChar(40)
+  n8nWorkflowId String?   @map("n8n_workflow_id") @db.VarChar(40)
+  n8nExecucaoId String?   @map("n8n_execucao_id") @db.VarChar(40)
+  iniciouEm     DateTime  @default(now()) @map("iniciou_em")
+  terminouEm    DateTime? @map("terminou_em")
+  lidos         Int?
+  enviados      Int?
+  barrados      Int?
+  falhas        Int?
+  erro          String?   @db.VarChar(500)
+
+  @@index([fluxo, iniciouEm])
+  @@map("execucoes_automacao")
+}
