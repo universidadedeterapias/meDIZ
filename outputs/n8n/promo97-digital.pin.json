@@ -1,0 +1,144 @@
+[
+  {
+    "headers": {
+      "content-type": "application/json",
+      "user-agent": "digitalmanager.guru (dev@digitalmanager.guru)"
+    },
+    "params": {},
+    "query": {},
+    "body": {
+      "affiliations": null,
+      "checkout_url": "https://go.ocorpodiz.com.br/pay/ocorpodizfg",
+      "contact": {
+        "id": "teste-contato",
+        "name": "Teste Promo97",
+        "company_name": null,
+        "email": "teste-promo97@mediz.com",
+        "doc": null,
+        "phone_local_code": "55",
+        "phone_number": "COLOQUE_DDD_E_NUMERO",
+        "address": null,
+        "address_number": null,
+        "address_comp": null,
+        "address_district": null,
+        "address_city": null,
+        "address_state": null,
+        "address_state_full_name": null,
+        "address_country": "BR",
+        "address_zip_code": null,
+        "lead": null
+      },
+      "contracts": null,
+      "dates": {
+        "canceled_at": null,
+        "confirmed_at": "2026-10-06T19:04:06Z",
+        "created_at": "2026-10-06T19:04:06Z",
+        "expires_at": null,
+        "ordered_at": "2026-10-06T19:04:06Z",
+        "unavailable_until": null,
+        "updated_at": "2026-10-06T19:04:06Z"
+      },
+      "ecommerces": null,
+      "extras": null,
+      "id": "teste-promo97-001",
+      "infrastructure": null,
+      "invoice": null,
+      "is_order_bump": 0,
+      "is_reissue": 0,
+      "items": [
+        {
+          "id": "1780089168",
+          "internal_id": "a1e5eea6-e1e1-4b0c-9feb-8e98cfba1d51",
+          "marketplace_id": "1780089168",
+          "marketplace_name": "pagarme2",
+          "name": "O CORPO DIZ - BR - LIVRO DIGITAL",
+          "offer": {
+            "id": "a2b39273-393b-40d0-819f-c68455b5fbcb",
+            "name": "OFERTA RELAMPAGO R$97 + APP MEDIZ"
+          },
+          "qty": 1,
+          "total_value": 97,
+          "unit_value": 97,
+          "type": "product",
+          "image_url": null
+        }
+      ],
+      "last_transaction": null,
+      "payment": {
+        "affiliate_value": 0,
+        "acquirer": {
+          "code": "0000",
+          "message": "Transação aprovada com sucesso",
+          "name": "pagarme",
+          "nsu": "4589748293",
+          "tid": "4589748293"
+        },
+        "can_try_again": 1,
+        "coupon": null,
+        "currency": "BRL",
+        "presentment_currency": "BRL",
+        "discount_value": 0,
+        "gross": 97,
+        "id": "teste",
+        "installments": {
+          "value": 64.43,
+          "qty": 5,
+          "interest": 26.17
+        },
+        "marketplace_id": "ch_JVGgwAwiwJSpyd16",
+        "marketplace_name": "pagarme2",
+        "marketplace_value": 0,
+        "method": "credit_card",
+        "net": null,
+        "processing_times": {
+          "started_at": "2026-10-05T17:10:32.931Z",
+          "finished_at": "2026-10-05T17:10:36.583Z",
+          "delay_in_seconds": 3
+        },
+        "refund_reason": "",
+        "refuse_reason": null,
+        "tax": {
+          "value": 0,
+          "rate": 0
+        },
+        "total": 97,
+        "credit_card": null
+      },
+      "product": {
+        "group": {
+          "id": null,
+          "name": null
+        },
+        "id": "1780089168",
+        "image_url": null,
+        "internal_id": "a1e5eea6-e1e1-4b0c-9feb-8e98cfba1d51",
+        "marketplace_id": "1780089168",
+        "marketplace_name": "pagarme2",
+        "name": "O CORPO DIZ - BR - LIVRO DIGITAL",
+        "offer": {
+          "id": "a2b39273-393b-40d0-819f-c68455b5fbcb",
+          "name": "OFERTA RELAMPAGO R$97 + APP MEDIZ"
+        },
+        "producer": {
+          "marketplace_id": "1698330322",
+          "name": "Paulo Ricardo Barbosa",
+          "contact_email": ""
+        },
+        "qty": 1,
+        "total_value": 97,
+        "type": "product",
+        "unit_value": 97
+      },
+      "self_attribution": null,
+      "shipment": null,
+      "shipping": null,
+      "source": null,
+      "status": "approved",
+      "subscription": null,
+      "type": "producer",
+      "webhook_type": "transaction"
+    },
+    "webhookUrl": "https://mediz-n8n.gjhi7d.easypanel.host/webhook/promo97/guru",
+    "executionMode": "production"
+  }
+]
