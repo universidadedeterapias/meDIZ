@@ -17,6 +17,14 @@
     {
       "path": "/api/push/check-reminders",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/automacoes/vigia",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/automacoes/vigia?resumo=1",
+      "schedule": "0 11 * * *"
     }
   ]
 }

@@ -1475,3 +1475,22 @@ model ExecucaoAutomacao {
   @@index([fluxo, iniciouEm])
   @@map("execucoes_automacao")
 }
+
+/// Alertas que o vigia (Story 6.3) ja mandou no Telegram. Existe para o mesmo
+/// problema nao virar uma mensagem a cada 15 minutos: um alerta com a mesma
+/// `chave` so sai de novo depois do intervalo de silencio dele.
+model AlertaAutomacao {
+  chave         String   @id @db.VarChar(200)
+  titulo        String   @db.VarChar(200)
+  gravidade     String   @db.VarChar(16)
+  detalhe       String?  @db.VarChar(2000)
+  vezes         Int      @default(1)
+  primeiraVezEm DateTime @default(now()) @map("primeira_vez_em")
+  ultimaVezEm   DateTime @default(now()) @map("ultima_vez_em")
+  /// Ultima vez que foi mandado no Telegram (pode ser anterior a ultima vez
+  /// que foi detectado, se ainda estava em silencio).
+  enviadoEm     DateTime @default(now()) @map("enviado_em")
+
+  @@index([ultimaVezEm])
+  @@map("alertas_automacao")
+}
