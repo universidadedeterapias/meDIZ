@@ -44,6 +44,9 @@ const corpo = z.object({
   limite: z.number().int().min(1).max(200).optional().default(50)
 })
 
+/** Dia em que a reativacao passou a enviar pelo portao (Story 6.2). */
+const CORTE_PORTAO = new Date('2026-10-06T00:00:00-03:00')
+
 type Reivindicado = {
   id: string
   campaign_id: string
@@ -121,6 +124,24 @@ export async function POST(request: NextRequest) {
         claimEm: { lte: new Date(Date.now() - 15 * 60_000) }
       },
       data: { status: 'falhou', motivo: 'número máximo de tentativas excedido' }
+    })
+
+    // Quem ficou `enviando` sem resposta (o n8n caiu entre o envio e o
+    // /result) volta para a fila depois de 15 minutos — o que o /result
+    // sempre prometeu, mas ninguem fazia, e por isso havia gente presa desde
+    // 24/09. So e seguro porque o envio passa pelo portao (Story 6.1): se a
+    // mensagem chegou a sair, a mesma chave volta `ja_enviado` sem reenviar.
+    //
+    // O corte em 06/10/2026 deixa de fora quem ficou preso antes do portao:
+    // para essas linhas nao ha registro de envio, e devolver a fila poderia
+    // mandar a mensagem duas vezes. Elas ficam para decisao manual.
+    await prisma.reactivationRecipient.updateMany({
+      where: {
+        status: 'enviando',
+        tentativas: { lt: 3 },
+        claimEm: { lte: new Date(Date.now() - 15 * 60_000), gte: CORTE_PORTAO }
+      },
+      data: { status: 'pendente', claimEm: null }
     })
 
     const linhas = await prisma.$queryRaw<Reivindicado[]>(Prisma.sql`
