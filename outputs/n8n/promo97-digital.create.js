@@ -10,7 +10,9 @@ const POSTGRES = { postgres: { id: 'ET12tYS9kFgpON2i', name: 'Postgres account' 
 const FILTRA = `// PREENCHER antes de ativar: o id da oferta PROMO 97 no Guru, como chega no
 // webhook em product.offer.id (UUID). Sem isso o fluxo falha de proposito —
 // melhor um alerta do vigia do que mandar oferta para comprador errado.
-const OFERTAS = new Set([]);
+const OFERTAS = new Set([
+  'a2b39273-393b-40d0-819f-c68455b5fbcb' // OFERTA RELAMPAGO R$97 + APP MEDIZ (livro digital, R$ 97,00)
+]);
 
 // Quem levou o livro impresso na mesma compra (order bump) nao recebe a oferta.
 const LIVRO_FISICO = new Set(['1780515697', 'a1efe6c8-b98d-4d9e-9e22-4cab1e780424']);
