@@ -9,6 +9,7 @@ import { PageBackButton } from '@/components/navigation/PageBackButton'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { User, Bell, LogOut, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Toaster } from 'sonner'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -168,6 +169,8 @@ export default function AdminClientLayout({
         
         <main className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 md:p-6">
           <div className="page-content mx-auto max-w-7xl !px-0">{children}</div>
+          {/* Avisos curtos das acoes do admin (salvou, falhou). Um so, para todas as paginas. */}
+          <Toaster richColors position="top-right" closeButton />
 
           <footer className="mt-8 border-t py-4 text-center text-xs text-muted-foreground sm:mt-12 sm:text-sm">
             &copy; {new Date().getFullYear()} meDIZ! - Painel Administrativo
