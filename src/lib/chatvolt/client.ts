@@ -109,11 +109,37 @@ export async function enviarTemplate(
   corpo: Record<string, unknown>,
   timeoutMs = 20_000
 ): Promise<RespostaEnvioTemplate> {
+  return postar(`/whatsapp/${wabaId()}/template-message`, corpo, timeoutMs)
+}
+
+/**
+ * Texto livre por um numero da Z-API, pelo Chatvolt — a conversa nasce no
+ * Chatvolt e o agente assume as respostas. Mesma regra do template: nunca
+ * lanca, e diferencia "nao saiu" de "pode ter saido".
+ */
+export async function enviarTextoZapi(
+  instancia: string,
+  telefone: string,
+  mensagem: string,
+  timeoutMs = 20_000
+): Promise<RespostaEnvioTemplate> {
+  return postar(
+    `/zapi/${encodeURIComponent(instancia)}/${encodeURIComponent(telefone)}/message`,
+    { message: mensagem },
+    timeoutMs
+  )
+}
+
+async function postar(
+  caminho: string,
+  corpo: Record<string, unknown>,
+  timeoutMs: number
+): Promise<RespostaEnvioTemplate> {
   const controle = new AbortController()
   const relogio = setTimeout(() => controle.abort(), timeoutMs)
   let res: Response
   try {
-    res = await fetch(`${BASE_URL}/whatsapp/${wabaId()}/template-message`, {
+    res = await fetch(`${BASE_URL}${caminho}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey()}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(corpo),

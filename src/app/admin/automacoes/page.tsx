@@ -98,7 +98,8 @@ const CORES_FLUXO: Record<string, string> = {
   trial_fim: '#7c3aed',
   despertadores: '#db2777',
   recuperacao: '#ea580c',
-  reativacao: '#16a34a'
+  reativacao: '#16a34a',
+  promo97_digital: '#ca8a04'
 }
 
 const CORES_STATUS: Record<string, string> = {

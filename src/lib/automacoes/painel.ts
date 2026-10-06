@@ -14,7 +14,8 @@ export const FLUXOS: Record<string, { nome: string; workflowId: string }> = {
   trial_fim: { nome: 'Fim do Trial', workflowId: 'vTURhr3n6CydCslx' },
   despertadores: { nome: 'Despertadores', workflowId: 'TWfDbGIWUVYxE3iG' },
   recuperacao: { nome: 'Recuperação de Vendas', workflowId: 'SiCcnM4uf3NldK9w' },
-  reativacao: { nome: 'Reativação (ondas)', workflowId: 'Xn1lxsDI9XAiA21M' }
+  reativacao: { nome: 'Reativação (ondas)', workflowId: 'Xn1lxsDI9XAiA21M' },
+  promo97_digital: { nome: 'PROMO 97 | DIGITAL (Z-API)', workflowId: 'bkHXCsj2jaehrAHX' }
 }
 
 const DIA = 24 * 60 * 60 * 1000

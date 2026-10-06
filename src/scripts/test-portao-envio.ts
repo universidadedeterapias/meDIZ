@@ -78,13 +78,15 @@ function repoEmMemoria(fluxos: ConfigFluxo[]) {
 
 function canalRoteirizado(roteiro: RespostaCanal[] = []) {
   const enviados: CorpoTemplate[] = []
+  const opcoesVistas: Array<{ canal: string; zapiInstancia?: string } | undefined> = []
   const canal: CanalTemplate = {
-    async enviar(corpo) {
+    async enviar(corpo, opcoes) {
       enviados.push(corpo)
+      opcoesVistas.push(opcoes)
       return roteiro.shift() ?? { tipo: 'aceito', httpStatus: 200, corpo: { messages: [{ conversationId: `conv-${enviados.length}` }] } }
     }
   }
-  return { canal, enviados }
+  return { canal, enviados, opcoesVistas }
 }
 
 const fluxo = (f: string, o: Partial<ConfigFluxo> = {}): ConfigFluxo => ({
@@ -159,7 +161,7 @@ async function main() {
   await caso('reserva presa (processo caiu no meio): nao reenvia', async () => {
     const { repo, linhas } = repoEmMemoria([fluxo('trial_fim')])
     const { canal, enviados } = canalRoteirizado()
-    await repo.reservar({ ...pedido('k1'), telefone: '5511988887777' }, AGORA)
+    await repo.reservar({ ...pedido('k1'), corpo: pedido('k1').corpo as CorpoTemplate, telefone: '5511988887777', canal: 'template' }, AGORA)
     const r = await enviarPeloPortao(pedido('k1'), deps(repo, canal))
     igual(r.status, 'ja_enviado', 'status')
     igual(enviados.length, 0, 'chamadas ao Chatvolt')
@@ -276,6 +278,40 @@ async function main() {
     const r = await enviarPeloPortao(pedido('k1', { fluxo: 'entrega_acesso' }, { to: '+1 (415) 555-0100' }), deps(repo, canal))
     igual(r.status, 'enviado', 'status')
     igual(enviados[0].to, '14155550100', 'to')
+  })
+
+  await caso('canal zapi: manda so o texto pela instancia, sem consultar categoria, e a chave trava igual', async () => {
+    const { repo, linhas } = repoEmMemoria([fluxo('promo97_digital', { contaNoLimitePessoa: false })])
+    const { canal, enviados, opcoesVistas } = canalRoteirizado([
+      { tipo: 'aceito', httpStatus: 200, corpo: { id: 'm1', conversationId: 'conv-zapi' } } // resposta da Z-API: conversationId na raiz
+    ])
+    let consultouCategoria = false
+    const d = { ...deps(repo, canal), categoriaDoTemplate: async () => { consultouCategoria = true; return 'MARKETING' } }
+    const pedidoZapi: PedidoEnvio = {
+      fluxo: 'promo97_digital', chave: 'promo97:tx1', canal: 'zapi', zapiInstancia: '3E17AF797E59E04724E20293E183E9A4',
+      corpo: { to: '55 11 98888-7777', message: 'Você gostaria de ter o livro impresso?', crm: 'x' } as unknown as PedidoEnvio['corpo']
+    }
+    const r1 = await enviarPeloPortao(pedidoZapi, d)
+    igual([r1.status, r1.conversationId], ['enviado', 'conv-zapi'], 'primeiro envio')
+    igual(enviados[0], { to: '5511988887777', templateName: 'zapi:texto', message: 'Você gostaria de ter o livro impresso?' }, 'corpo limpo')
+    igual(opcoesVistas[0], { canal: 'zapi', zapiInstancia: '3E17AF797E59E04724E20293E183E9A4' }, 'opcoes do canal')
+    igual(consultouCategoria, false, 'nao consulta categoria')
+    igual((await enviarPeloPortao(pedidoZapi, d)).status, 'ja_enviado', 'webhook repetido do Guru')
+    igual([enviados.length, linhas.length], [1, 1], 'um envio, uma linha')
+  })
+
+  await caso('canal zapi sem instancia ou sem texto e recusado antes de reservar', async () => {
+    const { repo, linhas } = repoEmMemoria([fluxo('promo97_digital')])
+    const { canal } = canalRoteirizado()
+    for (const p of [
+      { fluxo: 'promo97_digital', chave: 'a', canal: 'zapi' as const, corpo: { to: '5511988887777', message: 'oi' } },
+      { fluxo: 'promo97_digital', chave: 'b', canal: 'zapi' as const, zapiInstancia: '3E17AF797E59E04724E20293E183E9A4', corpo: { to: '5511988887777', message: '  ' } }
+    ]) {
+      let erro: unknown = null
+      try { await enviarPeloPortao(p, deps(repo, canal)) } catch (e) { erro = e }
+      igual(erro instanceof PedidoInvalido, true, `PedidoInvalido (${p.chave})`)
+    }
+    igual(linhas.length, 0, 'nada reservado')
   })
 
   await caso('dia de Brasilia: 02h UTC ainda e o dia anterior', async () => {
