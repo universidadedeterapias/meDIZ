@@ -526,7 +526,16 @@ export async function sendAccessDelivery(
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(delivery.payload),
+      // `delivery_id` e a chave do portao de envio (Story 6.2): o mesmo aviso
+      // tentado de novo (webhook repetido, reprocessamento no admin) leva o
+      // mesmo id e nao sai duas vezes; o reenvio do atendimento e outra linha,
+      // com outro id, e sai. Vai aqui, e nao no payload gravado, para valer
+      // tambem para avisos antigos que ainda estao na fila.
+      body: JSON.stringify({
+        ...(delivery.payload as Record<string, unknown>),
+        delivery_id: delivery.id,
+        user_id: delivery.userId
+      }),
       signal: AbortSignal.timeout(15_000)
     })
 

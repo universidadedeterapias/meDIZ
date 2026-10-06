@@ -262,12 +262,20 @@ async function main() {
     const { canal } = canalRoteirizado()
     let erro: unknown = null
     try {
-      await enviarPeloPortao(pedido('k1', {}, { to: '11988887777' }), deps(repo, canal))
+      await enviarPeloPortao(pedido('k1', {}, { to: '1198888777' }), deps(repo, canal))
     } catch (e) {
       erro = e
     }
     igual(erro instanceof PedidoInvalido, true, 'PedidoInvalido')
     igual(linhas.length, 0, 'nada reservado')
+  })
+
+  await caso('numero dos EUA (DDI 1 + 10 digitos) e aceito', async () => {
+    const { repo } = repoEmMemoria([fluxo('entrega_acesso', { contaNoLimitePessoa: false })])
+    const { canal, enviados } = canalRoteirizado()
+    const r = await enviarPeloPortao(pedido('k1', { fluxo: 'entrega_acesso' }, { to: '+1 (415) 555-0100' }), deps(repo, canal))
+    igual(r.status, 'enviado', 'status')
+    igual(enviados[0].to, '14155550100', 'to')
   })
 
   await caso('dia de Brasilia: 02h UTC ainda e o dia anterior', async () => {

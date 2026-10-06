@@ -24,7 +24,12 @@ const corpo = z.object({
         destinatarioId: z.string().min(1),
         ok: z.boolean(),
         conversationId: z.string().max(120).optional().nullable(),
-        erro: z.string().max(500).optional().nullable()
+        erro: z.string().max(500).optional().nullable(),
+        // O portao de envio (Story 6.1) barrou sem enviar: fluxo desligado,
+        // teto do dia ou limite da pessoa. Nao e falha da pessoa — volta para
+        // a fila sem gastar uma das tres tentativas, senao desligar o fluxo
+        // por meia hora descartaria a onda inteira.
+        adiado: z.boolean().optional()
       })
     )
     .min(1)
@@ -73,13 +78,21 @@ export async function POST(request: NextRequest) {
             conversationId: item.conversationId ?? undefined,
             ultimoErro: null
           }
-        : {
-            // Volta para `pendente` para o claim tentar de novo. O corte por
-            // tentativas mora la, e nao aqui.
-            status: 'pendente',
-            claimEm: null,
-            ultimoErro: (item.erro ?? 'falha sem mensagem').slice(0, 500)
-          }
+        : item.adiado
+          ? {
+              // Devolve a tentativa que o claim contou.
+              status: 'pendente',
+              claimEm: null,
+              tentativas: { decrement: 1 },
+              ultimoErro: `adiado: ${item.erro ?? 'barrado pelo portao'}`.slice(0, 500)
+            }
+          : {
+              // Volta para `pendente` para o claim tentar de novo. O corte por
+              // tentativas mora la, e nao aqui.
+              status: 'pendente',
+              claimEm: null,
+              ultimoErro: (item.erro ?? 'falha sem mensagem').slice(0, 500)
+            }
     })
     gravados += 1
 
