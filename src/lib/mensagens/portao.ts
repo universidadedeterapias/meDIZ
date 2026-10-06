@@ -140,11 +140,16 @@ const VARIAVEL = /^var_\d{1,2}$/
 
 export class PedidoInvalido extends Error {}
 
-/** Telefone so com digitos, com DDI. Os fluxos ja mandam assim; aqui so confere. */
+/**
+ * Telefone so com digitos, com DDI. Os fluxos ja mandam assim; aqui so confere.
+ * O minimo e 11 porque a Entrega de Acesso atende EUA e Canada (DDI 1 + 10
+ * digitos). Numero brasileiro sem DDI tem 10 ou 11 digitos: o de 10 e barrado
+ * aqui, o de 11 passa — quem monta o telefone e que garante o DDI.
+ */
 export function normalizarTelefone(bruto: string): string {
   const digitos = String(bruto || '').replace(/\D/g, '')
-  if (digitos.length < 12 || digitos.length > 15) {
-    throw new PedidoInvalido(`telefone invalido: precisa ter DDI e 12 a 15 digitos (veio ${digitos.length})`)
+  if (digitos.length < 11 || digitos.length > 15) {
+    throw new PedidoInvalido(`telefone invalido: precisa ter DDI e 11 a 15 digitos (veio ${digitos.length})`)
   }
   return digitos
 }
