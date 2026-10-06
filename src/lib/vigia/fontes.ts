@@ -123,8 +123,16 @@ export function n8nDaApi(): FonteN8n | null {
 
   return {
     async workflows() {
-      const r = await get<{ data: { id: string; name: string; active: boolean }[] }>('/workflows?limit=250')
-      return (r.data ?? []).map((w) => ({ id: w.id, name: w.name, active: !!w.active }))
+      type W = { id: string; name: string; active: boolean; updatedAt?: string; activeVersion?: { updatedAt?: string } | null }
+      const r = await get<{ data: W[] }>('/workflows?limit=250')
+      return (r.data ?? []).map((w) => ({
+        id: w.id,
+        name: w.name,
+        active: !!w.active,
+        // activeVersion.updatedAt muda quando a versao e publicada; updatedAt
+        // do workflow e o reserva, para instancia que nao manda a versao.
+        ativadoEm: w.active ? w.activeVersion?.updatedAt ?? w.updatedAt ?? null : null
+      }))
     },
     execucoes: (workflowId, limite) => execs(`workflowId=${encodeURIComponent(workflowId)}&limit=${limite}`),
     execucoesComErro: (limite) => execs(`status=error&limit=${limite}`),

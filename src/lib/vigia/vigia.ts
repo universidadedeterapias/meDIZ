@@ -50,7 +50,11 @@ export type ExecucaoN8n = { id: string; workflowId: string; status: string; mode
 
 export interface FonteN8n {
   /** Todos os workflows, ativos ou nao — os inativos tambem dao nome a erro antigo. */
-  workflows(): Promise<{ id: string; name: string; active: boolean }[]>
+  /**
+   * `ativadoEm`: quando a versao no ar foi publicada. Null se o n8n nao
+   * informar — ai a carencia de "fluxo parado" simplesmente nao se aplica.
+   */
+  workflows(): Promise<{ id: string; name: string; active: boolean; ativadoEm?: string | null }[]>
   execucoes(workflowId: string, limite: number): Promise<ExecucaoN8n[]>
   /** Execucoes com erro, as mais recentes primeiro. */
   execucoesComErro(limite: number): Promise<ExecucaoN8n[]>
@@ -229,6 +233,11 @@ export async function alertasDoN8n(n8n: FonteN8n, agora: Date, urlN8n = ''): Pro
   for (const w of ativos) {
     const cfg = AGENDADOS[w.id]
     if (!cfg) continue
+    // Recem-ligado ainda nao teve tempo de rodar: a ultima rodada no historico
+    // e de antes de desligar. Em 06/10 os Despertadores, religados as 09:47,
+    // viraram "parado ha 29 h" na rodada do vigia das 10:00 — 31 segundos
+    // antes da primeira execucao agendada.
+    if (w.ativadoEm && minutosDesde(w.ativadoEm, agora) <= cfg.silencioMaxMin) continue
     const deAgenda = (await n8n.execucoes(w.id, 30)).filter((e) => e.mode === 'trigger')
     const min = deAgenda[0] ? minutosDesde(deAgenda[0].startedAt, agora) : Infinity
     if (min > cfg.silencioMaxMin) {

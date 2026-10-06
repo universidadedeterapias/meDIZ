@@ -207,6 +207,19 @@ async function main() {
     if (enviados[0].includes('LIVRO')) throw new Error('rastreio nao deveria alertar')
   })
 
+  await caso('fluxo religado agora nao e parado; passada a carencia, volta a ser vigiado', async () => {
+    const fonte = (ativadoHaMin: number) =>
+      n8n({
+        workflows: async () => [{ id: 'TWfDbGIWUVYxE3iG', name: 'Despertadores', active: true, ativadoEm: minAtras(ativadoHaMin) }],
+        execucoes: async (id) => [exec(id, 29 * 60, 'trigger')] // ultima rodada de antes de desligar
+      })
+    const recem = deps({ n8n: fonte(13) }) // religado ha 13 min, como em 06/10
+    igual((await executarVigia(recem.d)).enviados, 0, 'recem-ligado')
+    const depois = deps({ n8n: fonte(90) }) // 90 min ligado sem rodar: parado de verdade
+    await executarVigia(depois.d)
+    contem(depois.enviados[0], 'Fluxo parado: Despertadores')
+  })
+
   await caso('execucoes com erro nos ultimos 20 min, agrupadas por workflow, com link', async () => {
     const { d, enviados } = deps({
       urlN8n: 'https://n8n.exemplo',
