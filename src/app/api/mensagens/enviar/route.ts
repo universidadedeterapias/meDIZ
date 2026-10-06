@@ -4,7 +4,7 @@ import { validateWebhookBearer } from '@/lib/webhookAuth'
 import { logger } from '@/lib/logger'
 import { enviarPeloPortao, PedidoInvalido, type ResultadoPortao } from '@/lib/mensagens/portao'
 import { repositorioPrisma } from '@/lib/mensagens/repositorio-prisma'
-import { agentIdPadrao, categoriaDoTemplate, enviarTemplate } from '@/lib/chatvolt/client'
+import { agentIdPadrao, categoriaDoTemplate, enviarTemplate, enviarTextoZapi } from '@/lib/chatvolt/client'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -31,11 +31,26 @@ const pedido = z.object({
   fluxo: z.string().regex(/^[a-z0-9_]{2,40}$/, 'fluxo: minusculas, numeros e _'),
   chave: z.string().trim().min(3).max(160),
   userId: z.string().max(64).nullish(),
+  // template (padrao): corpo do template do Chatvolt, com templateName.
+  // zapi: { to, message } + zapiInstancia — texto livre por numero da Z-API.
+  canal: z.enum(['template', 'zapi']).optional().default('template'),
+  zapiInstancia: z.string().max(64).nullish(),
   corpo: z
-    .object({ to: z.string().min(1), templateName: z.string().min(1).max(80) })
+    .object({
+      to: z.string().min(1),
+      templateName: z.string().min(1).max(80).optional(),
+      message: z.string().min(1).max(4000).optional()
+    })
     .passthrough(),
   n8nWorkflowId: z.string().max(40).nullish(),
   n8nExecucaoId: z.coerce.string().max(40).nullish()
+}).superRefine((p, ctx) => {
+  if (p.canal === 'template' && !p.corpo.templateName) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['corpo', 'templateName'], message: 'obrigatorio no canal template' })
+  }
+  if (p.canal === 'zapi' && (!p.corpo.message || !p.zapiInstancia)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['corpo', 'message'], message: 'canal zapi precisa de corpo.message e zapiInstancia' })
+  }
 })
 
 const HTTP_DO_RESULTADO: Record<ResultadoPortao, number> = {
@@ -65,7 +80,12 @@ export async function POST(request: NextRequest) {
   try {
     const r = await enviarPeloPortao(parsed.data as Parameters<typeof enviarPeloPortao>[0], {
       repo: repositorioPrisma,
-      canal: { enviar: (corpo) => enviarTemplate(corpo) },
+      canal: {
+        enviar: (corpo, opcoes) =>
+          opcoes?.canal === 'zapi'
+            ? enviarTextoZapi(opcoes.zapiInstancia ?? '', corpo.to, corpo.message ?? '')
+            : enviarTemplate(corpo)
+      },
       categoriaDoTemplate,
       agentIdPadrao: agentIdPadrao()
     })

@@ -33,7 +33,21 @@ export type ResultadoPortao =
   | 'falhou' // o Chatvolt recusou ou caiu: pode tentar de novo com a mesma chave
   | 'incerto' // o Chatvolt nao respondeu a tempo: NAO tente de novo
 
-/** Corpo do POST /whatsapp/{waba}/template-message, como os fluxos ja montam. */
+/**
+ * Por onde a mensagem sai:
+ * - `template`: template pago da API oficial (POST /whatsapp/{waba}/template-message);
+ * - `zapi`: texto livre por um numero da Z-API (POST /zapi/{instancia}/{telefone}/message),
+ *   sem custo por mensagem, mas com a mesma trava contra reenvio e o mesmo registro.
+ */
+export type Canal = 'template' | 'zapi'
+
+/** Rotulo gravado em `template` para mensagem de texto pela Z-API. */
+export const ROTULO_ZAPI = 'zapi:texto'
+
+/**
+ * Corpo do POST /whatsapp/{waba}/template-message, como os fluxos ja montam.
+ * No canal `zapi` so valem `to` e `message`; `templateName` vira ROTULO_ZAPI.
+ */
 export type CorpoTemplate = {
   to: string
   agentId?: string
@@ -41,6 +55,7 @@ export type CorpoTemplate = {
   templateLangCode?: string
   text?: string
   buttons?: unknown[]
+  message?: string
   [variavel: `var_${number}`]: string | undefined
 }
 
@@ -48,7 +63,10 @@ export type PedidoEnvio = {
   fluxo: string
   chave: string
   userId?: string | null
-  corpo: CorpoTemplate
+  corpo: CorpoTemplate | { to: string; message: string }
+  canal?: Canal
+  /** Obrigatorio no canal `zapi`: id da instancia da Z-API no Chatvolt. */
+  zapiInstancia?: string | null
   n8nWorkflowId?: string | null
   n8nExecucaoId?: string | null
 }
@@ -108,7 +126,7 @@ export type RespostaCanal =
   | { tipo: 'sem_resposta'; erro: string } // conectou e nao respondeu: pode ter saido
 
 export interface CanalTemplate {
-  enviar(corpo: CorpoTemplate): Promise<RespostaCanal>
+  enviar(corpo: CorpoTemplate, opcoes?: { canal: Canal; zapiInstancia?: string }): Promise<RespostaCanal>
 }
 
 export type DependenciasPortao = {
@@ -123,6 +141,7 @@ export type DependenciasPortao = {
 export type PedidoNormalizado = Omit<PedidoEnvio, 'corpo'> & {
   telefone: string
   corpo: CorpoTemplate
+  canal: Canal
 }
 
 export type RespostaPortao = {
@@ -173,6 +192,16 @@ export function limparCorpo(corpo: Record<string, unknown>, telefone: string, ag
   return limpo as CorpoTemplate
 }
 
+const INSTANCIA_ZAPI = /^[A-Za-z0-9]{16,64}$/
+
+/** Corpo do canal `zapi`: so o texto. O resto do que vier e descartado. */
+export function limparCorpoZapi(corpo: Record<string, unknown>, telefone: string, instancia?: string | null): CorpoTemplate {
+  const message = typeof corpo.message === 'string' ? corpo.message.trim() : ''
+  if (!message) throw new PedidoInvalido('corpo.message e obrigatorio no canal zapi')
+  if (!instancia || !INSTANCIA_ZAPI.test(instancia)) throw new PedidoInvalido('zapiInstancia invalida ou ausente')
+  return { to: telefone, templateName: ROTULO_ZAPI, message }
+}
+
 /** Meia-noite de hoje em Brasilia (UTC-3, sem horario de verao desde 2019). */
 export function inicioDoDiaBrasilia(agora: Date): Date {
   const TRES_HORAS = 3 * 60 * 60 * 1000
@@ -198,9 +227,13 @@ function resumo(corpo: unknown): string {
 
 export async function enviarPeloPortao(pedido: PedidoEnvio, deps: DependenciasPortao): Promise<RespostaPortao> {
   const agora = (deps.agora ?? (() => new Date()))()
+  const canalPedido: Canal = pedido.canal ?? 'template'
   const telefone = normalizarTelefone(pedido.corpo?.to)
-  const corpo = limparCorpo(pedido.corpo as Record<string, unknown>, telefone, deps.agentIdPadrao)
-  const normalizado: PedidoNormalizado = { ...pedido, telefone, corpo }
+  const corpo =
+    canalPedido === 'zapi'
+      ? limparCorpoZapi(pedido.corpo as Record<string, unknown>, telefone, pedido.zapiInstancia)
+      : limparCorpo(pedido.corpo as Record<string, unknown>, telefone, deps.agentIdPadrao)
+  const normalizado: PedidoNormalizado = { ...pedido, telefone, corpo, canal: canalPedido }
 
   // 1. A chave antes de tudo.
   const reserva = await deps.repo.reservar(normalizado, agora)
@@ -242,10 +275,14 @@ export async function enviarPeloPortao(pedido: PedidoEnvio, deps: DependenciasPo
   }
 
   // 3. O envio.
-  const categoria = deps.categoriaDoTemplate
-    ? await deps.categoriaDoTemplate(corpo.templateName).catch(() => null)
-    : null
-  const r = await deps.canal.enviar(corpo)
+  // Z-API nao tem categoria da Meta nem custo por mensagem.
+  const categoria =
+    canalPedido === 'zapi'
+      ? 'ZAPI'
+      : deps.categoriaDoTemplate
+        ? await deps.categoriaDoTemplate(corpo.templateName).catch(() => null)
+        : null
+  const r = await deps.canal.enviar(corpo, { canal: canalPedido, zapiInstancia: pedido.zapiInstancia ?? undefined })
 
   if (r.tipo === 'aceito') {
     const conversationId = conversationIdDe(r.corpo)
