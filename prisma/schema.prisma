@@ -1297,6 +1297,9 @@ model ReactivationRecipient {
   /// Preenchido pelo proprio /r/<token> quando o acesso acontece na sequencia do
   /// clique. Acesso sem clique e derivado na metrica, a partir do rastro de uso.
   acessouEm  DateTime? @map("acessou_em")
+  /// Primeira pesquisa no app depois desta onda. Gravado quando o n8n recebeu o
+  /// aviso, que move a conversa para a etapa "pesquisou" do cenario da onda.
+  pesquisouEm DateTime? @map("pesquisou_em")
 
   conversationId String? @map("conversation_id") @db.VarChar(120)
   tentativas     Int     @default(0)
@@ -1311,6 +1314,7 @@ model ReactivationRecipient {
   @@unique([campaignId, userId])
   @@index([campaignId, status])
   @@index([status, claimEm])
+  @@index([userId, enviadoEm])
   @@map("reactivation_recipients")
 }
 
