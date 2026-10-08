@@ -1,5 +1,6 @@
 import type { SpecialistAgent } from '@/lib/conversational-chat/config'
 import { registrarEventoDeJornadaEmSegundoPlano } from '@/lib/journey/events'
+import { avisaPesquisaDaReativacaoEmSegundoPlano } from '@/lib/reativacao/pesquisou'
 
 /**
  * Os seis gatilhos do corredor, um por funcao.
@@ -60,6 +61,8 @@ export function marcaPesquisa(
       { nome: 'ultima_pesquisa', valor: quando.toISOString() }
     ]
   })
+  // Quem veio de uma onda de reativacao muda de etapa no Chatvolt na hora.
+  avisaPesquisaDaReativacaoEmSegundoPlano(userId)
 }
 
 /** Primeira conversa com o PROF. */
