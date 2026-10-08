@@ -9,7 +9,8 @@ const DECIDE = `// PREENCHER quando o cenario existir no Chatvolt: para cada cen
 // de reativacao, a etapa "pesquisou" (a 2a). Onda de cenario que nao esta aqui
 // e ignorada — responde 200 para o app nao insistir.
 const ETAPA_PESQUISOU = {
-  // 'id-do-cenario': 'id-da-etapa-pesquisou',
+  // REATIVAÇÃO PESQUISA -> Pesquisa realizada
+  'cmuzgcc0d0fnzr584qco2ye7c': 'cmuzgcwuy0fohr584flb4f3f4',
 };
 
 const b = $input.first().json.body || {};
