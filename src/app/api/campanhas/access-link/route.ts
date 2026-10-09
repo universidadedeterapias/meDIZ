@@ -29,8 +29,26 @@ export const runtime = 'nodejs'
  * fulano" no meio: a identidade vem resolvida pelo proprio canal.
  */
 
+/**
+ * Onde a pessoa cai depois de entrar. O mesmo link serve cenarios diferentes
+ * no Chatvolt: a reativacao do livro leva pra biblioteca, a de pesquisa leva
+ * pra home (o chat, onde se faz a pesquisa). E uma lista fechada, e nao um
+ * caminho livre, porque o valor vem do que a IA preencher na tool — um path
+ * arbitrario viraria redirect pra onde ela inventasse.
+ */
+const DESTINOS = {
+  biblioteca: '/biblioteca',
+  home: '/chat'
+} as const
+
 const corpo = z.object({
-  conversationId: z.string().trim().min(1)
+  conversationId: z.string().trim().min(1),
+  // Sem o campo (ou vazio), vale a biblioteca: e o comportamento de antes, e
+  // quem ja chama a tool sem mandar destino continua igual.
+  destino: z.preprocess(
+    (v) => (typeof v === 'string' ? v.trim().toLowerCase() || undefined : v ?? undefined),
+    z.enum(['biblioteca', 'home']).default('biblioteca')
+  )
 })
 
 export async function POST(request: NextRequest) {
@@ -40,7 +58,10 @@ export async function POST(request: NextRequest) {
   const parsed = corpo.safeParse(await request.json().catch(() => null))
   if (!parsed.success) {
     return NextResponse.json(
-      { ok: false, mensagem: 'Informe conversationId.' },
+      {
+        ok: false,
+        mensagem: 'Informe conversationId (e destino, se houver: biblioteca ou home).'
+      },
       { status: 400 }
     )
   }
@@ -74,13 +95,14 @@ export async function POST(request: NextRequest) {
     }
 
     const link = await createAccessLink(destinatario.userId, {
-      redirectTo: '/biblioteca'
+      redirectTo: DESTINOS[parsed.data.destino]
     })
 
     return NextResponse.json({
       ok: true,
       found: true,
       nome: destinatario.nome,
+      destino: parsed.data.destino,
       link_acesso: {
         url: link.url,
         expires_at: link.expiresAt.toISOString()
