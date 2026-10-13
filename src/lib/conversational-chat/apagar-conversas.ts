@@ -61,37 +61,36 @@ export async function apagarConversas(
       : { chatKind: { in: pedido.chatKinds } })
   }
 
-  return prisma.$transaction(async (tx) => {
-    const sessoes = await tx.chatSession.findMany({
-      where,
-      select: { id: true, threadId: true }
-    })
-    if (sessoes.length === 0) return { apagadas: 0 }
+  const sessoes = await prisma.chatSession.findMany({
+    where,
+    select: { id: true, threadId: true }
+  })
+  if (sessoes.length === 0) return { apagadas: 0 }
 
-    const ids = sessoes.map((s) => s.id)
-    const threadIds = sessoes
-      .map((s) => s.threadId)
-      .filter((t): t is string => !!t)
+  const ids = sessoes.map((s) => s.id)
+  const threadIds = sessoes
+    .map((s) => s.threadId)
+    .filter((t): t is string => !!t)
 
-    await tx.chatMessage.deleteMany({ where: { chatSessionId: { in: ids } } })
-    await tx.chatHandoff.deleteMany({ where: { sourceSessionId: { in: ids } } })
-    await tx.conversationEvent.deleteMany({ where: { sessionId: { in: ids } } })
-
-    if (threadIds.length > 0) {
-      await tx.n8n_chat_histories.deleteMany({
-        where: { session_id: { in: threadIds } }
-      })
-      await tx.chatAnswerCache.deleteMany({
-        where: { sourceThreadId: { in: threadIds } }
-      })
-      await tx.savedSymptom.updateMany({
-        where: { threadId: { in: threadIds }, folder: { userId } },
-        data: { threadId: null }
-      })
-    }
-
-    await tx.chatSession.updateMany({
-      where: { id: { in: ids } },
+  // Transacao em lote, e nao interativa: o banco de producao passa pelo
+  // Accelerate, que corta transacao interativa em 15s — e "apagar tudo" de
+  // quem tem milhares de pesquisas passa disso. O lote vai numa ida so.
+  await prisma.$transaction([
+    prisma.chatMessage.deleteMany({ where: { chatSessionId: { in: ids } } }),
+    prisma.chatHandoff.deleteMany({ where: { sourceSessionId: { in: ids } } }),
+    prisma.conversationEvent.deleteMany({ where: { sessionId: { in: ids } } }),
+    prisma.n8n_chat_histories.deleteMany({
+      where: { session_id: { in: threadIds } }
+    }),
+    prisma.chatAnswerCache.deleteMany({
+      where: { sourceThreadId: { in: threadIds } }
+    }),
+    prisma.savedSymptom.updateMany({
+      where: { threadId: { in: threadIds }, folder: { userId } },
+      data: { threadId: null }
+    }),
+    prisma.chatSession.updateMany({
+      where: { id: { in: ids }, userId },
       data: {
         deletedAt: new Date(),
         routingIntentSummary: null,
@@ -100,7 +99,7 @@ export async function apagarConversas(
         isFavorite: false
       }
     })
+  ])
 
-    return { apagadas: sessoes.length }
-  }, { timeout: 30_000 })
+  return { apagadas: sessoes.length }
 }
