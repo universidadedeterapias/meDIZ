@@ -56,6 +56,7 @@ export async function GET(_req: Request) {
     const chatSessions = await prisma.chatSession.findMany({
       where: {
         userId,
+        deletedAt: null,
         threadId: {
           not: null
         }

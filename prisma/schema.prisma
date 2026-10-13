@@ -94,6 +94,8 @@ model ChatSession {
   isFavorite                 Boolean             @default(false)
   messageCount               Int                 @default(0) @map("message_count")
   lastCheckpointMessageCount Int                 @default(0) @map("last_checkpoint_message_count")
+  /// Apagada pelo usuario: conteudo removido, linha mantida para cota e metricas.
+  deletedAt                  DateTime?           @map("deleted_at")
   messages                   ChatMessage[]
   user                       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   sourceHandoffs             ChatHandoff[]       @relation("ChatHandoffSource")

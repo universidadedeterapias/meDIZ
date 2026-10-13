@@ -13,7 +13,7 @@ export async function GET() {
   }
 
   const chats = await prisma.chatSession.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.user.id, deletedAt: null },
     orderBy: { createdAt: 'desc' },
     select: { id: true, threadId: true, createdAt: true }
   })
