@@ -1,6 +1,6 @@
 'use client'
 
-import { MessageSquarePlus } from 'lucide-react'
+import { MessageSquarePlus, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -12,6 +12,16 @@ import {
   type ConversationAgent
 } from '@/components/chat/ChatConversation'
 import { UpgradeModal } from '@/components/UpgradeModal'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -94,6 +104,8 @@ export function ConversationalChatPage({
   const [error, setError] = useState<string | null>(null)
   const [showUpgrade, setShowUpgrade] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [sessionToDelete, setSessionToDelete] = useState<SessionItem | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const autoStartedRef = useRef(false)
 
@@ -326,6 +338,34 @@ export function ConversationalChatPage({
     setHistoryOpen(false)
   }
 
+  const confirmDeleteSession = async () => {
+    if (!sessionToDelete) return
+    setDeleting(true)
+    try {
+      const res = await fetch(
+        `/api/conversational-chat/sessions?threadId=${encodeURIComponent(sessionToDelete.threadId)}`,
+        { method: 'DELETE' }
+      )
+      // 404: ja nao existia — o resultado para quem pediu e o mesmo.
+      if (!res.ok && res.status !== 404) throw new Error()
+      setSessions((current) =>
+        current.filter((s) => s.id !== sessionToDelete.id)
+      )
+      // Apagou a conversa aberta: a tela volta para uma conversa nova.
+      if (sessionToDelete.threadId === threadId) {
+        setThreadId(null)
+        setMessages([])
+        setAnimateIds(new Set())
+        setInput('')
+      }
+    } catch {
+      setError('Não foi possível apagar a conversa')
+    } finally {
+      setDeleting(false)
+      setSessionToDelete(null)
+    }
+  }
+
   const selectSession = async (id: string) => {
     if (openUpgradeForFreeUser()) return
     if (id === threadId) {
@@ -442,20 +482,33 @@ export function ConversationalChatPage({
           </Button>
           <div className="mt-4 max-h-[70vh] space-y-1 overflow-y-auto">
             {sessions.map((session) => (
-              <button
+              <div
                 key={session.id}
-                type="button"
-                onClick={() => void selectSession(session.threadId)}
                 className={cn(
-                  'w-full rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-violet-100 dark:hover:bg-violet-950/50',
+                  'flex items-center gap-1 rounded-xl transition-colors hover:bg-violet-100 dark:hover:bg-violet-950/50',
                   threadId === session.threadId &&
                     'bg-violet-100 font-medium text-violet-900 dark:bg-violet-950/70 dark:text-violet-200'
                 )}
               >
-                <span className="line-clamp-2">
-                  {session.firstUserMessage || 'Conversa'}
-                </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => void selectSession(session.threadId)}
+                  className="min-w-0 flex-1 px-3 py-2 text-left text-sm"
+                >
+                  <span className="line-clamp-2">
+                    {session.firstUserMessage || 'Conversa'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSessionToDelete(session)}
+                  aria-label="Apagar esta conversa"
+                  title="Apagar"
+                  className="mr-1 flex size-8 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
             ))}
             {!loadingHistory && sessions.length === 0 ? (
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
@@ -465,6 +518,36 @@ export function ConversationalChatPage({
           </div>
         </SheetContent>
       </Sheet>
+
+      <AlertDialog
+        open={sessionToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setSessionToDelete(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar esta conversa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A conversa e as respostas serão apagadas. Esta ação não pode ser
+              desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(event) => {
+                event.preventDefault()
+                void confirmDeleteSession()
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Apagando…' : 'Apagar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <UpgradeModal open={showUpgrade} onOpenChange={setShowUpgrade} />
     </SidebarProvider>

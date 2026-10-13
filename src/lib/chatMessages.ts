@@ -107,8 +107,9 @@ export async function getOrderedThreadMessages(
 }
 
 export async function getChatSessionForUser(threadId: string, userId: string) {
+  // Conversa apagada some para o dono: nao abre nem aceita mensagem nova.
   return prisma.chatSession.findFirst({
-    where: { threadId, userId },
+    where: { threadId, userId, deletedAt: null },
     select: {
       id: true,
       threadId: true,

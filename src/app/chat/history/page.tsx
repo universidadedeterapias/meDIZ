@@ -6,7 +6,8 @@ import {
   Home,
   MessageCircle,
   PawPrint,
-  Search
+  Search,
+  Trash2
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
@@ -14,6 +15,16 @@ import { useCallback, useEffect, useState } from 'react'
 import { AppSidebar } from '@/components/app-sidebar'
 import { ChatAppHeader } from '@/components/chat/ChatAppHeader'
 import { Footer } from '@/components/Footer'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -92,6 +103,9 @@ export default function ChatHistoryPage() {
   const [loading, setLoading] = useState(true)
   const [accessDenied, setAccessDenied] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Uma conversa, ou 'todas' para o botao de limpar o historico inteiro.
+  const [toDelete, setToDelete] = useState<HistoryItem | 'todas' | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const fetchPage = useCallback(
     async (targetPage: number, replace: boolean) => {
@@ -148,6 +162,46 @@ export default function ChatHistoryPage() {
   useEffect(() => {
     void fetchPage(1, true)
   }, [fetchPage])
+
+  const confirmDelete = async () => {
+    if (!toDelete) return
+    setDeleting(true)
+    setError(null)
+    try {
+      // "Todas" leva as conversas e as pesquisas: e tudo o que esta tela mostra.
+      const params =
+        toDelete === 'todas'
+          ? new URLSearchParams({ todas: '1', chatKind: 'SEARCH,SYMPTOM_SEARCH' })
+          : new URLSearchParams({ threadId: toDelete.threadId })
+      const response = await fetch(
+        `/api/conversational-chat/sessions?${params.toString()}`,
+        { method: 'DELETE' }
+      )
+      if (response.status === 401) {
+        router.replace('/login')
+        return
+      }
+      if (!response.ok && response.status !== 404) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || 'Não foi possível apagar agora')
+      }
+
+      if (toDelete === 'todas') {
+        setItems([])
+        setHasMore(false)
+      } else {
+        setItems(current => current.filter(item => item.id !== toDelete.id))
+      }
+      setToDelete(null)
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : 'Não foi possível apagar agora'
+      )
+      setToDelete(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <SidebarProvider className="relative isolate h-svh overflow-hidden bg-gradient-to-br from-violet-50 via-slate-50 to-violet-100/70 before:pointer-events-none before:fixed before:-left-28 before:-top-24 before:z-0 before:size-96 before:rounded-full before:bg-violet-300/20 before:blur-3xl after:pointer-events-none after:fixed after:-bottom-32 after:right-0 after:z-0 after:size-80 after:rounded-full after:bg-slate-200/25 after:blur-3xl dark:from-[#0f0e14] dark:via-[#111017] dark:to-[#17131f] dark:before:bg-violet-700/10 dark:after:bg-violet-950/10">
@@ -256,15 +310,18 @@ export default function ChatHistoryPage() {
                   }).format(new Date(item.createdAt))
 
                   return (
-                    <button
+                    <div
                       key={item.id}
+                      className="group flex w-full items-center gap-2 rounded-[1.5rem] bg-white/75 pr-2 shadow-lg shadow-violet-950/5 backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-xl dark:bg-zinc-900/70 dark:shadow-black/20 dark:hover:bg-zinc-900 sm:pr-3"
+                    >
+                    <button
                       type="button"
                       onClick={() =>
                         router.push(
                           `${isResearch ? '/pesquisa' : '/chat'}?threadId=${encodeURIComponent(item.threadId)}`
                         )
                       }
-                      className="group flex w-full items-center gap-4 rounded-[1.5rem] bg-white/75 p-4 text-left shadow-lg shadow-violet-950/5 backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:bg-zinc-900/70 dark:shadow-black/20 dark:hover:bg-zinc-900 sm:p-5"
+                      className="flex min-w-0 flex-1 items-center gap-4 rounded-[1.5rem] p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 sm:p-5"
                     >
                       <span
                         className={cn(
@@ -289,6 +346,16 @@ export default function ChatHistoryPage() {
                       </span>
                       <ArrowRight className="size-5 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-1 dark:text-zinc-500" />
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setToDelete(item)}
+                      aria-label="Apagar esta conversa"
+                      title="Apagar"
+                      className="flex size-10 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-zinc-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                    >
+                      <Trash2 className="size-[18px]" />
+                    </button>
+                    </div>
                   )
                 })}
 
@@ -316,6 +383,19 @@ export default function ChatHistoryPage() {
                     </Button>
                   </div>
                 ) : null}
+
+                {!accessDenied && !loading && items.length > 0 ? (
+                  <div className="flex justify-center pt-6">
+                    <button
+                      type="button"
+                      onClick={() => setToDelete('todas')}
+                      className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-zinc-500 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-zinc-400 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                    >
+                      <Trash2 className="size-4" />
+                      Apagar todo o histórico
+                    </button>
+                  </div>
+                ) : null}
               </section>
             </div>
           </main>
@@ -323,6 +403,42 @@ export default function ChatHistoryPage() {
           <Footer />
         </div>
       </SidebarInset>
+
+      <AlertDialog
+        open={toDelete !== null}
+        onOpenChange={open => {
+          if (!open && !deleting) setToDelete(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {toDelete === 'todas'
+                ? 'Apagar todo o histórico?'
+                : 'Apagar esta conversa?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {toDelete === 'todas'
+                ? 'Todas as suas conversas e pesquisas serão apagadas. Esta ação não pode ser desfeita.'
+                : 'A conversa e as respostas serão apagadas. Esta ação não pode ser desfeita.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={event => {
+                // Fecha so depois de apagar: com erro, a mensagem aparece na tela.
+                event.preventDefault()
+                void confirmDelete()
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Apagando…' : 'Apagar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarProvider>
   )
 }

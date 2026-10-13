@@ -5,6 +5,11 @@ import {
   isHistoryChatKind,
   isMedizAgent
 } from '@/lib/conversational-chat/config'
+import {
+  apagarConversas,
+  lerPedidoDeExclusao
+} from '@/lib/conversational-chat/apagar-conversas'
+import { logger } from '@/lib/logger'
 import { isUserPremium } from '@/lib/premiumUtils'
 import type { Prisma } from '@prisma/client'
 
@@ -62,6 +67,7 @@ export async function GET(req: Request) {
     userId: session.user.id,
     chatKind: chatKindRaw,
     threadId: { not: null },
+    deletedAt: null,
     ...(agentRaw !== 'all' ? { agent: agentRaw } : {}),
     ...(createdAt ? { createdAt } : {})
   }
@@ -106,4 +112,44 @@ export async function GET(req: Request) {
       hasMore: page * limit < total
     }
   })
+}
+
+/**
+ * Apaga uma conversa (`?threadId=`) ou todas de alguns tipos
+ * (`?todas=1&chatKind=SEARCH,SYMPTOM_SEARCH`). Ver `apagarConversas`.
+ *
+ * Sem gate de premium, ao contrario da leitura: apagar os proprios dados nao e
+ * recurso de assinatura.
+ */
+export async function DELETE(req: Request) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  }
+
+  const pedido = lerPedidoDeExclusao(new URL(req.url).searchParams)
+  if ('erro' in pedido) {
+    return NextResponse.json({ error: pedido.erro }, { status: 400 })
+  }
+
+  try {
+    const { apagadas } = await apagarConversas(session.user.id, pedido)
+    if (pedido.tipo === 'uma' && apagadas === 0) {
+      return NextResponse.json(
+        { error: 'Conversa não encontrada' },
+        { status: 404 }
+      )
+    }
+    return NextResponse.json({ apagadas })
+  } catch (error) {
+    logger.error(
+      'Falha ao apagar conversas',
+      error instanceof Error ? error : undefined,
+      '[conversational-chat/sessions]'
+    )
+    return NextResponse.json(
+      { error: 'Não foi possível apagar agora. Tente de novo.' },
+      { status: 500 }
+    )
+  }
 }
