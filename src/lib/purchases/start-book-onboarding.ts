@@ -1,5 +1,8 @@
 import { grantProfessionalTrial } from '@/lib/purchases/grant-professional-trial'
-import { enrollInEmailSequence } from '@/lib/purchases/enroll-email-sequence'
+import {
+  enrollInEmailSequence,
+  type EnrollEmailSequenceResult
+} from '@/lib/purchases/enroll-email-sequence'
 import { logger } from '@/lib/logger'
 
 /**
@@ -12,7 +15,8 @@ import { logger } from '@/lib/logger'
  * o contrario).
  *
  * Chamado so para compra de livro — quem compra uma audioterapia avulsa nao entra
- * numa sequencia que fala do livro o tempo todo.
+ * numa sequencia que fala do livro o tempo todo. A excecao e o guia avulso, que a
+ * campanha vende com o app: ganha os 7 dias com `emailSequence: false`.
  *
  * Nunca lanca: as duas etapas ja engolem os proprios erros.
  */
@@ -24,6 +28,8 @@ export async function startBookOnboarding(input: {
   externalTransactionId: string
   currency?: string | null
   country?: string | null
+  /** false: so o trial, sem a esteira de e-mails do livro. Default: true. */
+  emailSequence?: boolean
 }) {
   const anchorAt = new Date()
 
@@ -34,19 +40,22 @@ export async function startBookOnboarding(input: {
     startedAt: anchorAt
   })
 
-  const enrollment = await enrollInEmailSequence({
-    userId: input.userId,
-    email: input.email,
-    name: input.name,
-    source: input.source,
-    externalTransactionId: input.externalTransactionId,
-    currency: input.currency,
-    country: input.country,
-    anchorAt
-  })
+  const enrollment: EnrollEmailSequenceResult | null =
+    input.emailSequence === false
+      ? null
+      : await enrollInEmailSequence({
+          userId: input.userId,
+          email: input.email,
+          name: input.name,
+          source: input.source,
+          externalTransactionId: input.externalTransactionId,
+          currency: input.currency,
+          country: input.country,
+          anchorAt
+        })
 
   logger.info(
-    `Onboarding do livro: trial=${trial.granted ? 'concedido' : (trial.reason ?? 'falhou')} esteira=${enrollment.enrolled ? enrollment.lang : (enrollment.reason ?? 'falhou')}`,
+    `Onboarding do livro: trial=${trial.granted ? 'concedido' : (trial.reason ?? 'falhou')} esteira=${!enrollment ? 'sem_esteira' : enrollment.enrolled ? enrollment.lang : (enrollment.reason ?? 'falhou')}`,
     '[purchases/onboarding]'
   )
 

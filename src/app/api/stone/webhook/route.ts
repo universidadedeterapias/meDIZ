@@ -3,7 +3,9 @@ import { normalizeLibraryEmail } from '@/lib/library/email'
 import { grantPurchaseAccess } from '@/lib/purchases/grant-purchase'
 import { resolvePhysicalBookGrantProductIds } from '@/lib/purchases/hotmart-grant-rules'
 import {
+  GUIDE_PRODUCT_TITLE,
   isBookPurchase,
+  isGuideProduct,
   isPhysicalBookProduct
 } from '@/lib/purchases/book-purchase'
 import { deliverAccess } from '@/lib/purchases/deliver-access'
@@ -134,6 +136,8 @@ export async function POST(request: NextRequest) {
     })
     const temDespacho =
       ehLivro && isPhysicalBookProduct('stone', parsed.stoneProductId)
+    // O guia avulso ganha o que o livro ganha (aviso e 7 dias), menos a esteira.
+    const ehGuia = !ehLivro && isGuideProduct('stone', parsed.stoneProductId)
 
     const grant = await grantPurchaseAccess({
       email: parsed.email,
@@ -152,7 +156,7 @@ export async function POST(request: NextRequest) {
     // Profissional e a esteira pos-compra. O idioma sai da moeda e do pais que o
     // `parseStoneWebhook` agora le — sem eles, o comprador de EL CUERPO HABLA
     // entrava numa sequencia em portugues.
-    if (ehLivro) {
+    if (ehLivro || ehGuia) {
       await startBookOnboarding({
         userId: grant.userId,
         email: parsed.email,
@@ -160,7 +164,8 @@ export async function POST(request: NextRequest) {
         source: 'stone',
         externalTransactionId: parsed.transactionId,
         currency: parsed.currency,
-        country: parsed.country
+        country: parsed.country,
+        emailSequence: ehLivro
       })
     }
 
@@ -190,10 +195,10 @@ export async function POST(request: NextRequest) {
       externalProductId: parsed.stoneProductId,
       physicalShipment: temDespacho,
       shipmentId: shipment?.id ?? null,
-      mainProductTitle: catalogProductTitle,
+      mainProductTitle: ehGuia ? GUIDE_PRODUCT_TITLE : catalogProductTitle,
       productsGranted: grant.productsGranted,
       purchaseEventId,
-      bookPurchase: ehLivro
+      bookPurchase: ehLivro || ehGuia
     })
 
     await settlePurchaseEvent(purchaseEventId, {

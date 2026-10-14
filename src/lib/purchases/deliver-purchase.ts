@@ -13,7 +13,9 @@ import {
   resolvePhysicalBookGrantProductIds
 } from '@/lib/purchases/hotmart-grant-rules'
 import {
+  GUIDE_PRODUCT_TITLE,
   isBookPurchase,
+  isGuideProduct,
   isPhysicalBookProduct
 } from '@/lib/purchases/book-purchase'
 import { deliverAccess } from '@/lib/purchases/deliver-access'
@@ -68,6 +70,8 @@ type ResolvedPurchase = {
    * a ler moeda e pais, entao a esteira do comprador de la sai no idioma certo.
    */
   isBook: boolean
+  /** Guia avulso do Guru: mensagem e 7 dias como o livro, sem a esteira. */
+  isGuide?: boolean
   /** Tem despacho fisico — o aviso ao cliente precisa falar do rastreio. */
   physicalShipment: boolean
   currency: string | null
@@ -155,9 +159,16 @@ async function resolveFromStone(
     }
   }
 
+  const ehLivro = await isBookPurchase({
+    provider: 'stone',
+    externalProductId: parsed.stoneProductId,
+    catalogProductId
+  })
+  const ehGuia = !ehLivro && isGuideProduct('stone', parsed.stoneProductId)
+
   return {
     catalogProductId,
-    catalogProductTitle: resolvido?.title ?? null,
+    catalogProductTitle: ehGuia ? GUIDE_PRODUCT_TITLE : (resolvido?.title ?? null),
     // Mesmo motivo do caminho Hotmart: o impresso aponta para o produto de
     // catalogo do digital, entao o grant padrao daria de graca o upsell.
     grantProductIds: temDespacho
@@ -173,11 +184,8 @@ async function resolveFromStone(
     // O livro tambem sai pelo checkout Guru, que cobra pela Stone. Dizer `false`
     // aqui fazia toda venda Guru avisar como se fosse curso, e nenhuma venda do
     // impresso por esse caminho virar despacho.
-    isBook: await isBookPurchase({
-      provider: 'stone',
-      externalProductId: parsed.stoneProductId,
-      catalogProductId
-    }),
+    isBook: ehLivro,
+    isGuide: ehGuia,
     physicalShipment: temDespacho,
     currency: event.currency,
     country: event.country
@@ -256,7 +264,8 @@ export async function deliverFromPurchaseEvent(
       grantProductIds: resolved.grantProductIds
     })
 
-    if (resolved.isBook && notify) {
+    // Guia avulso: os 7 dias, sem a esteira do livro.
+    if ((resolved.isBook || resolved.isGuide) && notify) {
       await startBookOnboarding({
         userId: grant.userId,
         email: resolved.email,
@@ -264,7 +273,8 @@ export async function deliverFromPurchaseEvent(
         source: resolved.source,
         externalTransactionId: resolved.transactionId,
         currency: resolved.currency,
-        country: resolved.country
+        country: resolved.country,
+        emailSequence: resolved.isBook
       })
     }
 
@@ -300,7 +310,7 @@ export async function deliverFromPurchaseEvent(
         mainProductTitle: resolved.catalogProductTitle,
         productsGranted: grant.productsGranted,
         purchaseEventId: event.id,
-        bookPurchase: resolved.isBook
+        bookPurchase: resolved.isBook || !!resolved.isGuide
       })
     }
 

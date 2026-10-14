@@ -71,6 +71,37 @@ export const STONE_DIGITAL_BOOK_IDS = new Set([
   ...idsDoAmbiente('STONE_DIGITAL_BOOK_PRODUCT_IDS')
 ])
 
+/**
+ * Guia Sentido Biologico vendido sozinho no checkout Guru ("GUIA SENTIDO
+ * BIOLOGICO - PDF": valor normal, ultima oferta e order bump sao ofertas do
+ * mesmo produto, entao os dois IDs cobrem as tres).
+ *
+ * Nao e livro, mas a campanha vende o guia prometendo o app: quem compra recebe
+ * o mesmo que o comprador do livro — a mensagem de acesso e os 7 dias de
+ * Profissional. Fica de fora so a esteira de e-mails, que fala do livro o tempo
+ * todo. Por isso e uma lista propria, e nao mais dois IDs em
+ * `STONE_DIGITAL_BOOK_IDS`: entrar la colocaria o guia na esteira e no
+ * despacho de qualquer regra que pergunte "e livro?".
+ */
+export const STONE_GUIDE_IDS = new Set([
+  'a2b3a2a5-e85c-4133-be75-cab6d0f935df',
+  '1788924076',
+  ...idsDoAmbiente('STONE_GUIDE_PRODUCT_IDS')
+])
+
+/** Nome do guia na mensagem de acesso — o titulo do catalogo e so "SENTIDO BIOLOGICO". */
+export const GUIDE_PRODUCT_TITLE = 'Guia Sentido Biológico'
+
+/** Compra do guia avulso, reconhecida pelo ID de origem. */
+export function isGuideProduct(
+  provider: string | null | undefined,
+  externalProductId: string | null | undefined
+): boolean {
+  const id = externalProductId?.trim()
+  if (!id) return false
+  return provider?.trim().toLowerCase() === 'stone' && STONE_GUIDE_IDS.has(id)
+}
+
 function idsDoProvedor(
   provider: string | null | undefined
 ): { fisico: Set<string>; digital: Set<string> } | null {
