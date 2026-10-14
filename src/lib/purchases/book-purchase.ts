@@ -77,11 +77,10 @@ export const STONE_DIGITAL_BOOK_IDS = new Set([
  * mesmo produto, entao os dois IDs cobrem as tres).
  *
  * Nao e livro, mas a campanha vende o guia prometendo o app: quem compra recebe
- * o mesmo que o comprador do livro — a mensagem de acesso e os 7 dias de
- * Profissional. Fica de fora so a esteira de e-mails, que fala do livro o tempo
- * todo. Por isso e uma lista propria, e nao mais dois IDs em
- * `STONE_DIGITAL_BOOK_IDS`: entrar la colocaria o guia na esteira e no
- * despacho de qualquer regra que pergunte "e livro?".
+ * a mensagem de acesso. So isso, por ora — sem os 7 dias de Profissional, sem a
+ * esteira de e-mails e sem nenhuma outra automacao do livro. Por isso e uma
+ * lista propria, e nao mais dois IDs em `STONE_DIGITAL_BOOK_IDS`: entrar la
+ * colocaria o guia em toda regra que pergunta "e livro?".
  */
 export const STONE_GUIDE_IDS = new Set([
   'a2b3a2a5-e85c-4133-be75-cab6d0f935df',

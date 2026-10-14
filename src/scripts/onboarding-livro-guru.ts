@@ -155,9 +155,9 @@ async function main() {
     const trialTxt = resultado.trial.granted
       ? 'trial ok'
       : `trial ${resultado.trial.reason ?? 'falhou'}`
-    const esteiraTxt = resultado.enrollment?.enrolled
-      ? `esteira ${resultado.enrollment?.lang}`
-      : `esteira ${resultado.enrollment?.reason ?? 'falhou'}`
+    const esteiraTxt = resultado.enrollment.enrolled
+      ? `esteira ${resultado.enrollment.lang}`
+      : `esteira ${resultado.enrollment.reason ?? 'falhou'}`
 
     concedidos++
     console.log(

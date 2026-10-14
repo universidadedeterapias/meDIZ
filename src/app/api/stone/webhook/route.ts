@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
     })
     const temDespacho =
       ehLivro && isPhysicalBookProduct('stone', parsed.stoneProductId)
-    // O guia avulso ganha o que o livro ganha (aviso e 7 dias), menos a esteira.
+    // O guia avulso recebe so o aviso de acesso — sem trial nem esteira, por ora.
     const ehGuia = !ehLivro && isGuideProduct('stone', parsed.stoneProductId)
 
     const grant = await grantPurchaseAccess({
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
     // Profissional e a esteira pos-compra. O idioma sai da moeda e do pais que o
     // `parseStoneWebhook` agora le — sem eles, o comprador de EL CUERPO HABLA
     // entrava numa sequencia em portugues.
-    if (ehLivro || ehGuia) {
+    if (ehLivro) {
       await startBookOnboarding({
         userId: grant.userId,
         email: parsed.email,
@@ -164,8 +164,7 @@ export async function POST(request: NextRequest) {
         source: 'stone',
         externalTransactionId: parsed.transactionId,
         currency: parsed.currency,
-        country: parsed.country,
-        emailSequence: ehLivro
+        country: parsed.country
       })
     }
 

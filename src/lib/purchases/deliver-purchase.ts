@@ -70,7 +70,7 @@ type ResolvedPurchase = {
    * a ler moeda e pais, entao a esteira do comprador de la sai no idioma certo.
    */
   isBook: boolean
-  /** Guia avulso do Guru: mensagem e 7 dias como o livro, sem a esteira. */
+  /** Guia avulso do Guru: so o aviso de acesso, sem trial nem esteira. */
   isGuide?: boolean
   /** Tem despacho fisico — o aviso ao cliente precisa falar do rastreio. */
   physicalShipment: boolean
@@ -264,8 +264,7 @@ export async function deliverFromPurchaseEvent(
       grantProductIds: resolved.grantProductIds
     })
 
-    // Guia avulso: os 7 dias, sem a esteira do livro.
-    if ((resolved.isBook || resolved.isGuide) && notify) {
+    if (resolved.isBook && notify) {
       await startBookOnboarding({
         userId: grant.userId,
         email: resolved.email,
@@ -273,8 +272,7 @@ export async function deliverFromPurchaseEvent(
         source: resolved.source,
         externalTransactionId: resolved.transactionId,
         currency: resolved.currency,
-        country: resolved.country,
-        emailSequence: resolved.isBook
+        country: resolved.country
       })
     }
 
