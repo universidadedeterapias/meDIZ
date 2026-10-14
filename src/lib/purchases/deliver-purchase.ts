@@ -14,6 +14,7 @@ import {
 } from '@/lib/purchases/hotmart-grant-rules'
 import {
   GUIDE_PRODUCT_TITLE,
+  guideReaderPath,
   isBookPurchase,
   isGuideProduct,
   isPhysicalBookProduct
@@ -308,7 +309,10 @@ export async function deliverFromPurchaseEvent(
         mainProductTitle: resolved.catalogProductTitle,
         productsGranted: grant.productsGranted,
         purchaseEventId: event.id,
-        bookPurchase: resolved.isBook || !!resolved.isGuide
+        bookPurchase: resolved.isBook || !!resolved.isGuide,
+        redirectTo: resolved.isGuide
+          ? guideReaderPath(resolved.catalogProductId)
+          : undefined
       })
     }
 

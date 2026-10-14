@@ -4,6 +4,7 @@ import { grantPurchaseAccess } from '@/lib/purchases/grant-purchase'
 import { resolvePhysicalBookGrantProductIds } from '@/lib/purchases/hotmart-grant-rules'
 import {
   GUIDE_PRODUCT_TITLE,
+  guideReaderPath,
   isBookPurchase,
   isGuideProduct,
   isPhysicalBookProduct
@@ -197,7 +198,9 @@ export async function POST(request: NextRequest) {
       mainProductTitle: ehGuia ? GUIDE_PRODUCT_TITLE : catalogProductTitle,
       productsGranted: grant.productsGranted,
       purchaseEventId,
-      bookPurchase: ehLivro || ehGuia
+      bookPurchase: ehLivro || ehGuia,
+      // O link do guia abre o proprio PDF no leitor, e nao a biblioteca.
+      redirectTo: ehGuia ? guideReaderPath(catalogProductId) : undefined
     })
 
     await settlePurchaseEvent(purchaseEventId, {

@@ -91,6 +91,11 @@ export const STONE_GUIDE_IDS = new Set([
 /** Nome do guia na mensagem de acesso — o titulo do catalogo e so "SENTIDO BIOLOGICO". */
 export const GUIDE_PRODUCT_TITLE = 'Guia Sentido Biológico'
 
+/** Onde o link de acesso do guia leva: o PDF aberto no leitor da biblioteca. */
+export function guideReaderPath(catalogProductId: string): string {
+  return `/biblioteca/leitor/${encodeURIComponent(catalogProductId)}`
+}
+
 /** Compra do guia avulso, reconhecida pelo ID de origem. */
 export function isGuideProduct(
   provider: string | null | undefined,
