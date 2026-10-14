@@ -13,7 +13,10 @@ import {
   resolvePhysicalBookGrantProductIds
 } from '@/lib/purchases/hotmart-grant-rules'
 import {
+  GUIDE_PRODUCT_TITLE,
+  guideReaderPath,
   isBookPurchase,
+  isGuideProduct,
   isPhysicalBookProduct
 } from '@/lib/purchases/book-purchase'
 import { deliverAccess } from '@/lib/purchases/deliver-access'
@@ -68,6 +71,8 @@ type ResolvedPurchase = {
    * a ler moeda e pais, entao a esteira do comprador de la sai no idioma certo.
    */
   isBook: boolean
+  /** Guia avulso do Guru: so o aviso de acesso, sem trial nem esteira. */
+  isGuide?: boolean
   /** Tem despacho fisico — o aviso ao cliente precisa falar do rastreio. */
   physicalShipment: boolean
   currency: string | null
@@ -155,9 +160,16 @@ async function resolveFromStone(
     }
   }
 
+  const ehLivro = await isBookPurchase({
+    provider: 'stone',
+    externalProductId: parsed.stoneProductId,
+    catalogProductId
+  })
+  const ehGuia = !ehLivro && isGuideProduct('stone', parsed.stoneProductId)
+
   return {
     catalogProductId,
-    catalogProductTitle: resolvido?.title ?? null,
+    catalogProductTitle: ehGuia ? GUIDE_PRODUCT_TITLE : (resolvido?.title ?? null),
     // Mesmo motivo do caminho Hotmart: o impresso aponta para o produto de
     // catalogo do digital, entao o grant padrao daria de graca o upsell.
     grantProductIds: temDespacho
@@ -173,11 +185,8 @@ async function resolveFromStone(
     // O livro tambem sai pelo checkout Guru, que cobra pela Stone. Dizer `false`
     // aqui fazia toda venda Guru avisar como se fosse curso, e nenhuma venda do
     // impresso por esse caminho virar despacho.
-    isBook: await isBookPurchase({
-      provider: 'stone',
-      externalProductId: parsed.stoneProductId,
-      catalogProductId
-    }),
+    isBook: ehLivro,
+    isGuide: ehGuia,
     physicalShipment: temDespacho,
     currency: event.currency,
     country: event.country
@@ -300,7 +309,10 @@ export async function deliverFromPurchaseEvent(
         mainProductTitle: resolved.catalogProductTitle,
         productsGranted: grant.productsGranted,
         purchaseEventId: event.id,
-        bookPurchase: resolved.isBook
+        bookPurchase: resolved.isBook || !!resolved.isGuide,
+        redirectTo: resolved.isGuide
+          ? guideReaderPath(resolved.catalogProductId)
+          : undefined
       })
     }
 

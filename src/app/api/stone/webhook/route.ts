@@ -3,7 +3,10 @@ import { normalizeLibraryEmail } from '@/lib/library/email'
 import { grantPurchaseAccess } from '@/lib/purchases/grant-purchase'
 import { resolvePhysicalBookGrantProductIds } from '@/lib/purchases/hotmart-grant-rules'
 import {
+  GUIDE_PRODUCT_TITLE,
+  guideReaderPath,
   isBookPurchase,
+  isGuideProduct,
   isPhysicalBookProduct
 } from '@/lib/purchases/book-purchase'
 import { deliverAccess } from '@/lib/purchases/deliver-access'
@@ -134,6 +137,8 @@ export async function POST(request: NextRequest) {
     })
     const temDespacho =
       ehLivro && isPhysicalBookProduct('stone', parsed.stoneProductId)
+    // O guia avulso recebe so o aviso de acesso — sem trial nem esteira, por ora.
+    const ehGuia = !ehLivro && isGuideProduct('stone', parsed.stoneProductId)
 
     const grant = await grantPurchaseAccess({
       email: parsed.email,
@@ -190,10 +195,12 @@ export async function POST(request: NextRequest) {
       externalProductId: parsed.stoneProductId,
       physicalShipment: temDespacho,
       shipmentId: shipment?.id ?? null,
-      mainProductTitle: catalogProductTitle,
+      mainProductTitle: ehGuia ? GUIDE_PRODUCT_TITLE : catalogProductTitle,
       productsGranted: grant.productsGranted,
       purchaseEventId,
-      bookPurchase: ehLivro
+      bookPurchase: ehLivro || ehGuia,
+      // O link do guia abre o proprio PDF no leitor, e nao a biblioteca.
+      redirectTo: ehGuia ? guideReaderPath(catalogProductId) : undefined
     })
 
     await settlePurchaseEvent(purchaseEventId, {
