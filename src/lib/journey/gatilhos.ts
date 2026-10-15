@@ -1,5 +1,8 @@
 import type { SpecialistAgent } from '@/lib/conversational-chat/config'
-import { registrarEventoDeJornadaEmSegundoPlano } from '@/lib/journey/events'
+import {
+  registrarEventoDeJornada,
+  registrarEventoDeJornadaEmSegundoPlano
+} from '@/lib/journey/events'
 import { avisaPesquisaDaReativacaoEmSegundoPlano } from '@/lib/reativacao/pesquisou'
 
 /**
@@ -23,9 +26,22 @@ const DOMINIO: Record<SpecialistAgent, string> = {
   pet: 'pet'
 }
 
-/** Primeira entrada no app depois da compra. */
-export function marcaPrimeiroAcesso(userId: string, quando = new Date()): void {
-  registrarEventoDeJornadaEmSegundoPlano({
+/**
+ * Primeira entrada no app depois da compra.
+ *
+ * Espera a gravacao, ao contrario dos outros gatilhos: e este evento que tira a
+ * pessoa da regua "seu primeiro acesso ainda nao foi realizado", e em segundo
+ * plano ele morria junto com a requisicao — em 13/10/2026 uma compradora entrou
+ * e continuou recebendo os toques. Nunca lanca, como `registrarEventoDeJornada`.
+ *
+ * Idempotente pelo unique (user, evento): pode ser chamado do login pelo link,
+ * da troca de senha e da primeira visita, e so a primeira chamada grava.
+ */
+export async function marcaPrimeiroAcesso(
+  userId: string,
+  quando = new Date()
+): Promise<void> {
+  await registrarEventoDeJornada({
     userId,
     evento: 'trial_inicio',
     variaveis: [{ nome: 'trial_inicio', valor: quando.toISOString() }]

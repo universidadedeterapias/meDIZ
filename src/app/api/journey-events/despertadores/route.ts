@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { validateWebhookBearer } from '@/lib/webhookAuth'
 import { montarTelefone } from '@/lib/phone'
+import { STONE_GUIDE_IDS } from '@/lib/purchases/book-purchase'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -67,6 +68,27 @@ const LIMIARES_SISTEMA2 = [6, 12, 24, 48] as const
  * completas, entao um corte cravado ali excluiria justamente o ultimo toque.
  */
 const JANELA_MAXIMA_HORAS = 60
+
+/**
+ * As reguas sao do livro. O guia avulso do Guru tambem grava `access_message_at`
+ * (recebe a mesma mensagem de acesso), mas tem fluxo proprio no Chatvolt — e o
+ * link dele abre direto o leitor, que nao passa pelo `/api/discovery/status`.
+ * Achado em 14/10/2026: compradores do guia que ja tinham entrado receberam
+ * "seu primeiro acesso ainda nao foi realizado".
+ *
+ * Fica dentro quem tem ao menos um aviso de venda que nao e do guia: quem
+ * comprou o livro e levou o guia junto continua na regua do livro.
+ */
+const IDS_DO_GUIA = [...STONE_GUIDE_IDS]
+
+const SO_COMPRADOR_DO_LIVRO = Prisma.sql`
+  EXISTS (
+    SELECT 1 FROM access_deliveries d
+     WHERE d.user_id = u.id
+       AND d.provider IS NOT NULL
+       AND COALESCE(d.payload->>'external_product_id', '') <> ALL(${IDS_DO_GUIA}::text[])
+  )
+`
 
 /** Ate onde o tempo decorrido ja autoriza avancar, ignorando o que ja foi enviado. */
 function toquePermitidoPeloTempo(
@@ -176,6 +198,16 @@ export async function POST(request: NextRequest) {
            SELECT 1 FROM journey_events je
             WHERE je.user_id = u.id AND je.event_name = 'trial_inicio'
          )
+         -- trial_inicio sozinho deixava passar quem ja tinha entrado: o evento
+         -- nao nasce para conta que entrou antes da compra, e se perdia quando a
+         -- gravacao em segundo plano morria com a requisicao (caso de 13/10/2026,
+         -- first_access_at preenchido e nenhum evento). O registro no perfil e a
+         -- prova direta de entrada.
+         AND NOT EXISTS (
+           SELECT 1 FROM user_profiles up
+            WHERE up.user_id = u.id AND up.first_access_at IS NOT NULL
+         )
+         AND ${SO_COMPRADOR_DO_LIVRO}
          -- Morto na pratica desde 16/09/2026: nada chama /despertadores/respostas
          -- automaticamente mais (webhook do Chatvolt abandonado, ver comentario
          -- do topo do arquivo), entao nenhuma linha chega a status='respondido'
@@ -212,6 +244,7 @@ export async function POST(request: NextRequest) {
            SELECT 1 FROM journey_events pesquisa
             WHERE pesquisa.user_id = u.id AND pesquisa.event_name = 'primeira_pesquisa'
          )
+         AND ${SO_COMPRADOR_DO_LIVRO}
          AND extract(hour FROM (now() AT TIME ZONE 'America/Sao_Paulo')) BETWEEN 7 AND 21
        ORDER BY acesso.created_at ASC
        LIMIT ${parsed.data.limite}
