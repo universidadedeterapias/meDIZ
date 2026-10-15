@@ -5,7 +5,10 @@ import { serializeProduct, mapProductsToOffers } from '@/lib/catalog/products'
 import { enrichVideoCourseOffers } from '@/lib/catalog/course-modules'
 import { getProductEntitlementIdsForUser } from '@/lib/purchases/entitlements'
 import { loadGrantsProductIds } from '@/lib/purchases/catalog-grants'
-import { getLibraryPermissionsForUser } from '@/lib/library/permissions'
+import {
+  getLegacyCategoryPermissionsForUser,
+  getLibraryPermissionsForUser
+} from '@/lib/library/permissions'
 import { requireUser } from '@/lib/requireAuth'
 import { prisma } from '@/lib/prisma'
 
@@ -32,12 +35,15 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   const permissoes = await getLibraryPermissionsForUser(auth.user)
+  // O cadeado de cada produto nao olha a categoria derivada das compras: comprar
+  // uma audioterapia nao destrava as outras. Ver getLegacyCategoryPermissionsForUser.
+  const permissoesPorProduto = await getLegacyCategoryPermissionsForUser(auth.user)
   const productEntitlements = await getProductEntitlementIdsForUser(auth.user)
   const lockedLabel = 'Desbloquear acesso'
   const [offer] = await enrichVideoCourseOffers(
     mapProductsToOffers(
       [product],
-      permissoes,
+      permissoesPorProduto,
       lockedLabel,
       undefined,
       productEntitlements

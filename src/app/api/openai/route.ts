@@ -7,10 +7,8 @@ import { saveChatMessage } from '@/lib/chatMessages'
 import { prisma } from '@/lib/prisma'
 import { isUserPremium } from '@/lib/premiumUtils'
 import { getUserLimits, getUserPeriod } from '@/lib/userPeriod'
-import {
-  FREE_DAILY_QUOTA_CHAT_KINDS,
-  SYMPTOM_SEARCH_CHAT_KIND
-} from '@/lib/conversational-chat/config'
+import { SYMPTOM_SEARCH_CHAT_KIND } from '@/lib/conversational-chat/config'
+import { contarPesquisasDaCota } from '@/lib/search-quota'
 import { NextResponse } from 'next/server'
 // Cache desabilitado para evitar problemas com tradução multi-idioma
 import { DEFAULT_LANGUAGE, isSupportedLanguage, getLanguageMapping, type LanguageCode } from '@/i18n/config'
@@ -186,35 +184,24 @@ export async function POST(req: Request) {
   // As checagens de cota e acesso ficam dentro do try junto com o resto: elas tocam o
   // banco, e uma falha ali precisa virar JSON com mensagem — não um 500 sem corpo.
   try {
-    // ── 1) Verifica limite de sessões hoje ─────────────────────────────
-    // Início do dia (00:00)
-    const startOfDay = new Date()
-    startOfDay.setHours(0, 0, 0, 0)
-
-    // Conta as sessões de hoje que consomem a cota do plano gratuito. Pesquisa e chat
-    // conversacional dividem o mesmo teto; simulador e professor têm gate próprio.
-    const todayCount = await prisma.chatSession.count({
-      where: {
-        userId,
-        chatKind: { in: [...FREE_DAILY_QUOTA_CHAT_KINDS] },
-        createdAt: { gte: startOfDay }
-      }
-    })
-
-    // ── 2) Acesso premium (inclui cancelada com período ainda vigente) ─
+    // ── 1) Acesso premium (inclui cancelada com período ainda vigente) ─
     const hasPremiumAccess = await isUserPremium(userId)
 
-    // ── 3) Sem premium: plano gratuito (limite + popup) ─────────────────
+    // ── 2) Sem premium: plano gratuito (limite + popup) ─────────────────
     if (!hasPremiumAccess) {
-      // Busca informações do usuário para saber a data de cadastro
+      // Busca a data de cadastro (define o limite) e o reset feito pelo admin
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { createdAt: true }
+        select: { createdAt: true, searchQuotaResetAt: true }
       })
 
       if (!user) {
         return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
       }
+
+      // Pesquisa e chat conversacional dividem o mesmo teto; simulador e
+      // professor têm gate próprio.
+      const todayCount = await contarPesquisasDaCota(userId, user.searchQuotaResetAt)
 
       // Determina o período e limites do usuário
       const userPeriod = getUserPeriod(user.createdAt)

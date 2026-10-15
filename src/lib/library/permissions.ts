@@ -141,6 +141,64 @@ export async function getLibraryPermissionsByEmail(
   }
 }
 
+/**
+ * Permissao por categoria que vale para liberar UM produto especifico.
+ *
+ * So a tabela legada `library_permissions` (e o acesso cortesia) conta aqui.
+ * A categoria derivada das compras (`libraryPermissoesFromEntitlements`) nao:
+ * comprar uma audioterapia marcava `audioterapia = true`, e isso destravava
+ * todas as outras audioterapias da Hotmart. Quem compra pelo fluxo novo tem a
+ * liberacao do proprio produto em `product_entitlements` — e e so isso que
+ * deve ver.
+ *
+ * `getLibraryPermissionsForUser` continua existindo para o que e de fato por
+ * categoria: mostrar ou esconder a secao da biblioteca e das audioterapias.
+ */
+export async function getLegacyCategoryPermissionsForUser(
+  user: LibraryAuthIdentity
+): Promise<LibraryPermissoes> {
+  const sem: LibraryPermissoes = {
+    audioterapia: false,
+    pdf: false,
+    livro_digital: false
+  }
+  if (hasFullLibraryAccess(user.email, user.id)) {
+    return { ...FULL_PERMISSIONS }
+  }
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { email: true }
+  })
+  const email = normalizeLibraryEmail(dbUser?.email ?? user.email)
+  if (hasFullLibraryAccess(email, user.id)) {
+    return { ...FULL_PERMISSIONS }
+  }
+
+  const row = await prisma.libraryPermission.findUnique({
+    where: { email },
+    select: { audioterapia: true, pdf: true, livroDigital: true }
+  })
+  if (!row) return sem
+
+  return {
+    audioterapia: row.audioterapia,
+    pdf: row.pdf,
+    livro_digital: row.livroDigital
+  }
+}
+
+/** `assertLibraryContentAccess` para quando a pergunta e sobre um produto. */
+export async function assertLegacyCategoryAccess(
+  user: LibraryAuthIdentity,
+  content: keyof LibraryPermissoes
+): Promise<void> {
+  const permissoes = await getLegacyCategoryPermissionsForUser(user)
+  if (!permissoes[content]) {
+    throw new LibraryAccessError()
+  }
+}
+
 export async function assertLibraryContentAccess(
   identity: string | LibraryAuthIdentity,
   content: keyof LibraryPermissoes

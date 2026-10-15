@@ -84,6 +84,30 @@ function mediaMatchesLanguage(
   return locale === null || locale === language
 }
 
+/**
+ * O idioma da pessoa escolhe a versao, nunca apaga o conteudo.
+ *
+ * O idioma vem do cookie ou, sem ele, do `Accept-Language` do navegador — nao
+ * do cadastro. Um Mac com Chrome em ingles chega como `en`, e o curso que so
+ * tem midia `pt` saia com todos os modulos vazios: a aluna que comprou via
+ * "Nenhum video disponivel" e a lista lateral em branco.
+ *
+ * Por isso a reserva: sem nada no idioma pedido, cai no portugues, que e a
+ * lingua de origem do catalogo; sem portugues, mostra o que houver. A ordem
+ * importa quando o modulo tem versoes em mais de uma lingua — ir direto para
+ * "tudo" duplicaria cada aula.
+ */
+function mediaNoIdiomaOuReserva<T extends { locale: 'pt' | 'en' | 'es' | null }>(
+  itens: T[],
+  language: 'pt' | 'en' | 'es'
+): T[] {
+  const noIdioma = itens.filter((m) => mediaMatchesLanguage(m.locale, language))
+  if (noIdioma.length > 0) return noIdioma
+  const emPortugues = itens.filter((m) => mediaMatchesLanguage(m.locale, 'pt'))
+  if (emPortugues.length > 0) return emPortugues
+  return itens
+}
+
 export function serializeCourseModule(
   row: {
     id: string
@@ -248,9 +272,8 @@ export function buildCourseModulePlayback(
 ): CourseModulePlayback[] {
   return modules.map((mod) => {
     const listByKind = (kind: CourseMediaKind): CourseModulePlaybackItem[] => {
-      return mod.media
-        .filter((m) => m.kind === kind)
-        .filter((m) => mediaMatchesLanguage(m.locale, language))
+      const doTipo = mod.media.filter((m) => m.kind === kind)
+      return mediaNoIdiomaOuReserva(doTipo, language)
         .sort((a, b) => a.sortOrder - b.sortOrder)
         .map((match) => {
           const url = resolveUrl(match.mediaFileName.trim(), kind)

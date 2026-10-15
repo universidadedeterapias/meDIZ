@@ -8,7 +8,8 @@ export const runtime = 'nodejs'
 
 /**
  * O n8n vem avisar que mandou um toque das reguas de 48h ("Os Dois
- * Despertadores"), e traz o conversationId que o Chatvolt devolveu no envio.
+ * Despertadores") ou do aviso de fim do trial ("trial_fim"), e traz o
+ * conversationId que o Chatvolt devolveu no envio.
  *
  * Gravar isto e o que permite achar "quem respondeu" mais tarde sem depender
  * de telefone (ver journey_wakeup_touches no schema). Sem esta chamada, o
@@ -21,7 +22,7 @@ export const runtime = 'nodejs'
 
 const corpo = z.object({
   userId: z.string().min(1),
-  sistema: z.enum(['acesso', 'pesquisa']),
+  sistema: z.enum(['acesso', 'pesquisa', 'trial_fim']),
   toque: z.number().int().min(1).max(4),
   conversationId: z.string().min(1).max(64),
   template: z.string().max(40).optional()

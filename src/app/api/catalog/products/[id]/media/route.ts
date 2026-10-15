@@ -6,7 +6,7 @@ import { resolveProductMediaUrl } from '@/lib/catalog/resolveProductMedia'
 import { isFreeCatalogProduct } from '@/lib/catalog/freeProducts'
 import { permissionKeyToLib } from '@/lib/catalog/types'
 import {
-  assertLibraryContentAccess,
+  assertLegacyCategoryAccess,
   LibraryAccessError
 } from '@/lib/library/permissions'
 import {
@@ -92,7 +92,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
       )
     } else {
       try {
-        await assertLibraryContentAccess(auth.user, contentKey)
+        // Sem a liberacao do produto, so a categoria legada vale: a derivada das
+        // compras destravaria todas as audioterapias por causa de uma.
+        await assertLegacyCategoryAccess(auth.user, contentKey)
       } catch (e) {
         if (e instanceof LibraryAccessError) {
           return NextResponse.json(

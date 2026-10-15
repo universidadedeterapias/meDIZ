@@ -11,6 +11,7 @@ import { ArrowLeft, Save, Loader2 } from 'lucide-react'
 import { UserBonusAccessCard } from '@/components/admin/UserBonusAccessCard'
 import { UserDiscoveryProfileCard } from '@/components/admin/UserDiscoveryProfileCard'
 import { UserLifeFactsCard } from '@/components/admin/UserLifeFactsCard'
+import { UserSearchQuotaCard } from '@/components/admin/UserSearchQuotaCard'
 
 interface User {
   id: string
@@ -221,6 +222,10 @@ export default function EditUserPage() {
               </div>
             </CardContent>
           </Card>
+
+          <div className="mt-6">
+            <UserSearchQuotaCard userId={userId} />
+          </div>
 
           <div className="mt-6">
             <UserBonusAccessCard userId={userId} />

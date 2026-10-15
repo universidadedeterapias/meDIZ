@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { validateWebhookBearer } from '@/lib/webhookAuth'
-import { montarTelefone } from '@/lib/phone'
+import { telefoneDoCadastro } from '@/lib/phone'
 import { STONE_GUIDE_IDS } from '@/lib/purchases/book-purchase'
 
 export const dynamic = 'force-dynamic'
@@ -68,6 +68,19 @@ const LIMIARES_SISTEMA2 = [6, 12, 24, 48] as const
  * completas, entao um corte cravado ali excluiria justamente o ultimo toque.
  */
 const JANELA_MAXIMA_HORAS = 60
+
+/**
+ * Corte de lancamento (decisao do Edgar, 20/09/2026): so entra quem comprou a
+ * partir de 21/09/2026. `JANELA_MAXIMA_HORAS` sozinho nao bastava pro primeiro
+ * disparo — ele so limita o quao "velha" uma ancora pode ser NA HORA da
+ * chamada, entao ligar o envio pela primeira vez pegaria de uma vez toda
+ * compra dos ultimos 60h que ja tivesse se acumulado ate ali. Este corte e um
+ * piso absoluto, nao uma janela rolante: ele so importa nos primeiros dias
+ * (depois disso os 60h rolantes ja ficam sempre depois dele sozinhos), mas sem
+ * ele o primeiro dia de operacao mandaria pra uma leva inteira de gente de
+ * uma vez.
+ */
+const CORTE_COMPRAS = new Date('2026-09-21T00:00:00-03:00')
 
 /**
  * As reguas sao do livro. O guia avulso do Guru tambem grava `access_message_at`
@@ -154,7 +167,7 @@ function formataCandidato(l: LinhaSistema1 | LinhaSistema2, limiares: readonly n
     // null quando o numero que temos nao tem cara de telefone (ver
     // reativacao_telefone_sem_ddi): quem consome trata como "sem WhatsApp",
     // nao descarta o candidato em silencio.
-    whatsapp: montarTelefone({ numero: l.whatsapp }),
+    whatsapp: telefoneDoCadastro(l.whatsapp),
     produto: l.produto,
     ancoraEm: l.ancora_em.toISOString(),
     horasDesdeAncora: Math.round(l.horas * 10) / 10,
@@ -194,6 +207,9 @@ export async function POST(request: NextRequest) {
          -- So quem comprou "recentemente" (ver JANELA_MAXIMA_HORAS acima) — nao
          -- reativa a base toda que se acumulou antes desta feature existir.
          AND u.access_message_at >= now() - make_interval(hours => ${JANELA_MAXIMA_HORAS}::int)
+         -- Corte de lancamento (ver CORTE_COMPRAS acima): so compra a partir
+         -- de 21/09/2026.
+         AND u.access_message_at >= ${CORTE_COMPRAS}
          AND NOT EXISTS (
            SELECT 1 FROM journey_events je
             WHERE je.user_id = u.id AND je.event_name = 'trial_inicio'
@@ -240,6 +256,10 @@ export async function POST(request: NextRequest) {
        WHERE acesso.created_at <= now() - INTERVAL '6 hours'
          -- Mesmo corte do Sistema 1: so quem acessou "recentemente".
          AND acesso.created_at >= now() - make_interval(hours => ${JANELA_MAXIMA_HORAS}::int)
+         -- Corte de lancamento na COMPRA, nao no acesso — do contrario alguem
+         -- que comprou antes de 21/09 e so acessou depois entraria mesmo
+         -- assim (ver CORTE_COMPRAS acima).
+         AND u.access_message_at >= ${CORTE_COMPRAS}
          AND NOT EXISTS (
            SELECT 1 FROM journey_events pesquisa
             WHERE pesquisa.user_id = u.id AND pesquisa.event_name = 'primeira_pesquisa'

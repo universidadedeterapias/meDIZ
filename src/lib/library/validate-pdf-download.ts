@@ -10,7 +10,7 @@ import { ensureCourseModulesMigrated } from '@/lib/catalog/course-modules'
 import { languageToCatalogLocale } from '@/lib/catalog/locale'
 import { userHasProductEntitlement } from '@/lib/purchases/entitlements'
 import {
-  assertLibraryContentAccess,
+  assertLegacyCategoryAccess,
   LibraryAccessError,
   type LibraryAuthIdentity
 } from '@/lib/library/permissions'
@@ -170,7 +170,9 @@ export async function getPdfProductForDownload(
     if (!isFreeCatalogProduct(product) && !entitled) {
       const contentKey = permissionKeyToLib(product.permissionKey)
       try {
-        await assertLibraryContentAccess(user, contentKey)
+        // Mesma regra do cadeado do catalogo: sem a liberacao deste produto, so a
+        // categoria legada vale.
+        await assertLegacyCategoryAccess(user, contentKey)
       } catch (e) {
         if (e instanceof LibraryAccessError) {
           throw new PdfDownloadAccessError('NO_PERMISSION_FOR_THIS_CONTENT', 403)

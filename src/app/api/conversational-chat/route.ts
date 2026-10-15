@@ -13,7 +13,6 @@ import {
   destinationToSpecialist,
   isMedizAgent,
   isConversationalChatKind,
-  FREE_DAILY_QUOTA_CHAT_KINDS,
   type MedizAgent,
   type ConciergeDestination,
   type ConciergeEntryPoint,
@@ -31,6 +30,7 @@ import {
 } from '@/lib/journey/gatilhos'
 import { isUserPremium } from '@/lib/premiumUtils'
 import { prisma } from '@/lib/prisma'
+import { contarPesquisasDaCota } from '@/lib/search-quota'
 import { getUserLimits, getUserPeriod } from '@/lib/userPeriod'
 
 export const dynamic = 'force-dynamic'
@@ -272,23 +272,10 @@ export async function POST(req: Request) {
       chatSessionId = existing.id
     } else {
       if (chatKind === 'SEARCH' && !hasPremium) {
-        const startOfDay = new Date()
-        startOfDay.setHours(0, 0, 0, 0)
-        const [todayCount, user] = await Promise.all([
-          prisma.chatSession.count({
-            where: {
-              userId,
-              // Cota compartilhada: o modo pesquisa (`/pesquisa`) consome o mesmo
-              // teto diário que o chat conversacional.
-              chatKind: { in: [...FREE_DAILY_QUOTA_CHAT_KINDS] },
-              createdAt: { gte: startOfDay }
-            }
-          }),
-          prisma.user.findUnique({
-            where: { id: userId },
-            select: { createdAt: true }
-          })
-        ])
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { createdAt: true, searchQuotaResetAt: true }
+        })
 
         if (!user) {
           return NextResponse.json(
@@ -296,6 +283,13 @@ export async function POST(req: Request) {
             { status: 404 }
           )
         }
+
+        // Cota compartilhada com o modo pesquisa (`/pesquisa`), desde a
+        // meia-noite ou desde o reset feito pelo admin.
+        const todayCount = await contarPesquisasDaCota(
+          userId,
+          user.searchQuotaResetAt
+        )
 
         const userPeriod = getUserPeriod(user.createdAt)
         const { searchLimit } = getUserLimits(userPeriod)
