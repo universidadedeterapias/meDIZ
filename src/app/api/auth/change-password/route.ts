@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { burnAccessLinks } from '@/lib/auth/access-link'
+import { marcaPrimeiroAcesso } from '@/lib/journey/gatilhos'
 import { prisma } from '@/lib/prisma'
 import { requireUser } from '@/lib/requireAuth'
 import { validateNewPassword } from '@/lib/passwordValidation'
@@ -58,6 +59,12 @@ export async function POST(request: Request) {
     // Enquanto o token era queimado na validacao, qualquer tropeco antes disso
     // trancava o comprador para fora com o link ja destruido.
     await burnAccessLinks(auth.user.id)
+
+    // Pelo mesmo motivo, e aqui que o primeiro acesso fica provado para as
+    // reguas. O link do guia abre o leitor direto e nunca passa pelo
+    // `/api/discovery/status`; sem isto, quem entrou por ele continuava
+    // recebendo "seu primeiro acesso ainda nao foi realizado".
+    await marcaPrimeiroAcesso(auth.user.id)
 
     return NextResponse.json({ ok: true })
   } catch (error) {

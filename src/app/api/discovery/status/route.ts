@@ -62,7 +62,7 @@ export async function GET() {
       // ja passou pela compra, ja tem senha, e acabou de abrir o app. E o que
       // separa "comprou e sumiu" de "comprou e esta explorando" — sem esse
       // evento, o unico jeito de a Aline saber seria perguntar.
-      if (marcou) marcaPrimeiroAcesso(session.user.id, agora)
+      if (marcou) await marcaPrimeiroAcesso(session.user.id, agora)
     }
 
     const rollout = getDiscoveryRolloutConfig()

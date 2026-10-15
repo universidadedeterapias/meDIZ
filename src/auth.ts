@@ -6,6 +6,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import { prisma } from '@/lib/prisma'
 import { validateAccessLink } from '@/lib/auth/access-link'
+import { marcaPrimeiroAcesso } from '@/lib/journey/gatilhos'
 
 /**
  * `next build` importa todas as rotas para coletar metadata ("Collecting page data"),
@@ -125,6 +126,11 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         } catch {
           // Silencio de proposito: o login continua.
         }
+
+        // Entrar pelo link da compra ja e o primeiro acesso para as reguas dos
+        // despertadores — nao precisa esperar a pessoa chegar numa pagina que
+        // chame o `/api/discovery/status`. Nunca lanca.
+        await marcaPrimeiroAcesso(user.id)
 
         return { id: user.id, name: user.name, email: user.email }
       }
