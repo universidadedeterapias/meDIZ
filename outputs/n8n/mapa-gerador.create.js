@@ -3,7 +3,7 @@
 // O app (src/lib/mapa/geracao.ts) chama o webhook com { mapa_id, callback_url,
 // entrada }, o fluxo responde 202 na hora e trabalha em segundo plano:
 //
-//   busca no O Corpo Diz -> NUCLEO (fixa orgao e conflito) -> PARTE A + PARTE B
+//   pesquisa do meDIZ (chat-texto) -> NUCLEO (fixa orgao e conflito) -> PARTE A + PARTE B
 //   em paralelo -> junta -> POST callback_url { mapa_id, conteudo | erro }
 //
 // O app valida o conteudo contra o schema (src/lib/mapa/conteudo.ts) e recusa
@@ -20,7 +20,6 @@ const EXEMPLO = require('./mapa-gerador.exemplo.json');
 
 const id = () => crypto.randomUUID();
 const OPENAI = { openAiApi: { id: 'uytZDG8ilslSjmcH', name: 'OpenAi account' } };
-const SUPABASE = { supabaseApi: { id: 'ajUgfUltDy1MnUdF', name: 'Supabase account' } };
 // Criar no n8n antes de ativar: Header Auth, nome "Authorization", valor
 // "Bearer <MAPA_WEBHOOK_TOKEN do app>". Vale para os dois lados (entrada e callback).
 const MAPA_AUTH = { httpHeaderAuth: { id: 'PREENCHER', name: 'meDIZ Mapa' } };
@@ -78,18 +77,16 @@ if (!corpo.mapa_id || !corpo.callback_url) throw new Error('Pedido sem mapa_id o
 if (!entrada.nome || !entrada.sintoma) throw new Error('Pedido sem nome ou sintoma');
 return [{ json: { mapa_id: String(corpo.mapa_id), callback_url: String(corpo.callback_url), entrada } }];`;
 
-// Junta os trechos da base e monta a chamada do nucleo.
+// A base do Mapa e a pesquisa do meDIZ (modo pesquisa do app, webhook chat-texto):
+// o mesmo relatorio, apoiado no O Corpo Diz, que a pessoa veria pesquisando o
+// sintoma. O Mapa personaliza esse relatorio com o quiz.
 const MONTA_NUCLEO = `${CONSTANTES}
 const pedido = $('Prepara').first().json;
-const trechos = [];
-for (const item of $input.all()) {
-  const doc = item.json.document || item.json;
-  const texto = doc && (doc.pageContent || doc.text || doc.content);
-  if (texto) trechos.push(String(texto).slice(0, 1800));
-}
-const contexto = trechos.length
-  ? 'TRECHOS DE O CORPO DIZ SOBRE ESTE SINTOMA (base da leitura; não cite a fonte):\\n\\n' + trechos.slice(0, 6).join('\\n---\\n')
-  : 'Não há trechos da base para este sintoma: use o conhecimento do método com cautela redobrada.';
+const r = $input.first().json || {};
+const relatorio = String((typeof r.data === 'string' && r.data) || r.output || r.resposta || '').trim();
+const contexto = relatorio.length > 200
+  ? 'PESQUISA DO meDIZ SOBRE ESTE SINTOMA (relatório do método, apoiado em O Corpo Diz). É a base da leitura: siga o órgão, o conflito, as experiências comuns, os padrões, o transgeracional, a lateralidade, as fases e a chave terapêutica que ele traz, e transforme em Mapa pessoal. Não copie o relatório nem cite que ele existe.\\n\\n' + relatorio.slice(0, 9000)
+  : 'A pesquisa do meDIZ não respondeu para este sintoma: use o conhecimento do método com cautela redobrada.';
 return [{ json: {
   ...pedido,
   contexto,
@@ -146,7 +143,51 @@ if (base.nucleo || pedidos[0].nucleo) {
   if (conteudo.sentido_biologico && n.orgao) conteudo.sentido_biologico.orgao = n.orgao;
   if (conteudo.capa && n.sintoma_titulo) conteudo.capa.sintoma_titulo = String(n.sintoma_titulo).slice(0, 60);
 }
-if (conteudo.programa_familiar && !conteudo.programa_familiar.arvore) conteudo.programa_familiar.arvore = {};
+// Limites de tamanho do schema do app (src/lib/mapa/conteudo.ts). O modelo as
+// vezes passa um pouco (ex.: rotulo da linha do tempo com 50 caracteres) e o app
+// recusaria o Mapa inteiro: aqui o texto e cortado na ultima palavra, com "…".
+const LIMITES = {
+  capa: { sintoma_titulo: 60, desde: 60 }, carta: { paragrafos: [600] },
+  reconhecimento: { afirmacoes: [300], fechamento: 240 }, linguagem_popular: { frases: [80] },
+  sentido_biologico: { orgao: 40, paragrafos: [700], frase_sintese: 300 },
+  conflito: { raiz: 600, cenarios: [300], leitura_pessoal: 500, pergunta_chave: 300 },
+  linha_do_tempo: { marcos: [{ rotulo: 40, texto: 400 }], pergunta: 300 },
+  fase: { sinais_luta: 240, sinais_reparacao: 240, leitura: 500 },
+  repeticao: { lateralidade: 400, texto: 600, pergunta: 240 },
+  programa_familiar: { texto: 600, instrucao: 300, pergunta: 240 },
+  crencas: { itens: [120] }, corpo_pede: { pedidos: [300] },
+  primeiros_passos: { passos: [{ titulo: 60, texto: 300 }] },
+  releitura: { pergunta_30: 200, pergunta_90: 200 }, citacao_final: 400, frase_forte: 300
+};
+function corta(s, max) {
+  const t = s.trim();
+  if (t.length <= max) return t;
+  const parte = t.slice(0, max - 1);
+  const espaco = parte.lastIndexOf(' ');
+  return (espaco > max * 0.6 ? parte.slice(0, espaco) : parte).replace(/[\\s,;:.—-]+$/, '') + '…';
+}
+function ajusta(valor, limite) {
+  if (typeof limite === 'number') return typeof valor === 'string' ? corta(valor, limite) : valor;
+  if (Array.isArray(limite)) return Array.isArray(valor) ? valor.map((v) => ajusta(v, limite[0])) : valor;
+  if (valor && typeof valor === 'object') {
+    for (const k of Object.keys(limite)) if (k in valor) valor[k] = ajusta(valor[k], limite[k]);
+  }
+  return valor;
+}
+ajusta(conteudo, LIMITES);
+
+// Arvore: o modelo as vezes manda "" nos nos sobre os quais a pessoa nao contou
+// nada. O app so aceita anotacao de verdade: fica so o que tem texto.
+if (conteudo.programa_familiar) {
+  const NOS = ['avo_paterno', 'avo_paterna', 'avo_materno', 'avo_materna', 'pai', 'mae', 'tios', 'irmaos'];
+  const bruta = conteudo.programa_familiar.arvore || {};
+  const arvore = {};
+  for (const no of NOS) {
+    const v = typeof bruta[no] === 'string' ? bruta[no].trim() : '';
+    if (v) arvore[no] = v.slice(0, 80);
+  }
+  conteudo.programa_familiar.arvore = arvore;
+}
 return [{ json: { callback_url: base.callback_url, corpo: { mapa_id: base.mapa_id, conteudo } } }];`;
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
@@ -166,17 +207,17 @@ const nodes = [
     credentials: MAPA_AUTH,
     parameters: { httpMethod: 'POST', path: 'mapa-gerar', authentication: 'headerAuth', responseCode: 202, options: {} } },
   { id: id(), name: 'Prepara', type: 'n8n-nodes-base.code', typeVersion: 2, position: [224, 300], parameters: { jsCode: PREPARA } },
-  { id: id(), name: 'Busca no O Corpo Diz', type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase', typeVersion: 1.3, position: [448, 300],
-    credentials: SUPABASE, alwaysOutputData: true, onError: 'continueRegularOutput',
+  // Sem credencial: o chat-texto e o mesmo webhook aberto que o app chama. Resposta
+  // do cache (Postgres) em segundos; sintoma novo, o agente gera e grava (~30 s).
+  { id: id(), name: 'Pesquisa do sintoma (meDIZ)', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.4, position: [448, 300],
+    alwaysOutputData: true, onError: 'continueRegularOutput',
     parameters: {
-      mode: 'load',
-      tableName: { __rl: true, value: 'GuiaCompleto', mode: 'list', cachedResultName: 'GuiaCompleto' },
-      prompt: '={{ $json.entrada.sintoma }}',
-      topK: 6,
-      options: {}
+      method: 'POST', url: 'https://mediz-n8n.gjhi7d.easypanel.host/webhook/chat-texto',
+      sendBody: true, specifyBody: 'json',
+      // Aspas simples quebram a consulta de cache do chat-texto (SQL montado com o texto).
+      jsonBody: "={{ JSON.stringify({ threadId: 'mapa:' + $json.mapa_id, sintoma: String($json.entrada.sintoma).replace(/'/g, '’'), sintomaOriginal: $json.entrada.sintoma, language: 'pt-BR' }) }}",
+      options: { response: { response: { responseFormat: 'text', neverError: true } }, timeout: 90000 }
     } },
-  { id: id(), name: 'Embeddings OpenAI', type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi', typeVersion: 1.2, position: [448, 520],
-    credentials: OPENAI, parameters: { model: 'text-embedding-3-small', options: {} } },
   { id: id(), name: 'Monta núcleo', type: 'n8n-nodes-base.code', typeVersion: 2, position: [672, 300], parameters: { jsCode: MONTA_NUCLEO } },
   chamaOpenAi('OpenAI — núcleo', [896, 300]),
   { id: id(), name: 'Monta partes', type: 'n8n-nodes-base.code', typeVersion: 2, position: [1120, 300], parameters: { jsCode: MONTA_PARTES } },
@@ -193,24 +234,23 @@ const nodes = [
   { id: id(), name: 'Nota', type: 'n8n-nodes-base.stickyNote', typeVersion: 1, position: [0, -260],
     parameters: { width: 820, height: 500, content:
       '## MAPA — Gerador (Mapa da Origem Emocional)\n\n' +
-      'O app chama `POST /webhook/mapa-gerar` com `{ mapa_id, callback_url, entrada }` e recebe 202 na hora. Este fluxo gera as 14 seções e devolve em `callback_url` (`/api/mapa/resultado`).\n\n' +
+      'O app chama `POST /webhook/mapa-gerar` com `{ mapa_id, callback_url, entrada }` e recebe 202 na hora. A base é a pesquisa do meDIZ (`chat-texto`, a mesma do modo pesquisa do app); este fluxo personaliza com o quiz, gera as 14 seções e devolve em `callback_url` (`/api/mapa/resultado`).\n\n' +
       '- **Núcleo** fixa órgão, conflito e título; **Parte A** (seções 1–9) e **Parte B** (10–14 + frase_forte) saem em paralelo a partir dele.\n' +
       '- O app valida tudo (src/lib/mapa/conteudo.ts). Resposta 422 do callback = o modelo errou um campo: o Mapa fica em erro e a pessoa tenta de novo.\n' +
       '- Prompts e exemplo: outputs/n8n/mapa-gerador.prompts.js e .exemplo.json. Mudou? Rode mapa-gerador.create.js e reimporte.\n\n' +
-      '**Antes de ativar:** criar a credencial Header Auth "meDIZ Mapa" (Authorization: Bearer <MAPA_WEBHOOK_TOKEN>) e ligá-la em "Pedido do app" e "Devolve ao app"; confirmar a tabela da base (GuiaCompleto); Paulo aprovar 10 Mapas de teste.' } }
+      '**Antes de ativar:** criar a credencial Header Auth "meDIZ Mapa" (Authorization: Bearer <MAPA_WEBHOOK_TOKEN>) e ligá-la em "Pedido do app" e "Devolve ao app"; ligar OpenAI nos 2 nós OpenAI. Paulo aprovar 10 Mapas de teste.' } }
 ];
 
 const conn = (de, para) => ({ [de]: { main: [[{ node: para, type: 'main', index: 0 }]] } });
 const connections = Object.assign({},
   conn('Pedido do app', 'Prepara'),
-  conn('Prepara', 'Busca no O Corpo Diz'),
-  conn('Busca no O Corpo Diz', 'Monta núcleo'),
+  conn('Prepara', 'Pesquisa do sintoma (meDIZ)'),
+  conn('Pesquisa do sintoma (meDIZ)', 'Monta núcleo'),
   conn('Monta núcleo', 'OpenAI — núcleo'),
   conn('OpenAI — núcleo', 'Monta partes'),
   conn('Monta partes', 'OpenAI — partes A e B'),
   conn('OpenAI — partes A e B', 'Junta'),
-  conn('Junta', 'Devolve ao app'),
-  { 'Embeddings OpenAI': { ai_embedding: [[{ node: 'Busca no O Corpo Diz', type: 'ai_embedding', index: 0 }]] } }
+  conn('Junta', 'Devolve ao app')
 );
 
 const wf = { name: 'MAPA — Gerador [meDIZ]', nodes, connections, settings: { executionOrder: 'v1', timezone: 'America/Sao_Paulo', availableInMCP: true } };

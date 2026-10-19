@@ -22,12 +22,15 @@ caso('prepara le o corpo do webhook', prep[0].mapa_id === 'm1' && prep[0].entrad
 let erro = null; try { roda(PREPARA, [{ body: { mapa_id: 'm1' } }]) } catch (e) { erro = e.message }
 caso('pedido sem callback falha', /callback_url/.test(erro || ''));
 
-const nucleoReq = roda(MONTA_NUCLEO, [{ document: { pageContent: 'Pâncreas: conflito de resistência.' } }], { Prepara: prep });
+const RELATORIO = '**Sistema Endócrino**\n**Conflito Emocional Subjacente**\nPâncreas: conflito de resistência diante do que é doce demais ou amargo demais na vida. '.repeat(3);
+const nucleoReq = roda(MONTA_NUCLEO, [{ data: RELATORIO }], { Prepara: prep });
 const msgNucleo = nucleoReq[0].requisicao.messages[1].content;
-caso('nucleo leva trecho da base e as idades da pessoa', /resistência/.test(msgNucleo) && /aos 10/.test(msgNucleo));
+caso('nucleo leva a pesquisa do meDIZ e as idades da pessoa', /resistência/.test(msgNucleo) && /aos 10/.test(msgNucleo));
 caso('nucleo pede JSON', nucleoReq[0].requisicao.response_format.type === 'json_object');
 const semBase = roda(MONTA_NUCLEO, [{}], { Prepara: prep });
-caso('sem trecho da base, avisa o modelo', /Não há trechos/.test(semBase[0].contexto));
+caso('sem pesquisa, avisa o modelo', /não respondeu/.test(semBase[0].contexto));
+const erroPesquisa = roda(MONTA_NUCLEO, [{ data: 'Error in workflow' }], { Prepara: prep });
+caso('resposta curta da pesquisa (erro) nao vira base', /não respondeu/.test(erroPesquisa[0].contexto));
 
 const nucleo = { orgao: 'o pâncreas', sintoma_titulo: 'Diabetes tipo 1', lateral: null, grave: true };
 const partes = roda(MONTA_PARTES, [openai(nucleo)], { 'Monta núcleo': nucleoReq });
@@ -47,6 +50,12 @@ const conteudo = junta[0].corpo.conteudo;
 caso('junta as metades com versao 1 e callback', conteudo.versao === 1 && conteudo.crencas && conteudo.conflito && junta[0].callback_url.endsWith('/resultado'));
 caso('nucleo manda no orgao e no titulo', conteudo.sentido_biologico.orgao === 'o pâncreas' && conteudo.capa.sintoma_titulo === 'Diabetes tipo 1');
 caso('todas as secoes do schema presentes', Object.keys(C).every((k) => k in conteudo) && Object.keys(conteudo).length === Object.keys(C).length);
+const Bvazia = { ...B, programa_familiar: { ...C.programa_familiar, arvore: { pai: ' faleceu ', mae: '', avo_paterno: '  ', bisavo: 'x' } } };
+const arv = roda(JUNTA, [openai(A), openai(Bvazia)], { 'Monta partes': partes })[0].corpo.conteudo.programa_familiar.arvore;
+caso('arvore fica so com nos preenchidos e conhecidos', JSON.stringify(arv) === JSON.stringify({ pai: 'faleceu' }));
+const Alonga = { ...A, linha_do_tempo: { ...C.linha_do_tempo, marcos: C.linha_do_tempo.marcos.map((m, i) => i ? m : { ...m, rotulo: 'ENTRE A INFÂNCIA E O PRESENTE — O QUE SÓ VOCÊ SABE' }) } };
+const rot = roda(JUNTA, [openai(Alonga), openai(B)], { 'Monta partes': partes })[0].corpo.conteudo.linha_do_tempo.marcos[0].rotulo;
+caso('texto acima do limite e cortado na palavra, com reticencias', rot.length <= 40 && rot.endsWith('…') && !/s…$/.test(rot));
 const parteRuim = roda(JUNTA, [openai(A), { choices: [{ message: { content: 'nao e json' } }] }], { 'Monta partes': partes });
 caso('parte sem JSON vira erro para o app', parteRuim[0].corpo.erro && /Parte B/.test(parteRuim[0].corpo.erro) && parteRuim[0].corpo.mapa_id === 'm1');
 const falhaNucleo = roda(JUNTA, [nucleoQuebrado[0]], { 'Monta partes': nucleoQuebrado });

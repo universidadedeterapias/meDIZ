@@ -29,11 +29,10 @@ wf.nodes.forEach((n, i) => {
 });
 // embeddings precisa existir antes do vector store
 const iEmb = linhas.findIndex((l) => l.includes('embedding({'));
-const emb = linhas.splice(iEmb, 1)[0];
-linhas.unshift(emb);
+if (iEmb !== -1) linhas.unshift(linhas.splice(iEmb, 1)[0]);
 const nota = porNome['Nota'];
-const cadeia = ['Pedido do app', 'Prepara', 'Busca no O Corpo Diz', 'Monta núcleo', 'OpenAI — núcleo', 'Monta partes', 'OpenAI — partes A e B', 'Junta', 'Devolve ao app'];
-const codigo = `import { workflow, node, trigger, sticky, embedding } from '@n8n/workflow-sdk';
+const cadeia = ['Pedido do app', 'Prepara', 'Pesquisa do sintoma (meDIZ)', 'Monta núcleo', 'OpenAI — núcleo', 'Monta partes', 'OpenAI — partes A e B', 'Junta', 'Devolve ao app'];
+const codigo = `import { workflow, node, trigger, sticky } from '@n8n/workflow-sdk';
 
 // Gerado por mapa-gerador.sdk-build.js a partir de mapa_gerador_create.json. Nao editar a mao.
 
