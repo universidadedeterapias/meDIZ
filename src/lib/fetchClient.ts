@@ -8,6 +8,9 @@ type FetchInit = RequestInit
 function shouldInterceptPasswordReset(url: string, init?: FetchInit): boolean {
   if (typeof window === 'undefined') return true
   if (window.location.pathname.startsWith('/trocar-senha')) return false
+  // Quem acabou de pagar o Mapa entra pelo link e le o Mapa antes de qualquer
+  // coisa. O gate da senha vale quando a pessoa for para o app.
+  if (window.location.pathname.startsWith('/mapa')) return false
 
   const method = (init?.method ?? 'GET').toUpperCase()
   if (method === 'GET' && url.includes('/api/auth/change-password')) {

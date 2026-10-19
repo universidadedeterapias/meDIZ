@@ -1,0 +1,154 @@
+{
+  "entrada": {
+    "nome": "Rafael",
+    "sintoma": "Diabetes tipo 1",
+    "tempo": "desde os 20 anos",
+    "momentos": [
+      {
+        "momento": "Perdi meu pai",
+        "idade": "10"
+      },
+      {
+        "momento": "Saí de casa pra trabalhar",
+        "idade": "13"
+      },
+      {
+        "momento": "Diagnóstico",
+        "idade": "20"
+      }
+    ],
+    "familia": "Meu pai faleceu quando eu tinha 10 anos"
+  },
+  "conteudo": {
+    "versao": 1,
+    "capa": {
+      "sintoma_titulo": "Diabetes tipo 1",
+      "desde": "desde os 20 anos"
+    },
+    "carta": {
+      "paragrafos": [
+        "você vai ler aqui coisas que ninguém te disse. Algumas vão parecer óbvias depois de lidas — é assim que a verdade do corpo costuma chegar: parecendo que a gente sempre soube.",
+        "Este Mapa não substitui teu médico nem tua insulina. Ele faz outra coisa: mostra por que teu corpo escolheu este caminho, e o que ele está pedindo desde então."
+      ]
+    },
+    "reconhecimento": {
+      "afirmacoes": [
+        "Você aprendeu a se virar sozinho cedo demais — e hoje tem dificuldade de aceitar ajuda, mesmo quando precisa.",
+        "Quando alguém é doce com você, uma parte sua **desconfia**. Carinho sem motivo parece armadilha.",
+        "Você **resiste**. A tudo. Cansaço, dor, saudade — resistir virou tua forma de existir.",
+        "Tem uma raiva antiga, calma, que você não chama de raiva. Chama de **\"é assim mesmo\"**.",
+        "Você cuida de todo mundo. Mas quando a pergunta é **\"e você, como está?\"**, você muda de assunto."
+      ],
+      "fechamento": "Quantas dessas você marcou? Repara que nenhuma fala de açúcar."
+    },
+    "linguagem_popular": {
+      "frases": [
+        "A vida perdeu o doce.",
+        "Engoli seco.",
+        "Tive que ser forte.",
+        "Não posso me dar ao luxo."
+      ]
+    },
+    "sentido_biologico": {
+      "orgao": "o pâncreas",
+      "paragrafos": [
+        "O pâncreas tem duas funções: digerir o que entra e regular a doçura que circula no sangue. Quando ele reduz a insulina, o açúcar fica no sangue, disponível — o corpo se prepara pra **lutar**, não pra descansar.",
+        "Numa leitura emocional, isso costuma aparecer em quem precisou resistir a algo ou a alguém por muito tempo, enquanto a doçura da vida parecia ter sido retirada."
+      ],
+      "frase_sintese": "O corpo mantém o açúcar disponível para quem sente que precisa lutar sem parar — e deixa de absorver a doçura, porque aprendeu que ela **não vai durar**."
+    },
+    "conflito": {
+      "raiz": "Um conflito de **resistência**: algo que você teve que suportar, enfrentar ou empurrar, sem direito de fraquejar. E, junto, uma **perda de doçura**: a sensação de que o cuidado, a proteção, o colo — acabaram antes da hora.",
+      "cenarios": [
+        "Perdeu a pessoa que era a referência de proteção, cedo, e teve que ocupar o lugar dela.",
+        "Saiu de casa — ou foi empurrado pra fora — numa idade em que ainda deveria ser cuidado.",
+        "Precisou provar que aguentava, pra não dar trabalho a quem já estava sofrendo."
+      ],
+      "leitura_pessoal": "Rafael: aos 10 anos, teu pai. Aos 13, a rua e o trabalho. O corpo registrou que a doçura acabou aos 10 e que a luta começou aos 13.",
+      "pergunta_chave": "O que você não pôde fazer aos 10. O que você não pôde dizer aos 13."
+    },
+    "linha_do_tempo": {
+      "marcos": [
+        {
+          "rotulo": "10 ANOS",
+          "texto": "Perde o pai. A doçura da infância termina. Ninguém pergunta como você está — todos estão de luto.",
+          "aberto": false
+        },
+        {
+          "rotulo": "13 ANOS",
+          "texto": "Sai de casa pra trabalhar. A luta começa. Resistir vira identidade.",
+          "aberto": false
+        },
+        {
+          "rotulo": "ENTRE 13 E 20 — O QUE SÓ VOCÊ SABE",
+          "texto": "Sete anos de resistência. O que aconteceu aqui que te fez, finalmente, **baixar a guarda**?",
+          "aberto": true
+        },
+        {
+          "rotulo": "20 ANOS",
+          "texto": "O diagnóstico. Numa leitura emocional, o sintoma costuma se manifestar quando o corpo entende que a luta terminou — ou quando uma nova perda reabre a antiga.",
+          "aberto": false
+        }
+      ],
+      "pergunta": "O que mudou na tua vida nos 6 a 12 meses antes dos 20? Alguém entrou? Alguém saiu? Você conseguiu alguma coisa que sempre quis?"
+    },
+    "fase": {
+      "sinais_luta": "Tensão, sono curto, pensamento girando, mãos frias, \"não posso parar\".",
+      "sinais_reparacao": "Cansaço profundo, vontade de dormir, calor, emoção à flor da pele, \"não aguento mais\".",
+      "leitura": "Numa condição que já dura anos, o que importa é o **ciclo**: em que momentos da vida a luta volta? Quando você sente que pode baixar a guarda? Teu corpo alterna entre os dois — e você reconhece cada um."
+    },
+    "repeticao": {
+      "lateralidade": null,
+      "texto": "Episódios de descontrole costumam acompanhar momentos em que a história original se repete: alguém que você protege adoece; você precisa sustentar alguém sozinho; ou — o mais traiçoeiro — alguém te oferece cuidado de verdade e você não sabe receber.",
+      "pergunta": "Pensa nas últimas vezes que desregulou. Quem estava por perto? O que estava acontecendo?"
+    },
+    "programa_familiar": {
+      "texto": "Muitas vezes o corpo não está respondendo só à nossa história. Está repetindo um programa que a família já carregava: homens que perderam o pai cedo, que tiveram que sustentar a casa, que não puderam ser doces.",
+      "instrucao": "Marque quem, na tua família, teve diabetes, problemas de pâncreas — ou uma história de \"ter que ser forte cedo\".",
+      "arvore": {
+        "pai": "faleceu — você tinha 10"
+      },
+      "pergunta": "Quem, antes de você, teve que virar homem antes da hora? Essa é a pergunta pra levar pra tua mãe."
+    },
+    "crencas": {
+      "itens": [
+        "Se eu parar, tudo cai.",
+        "Homem não chora, homem resolve.",
+        "O que é bom não dura.",
+        "Não posso depender de ninguém.",
+        "Eu aguento.",
+        "Não tenho tempo pra sentir."
+      ]
+    },
+    "corpo_pede": {
+      "pedidos": [
+        "Eu preciso que você pare de lutar por um momento — só pra ver que o chão continua aqui.",
+        "Eu preciso que você **receba**. Um carinho, um favor, um \"deixa que eu faço\". Sem devolver no mesmo dia.",
+        "Eu preciso que você **chore o teu pai**. Com 10 anos você não pôde. Agora pode.",
+        "Eu preciso que você volte a achar doce alguma coisa — e acredite que ela fica."
+      ]
+    },
+    "primeiros_passos": {
+      "passos": [
+        {
+          "titulo": "Escreve a resposta.",
+          "texto": "\"O que eu não pude fazer aos 10, e o que eu não pude dizer aos 13.\" Uma página. Pra ninguém ler."
+        },
+        {
+          "titulo": "Conta pra uma pessoa.",
+          "texto": "Uma só. O que você descobriu neste Mapa. Dizer em voz alta muda o registro."
+        },
+        {
+          "titulo": "Fecha a linha do tempo.",
+          "texto": "Preenche o espaço entre os 13 e os 20. O corpo sabe a data; você também."
+        }
+      ]
+    },
+    "releitura": {
+      "pergunta_30": "o que mudou na forma como eu olho pra minha diabetes?",
+      "pergunta_90": "o que eu descobri que não estava neste Mapa?"
+    },
+    "citacao_final": "O corpo não adoece por acaso. Ele adoece porque, num momento, essa foi a única forma de continuar.",
+    "frase_forte": "O corpo mantém o açúcar disponível para quem sente que precisa lutar sem parar — e deixa de absorver a doçura, porque aprendeu que ela não vai durar."
+  }
+}

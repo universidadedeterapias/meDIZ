@@ -69,6 +69,8 @@ model User {
   emailSequenceEnrollments EmailSequenceEnrollment[]
   journeyEvents            JourneyEvent[]
   journeyWakeupTouches     JourneyWakeupTouch[]
+  mapasOrigem              MapaOrigem[]
+  mapaCreditos             MapaCredito[]
 
   @@index([mensagem_enviada])
   @@index([status_verificacao])
@@ -1499,4 +1501,89 @@ model AlertaAutomacao {
 
   @@index([ultimaVezEm])
   @@map("alertas_automacao")
+}
+
+/// Mapa da Origem Emocional (Epic 7): relatorio de 14 secoes vendido a partir
+/// do WhatsApp. Nasce anonimo na pagina publica /mapa e so ganha dono no
+/// pagamento. Mapa pago nunca e apagado por fluxo nenhum (limpeza, troca de
+/// plano, cancelamento); so a exclusao da propria conta solta o dono.
+model MapaOrigem {
+  id          String @id @default(uuid())
+  /// Identificador que viaja na URL e no checkout ("mo" + 24 [a-z0-9]).
+  publicToken String @unique @map("public_token") @db.VarChar(32)
+
+  /// Numero do WhatsApp vindo do link da Aline (?id=). Chave do lead.
+  telefone String? @db.VarChar(20)
+
+  /// Respostas do quiz. So nome e sintoma sao obrigatorios.
+  nome     String  @db.VarChar(80)
+  sintoma  String  @db.VarChar(500)
+  tempo    String? @db.VarChar(120)
+  /// [{ "momento": string, "idade": string | null }], ate 3.
+  momentos Json?
+  familia  String? @db.VarChar(500)
+
+  /// Mapa de outra pessoa (2o Mapa): o texto sai em terceira pessoa.
+  paraOutraPessoa Boolean @default(false) @map("para_outra_pessoa")
+  relacao         String? @db.VarChar(60)
+
+  /// gerando | pronto | erro
+  status              String    @default("gerando") @db.VarChar(16)
+  tentativasGeracao   Int       @default(0) @map("tentativas_geracao")
+  geracaoIniciadaEm   DateTime? @map("geracao_iniciada_em")
+  geracaoConcluidaEm  DateTime? @map("geracao_concluida_em")
+  erroGeracao         String?   @map("erro_geracao") @db.VarChar(500)
+  /// Conteudo das 14 secoes (src/lib/mapa/conteudo.ts). Nunca sai da API antes do pagamento.
+  conteudo            Json?
+  schemaVersion       Int?      @map("schema_version")
+  fraseForte          String?   @map("frase_forte") @db.VarChar(300)
+
+  /// Dono: preenchido no pagamento (ou no resgate de credito).
+  userId        String?   @map("user_id")
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  paidAt        DateTime? @map("paid_at")
+  provider      String?   @db.VarChar(32)
+  transactionId String?   @map("transaction_id") @db.VarChar(120)
+  /// Como o pagamento achou este Mapa: token | telefone | credito
+  vinculo       String?   @db.VarChar(16)
+
+  /// Entrega (e-mail + webhook n8n do WhatsApp).
+  entregaStatus String?   @map("entrega_status") @db.VarChar(16)
+  entregaErro   String?   @map("entrega_erro") @db.VarChar(500)
+  entregueEm    DateTime? @map("entregue_em")
+
+  /// Aparelho que gerou (sha256 do cookie). Deixa esse aparelho ler o Mapa
+  /// pago sem login — e o retorno do checkout.
+  dispositivoHash String? @map("dispositivo_hash") @db.VarChar(64)
+  ipHash          String? @map("ip_hash") @db.VarChar(64)
+  utm             Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Um Mapa por venda: o webhook repetido nao desbloqueia dois.
+  @@unique([provider, transactionId])
+  @@index([telefone, createdAt])
+  @@index([ipHash, createdAt])
+  @@index([dispositivoHash, createdAt])
+  @@index([userId])
+  @@map("mapas_origem")
+}
+
+/// Pagamento do Mapa que nao achou o Mapa (sem token e sem telefone no
+/// payload). Vira "1 Mapa a resgatar" na conta: ninguem paga e fica sem.
+model MapaCredito {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        String    @db.VarChar(32)
+  transactionId   String    @map("transaction_id") @db.VarChar(120)
+  purchaseEventId String?   @map("purchase_event_id")
+  mapaId          String?   @unique @map("mapa_id")
+  usadoEm         DateTime? @map("usado_em")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@unique([provider, transactionId])
+  @@index([userId, usadoEm])
+  @@map("mapa_creditos")
 }

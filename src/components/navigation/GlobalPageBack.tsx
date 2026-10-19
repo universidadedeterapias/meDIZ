@@ -36,6 +36,8 @@ function shouldShowGlobalBack(pathname: string): boolean {
   if (pathname.startsWith('/simulador/')) return false
   if (pathname.startsWith('/prof/')) return false
   if (pathname.startsWith('/admin')) return false
+  // Pagina de venda do Mapa: sem menu e sem voltar (spec da tela 1).
+  if (pathname === '/mapa' || pathname.startsWith('/mapa/')) return false
   if (
     PAGES_WITH_HEADER_BACK.some(
       (p) => pathname === p || pathname.startsWith(`${p}/`)
