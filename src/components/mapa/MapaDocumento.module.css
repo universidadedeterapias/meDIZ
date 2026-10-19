@@ -1,0 +1,412 @@
+/*
+ * Mapa da Origem Emocional — o documento.
+ * Valores do Mapa de exemplo aprovado (artifact de 14/10/2026): cor do produto
+ * #585bef, Plus Jakarta Sans no corpo, Lora nas citacoes. O resto do app usa
+ * #6366f1; aqui e a marca do Mapa, de proposito.
+ */
+.doc {
+  --brand: #585bef;
+  --brand-dark: #1e1b4b;
+  --brand-soft: #eef0ff;
+  --ink: #1e293b;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --card: #ffffff;
+  --warm: #fb923c;
+  --gold: #fbbf24;
+  color: var(--ink);
+  font-family: var(--font-jakarta), system-ui, sans-serif;
+  line-height: 1.55;
+}
+
+:global(.dark) .doc {
+  --ink: #e2e8f0;
+  --muted: #94a3b8;
+  --line: #1f2440;
+  --card: #141733;
+  --brand-soft: #1b1e45;
+}
+
+.doc p {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+
+.doc b {
+  font-weight: 700;
+}
+
+.cover {
+  background: linear-gradient(160deg, #4f52e8, #2b2f9c 70%, #1e1b4b);
+  color: #fff;
+  border-radius: 22px;
+  padding: 32px 26px;
+  margin-bottom: 28px;
+  position: relative;
+  overflow: hidden;
+}
+.coverBrand {
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: -0.2px;
+  opacity: 0.9;
+}
+.coverBrand span {
+  color: var(--gold);
+}
+.cover h1 {
+  font-size: 30px;
+  line-height: 1.1;
+  margin: 22px 0 8px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+}
+.coverSub {
+  font-size: 14px !important;
+  color: #c7d2fe;
+  margin: 0 0 22px !important;
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.meta span {
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.14);
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+.cap {
+  font-family: var(--font-lora), Georgia, serif;
+  font-style: italic;
+  font-size: 14px !important;
+  color: #e0e7ff;
+  margin: 22px 0 0 !important;
+  border-left: 2px solid var(--gold);
+  padding-left: 12px;
+}
+
+.part {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  color: var(--brand);
+  margin: 36px 0 6px;
+}
+.doc h2 {
+  font-size: 22px;
+  line-height: 1.2;
+  margin: 28px 0 6px;
+  letter-spacing: -0.4px;
+  font-weight: 800;
+}
+.part + h2 {
+  margin-top: 0;
+}
+.lead {
+  font-size: 14px !important;
+  color: var(--muted);
+  margin: 0 0 16px !important;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px;
+  margin: 12px 0;
+}
+.card > :last-child {
+  margin-bottom: 0;
+}
+
+.q {
+  font-family: var(--font-lora), Georgia, serif;
+  font-style: italic;
+  font-size: 16px;
+  color: var(--ink);
+  background: var(--brand-soft);
+  border-left: 3px solid var(--brand);
+  padding: 12px 14px;
+  border-radius: 0 12px 12px 0;
+  margin: 14px 0;
+}
+
+.key {
+  background: var(--brand-dark);
+  color: #fff;
+  border-radius: 16px;
+  padding: 18px;
+  margin: 14px 0;
+  font-size: 15px;
+}
+.key b {
+  color: var(--gold);
+}
+
+.check {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+.check li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 15px;
+}
+.check li:last-child {
+  border: 0;
+}
+.box {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--brand);
+  border-radius: 6px;
+  flex: none;
+  margin-top: 2px;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+.boxOn {
+  background: var(--brand);
+}
+
+.letter p {
+  font-family: var(--font-lora), Georgia, serif;
+  font-size: 16px;
+}
+.sig {
+  font-family: var(--font-lora), Georgia, serif;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.popular p {
+  font-style: italic;
+}
+
+.timeline {
+  position: relative;
+  padding-left: 22px;
+  margin: 10px 0;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--line);
+}
+.tl {
+  position: relative;
+  padding: 0 0 16px;
+}
+.tl::before {
+  content: '';
+  position: absolute;
+  left: -21px;
+  top: 5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--brand);
+}
+.tlOpen::before {
+  background: var(--card);
+  border: 2px solid var(--brand);
+  width: 8px;
+  height: 8px;
+}
+.tlY {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--brand);
+  letter-spacing: 0.6px;
+}
+.tlT {
+  font-size: 15px;
+}
+
+.blank {
+  border-bottom: 1.5px solid var(--line);
+  height: 24px;
+  margin: 6px 0;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.cell {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 13px;
+}
+.cell b {
+  display: block;
+  color: var(--brand);
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  margin-bottom: 4px;
+}
+.small {
+  margin-top: 12px !important;
+  font-size: 14px !important;
+}
+.note {
+  font-size: 13px !important;
+  color: var(--muted);
+}
+
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  margin: 10px 0;
+}
+.treeRow {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+.node {
+  flex: 1;
+  border: 1.5px dashed var(--line);
+  border-radius: 12px;
+  min-height: 54px;
+  padding: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+.node small {
+  display: block;
+  font-size: 10px;
+  margin-top: 2px;
+}
+.nodeMe {
+  border-style: solid;
+  border-color: var(--brand);
+  color: var(--brand);
+  font-weight: 800;
+}
+
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--warm);
+  margin-bottom: 6px;
+}
+
+.bodySays p {
+  font-family: var(--font-lora), Georgia, serif;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 10px 0;
+}
+.step p {
+  margin: 0 !important;
+}
+.n {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.door {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.door a,
+.door span {
+  display: block;
+  background: var(--brand-soft);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 14px;
+}
+.door b {
+  color: var(--brand);
+}
+
+.quote {
+  font-family: var(--font-lora), Georgia, serif;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink);
+  text-align: center;
+  padding: 24px 10px;
+}
+.quote span {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.foot {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 30px;
+}
+.caution {
+  font-size: 12px !important;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  margin-top: 16px !important;
+}
+
+@media print {
+  .doc {
+    --card: #ffffff;
+  }
+  .cover,
+  .key {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .card,
+  .key,
+  .q,
+  .tl,
+  .step {
+    break-inside: avoid;
+  }
+  .part {
+    break-before: page;
+  }
+}

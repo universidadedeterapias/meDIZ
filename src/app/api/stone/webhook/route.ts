@@ -25,6 +25,8 @@ import {
   parseStoneWebhook
 } from '@/lib/stone/parse-webhook'
 import { validateWebhookBearerWhenConfigured } from '@/lib/webhookAuth'
+import { isMapaProduct } from '@/lib/mapa/produto'
+import { processarVendaMapa } from '@/lib/mapa/pagamento'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -89,6 +91,36 @@ export async function POST(request: NextRequest) {
       country: parsed.country,
       payload
     })
+
+    // Mapa da Origem Emocional: nao e produto de catalogo nem libera nada da
+    // biblioteca — desbloqueia o Mapa gerado em /mapa e tem entrega propria.
+    // Sai antes do mapeamento para nunca cair nas regras de "e livro?", na
+    // trava de aviso unico do `deliverAccess` nem nos Despertadores.
+    if (isMapaProduct('stone', parsed.stoneProductId)) {
+      const resultado = await processarVendaMapa({
+        provider: 'stone',
+        transactionId: parsed.transactionId,
+        email: parsed.email,
+        nome: parsed.nome,
+        cpf: parsed.cpf,
+        telefone: parsed.telefone,
+        purchaseEventId,
+        payload
+      })
+      await settlePurchaseEvent(purchaseEventId, {
+        status: 'processed',
+        reason:
+          resultado.tipo === 'credito'
+            ? 'Mapa: pagamento sem Mapa vinculado — crédito de resgate'
+            : `Mapa: desbloqueado por ${resultado.vinculo}`
+      })
+      return NextResponse.json({
+        received: true,
+        success: true,
+        action: resultado.tipo === 'credito' ? 'mapa_credito' : 'mapa_desbloqueado',
+        repetido: resultado.repetido
+      })
+    }
 
     let catalogProductId = parsed.catalogProductId
     // O titulo so serve a compra com despacho, que anuncia o nome do livro na
