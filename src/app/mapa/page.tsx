@@ -50,6 +50,8 @@ function QuizMapa() {
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const campoRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null)
+  // Atraso da primeira pergunta so na chegada; voltar ao passo 1 nao espera.
+  const [primeiraEntrada, setPrimeiraEntrada] = useState(true)
 
   useEffect(() => {
     const t = setTimeout(() => campoRef.current?.focus(), 80)
@@ -67,6 +69,7 @@ function QuizMapa() {
       campoRef.current?.focus()
       return
     }
+    setPrimeiraEntrada(false)
     if (passo < TOTAL) setPasso(passo + 1)
   }
 
@@ -121,7 +124,7 @@ function QuizMapa() {
   const pct = enviando ? 100 : PCT[passo - 1]
 
   return (
-    <main className={styles.wrap}>
+    <main className={`${styles.wrap} ${styles.entrada}`}>
       <Marca />
       <h1 className={styles.h1}>Mapa da Origem Emocional</h1>
       <p className={styles.sub}>
@@ -136,7 +139,12 @@ function QuizMapa() {
       </div>
 
       {passo === 1 && (
-        <div className={styles.step} key="p1">
+        <div
+          className={styles.step}
+          key="p1"
+          // So a primeira pergunta espera o cabecalho terminar de entrar.
+          style={primeiraEntrada ? { animationDelay: '300ms' } : undefined}
+        >
           <label htmlFor="nome" className={styles.label}>
             Como você se chama?
           </label>

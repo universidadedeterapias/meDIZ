@@ -32,8 +32,11 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+    /** Troca o véu escuro padrão (ex.: véu desfocado dos modais em vidro). */
+    overlayClassName?: string
+  }
+>(({ className, overlayClassName, children, ...props }, ref) => {
   // Verifica se há DialogTitle nos children para acessibilidade
   const childrenArray = React.Children.toArray(children)
   const hasVisibleTitle = childrenArray.some((child: React.ReactNode) => {
@@ -54,7 +57,7 @@ const DialogContent = React.forwardRef<
 
   return (
     <DialogPortal>
-      <DialogOverlay />
+      <DialogOverlay className={overlayClassName} />
       <DialogPrimitive.Content
         ref={ref}
         className={cn(

@@ -16,8 +16,8 @@ import PromotionPopup from '@/components/PromotionPopup'
 import Spinner from '@/components/Spinner'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { useTranslation } from '@/i18n/useTranslation'
+import { useSymptomSearch } from '@/hooks/use-symptom-search'
 import { getUpgradeLink } from '@/lib/upgradeLinks'
-import { UserPeriod } from '@/lib/userPeriod'
 import { FirstName } from '@/lib/utils'
 import { User } from '@/types/User'
 import { Result } from '../chat/result'
@@ -36,9 +36,9 @@ type RawUser = {
 }
 
 /**
- * Modo pesquisa por sintoma: uma pergunta devolve um relatório estruturado
- * (`Result`), diferente do chat conversacional multi-turno do `/chat`.
- * Atendido por `/api/openai` + webhook n8n `chat-texto`.
+ * Modo pesquisa por sintoma em rota própria: hoje é por onde o histórico reabre
+ * uma pesquisa antiga. A pesquisa nova nasce na caixa da home do `/chat`; as
+ * duas usam o mesmo `useSymptomSearch`.
  */
 export default function Page() {
   const router = useRouter()
@@ -48,19 +48,26 @@ export default function Page() {
   const [user, setUser] = useState<User | null>(null)
   const [checkingProfile, setCheckingProfile] = useState(true)
   const [input, setInput] = useState('')
-  const [responses, setResponses] = useState<string[]>([])
-  const [loading, setLoading] = useState(false)
-  const [selectedThread, setSelectedThread] = useState<string | null>(null)
   const [limitReached, setLimitReached] = useState(false)
-  const [elapsedMs, setElapsedMs] = useState<number | null>(null)
-  const [originalQuestion, setOriginalQuestion] = useState<string>('')
-  const [chatError, setChatError] = useState<string | null>(null)
+  const [showPopup, setShowPopup] = useState(false)
   const handledThreadParamRef = useRef<string | null>(null)
 
-  // Estados relacionados às regras de uso do plano gratuito
-  const [userPeriod, setUserPeriod] = useState<UserPeriod>('first-week')
-  const [fullVisualization, setFullVisualization] = useState(true)
-  const [showPopup, setShowPopup] = useState(false)
+  const {
+    responses,
+    loading,
+    threadId: selectedThread,
+    elapsedMs,
+    question: originalQuestion,
+    error: chatError,
+    userPeriod,
+    fullVisualization,
+    search,
+    openThread,
+    reset
+  } = useSymptomSearch({
+    onLimitReached: () => setLimitReached(true),
+    onShowPopup: () => setShowPopup(true)
+  })
 
   // 1) Confere perfil e gates de onboarding. A rota é acessível por link direto,
   // então repete as checagens do /chat em vez de confiar na navegação de origem.
@@ -129,40 +136,7 @@ export default function Page() {
     }
   }, [router])
 
-  // 2) Carrega as respostas quando uma pesquisa antiga é reaberta
-  useEffect(() => {
-    if (checkingProfile || !selectedThread) return
-    let cancelled = false
-    setLoading(true)
-
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 60000)
-
-    fetch(`/api/openai/messages?threadId=${selectedThread}`, {
-      signal: controller.signal
-    })
-      .then(r => r.json())
-      .then(data => {
-        if (cancelled) return
-        setResponses(data.responses?.assistant || [])
-        // Histórico não tem cronômetro; a pergunta original vem da própria thread.
-        setElapsedMs(0)
-        setOriginalQuestion(data.responses?.user?.[0] || '')
-      })
-      .catch(console.error)
-      .finally(() => {
-        clearTimeout(timeoutId)
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [checkingProfile, selectedThread])
-
-  // 3) Abertura por URL (`/pesquisa?threadId=`), usada pela tela de histórico
+  // 2) Abertura por URL (`/pesquisa?threadId=`), usada pela tela de histórico
   useEffect(() => {
     if (checkingProfile || loading) return
     const requestedThread = searchParams.get('threadId')?.trim()
@@ -171,104 +145,14 @@ export default function Page() {
 
     handledThreadParamRef.current = requestedThread
     router.replace('/pesquisa', { scroll: false })
-    setSelectedThread(requestedThread)
-  }, [checkingProfile, loading, router, searchParams])
+    openThread(requestedThread)
+  }, [checkingProfile, loading, openThread, router, searchParams])
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = () => {
     if (!input.trim() || loading) return
-    handleSendMessageFromText(input.trim())
-  }
-
-  const handleSendMessageFromText = async (text: string) => {
-    if (loading) return
-    const trimmedText = text.trim()
-    if (!trimmedText) return
-
-    setLoading(true)
-    setChatError(null)
-    setResponses([])
-    setElapsedMs(null)
-
-    // Guarda a pergunta original para o cabeçalho do relatório e para o PDF
-    setOriginalQuestion(trimmedText)
-
-    const t0 = performance.now()
-
-    try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 60000)
-
-      const res = await fetch('/api/openai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        signal: controller.signal,
-        body: JSON.stringify({ message: trimmedText, language })
-      }).finally(() => {
-        clearTimeout(timeoutId)
-      })
-
-      if (res.status === 401) {
-        router.replace('/login')
-        return
-      }
-
-      if (res.status === 403) {
-        const data = await res.json()
-        if (data.limitReached) {
-          setLimitReached(true)
-          return
-        }
-      }
-
-      if (!res.ok) {
-        const errorText = await res.text()
-        throw new Error(`Erro na API: ${res.status} - ${errorText}`)
-      }
-
-      const data = await res.json()
-
-      if (data.threadId) {
-        // A thread já vem carregada nesta resposta; marcar como tratada evita
-        // que o efeito de abertura por URL recarregue tudo de novo.
-        handledThreadParamRef.current = data.threadId
-        setSelectedThread(data.threadId)
-      }
-
-      if (data.userPeriod) {
-        setUserPeriod(data.userPeriod as UserPeriod)
-        setFullVisualization(data.fullVisualization || false)
-      }
-
-      if (data.shouldShowPopup) {
-        setTimeout(() => setShowPopup(true), 2000)
-      }
-
-      if (
-        Array.isArray(data.responses?.assistant) &&
-        data.responses.assistant.length > 0
-      ) {
-        setResponses(data.responses.assistant)
-      } else if (typeof data.responses?.assistant === 'string') {
-        setResponses([data.responses.assistant])
-      } else {
-        throw new Error('Resposta inválida do servidor')
-      }
-
-      setElapsedMs(performance.now() - t0)
-      setInput('')
-    } catch (err) {
-      setChatError(
-        err instanceof Error
-          ? err.message
-          : t(
-              'chat.error.generic',
-              'Erro ao processar sua mensagem. Tente novamente.'
-            )
-      )
-    } finally {
-      setLoading(false)
-    }
+    const text = input.trim()
+    setInput('')
+    void search(text)
   }
 
   const handleSubscribe = () => {
@@ -278,12 +162,8 @@ export default function Page() {
 
   const startNewSearch = () => {
     handledThreadParamRef.current = null
-    setSelectedThread(null)
-    setResponses([])
+    reset()
     setInput('')
-    setElapsedMs(null)
-    setOriginalQuestion('')
-    setChatError(null)
   }
 
   if (checkingProfile || !user) {
@@ -315,13 +195,12 @@ export default function Page() {
       <AppSidebar
         history={[]}
         selectedThread={selectedThread}
-        onSelectSession={setSelectedThread}
+        onSelectSession={openThread}
         onNewChat={startNewSearch}
         onStartAgentChat={agent => router.push(`/chat?start=${agent}`)}
         onSelectSymptom={symptomText => {
           startNewSearch()
-          setInput(symptomText)
-          handleSendMessageFromText(symptomText)
+          void search(symptomText)
         }}
       />
 

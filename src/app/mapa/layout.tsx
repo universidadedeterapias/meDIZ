@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Lora, Plus_Jakarta_Sans } from 'next/font/google'
+import { CabecalhoApp } from './CabecalhoApp'
 import styles from './mapa.module.css'
 
 /**
@@ -28,5 +29,10 @@ export const metadata: Metadata = {
 }
 
 export default function MapaLayout({ children }: { children: React.ReactNode }) {
-  return <div className={`${jakarta.variable} ${lora.variable} ${styles.fundo}`}>{children}</div>
+  return (
+    <div className={`${jakarta.variable} ${lora.variable} ${styles.fundo}`}>
+      <CabecalhoApp />
+      {children}
+    </div>
+  )
 }

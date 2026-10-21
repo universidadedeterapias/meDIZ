@@ -535,3 +535,53 @@
     background: #fff;
   }
 }
+
+/* Entrou pelo app: o cabecalho do app ja traz a marca, entao a do quiz sai
+   e o topo encolhe para nao sobrar um vazio embaixo do cabecalho. */
+:global([data-mapa-app]) .brand {
+  display: none;
+}
+
+:global([data-mapa-app]) .wrap {
+  padding-top: 24px;
+}
+
+/* Entrada do quiz: titulo, subtitulo, progresso e selos sobem e aparecem em
+   sequencia. A pergunta (.step) tem animacao propria a cada passo, entao fica
+   de fora e so ganha um atraso na primeira vez (inline, no page.tsx). */
+@keyframes entra {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.entrada > :not(.step) {
+  animation: entra 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.entrada > :nth-child(2) {
+  animation-delay: 70ms;
+}
+.entrada > :nth-child(3) {
+  animation-delay: 140ms;
+}
+.entrada > :nth-child(4) {
+  animation-delay: 210ms;
+}
+.entrada > :nth-child(5) {
+  animation-delay: 260ms;
+}
+.entrada > :nth-child(n + 6) {
+  animation-delay: 420ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entrada > *,
+  .step {
+    animation: none;
+  }
+}

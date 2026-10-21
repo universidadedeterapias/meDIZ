@@ -1,16 +1,20 @@
 'use client'
 
 import { useRef } from 'react'
+import { LayoutGroup, MotionConfig, motion } from 'framer-motion'
 import {
   HeartPulse,
   Home,
+  Map as MapIcon,
   MessageCircleMore,
-  PawPrint,
-  Search
+  PawPrint
 } from 'lucide-react'
 
+import { Result } from '@/app/chat/result'
 import { ChatComposer } from '@/components/chat/ChatComposer'
+import { SymptomSearchLoader } from '@/components/chat/SymptomSearchLoader'
 import { VoiceOrb } from '@/components/chat/VoiceOrb'
+import type { useSymptomSearch } from '@/hooks/use-symptom-search'
 import { useTranslation } from '@/i18n/useTranslation'
 import { getAgentWelcomeMessage } from '@/lib/conversational-chat/config'
 import type {
@@ -36,11 +40,35 @@ type ChatHomeExperienceProps = {
     entryPoint?: ConciergeEntryPoint
   ) => void
   /**
-   * Abre o modo pesquisa por sintoma (`/pesquisa`). Quando informado, o atalho
-   * "Quero pesquisar" navega para lá em vez de iniciar uma conversa com o porteiro.
+   * Abre o quiz do Mapa da Origem Emocional (`/mapa`). Quando informado, o atalho
+   * "Gerar mapa personalizado" navega para lá em vez de iniciar uma conversa com
+   * o porteiro.
    */
-  onOpenResearch?: () => void
+  onOpenMapa?: () => void
+  /**
+   * Pesquisa por sintoma disparada pela caixa da home. Enquanto ela está ativa a
+   * tela não muda de rota: a barra sobe para o topo, a esfera vira o loading e o
+   * relatório aparece logo abaixo.
+   */
+  search: ReturnType<typeof useSymptomSearch>
+  onSubscribe: () => void
 }
+
+// Mesma curva para a barra e a esfera, para as duas andarem juntas.
+const glide = { type: 'spring', stiffness: 260, damping: 32, mass: 0.9 } as const
+
+// Entrada da home: cada bloco sobe um pouco e aparece, em sequência. Anima o
+// bloco e não os botões, que já têm o próprio hover com translate.
+const enter = (step: number) =>
+  ({
+    initial: { opacity: 0, y: 14 },
+    animate: { opacity: 1, y: 0 },
+    transition: {
+      duration: 0.55,
+      ease: [0.22, 1, 0.36, 1],
+      delay: 0.08 + step * 0.07
+    }
+  }) as const
 
 const agentStyles: Record<SpecialistAgent, { icon: string }> = {
   body: {
@@ -62,7 +90,9 @@ export function ChatHomeExperience({
   onSubmit,
   onSubmitText,
   onStartConversation,
-  onOpenResearch
+  onOpenMapa,
+  search,
+  onSubscribe
 }: ChatHomeExperienceProps) {
   const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -87,9 +117,9 @@ export function ChatHomeExperience({
       )
     },
     {
-      id: 'research',
+      id: 'mapa',
       entryPoint: 'research' as const,
-      label: t('chat.home.intent.research', 'Quero pesquisar'),
+      label: t('chat.home.intent.mapa', 'Gerar mapa personalizado'),
       starter: t(
         'chat.agent.concierge.welcome',
         'Claro! Sobre o que você quer pesquisar?'
@@ -130,54 +160,155 @@ export function ChatHomeExperience({
     }
   ]
 
+  const busy = loading || search.loading
+
   const submit = () => {
-    if (!input.trim() || loading) return
+    if (!input.trim() || busy) return
     onSubmit()
   }
 
+  // A barra é a mesma nas duas fases: o `layoutId` faz ela deslizar do rodapé
+  // para o topo em vez de sumir e reaparecer.
+  const renderComposer = (className: string) => (
+    <motion.div layoutId="home-composer" transition={glide} className={className}>
+      <ChatComposer
+        ref={inputRef}
+        value={input}
+        loading={busy}
+        onChange={onInputChange}
+        onSubmit={submit}
+        onSubmitText={onSubmitText}
+        placeholder={
+          search.active
+            ? t('search.input.again', 'Pesquisar outro sintoma…')
+            : // A caixa da home agora é a pesquisa por sintoma, não a conversa.
+              t('search.input.placeholder', 'Qual sintoma você quer pesquisar?')
+        }
+      />
+    </motion.div>
+  )
+
+  if (search.active) {
+    return (
+      <MotionConfig reducedMotion="user">
+        <LayoutGroup>
+          <section
+            key="search"
+            className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-hidden px-3 pt-3 sm:px-4 sm:pt-5">
+            {/* A tela fica parada: só a área do relatório rola, a barra não sai do topo. */}
+            {renderComposer('relative z-20 shrink-0')}
+
+            {search.loading ? (
+              <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 pb-8 pt-6">
+                <motion.div
+                  layoutId="home-orb"
+                  transition={glide}
+                  className="aspect-square h-[min(18rem,42svh)]"
+                >
+                  <VoiceOrb className="h-full w-full" />
+                </motion.div>
+                <motion.div
+                  className="w-full"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25, duration: 0.4, ease: 'easeOut' }}
+                >
+                  <SymptomSearchLoader question={search.question} />
+                </motion.div>
+              </div>
+            ) : (
+              <motion.div
+                className="-mx-1 mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-1 pb-6 [scrollbar-width:thin]"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, ease: 'easeOut' }}
+              >
+                {search.responses.map((md, idx) => (
+                  <Result
+                    key={idx}
+                    markdown={md}
+                    elapsedMs={search.elapsedMs ?? 0}
+                    userPeriod={search.userPeriod}
+                    fullVisualization={search.fullVisualization}
+                    onSubscribe={onSubscribe}
+                    userQuestion={search.question}
+                    sessionId={search.threadId || undefined}
+                  />
+                ))}
+                {search.error ? (
+                  <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-200">
+                    {search.error}
+                  </p>
+                ) : null}
+              </motion.div>
+            )}
+          </section>
+        </LayoutGroup>
+      </MotionConfig>
+    )
+  }
+
   return (
-    <section className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-y-auto px-4 pb-4 pt-4 sm:px-7 sm:pb-6 sm:pt-6">
+    <MotionConfig reducedMotion="user">
+    <LayoutGroup>
+    <section key="home" className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-y-auto px-4 pb-4 pt-4 sm:px-7 sm:pb-6 sm:pt-6">
       {/* Unico elemento flexivel da tela: absorve toda a sobra (ou falta) de altura,
           preenchendo o que os outros blocos (shrink-0) nao usam. Isso e o que faz a
           tela caber sem scroll em qualquer altura de viewport, sem breakpoints fixos —
           a esfera so encolhe/cresce de verdade porque o layout mede o espaço restante.
           O card "Oi, {nome}" vive dentro desse mesmo bloco, flutuando por cima da
           esfera (absolute), em vez de ocupar espaço próprio na coluna. */}
-      <div className="relative flex min-h-16 flex-1 items-center justify-center">
-        <VoiceOrb className="aspect-square h-full w-auto max-h-80" />
+      {/* Só opacidade aqui: deslocar este bloco atrapalharia a medição da esfera,
+          que desliza entre as fases por `layoutId`. */}
+      <motion.div
+        className="relative flex min-h-16 flex-1 items-center justify-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.7, ease: 'easeOut' }}
+      >
+        <motion.div
+          layoutId="home-orb"
+          transition={glide}
+          className="aspect-square h-full max-h-80"
+        >
+          <VoiceOrb className="h-full w-full" />
+        </motion.div>
 
-        <div className="absolute bottom-2 left-2 z-10 max-w-[62%] overflow-hidden rounded-2xl bg-white/20 px-3 py-2 shadow-xl shadow-violet-950/10 backdrop-blur-xl dark:bg-zinc-900/20">
+        <motion.div
+          {...enter(1)}
+          className="absolute bottom-2 left-2 z-10 max-w-[62%] overflow-hidden rounded-2xl bg-white/20 px-3 py-2 shadow-xl shadow-violet-950/10 backdrop-blur-xl dark:bg-zinc-900/20"
+        >
           <p className="truncate text-sm font-semibold tracking-tight text-zinc-950 dark:text-white">
             {t('chat.home.greeting', 'Oi')}, {userName}…
           </p>
           <p className="mt-0.5 truncate text-xs text-zinc-600 dark:text-zinc-300">
             {t('chat.home.question', 'O que está acontecendo?')}
           </p>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
-      <div className="mt-8 shrink-0 sm:mt-10">
+      <motion.div {...enter(2)} className="mt-8 shrink-0 sm:mt-10">
         <p className="text-sm font-semibold tracking-tight text-zinc-700 dark:text-zinc-200">
           {t('chat.home.help.title', 'Posso te ajudar a:')}
         </p>
         {/* Grid de 3 colunas em vez de faixa rolável: os atalhos dividem a largura
             disponível, sem rolagem. Os dois primeiros rótulos são curtos de propósito
-            (ver `chat.home.intent.*`) e usam `truncate` como rede de segurança; o de
-            pesquisa é mais descritivo e quebra em duas linhas — como os itens do grid
+            (ver `chat.home.intent.*`) e usam `truncate` como rede de segurança; o do
+            mapa é mais descritivo e quebra em duas linhas — como os itens do grid
             esticam por padrão, os três mantêm a mesma altura. */}
         <div className="mt-3 grid grid-cols-3 gap-2 px-0.5 pb-4 pt-1">
           {intents.map((intent, index) => {
-            const Icon = index === 0 ? HeartPulse : index === 1 ? MessageCircleMore : Search
-            // "Pesquisar" leva ao modo pesquisa por sintoma, que é uma rota própria
-            // e não uma conversa com o porteiro — por isso o destaque visual.
-            const opensResearch = intent.id === 'research' && Boolean(onOpenResearch)
+            const Icon = index === 0 ? HeartPulse : index === 1 ? MessageCircleMore : MapIcon
+            // "Gerar mapa" leva ao quiz do Mapa, que é uma rota própria e não uma
+            // conversa com o porteiro — por isso o destaque visual.
+            const opensMapa = intent.id === 'mapa' && Boolean(onOpenMapa)
             return (
               <button
                 key={intent.id}
                 type="button"
                 onClick={() =>
-                  opensResearch
-                    ? onOpenResearch?.()
+                  opensMapa
+                    ? onOpenMapa?.()
                     : onStartConversation(
                         'concierge',
                         intent.starter,
@@ -187,7 +318,7 @@ export function ChatHomeExperience({
                 disabled={loading}
                 className={cn(
                   'inline-flex min-h-9 w-full min-w-0 items-center justify-center gap-1 rounded-2xl px-1.5 py-1.5 text-[11px] font-medium shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 sm:gap-1.5 sm:px-3 sm:text-xs',
-                  opensResearch
+                  opensMapa
                     ? 'bg-gradient-to-br from-violet-600 to-purple-600 text-white shadow-violet-600/30 ring-1 ring-inset ring-white/20 hover:from-violet-500 hover:to-purple-500 hover:shadow-violet-600/40 dark:from-violet-500 dark:to-purple-500'
                     : 'bg-white/90 text-zinc-700 shadow-violet-950/10 hover:bg-white hover:shadow-violet-950/15 dark:bg-white/10 dark:text-zinc-100 dark:shadow-black/20 dark:hover:bg-white/15'
                 )}
@@ -195,7 +326,7 @@ export function ChatHomeExperience({
                 <Icon className="size-3.5 shrink-0" />
                 <span
                   className={cn(
-                    opensResearch
+                    opensMapa
                       ? // `w-min` encolhe a caixa até a maior palavra. Sem isso o span
                         // ocupa toda a largura livre da célula e o texto centralizado
                         // fica visualmente descolado do ícone, ao contrário dos outros.
@@ -209,9 +340,9 @@ export function ChatHomeExperience({
             )
           })}
         </div>
-      </div>
+      </motion.div>
 
-      <div className="mt-5 shrink-0 sm:mt-7">
+      <motion.div {...enter(3)} className="mt-5 shrink-0 sm:mt-7">
         <p className="text-sm font-semibold tracking-tight text-zinc-700 dark:text-zinc-200">
           {t('chat.home.agents.title', 'Onde você quer olhar?')}
         </p>
@@ -248,18 +379,13 @@ export function ChatHomeExperience({
             )
           })}
         </div>
-      </div>
+      </motion.div>
 
-      <ChatComposer
-        ref={inputRef}
-        value={input}
-        loading={loading}
-        onChange={onInputChange}
-        onSubmit={submit}
-        onSubmitText={onSubmitText}
-        placeholder={t('chat.home.input.placeholder', 'Conte o que está acontecendo…')}
-        className="mt-9 shrink-0"
-      />
+      <motion.div {...enter(4)} className="mt-9 shrink-0">
+        {renderComposer('')}
+      </motion.div>
     </section>
+    </LayoutGroup>
+    </MotionConfig>
   )
 }
