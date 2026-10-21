@@ -104,7 +104,11 @@ export async function montarVisao(mapa: MapaOrigem, leitor: Leitor): Promise<Vis
     checkoutUrl: !pago && mapa.status === 'pronto' ? checkoutComToken(mapa.publicToken) : null,
     preco: precoMapaExibido(),
     podeResgatar,
-    emailEntrega: completo && mapa.userId ? await emailDoDono(mapa.userId) : null
+    // Liberado por assinatura nao passa pela entrega: nao ha copia no e-mail.
+    emailEntrega:
+      completo && mapa.userId && mapa.vinculo !== 'assinatura'
+        ? await emailDoDono(mapa.userId)
+        : null
   }
 }
 

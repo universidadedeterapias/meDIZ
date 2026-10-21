@@ -219,3 +219,27 @@ export async function resgatarComCredito(input: {
 }
 
 class MapaIndisponivel extends Error {}
+
+/**
+ * Assinante nao paga o Mapa: o Mapa que ele gerou e liberado na hora, sem
+ * checkout e sem credito. Fica marcado como `provider/vinculo = 'assinatura'`
+ * (sem transacao) para nao entrar na conta das vendas do Mapa.
+ *
+ * Nao dispara a entrega por e-mail/WhatsApp: quem libera e o proprio assinante,
+ * com o Mapa aberto na tela e guardado na Biblioteca.
+ */
+export async function liberarParaAssinante(input: {
+  userId: string
+  mapaId: string
+}): Promise<boolean> {
+  const liberado = await prisma.mapaOrigem.updateMany({
+    where: { id: input.mapaId, status: 'pronto', paidAt: null },
+    data: {
+      userId: input.userId,
+      paidAt: new Date(),
+      provider: 'assinatura',
+      vinculo: 'assinatura'
+    }
+  })
+  return liberado.count === 1
+}
