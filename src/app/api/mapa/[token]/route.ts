@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { ehTokenPublico } from '@/lib/mapa/identidade'
 import { resolverGeracaoTravada } from '@/lib/mapa/geracao'
 import { identificarLeitor, montarVisao } from '@/lib/mapa/leitura'
+import { liberarParaAssinante } from '@/lib/mapa/pagamento'
+import { isUserPremium } from '@/lib/premiumUtils'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -28,8 +30,25 @@ export async function GET(
     return NextResponse.json({ error: 'Mapa não encontrado' }, { status: 404 })
   }
 
-  const mapa = await resolverGeracaoTravada(encontrado)
-  const visao = await montarVisao(mapa, await identificarLeitor(request))
+  let mapa = await resolverGeracaoTravada(encontrado)
+  const leitor = await identificarLeitor(request)
+
+  // Assinante nao paga: o Mapa que ele gerou (mesmo aparelho) abre direto.
+  // O aparelho e a prova de que o Mapa e dele — o token sozinho nao basta,
+  // senao qualquer assinante liberaria o Mapa de outra pessoa pelo link.
+  if (
+    mapa.status === 'pronto' &&
+    !mapa.paidAt &&
+    leitor.userId &&
+    leitor.dispositivoHash &&
+    mapa.dispositivoHash === leitor.dispositivoHash &&
+    (await isUserPremium(leitor.userId)) &&
+    (await liberarParaAssinante({ userId: leitor.userId, mapaId: mapa.id }))
+  ) {
+    mapa = await prisma.mapaOrigem.findUniqueOrThrow({ where: { id: mapa.id } })
+  }
+
+  const visao = await montarVisao(mapa, leitor)
 
   return NextResponse.json(visao, {
     headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }

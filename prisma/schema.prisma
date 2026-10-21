@@ -1544,7 +1544,7 @@ model MapaOrigem {
   paidAt        DateTime? @map("paid_at")
   provider      String?   @db.VarChar(32)
   transactionId String?   @map("transaction_id") @db.VarChar(120)
-  /// Como o pagamento achou este Mapa: token | telefone | credito
+  /// Como o pagamento achou este Mapa: token | telefone | credito | assinatura (assinante nao paga)
   vinculo       String?   @db.VarChar(16)
 
   /// Entrega (e-mail + webhook n8n do WhatsApp).

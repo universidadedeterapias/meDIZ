@@ -19,6 +19,7 @@ import { Footer } from '@/components/Footer'
 import PromotionPopup from '@/components/PromotionPopup'
 import Spinner from '@/components/Spinner'
 import { DiscoveryInvite } from '@/components/discovery/DiscoveryInvite'
+import { useSymptomSearch } from '@/hooks/use-symptom-search'
 import {
   SidebarInset,
   SidebarProvider
@@ -92,7 +93,12 @@ export default function Page() {
   
   // Estados relacionados às regras de uso do plano gratuito
   const [showPopup, setShowPopup] = useState(false)
-  
+
+  const symptomSearch = useSymptomSearch({
+    onLimitReached: () => setLimitReached(true),
+    onShowPopup: () => setShowPopup(true)
+  })
+
   // 1) Confira perfil e normalize o nome
   useEffect(() => {
     let cancelled = false
@@ -402,6 +408,7 @@ export default function Page() {
 
   const startNewConversation = () => {
     clearRevealTimers()
+    symptomSearch.reset()
     setSelectedThread(null)
     setSelectedAgent('concierge')
     setConciergeEntryPoint('free')
@@ -417,6 +424,7 @@ export default function Page() {
   ) => {
     if (loading || revealingMessages) return
     clearRevealTimers()
+    symptomSearch.reset()
     setSelectedAgent(agent)
     setConciergeEntryPoint(agent === 'concierge' ? entryPoint : 'free')
     setSelectedThread(null)
@@ -430,6 +438,17 @@ export default function Page() {
     ])
     setInput('')
     setChatError(null)
+  }
+
+  const searchFromHome = (text: string) => {
+    if (!text.trim() || loading || revealingMessages) return
+    setInput('')
+    void symptomSearch.search(text)
+  }
+
+  const leaveSearch = () => {
+    symptomSearch.reset()
+    setInput('')
   }
 
   const getAgentStarter = useCallback(
@@ -509,20 +528,29 @@ export default function Page() {
           startConversationFromHome(agent, getAgentStarter(agent))
         }
         onSelectSymptom={(symptomText) => {
-          setInput(symptomText)
+          // Sintoma escolhido na lateral é pesquisa, não conversa com o porteiro.
+          clearRevealTimers()
           setMessages([])
           setSelectedThread(null)
-          handleSendMessageFromText(symptomText, null)
+          searchFromHome(symptomText)
         }}
       />
 
       <SidebarInset className="h-svh min-w-0 overflow-hidden !bg-transparent">
         <div className="flex h-full min-h-0 flex-col overflow-hidden bg-transparent text-foreground">
-          <ChatAppHeader onSuggestion={() => router.push('/suggestion')} />
+          <ChatAppHeader
+            onSuggestion={() => router.push('/suggestion')}
+            onBack={
+              symptomSearch.active && messages.length === 0 ? leaveSearch : undefined
+            }
+          />
 
           <main className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-transparent">
             {/* So na home do chat: no meio de uma conversa o convite seria interrupcao. */}
-            {suggestDiscovery && messages.length === 0 && !loading ? (
+            {suggestDiscovery &&
+            messages.length === 0 &&
+            !loading &&
+            !symptomSearch.active ? (
               <div className="mx-auto w-full max-w-2xl shrink-0 px-4 pt-3">
                 <DiscoveryInvite onDismissed={() => setSuggestDiscovery(false)} />
               </div>
@@ -534,10 +562,14 @@ export default function Page() {
                 input={input}
                 loading={loading || revealingMessages}
                 onInputChange={setInput}
-                onSubmit={handleSendMessage}
-                onSubmitText={handleSendMessageFromText}
+                // A caixa da home não abre conversa com o porteiro: faz a
+                // pesquisa por sintoma (chat legado) ali mesmo, sem trocar de rota.
+                onSubmit={() => searchFromHome(input)}
+                onSubmitText={searchFromHome}
                 onStartConversation={startConversationFromHome}
-                onOpenResearch={() => router.push('/pesquisa')}
+                onOpenMapa={() => router.push('/mapa?origem=app')}
+                search={symptomSearch}
+                onSubscribe={handleSubscribe}
               />
             ) : (
               <ChatConversation

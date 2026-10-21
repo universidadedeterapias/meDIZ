@@ -35,6 +35,8 @@ import { useTranslation } from '@/i18n/useTranslation'
 import { useLanguage } from '@/i18n/useLanguage'
 import type { LanguageCode } from '@/i18n/config'
 import { getUpgradeLink } from '@/lib/upgradeLinks'
+import { glassPanelClass } from '@/lib/glassStyles'
+import { cn } from '@/lib/utils'
 
 // Mapa de string → componente, mantém tudo num lugar
 const ICON_MAP: Record<
@@ -215,7 +217,12 @@ export function Result({
   }, [])
 
   return (
-    <Card className="mb-6 w-full min-w-0 overflow-hidden">
+    <Card
+      className={cn(
+        glassPanelClass,
+        'mb-6 w-full min-w-0 overflow-hidden rounded-[1.5rem] border-0 shadow-xl shadow-violet-950/5'
+      )}
+    >
       <CardHeader className="space-y-4 p-4 sm:space-y-6 sm:p-6">
         {/* Header com botão PDF */}
         <div className="flex justify-between items-start gap-2 sm:gap-4">
@@ -223,25 +230,25 @@ export function Result({
             {data.scientific && (
               <>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="block w-1 h-4 bg-primary rounded" />
-                  <span className="uppercase text-sm font-semibold text-primary">
+                  <span className="block h-4 w-1 rounded-full bg-violet-500 dark:bg-violet-400" />
+                  <span className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">
                     {t('result.scientificName', 'Nome científico')}
                   </span>
                 </div>
-                <CardTitle className="mb-4 text-xl font-bold text-foreground sm:mb-6 sm:text-2xl">
+                <CardTitle className="mb-4 text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:mb-6 sm:text-2xl">
                   {data.scientific}
                 </CardTitle>
               </>
             )}
             {data.popular && (
-              <div className="mb-4 w-full break-words rounded-2xl bg-indigo-50 py-3 text-center text-lg font-bold text-primary sm:py-4 sm:text-2xl dark:bg-indigo-950/40">
+              <div className="mb-4 w-full break-words rounded-2xl bg-violet-100/70 py-3 text-center text-lg font-semibold tracking-tight text-violet-800 sm:py-4 sm:text-2xl dark:bg-violet-500/15 dark:text-violet-100">
                 {data.popular}
               </div>
             )}
             {data.system && (
               <Badge
                 variant="outline"
-                className="w-fit text-primary bg-indigo-50 border-none p-2 rounded-full"
+                className="w-fit rounded-full border-none bg-white/70 px-3 py-1.5 text-violet-700 dark:bg-white/10 dark:text-violet-200"
               >
                 {data.system}
               </Badge>
@@ -260,12 +267,12 @@ export function Result({
         {/* Contexto Geral */}
         <section className="space-y-3">
           <div className="flex items-center gap-2">
-            <span className="block w-1 h-4 bg-primary rounded" />
-            <span className="uppercase text-sm font-semibold text-primary">
+            <span className="block h-4 w-1 rounded-full bg-violet-500 dark:bg-violet-400" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">
               {t('result.generalContext', 'Contexto geral')}
             </span>
           </div>
-          <div className="prose prose-sm max-w-none break-words text-justify [&_img]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto">
+          <div className="prose prose-sm max-w-none dark:prose-invert break-words text-justify [&_img]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto">
             <div
               dangerouslySetInnerHTML={{ 
                 __html: (() => {
@@ -281,12 +288,12 @@ export function Result({
         {/* Impacto biológico */}
         <section className="space-y-3">
           <div className="flex items-center gap-2">
-            <span className="block w-1 h-4 bg-primary rounded" />
-            <span className="uppercase text-sm font-semibold text-primary">
+            <span className="block h-4 w-1 rounded-full bg-violet-500 dark:bg-violet-400" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">
               {t('result.biologicalImpact', 'Impacto biológico')}
             </span>
           </div>
-          <div className="prose prose-sm max-w-none break-words text-justify font-normal [&_img]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto">
+          <div className="prose prose-sm max-w-none dark:prose-invert break-words text-justify font-normal [&_img]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto">
             {/* <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {data.impactoBiologico}
             </ReactMarkdown> */}
@@ -303,7 +310,7 @@ export function Result({
         </section>
 
         {/* Accordion dinâmico com ícones */}
-        <Accordion type="single" collapsible className="space-y-2 rounded-md">
+        <Accordion type="single" collapsible className="space-y-2">
           {data.others.map((sec, index) => {
             const Icon = sec.icon ? ICON_MAP[sec.icon] : null
             
@@ -317,17 +324,17 @@ export function Result({
               <AccordionItem
                 key={sec.title}
                 value={sec.title}
-                className="border rounded-md border-zinc-200"
+                className="overflow-hidden rounded-2xl border-0 bg-white/60 dark:bg-white/5"
               >
-                <AccordionTrigger className="flex items-center gap-2 rounded-md bg-muted px-2 font-medium hover:no-underline">
-                  <div className="flex flex-row gap-1 justify-start items-center flex-1 capitalize">
+                <AccordionTrigger className="flex items-center gap-2 px-3 py-3 font-medium text-zinc-800 hover:no-underline dark:text-zinc-100">
+                  <div className="flex flex-1 flex-row items-center justify-start gap-2 capitalize">
                     {Icon && (
-                      <Icon className="h-4 w-4 flex-shrink-0 text-primary" />
+                      <Icon className="h-4 w-4 flex-shrink-0 text-violet-600 dark:text-violet-300" />
                     )}
                     {translateSectionTitle(sec.title, language).toLowerCase()}
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className="prose prose-sm max-w-none break-words p-3 text-left [&_img]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto">
+                <AccordionContent className="prose prose-sm max-w-none break-words px-3 pb-3 pt-0 text-left dark:prose-invert [&_img]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto">
                   {shouldBlur ? (
                     <BlurredAccordionContent onSubscribe={handleSubscribe}>
                       {/* <ReactMarkdown
@@ -373,7 +380,7 @@ export function Result({
             <SaveSymptomDialog 
               symptom={symptomText} 
               threadId={sessionId}
-              triggerClassName="w-full py-6 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors flex items-center justify-center gap-2"
+              triggerClassName="flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-100 py-6 text-violet-800 transition-colors hover:bg-violet-200 dark:bg-violet-500/15 dark:text-violet-100 dark:hover:bg-violet-500/25"
               onSaved={() => {
                 // Disparar evento customizado para atualizar a sidebar
                 if (typeof window !== 'undefined') {
@@ -390,7 +397,7 @@ export function Result({
               }
               url={baseUrl}
               text={data.impactoBiologico}
-              triggerClassName="w-full py-6 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors flex items-center justify-center gap-2"
+              triggerClassName="flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-100 py-6 text-violet-800 transition-colors hover:bg-violet-200 dark:bg-violet-500/15 dark:text-violet-100 dark:hover:bg-violet-500/25"
             />
           </div>
         </ClientOnly>
@@ -406,7 +413,7 @@ export function Result({
           </div>
 
           {/* Aviso */}
-          <div className="flex items-start gap-2 p-3 bg-yellow-50 text-yellow-800 rounded-md text-xs">
+          <div className="flex items-start gap-2 rounded-2xl bg-amber-50/80 p-3 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             <span>
               {t(
